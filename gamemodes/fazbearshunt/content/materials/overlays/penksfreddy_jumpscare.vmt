@@ -1,0 +1,13 @@
+"UnlitGeneric"
+{
+	"$basetexture" "overlays/penksfreddy_jumpscare"
+	"Proxies" 
+	{ 
+		"AnimatedTexture" 
+		{
+			"animatedTextureVar" "$basetexture" 
+			"animatedTextureFrameNumVar" "$frame" 
+			"animatedTextureFrameRate" "24"
+		 } 
+	} 
+}

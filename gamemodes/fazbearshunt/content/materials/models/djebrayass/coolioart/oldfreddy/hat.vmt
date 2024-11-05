@@ -1,0 +1,19 @@
+"VertexlitGeneric"
+{
+	"$basetexture" "models\djebrayass\CoolioArt\OldFreddy\Hat"
+	"$bumpmap" "models\djebrayass\CoolioArt\OldFreddy\BlackBump"
+	
+	$surfaceprop metal
+
+	"$basetexturealphaenvmapmask" 1
+ 	"$phong" "1"
+	"$phongexponent" "50"
+	"$phongboost"	"30"
+	"$phongfresnelranges"	"[0.0099999998 0.3000000119 0.1000000015]"
+	"$phongalbedotint" "1"
+                "$basemapalphaphongmask"	"1"
+	"$phongalbedoboost"	"1"
+
+$halflambert 0
+$diffuseexp 1.5
+}

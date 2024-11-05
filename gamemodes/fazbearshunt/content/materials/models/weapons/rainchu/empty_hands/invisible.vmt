@@ -1,0 +1,5 @@
+VertexLitGeneric
+{
+	$basetexture "models/weapons/rainchu/empty_hands/invisible"
+	$translucent "1"
+}

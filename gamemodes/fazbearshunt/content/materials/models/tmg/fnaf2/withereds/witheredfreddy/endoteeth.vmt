@@ -1,0 +1,22 @@
+"vertexlitgeneric"
+{
+	"$basetexture" "models/tmg/fnaf2/withereds/witheredfreddy/Endoteeth"
+	"$bumpmap" "models/tmg/fnaf2/withereds/witheredfreddy/teethbump"
+$surfaceprop metal
+$phong "1"
+$phongexponent "0"
+$phongboost "0"
+$color "{126 119 109}"
+$phongfresnelranges "[0.05 0.5 1]"
+$phongalbedotint "1"
+$halflambert "1"
+$phongalbedotint "1"
+$nodecal "1"
+$model "1"
+$diffuseexp "1.5"
+$normalmapalphaenvmapmask   "1"
+$nocull 1
+$ambientocclusion "1"
+}
+
+

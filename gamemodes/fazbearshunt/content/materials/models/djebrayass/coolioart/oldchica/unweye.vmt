@@ -1,0 +1,17 @@
+"VertexlitGeneric"
+{
+	"$basetexture" "models\djebrayass\CoolioArt\OldChica\unweye"
+	"$bumpmap" "models\djebrayass\CoolioArt\OldChica\teethbump"
+	"$phongexponenttexture" "models\djebrayass\CoolioArt\OldChica\reflect"
+	
+	$surfaceprop metal
+
+ 	"$phong" "1"
+	"$phongexponent" "5"
+	"$phongboost"	"5"
+	"$phongfresnelranges"	"[0.05 0.5 1]"
+	"$phongalbedotint" "1"
+
+$halflambert 0
+$diffuseexp 1.5
+}

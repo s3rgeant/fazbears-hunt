@@ -1,0 +1,8 @@
+"fazbearshunt"
+{
+	"title"		    "Fazbear's Hunt"
+	"maps"		    "^fh_"
+	"category"	    "pvp"
+	"menusystem"	"1"
+	"workshopid"	"15895"
+}

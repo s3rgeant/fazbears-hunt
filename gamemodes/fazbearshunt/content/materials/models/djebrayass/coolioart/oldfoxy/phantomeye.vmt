@@ -1,0 +1,11 @@
+"UnlitGeneric"
+{
+	"$basetexture" "models\djebrayass\CoolioArt\OldFoxy\phantomeye"
+	"$bumpmap" "models\djebrayass\CoolioArt\OldFoxy\flat"
+	
+	$surfaceprop metal
+
+
+$halflambert 0
+$diffuseexp 1.5
+}

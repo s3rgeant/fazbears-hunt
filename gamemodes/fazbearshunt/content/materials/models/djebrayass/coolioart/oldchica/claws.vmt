@@ -1,0 +1,20 @@
+"VertexlitGeneric"
+{
+	"$basetexture" "models\djebrayass\CoolioArt\OldChica\Claws"
+	"$bumpmap" "models\djebrayass\CoolioArt\OldChica\teethBump"
+	"$phongexponenttexture" "models\djebrayass\CoolioArt\OldChica\reflect"
+	
+	$surfaceprop metal
+
+ 	"$phong" "1"
+	"$phongexponent" "2"
+	"$phongboost"	"0.2"
+	"$phongtint"	"[130 130 130]"
+	"$phongfresnelranges"	"[0.0099999998 0.3000000119 0.1000000015]"
+	"$phongalbedotint" "1"
+                "$basemapalphaphongmask"	"1"
+	"$phongalbedoboost"	"1"
+
+$halflambert 0
+$diffuseexp 1.5
+}

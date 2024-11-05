@@ -1,0 +1,22 @@
+"VertexLitGeneric"
+{
+	"$basetexture" "models\tmg\fnaf2\withereds\Endo-02\Eye"
+	"$bumpmap"    "models/tmg/fnaf2/shared/flat"
+	"$phongexponenttexture"  "models\tmg\fnaf2\shared/spec1"
+	
+	"$phong" "1"
+	"$phongexponent" "3.5"
+	"$phongboost"	"0.1"
+	"phongalbedotint"     "1"
+	"$phongfresnelranges"	"[0.3 0.3 0.3]"
+	"$phongalbedotint" "1"
+	
+	$halflambert 0
+	$diffuseexp 1.5
+$nocull 1
+}
+
+
+
+
+

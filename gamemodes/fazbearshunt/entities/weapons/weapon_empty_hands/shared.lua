@@ -1,0 +1,160 @@
+-- vim: se sw=4 ts=4 :
+
+SWEP.Name					=  "Empty Hands"
+SWEP.HoldType				=  "normal"
+SWEP.Category				=  "Other"
+
+SWEP.Spawnable				=  true
+SWEP.AdminSpawnable			=  true
+
+-- Fixes console errors when no model is used (Gmod bug)
+SWEP.ViewModel				=  "models/weapons/rainchu/v_nothing.mdl"
+SWEP.WorldModel				=  "models/weapons/rainchu/w_nothing.mdl"
+
+SWEP.Primary.Automatic		=  true
+SWEP.Primary.Ammo			=  "none"
+
+SWEP.Secondary.Automatic	=  false
+SWEP.Secondary.Ammo			=  "none"
+
+function SWEP:CanPrimaryAttack()
+	return true
+end
+
+function SWEP:CanSecondaryAttack()
+	return true
+end
+
+function SWEP:Initialize()
+	self:SetHoldType( self.HoldType )
+	
+	self.Time = 0
+	self.Range = 150
+end
+
+function SWEP:PrimaryAttack()
+	local Pos = self.Owner:GetShootPos()
+	local Aim = self.Owner:GetAimVector()
+
+	local Tr = util.TraceLine{
+		start = Pos,
+		endpos = Pos +Aim *self.Range,
+		filter = player.GetAll(),
+	}
+
+	local HitEnt = Tr.Entity
+	if self.Drag then
+		HitEnt = self.Drag.Entity
+	else
+		if not IsValid( HitEnt ) or HitEnt:GetMoveType() ~= MOVETYPE_VPHYSICS or
+			HitEnt:IsVehicle() or HitEnt:GetNWBool( "NoDrag", false ) or
+			HitEnt.BlockDrag or
+			IsValid( HitEnt:GetParent() ) then
+			return
+		end
+
+		if not self.Drag then
+			self.Drag = {
+				OffPos = HitEnt:WorldToLocal(Tr.HitPos),
+				Entity = HitEnt,
+				Fraction = Tr.Fraction,
+			}
+		end
+	end
+
+	if CLIENT or not IsValid( HitEnt ) then return end
+
+	local Phys = HitEnt:GetPhysicsObject()
+
+	if IsValid( Phys ) then
+		local Pos2 = Pos +Aim *self.Range *self.Drag.Fraction
+		local OffPos = HitEnt:LocalToWorld( self.Drag.OffPos )
+		local Dif = Pos2 -OffPos
+		local Nom = (Dif:GetNormal() *math.min(1, Dif:Length() /100) *500 -Phys:GetVelocity()) *Phys:GetMass()
+
+		Phys:ApplyForceOffset( Nom, OffPos )
+		Phys:AddAngleVelocity( -Phys:GetAngleVelocity() /4 )
+	end
+end
+
+function SWEP:SecondaryAttack()
+	if not IsFirstTimePredicted() then return end
+
+	if game.SinglePlayer() then
+		self:SetShouldDrawCrosshair( not self:GetShouldDrawCrosshair() )
+	elseif CLIENT then
+		self.CrosshairPredicted = not self.CrosshairPredicted
+	end
+
+	self:SetNextSecondaryFire( CurTime() + 0.25 )
+
+	return true
+end
+
+function SWEP:SetupDataTables( )
+	self:NetworkVar( "Bool", 0, "IsDeployed" )
+	self:NetworkVar( "Bool", 1, "ShouldDrawCrosshair" )
+end
+
+function SWEP:Think()
+	if self.Drag and (not self.Owner:KeyDown(IN_ATTACK) or not IsValid(self.Drag.Entity)) then
+		self.Drag = nil
+	end
+end
+
+
+if CLIENT then
+	local x, y = ScrW() /2, ScrH() /2
+	local MainCol = Color( 255, 255, 255, 255 )
+	local Col = Color( 255, 255, 255, 255 )
+
+	function SWEP:DrawHUD()
+		if IsValid( self.Owner:GetVehicle() ) then return end
+		local Pos = self.Owner:GetShootPos()
+		local Aim = self.Owner:GetAimVector()
+
+		local Tr = util.TraceLine{
+			start = Pos,
+			endpos = Pos +Aim *self.Range,
+			filter = player.GetAll(),
+		}
+
+		local HitEnt = Tr.Entity
+		if IsValid( HitEnt ) and HitEnt:GetMoveType() == MOVETYPE_VPHYSICS and
+			not self.rDag and
+			not HitEnt:IsVehicle() and
+			not IsValid( HitEnt:GetParent() ) and
+			not HitEnt:GetNWBool( "NoDrag", false ) then
+
+			self.Time = math.min( 1, self.Time +2 *FrameTime() )
+		else
+			self.Time = math.max( 0, self.Time -2 *FrameTime() )
+		end
+
+		if self.Time > 0 then
+			Col.a = MainCol.a *self.Time
+
+			draw.SimpleText(
+				"Drag",
+				"DermaLarge",
+				x,
+				y,
+				Col,
+				TEXT_ALIGN_CENTER
+			)
+		end
+
+		if self.Drag and IsValid( self.Drag.Entity ) then
+			local Pos2 = Pos +Aim *100 *self.Drag.Fraction
+			local OffPos = self.Drag.Entity:LocalToWorld( self.Drag.OffPos )
+			local Dif = Pos2 -OffPos
+
+			local A = OffPos:ToScreen()
+			local B = Pos2:ToScreen()
+
+			surface.DrawRect( A.x -2, A.y -2, 4, 4, MainCol )
+			surface.DrawRect( B.x -2, B.y -2, 4, 4, MainCol )
+			surface.DrawLine( A.x, A.y, B.x, B.y, MainCol )
+		end
+	end
+end
