@@ -1065,7 +1065,7 @@ pk_pills.register("pill_wgfreddyhead2",{
 	КД на убийство когда вышел из ноуклипа; 	когда вошёл в ноуклип;		когда вышел из него
 	
 ]]
-local sfreddy_cooldowns = {1, 5, 7.5}
+local sfreddy_cooldowns = {1.5, 7, 5}
 
 -- ХОДЬБА, БЕГ, ВПРИСЯДИ, СИЛА ПРЫЖКА
 local sfreddy_default_movement = {80, 80, 65, 0} -- обычное передвижение
