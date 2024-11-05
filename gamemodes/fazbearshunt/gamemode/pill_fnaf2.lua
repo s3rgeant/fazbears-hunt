@@ -1059,12 +1059,17 @@ pk_pills.register("pill_wgfreddyhead2",{
 
 
 
+--[[
+	КД ШЕДОУ МИШКИ
+	
+	КД на убийство когда вышел из ноуклипа; 	когда вошёл в ноуклип;		когда вышел из него
+	
+]]
+local sfreddy_cooldowns = {1, 5, 7.5}
 
-
-
-
-local sfreddy_default_movement = {80, 80, 65, 0}
-local sfreddy_noclip_movement = {360, 360, 360, 0}
+-- ХОДЬБА, БЕГ, ВПРИСЯДИ, СИЛА ПРЫЖКА
+local sfreddy_default_movement = {80, 80, 65, 0} -- обычное передвижение
+local sfreddy_noclip_movement = {360, 360, 360, 0} -- это на случай если - fuppr_sfreddy_noclip 0
 
 pk_pills.register("pill_sfreddy2",{
 	printName="Shadow Freddy",
@@ -1199,9 +1204,9 @@ options=function() return {
 					ent:ToggleCloak()
 						
 					timer.Remove("ext")
-					timer.Create("SF_cantKill"..ply:EntIndex(), 1, 1, function() end)
+					timer.Create("SF_cantKill"..ply:EntIndex(), sfreddy_cooldowns[1], 1, function() end)
 					
-					timer.Create("SF_Cooldown"..ply:EntIndex(), 7.5, 1, function() end)
+					timer.Create("SF_Cooldown"..ply:EntIndex(), sfreddy_cooldowns[3], 1, function() end)
 					
 					if SERVER then
 			
@@ -1243,7 +1248,7 @@ options=function() return {
 				else
 					if !ply:OnGround() then return end
 					if !IsValid(ent) or !IsValid(ent:GetPuppet()) then return end
-					timer.Create("SF_Cooldown"..ply:EntIndex(), 5, 1, function() end)
+					timer.Create("SF_Cooldown"..ply:EntIndex(), sfreddy_cooldowns[2], 1, function() end)
 					
 					ply:EmitSound("sfreddyin.wav")
 			
