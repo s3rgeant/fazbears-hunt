@@ -6,18 +6,21 @@ util.AddNetworkString("NotifyCupcakeOwner")
 util.AddNetworkString("NotifySoundCupcakeOwner")
 util.AddNetworkString("NotifyCupcakeVictim")
 
+util.AddNetworkString("fh_remove_hud_mine")
+
 util.AddNetworkString("AddServerAffectedPlayers")
 
 local nearPlayers = {}
 
 function ENT:Initialize()
-    self:SetModel("models/Gibs/HGIBS.mdl")
+    self:SetModel("models/team vr/cupcake.mdl")
+	self:SetModelScale(0.4, 0)
     self:PhysicsInit(SOLID_VPHYSICS)
     self:SetMoveType(MOVETYPE_VPHYSICS)
     self:SetSolid(SOLID_VPHYSICS)
     self:SetCollisionGroup(COLLISION_GROUP_DEBRIS)
 	
-	self:SetColor(Color(255, 255, 255, 100))
+	//self:SetColor(Color(255, 255, 255, 100))
 	self:SetRenderMode( RENDERMODE_TRANSCOLOR )
 	
     local phys = self:GetPhysicsObject()
@@ -37,6 +40,9 @@ end
 function ENT:OnRemove()
     timer.Remove("CheckPlayersTimer_" .. self:EntIndex())
 	self:EmitExplosion()
+	
+	net.Start('fh_remove_hud_mine')
+	net.Send(self:GetOwner())
 	
 	self:CheckForPlayers()
 end

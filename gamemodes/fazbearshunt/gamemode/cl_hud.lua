@@ -92,6 +92,12 @@ net.Receive("ApplyKiller", function()
 	assignAbilitiesByKiller(currentKiller)
 end)
 
+net.Receive("fh_remove_hud_mine", function()
+	if cupcakes > 0 then
+		cupcakes = cupcakes - 1
+	end
+end)
+
 net.Receive("RemoveKiller", function()
 	hook.Remove("HUDPaint", "DrawKillerInterface")
     currentKiller = ""

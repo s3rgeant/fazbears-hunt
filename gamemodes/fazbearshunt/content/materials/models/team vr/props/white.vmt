@@ -1,0 +1,26 @@
+"VertexlitGeneric"
+{
+	"$basetexture" "models/Team VR/Props/white"
+	"$bumpmap" "models/Team VR/Props/blank"
+
+$surfaceprop metal
+"$ambientocclusion" "0.5"
+ 	"$phong" "1"
+	"$phongexponent" "100"
+	"$phongboost"	"50"
+                "$basemapluminancephongmask" "0"
+	"$phongfresnelranges"	"[0.05 0.5 1]"
+	"$phongalbedotint" "1"
+
+
+	"$rimlight" "1" 
+	"$rimlightexponent" "0.5" 
+	"$rimlightboost" "1.5" 
+	"$rimmask" 1
+
+
+$halflambert 0
+$diffuseexp 1.5
+
+
+}

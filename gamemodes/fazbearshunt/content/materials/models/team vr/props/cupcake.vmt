@@ -1,0 +1,29 @@
+"VertexlitGeneric"
+{
+	"$basetexture" "models/Team VR/Props/cupcake"
+	"$bumpmap" "models/Team VR/Props/cupcaken"
+  	 "$selfillum" "1"
+  	 "$selfillummask" "models/Team VR/Props/cupcakeem"
+	"$selfillumtint" "5 5 5"
+
+$surfaceprop metal
+"$ambientocclusion" "1"
+ 	"$phong" "1"
+	"$phongexponenttexture" "models/Team VR/Props/cupcaker"
+	"$phongboost"	"10"
+                "$basemapluminancephongmask" "0"
+	"$phongfresnelranges"	"[0.05 0.5 1]"
+	"$phongalbedotint" "1"
+
+
+	"$rimlight" "1" 
+	"$rimlightexponent" "0.5" 
+	"$rimlightboost" "1.5" 
+	"$rimmask" 1
+
+
+$halflambert 0
+$diffuseexp 1.5
+
+
+}

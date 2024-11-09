@@ -523,5 +523,11 @@ net.Receive("fh_initpostentity", function(len, ply)
 		net.WriteFloat(timeLeft)
 		net.WriteInt(roundCount, 32)
 		net.Send(ply)
+	elseif timer.Exists('GameStartTimer') then
+		local timeLeft = timer.TimeLeft('GameStartTimer')
+		
+		net.Start("StartPostGame")
+		net.WriteFloat(timeLeft)
+		net.Send(ply)
 	end
 end)

@@ -1212,12 +1212,12 @@ options=function() return {
 			
 						net.Start("fh_net_killer_change")
 						net.WriteString("Kill")
-						net.WriteFloat(3)
+						net.WriteFloat(sfreddy_cooldowns[1])
 						net.Send(ply)
 				
 						net.Start("fh_net_killer_change")
 						net.WriteString("Submerge")
-						net.WriteFloat(7.5)
+						net.WriteFloat(sfreddy_cooldowns[3])
 						net.Send(ply)
 						
 					end
@@ -1256,7 +1256,7 @@ options=function() return {
 					
 						net.Start("fh_net_killer_change")
 						net.WriteString("Submerge")
-						net.WriteFloat(5)
+						net.WriteFloat(sfreddy_cooldowns[2])
 						net.Send(ply)
 						
 					end
