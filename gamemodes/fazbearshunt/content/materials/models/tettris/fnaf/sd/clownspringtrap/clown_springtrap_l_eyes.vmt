@@ -1,0 +1,5 @@
+"UnlitGeneric"
+{
+	$baseTexture "models\tetTris\FNaF\SD\ClownSpringtrap\Eye_L"
+                 $color2 "[2 2 2]"
+}

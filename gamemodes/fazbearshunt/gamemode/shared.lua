@@ -19,7 +19,8 @@ local colors = {
     Endo = Color(255, 255, 255),
     Chica = Color(255, 255, 0),
     Foxy = Color(255, 0, 0),
-    Shadow = Color(105, 0, 255)    
+    Shadow = Color(105, 0, 255), 
+    Clown = Color(105, 150, 70)
 }
 
 killerInfo = {
@@ -31,7 +32,8 @@ killerInfo = {
 }
 
 duoKillerInfo = {
-    ["pill_sfreddy2"] = {name = "Шедоу Фредди", color = colors.Shadow}
+    ["pill_sfreddy2"] = {name = "Шедоу Фредди", color = colors.Shadow},
+    ["pill_springtrap"] = {name = "Клоун", color = colors.Clown}
 }
 
 function getAllKillers()

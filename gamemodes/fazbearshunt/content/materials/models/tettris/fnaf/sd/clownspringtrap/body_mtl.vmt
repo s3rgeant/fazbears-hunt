@@ -1,0 +1,18 @@
+"VertexlitGeneric"
+{
+	"$basetexture" "models\tetTris\FNaF\SD\ClownSpringtrap\Body_D"
+	"$bumpmap" "models\tetTris\FNaF\SD\ClownSpringtrap\Body_N"
+
+	"$phongexponenttexture" "models\tetTris\FNaF\SD\ClownSpringtrap\Body_Exponent"
+	"$phongalbedotint"	"1"
+
+	"$color2"			"[0 0 0]"
+	"$translucent"		"1"
+
+	"$phong" "1"
+	"$phongboost"	"19.986979"
+
+	"$phongfresnelranges"	"[0.87 0.9 1]"
+
+	"$ambientocclusion"	"0.7"
+}

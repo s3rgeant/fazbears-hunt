@@ -8,7 +8,7 @@ local function OpenAdminPanel()
     if IsValid(AdminPanel) then AdminPanel:Remove() end
 
     AdminPanel = vgui.Create("DFrame")
-    AdminPanel:SetSize(600, 400)
+    AdminPanel:SetSize(600, 500)
     AdminPanel:Center()
 	AdminPanel:SetScreenLock(true)
     AdminPanel:SetTitle("Админ-Панель")
@@ -58,7 +58,8 @@ local function OpenAdminPanel()
         {text = language.GetPhrase("fuppr.adminpanel.kill"), action = "kill"},
         {text = language.GetPhrase("fuppr.adminpanel.startgame"), action = "start_round"},
         {text = language.GetPhrase("fuppr.adminpanel.hl_everyone"), action = "highlight_all"},
-        {text = language.GetPhrase("fuppr.adminpanel.endgame"), action = "end_round"}
+        {text = language.GetPhrase("fuppr.adminpanel.endgame"), action = "end_round"},
+        {text = language.GetPhrase("fuppr.adminpanel.endpostround"), action = "end_post_round"}
     }
 
     local yPos = 30
@@ -103,7 +104,7 @@ local function OpenAdminPanel()
         {label = language.GetPhrase("fuppr.highlight.radius"), action = "set_highlight_distance", min = 100, max = 4000, default = GetConVar('halo_radius'):GetInt(), decimals = 0}
     }
 
-    local sliderY = 270
+    local sliderY = yPos
     for _, sld in ipairs(sliders) do
         local slider = vgui.Create("DNumSlider", AdminPanel)
         slider:SetPos(200, sliderY)

@@ -88,6 +88,12 @@ function EndRound()
 	end
 end
 
+function EndPostRound()
+	if !roundEnding and isGameOn then
+		roundActive = true
+	end
+end
+
 function SetHighlightDelay(value)
 	game.ConsoleCommand("halo_cooldown "..value.."\n")
 end
@@ -142,6 +148,8 @@ net.Receive("AdminAction", function(len, ply)
 		elseif action == "set_highlight_distance" then
 			local value = net.ReadFloat()
 			SetHighlightDistance(math.floor(value))
+		elseif action == "end_post_round" then
+			EndPostRound()
 		end
 	end
 end)

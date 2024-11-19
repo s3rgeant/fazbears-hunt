@@ -482,24 +482,32 @@ if SERVER then
     hook.Add("PlayerDeathThink", "pk_pill_nospawn", function(ply)
         if getMappedEnt(ply) then return false end
     end)
+	
+	hook.Add("HandlePlayerJumping", "pk_pill_canjump", function(ply)
+        local ent = getMappedEnt(ply)
+		if ent.animFreeze then
+			return true
+		end
+	end)
 
     hook.Add("DoAnimationEvent", "pk_pill_triggerAnims", function(ply, event, data)
-        if IsValid(getMappedEnt(ply)) and getMappedEnt(ply).formTable.type == "ply" then
+        local ent = getMappedEnt(ply)
+        if IsValid(ent) and ent.formTable.type == "ply" then
             if event == PLAYERANIMEVENT_JUMP then
-                getMappedEnt(ply):PillAnim("jump")
-                getMappedEnt(ply):DoJump()
+                ent:PillAnim("jump")
+                ent:DoJump()
             end
 
             if event == PLAYERANIMEVENT_ATTACK_PRIMARY then
-                getMappedEnt(ply):PillGesture("attack")
+                ent:PillGesture("attack")
             end
 
             if event == PLAYERANIMEVENT_ATTACK_SECONDARY then
-                getMappedEnt(ply):PillGesture("attack2")
+                ent:PillGesture("attack2")
             end
 
             if event == PLAYERANIMEVENT_RELOAD then
-                getMappedEnt(ply):PillGesture("reload")
+               ent:PillGesture("reload")
             end
         end
     end)
@@ -507,7 +515,7 @@ if SERVER then
     hook.Add("OnPlayerHitGround", "pk_pill_hitground", function(ply)
         local ent = getMappedEnt(ply)
 
-        if IsValid(ent) then
+        if IsValid(ent) and !ply:IsFrozen() then
             if ent.formTable.land then
                 ent.formTable.land(ply, ent)
                 ent:PillSound("land", true)

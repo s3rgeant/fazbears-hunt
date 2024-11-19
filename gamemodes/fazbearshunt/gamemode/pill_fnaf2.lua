@@ -6,6 +6,9 @@ if SERVER then
 	
 	util.AddNetworkString("fh_net_killer_change")
 	
+	util.AddNetworkString("fh_stalk_sound_play")
+	util.AddNetworkString("fh_stalk_sound_stop")
+	
 	util.AddNetworkString("SF_cantout")
 	
 	util.AddNetworkString("PlayHighlightSounds")
@@ -19,7 +22,7 @@ pcall(require,"pk_pills")
 
 local haloUsers = {}
 
-local cupcakes = {}
+local cupcakes = {} 
 
 shadow_freddyability = CreateConVar( "fuppr_sfreddy_noclip", "1", { FCVAR_NOTIFY, FCVAR_ARCHIVE, FCVAR_REPLICATED }, "Noclip." )
 
@@ -28,7 +31,6 @@ pk_pills.packStart("FUPPR 2 WE","FUPPR 2 WE","icon/fnafur2we.png")
 pk_pills.register("pill_wfreddy2",{
 	printName="Withered Freddy",
 	model="models/speps/pill/oldfreddy.mdl",
-	crab="pill_wdefreddy2",
 	bodyGroups={0},
 	anims={
 		default={
@@ -39,10 +41,10 @@ pk_pills.register("pill_wfreddy2",{
 			run="run",
 			cloak="special",
 			scare="scare",
-			teleport="zombie_leap_mid",
 			jump="jump",
 			glide="air",
 			land="land",
+			stalk="stalk",
 		},
 	},
 	moveSpeed={
@@ -51,7 +53,6 @@ pk_pills.register("pill_wfreddy2",{
 		ducked=65,
 	},
 	sounds={
-	//	teleport="legitfreddy/laugh_giggle_girl_1d.wav",
 		gs="fnaf2/stareshort.wav",
 		loop_stare="fnaf2/with_s2_loop2.wav",
 		laugh={"fnaf2/giggling1.wav",
@@ -147,8 +148,46 @@ pk_pills.register("pill_wfreddy2",{
 	attack2={
 		mode="trigger",
 		func = function(ply,ent)
-			ent:PillSound("laugh")
-			ent:PillAnim("cloak",true)
+			local target = fh_random_stalk_target(ply)
+			
+			if !IsValid(target) then return end
+			
+			local totalDistance = 0
+			local lastPosition = target:GetPos()
+			smoothLookAt(ply, target)
+			ent:PillAnim("stalk",true)
+			ply:SetFOV(60, 8)
+			
+			net.Start('fh_stalk_sound_play')
+			net.Send(ply)
+			
+			timer.Create("stalk_check"..ent:EntIndex(), 1, 11, function()
+				
+				if !IsValid(target) or timer.RepsLeft("stalk_check"..ent:EntIndex()) == 1 then
+					timer.Remove("SmoothLookAt_" .. ply:EntIndex())
+					timer.Remove("stalk_check"..ent:EntIndex())
+					ply:SetFOV(0, 1)
+					net.Start('fh_stalk_sound_stop')
+					net.Send(ply)
+					return
+				end
+				
+				local currentPosition = target:GetPos()
+		
+				if not target:Crouching() then
+					local distance = currentPosition:Distance(lastPosition)
+					totalDistance = totalDistance + distance
+				end
+				
+				lastPosition = currentPosition
+		
+				if totalDistance > 1800 then
+					ent:PillAnim("idle")
+					timer.Remove("SmoothLookAt_" .. ply:EntIndex())
+					timer.Remove("stalk_check"..ent:EntIndex())
+					ply:SetFOV(0, 1)
+				end
+			end)
 		end
 	},
 
@@ -165,9 +204,54 @@ pk_pills.register("pill_wfreddy2",{
 	end,
 	jump=function(ply,ent)
 		ent:PillSound("jump", true)
+	end,
+	restore=function(ply,ent)
+		timer.Remove("SmoothLookAt_"..ply:EntIndex())
+		timer.Remove("stalk_check"..ent:EntIndex())
 	end
 })
 
+-- сталк
+function fh_random_stalk_target(ignore)
+    local candidates = {}
+    for _, ply in ipairs(player.GetAll()) do
+        if IsValid(ply) and ply:Alive() and ply ~= ignore and ply:Team() != 2701 then
+            local speed = ply:GetVelocity():Length()
+            if speed < 70 then
+                table.insert(candidates, ply)
+            end
+        end
+    end
+
+    if #candidates > 0 then
+        return candidates[math.random(#candidates)]
+    else
+        return nil -- Нет подходящих игроков
+    end
+end
+
+
+function smoothLookAt(anim, targetPlayer)
+    if not IsValid(anim) or not IsValid(targetPlayer) then return end
+
+    timer.Create("SmoothLookAt_" .. anim:EntIndex(), 0.01, 0, function()
+        if not IsValid(anim) or not IsValid(targetPlayer) then
+            timer.Remove("SmoothLookAt_" .. anim:EntIndex())
+            return
+        end
+
+        local currentAngle = anim:EyeAngles()
+
+        local targetPos = targetPlayer:GetPos()
+        local direction = (targetPos - anim:GetPos()):GetNormalized()
+
+        local targetAngle = direction:Angle()
+
+        local newAngle = LerpAngle(0.05, currentAngle, targetAngle)
+
+        anim:SetEyeAngles(newAngle)
+    end)
+end
 
 
 --bonnie
@@ -183,7 +267,6 @@ pk_pills.register("pill_wfreddy2",{
 pk_pills.register("pill_wbonnie2",{
 	printName="Withered Bonnie",
 	model="models/speps/pill/oldbonnie.mdl",
-	crab="pill_wdebonnie2",
 	anims={
 		default={
 			idle="idle",
@@ -197,11 +280,12 @@ pk_pills.register("pill_wbonnie2",{
 			glide="jumpidle",
 			land="jumpend",
 			scare="scare",
+			point="point",
 		},
 	},
 	moveSpeed={
 		walk=90,
-		run=460,
+		run=475,
 		ducked=80,
 	},
 	sounds={
@@ -301,8 +385,15 @@ pk_pills.register("pill_wbonnie2",{
 	attack2={
 		mode="trigger",
 		func = function(ply,ent)
-			ent:PillSound("scream")
-			ent:PillAnim("cloak",true)
+			if ply:IsFrozen() then return end
+			if !ply:Crouching() then
+				ent:PillGesture('point', 1, 1, 0.1, 0.1)
+				
+				local target = FindNearestPlayer(ent:GetPos(), 600, ply)
+				if !IsValid(target) then return end
+				
+				playVoiceline('bonnie', 'spotted', ply, 1)
+			end
 		end
 	},
 	
@@ -337,7 +428,6 @@ pk_pills.register("pill_wbonnie2",{
 pk_pills.register("pill_wchica2",{
 	printName="Withered Chica",
 	model="models/speps/pill/oldchica.mdl",
-	crab="pill_wdechica2",
 	anims={
 		default={
 			idle="idle",
@@ -355,7 +445,7 @@ pk_pills.register("pill_wchica2",{
 	},
 	moveSpeed={
 		walk=80,
-		run=460,
+		run=470,
 		ducked=80,
 	},
 	sounds={
@@ -521,7 +611,6 @@ pk_pills.register("pill_wchica2",{
 pk_pills.register("pill_wfoxy2",{
 	printName="Withered Foxy",
 	model="models/speps/pill/oldfoxy.mdl",
-	crab="pill_wdefoxy2",
 	bodyGroups={0},
 	anims={
 		default={
@@ -688,7 +777,6 @@ pk_pills.register("pill_wfoxy2",{
 pk_pills.register("pill_wgfreddy2",{
 	printName="Withered Golden Freddy",
 	model="models/speps/pill/oldgoldenfreddy.mdl",
-	crab="pill_wgfreddyhead2",
 	bodyGroups={0},
 	anims={
 		default={
@@ -785,17 +873,17 @@ pk_pills.register("pill_wgfreddy2",{
 				timer.Simple(1,function()
 					if !IsValid(ent) then return end
 					ent:PillSound("cloak")
-					ent:GetPuppet():SetMaterial()
-					ent:GetPuppet():DrawShadow(true)
+					ent:SetMaterial()
+					ent:DrawShadow(true)
 				end)
 			else
 				ent.cloaked=true
 
 				timer.Simple(0.88,function()
-					if !IsValid(ent) or !IsValid(ent:GetPuppet()) then return end
+					if !IsValid(ent) or !IsValid(ent) then return end
 					ent:PillSound("cloak")
-					ent:GetPuppet():SetMaterial("Models/effects/vol_light001")
-					ent:GetPuppet():DrawShadow(false)
+					ent:SetMaterial("Models/effects/vol_light001")
+					ent:DrawShadow(false)
 				end)
 			end*/
 		end
@@ -813,7 +901,7 @@ pk_pills.register("pill_wgfreddy2",{
 			tracein.mins=Vector(-16,-16,0)
 			tracein.start=ply:EyePos()
 			tracein.endpos=ply:EyePos()+ply:EyeAngles():Forward()*9999
-			tracein.filter = {ply,ent,ent:GetPuppet()}
+			tracein.filter = {ply,ent}
 
 			local traceout= util.TraceHull(tracein)
 			ply:SetPos(traceout.HitPos)
@@ -882,7 +970,6 @@ pk_pills.register("pill_wgfreddy2",{
 pk_pills.register("pill_wgfreddyhead2",{
 	printName="Withered Golden Freddy Head",
 	model="models/speps/pill/oldgoldenfreddyhead.mdl",
-	crab="pill_wgfreddy2",
 	bodyGroups={0},
 	anims={
 		default={
@@ -980,17 +1067,17 @@ pk_pills.register("pill_wgfreddyhead2",{
 				timer.Simple(1,function()
 					if !IsValid(ent) then return end
 					ent:PillSound("cloak")
-					ent:GetPuppet():SetMaterial()
-					ent:GetPuppet():DrawShadow(true)
+					ent:SetMaterial()
+					ent:DrawShadow(true)
 				end)
 			else
 				ent.cloaked=true
 
 				timer.Simple(1,function()
-					if !IsValid(ent) or !IsValid(ent:GetPuppet()) then return end
+					if !IsValid(ent) or !IsValid(ent) then return end
 					ent:PillSound("cloak")
-					ent:GetPuppet():SetMaterial("Models/effects/vol_light001")
-					ent:GetPuppet():DrawShadow(false)
+					ent:SetMaterial("Models/effects/vol_light001")
+					ent:DrawShadow(false)
 				end)
 			end*/
 		end
@@ -1027,7 +1114,7 @@ pk_pills.register("pill_wgfreddyhead2",{
 			tracein.mins=Vector(-16,-16,0)
 			tracein.start=ply:EyePos()
 			tracein.endpos=ply:EyePos()+ply:EyeAngles():Forward()*9999
-			tracein.filter = {ply,ent,ent:GetPuppet()}
+			tracein.filter = {ply,ent}
 
 			local traceout= util.TraceHull(tracein)
 			ply:SetPos(traceout.HitPos)
@@ -1236,20 +1323,21 @@ options=function() return {
 							timer.Simple(0,function()
 							ent:PillAnim("uncloak")
 							
-							ent:GetPuppet():SetMaterial()
+							ent:SetMaterial()
 							
 							//ply:SetNoDraw( false )
-							//ent:GetPuppet():SetNoDraw( false )
+							//ent:SetNoDraw( false )
 							
-							ent:GetPuppet():SetModel("models/speps/pill/oldgoldenfreddy.mdl")
-							ent:GetPuppet():DrawShadow(true)
+							ent:SetModel("models/speps/pill/oldgoldenfreddy.mdl")
+							ent:DrawShadow(true)
 						end)
 					end)
 				else
 					if !ply:OnGround() then return end
-					if !IsValid(ent) or !IsValid(ent:GetPuppet()) then return end
+					if !IsValid(ent) or !IsValid(ent) then return end
 					timer.Create("SF_Cooldown"..ply:EntIndex(), sfreddy_cooldowns[2], 1, function() end)
 					
+					ply:EmitSound("sfreddyin.wav")
 					ply:EmitSound("sfreddyin.wav")
 			
 					if SERVER then
@@ -1279,11 +1367,11 @@ options=function() return {
 							ply:SetMoveType( MOVETYPE_NOCLIP )
 						end
 						
-						ent:GetPuppet():SetMaterial("null")
-						ent:GetPuppet():SetModel("models/Items/AR2_Grenade.mdl")
-						ent:GetPuppet():DrawShadow(false)
+						ent:SetMaterial("null")
+						ent:SetModel("models/Items/AR2_Grenade.mdl")
+						ent:DrawShadow(false)
 						//ply:SetNoDraw( true )
-						//ent:GetPuppet():SetNoDraw( true )
+						//ent:SetNoDraw( true )
 						
 						ply:SetCollisionGroup(COLLISION_GROUP_WORLD )
 						ply:SetCustomCollisionCheck(true)
@@ -1339,7 +1427,7 @@ pk_pills.register("pill_endo02",{
 			run="run",
 			cloak="special",
 			teleport="zombie_leap_mid",
-			hold="hold",
+			g_hold="scare",
 			jump="jump",
 			glide="air",
 			land="land",
@@ -1348,7 +1436,7 @@ pk_pills.register("pill_endo02",{
 	},
 	moveSpeed={
 		walk=120,
-		run=440,
+		run=460,
 		ducked=200,
 	},
 	sounds={
@@ -1448,6 +1536,7 @@ pk_pills.register("pill_endo02",{
 		func = function(ply,ent)
 			if timer.Exists("grabCooldown"..ply:EntIndex()) then return end
 			takePlayer(ply,ent)
+			//ent:PillGesture('hold')
 		end
 	},
 	
@@ -1463,6 +1552,173 @@ pk_pills.register("pill_endo02",{
 
 	reload=function(ply,ent)
 		HighlightPlayers(ply)
+	end,
+	jump=function(ply,ent)
+		ent:PillSound("jump", true)
+	end
+	
+})
+	
+	
+	
+	
+	
+	-- CLOWN
+	
+	
+	
+	
+
+pk_pills.register("pill_springtrap",{
+	printName="Clown Springtrap",
+	bodyGroups={0},
+	modelScale="1.2",
+	model="models/tettris/FNaF/SD/springtrap_clown.mdl",
+	anims={
+		default={
+			idle="idle",
+			walk="walk",
+			run="run",
+			hit="hit",
+			land="land",
+			jump="jump",
+			glide="glide",
+		},
+	},
+	moveSpeed={
+		walk=110,
+		run=440,
+		ducked=70,
+	},
+	sounds={
+		jump="jump.wav",
+		land="land.wav",
+		melee=pk_pills.helpers.makeList("fnaf2/xscream2.wav",2),
+		step=pk_pills.helpers.makeList("fnaf2/none.wav",1)
+	},
+	type="ply",
+    camera = {
+        offset = Vector(0, 0, 90),
+		dist = 150
+    },
+	hull=Vector(16,16,86),
+	duckBy=60,
+
+    jumpPower=250,
+	
+	muteSteps = true,
+	health=10000,
+	movePoseMode="xy",
+	aim = {
+		xPose="aim_yaw",
+		yPose="aim_pitch"
+	},
+	canAim=function(ply,ent)
+		return ent.active
+	end,
+	
+	--[[
+	moveFunction=function(ply,ent)
+		if IsValid(ent) then
+			if CLIENT then return end
+		
+			if timer.Exists( "CheckConditions"..ply:EntIndex()) or timer.Exists( "ChaseCheck"..ply:EntIndex()) then return end
+			
+			timer.Create("CheckConditions"..ply:EntIndex(), 2, 0, function()
+				if !IsValid(ent) then
+					if timer.Exists( "CheckConditions"..ply:EntIndex()) then
+						timer.Remove("CheckConditions"..ply:EntIndex())
+					end
+					if timer.Exists( "ChaseCheck"..ply:EntIndex()) then
+						timer.Remove("ChaseCheck"..ply:EntIndex())
+					end
+					return
+				end
+				
+				chaseCheck(ply, 'freddy')
+			end)
+		end
+	end,
+	--]]
+
+	noFallDamage=true,
+	hideHud = true,
+	
+	attack={
+		mode="trigger",
+		func=function(ply,ent)
+			if ply:IsFrozen() or timer.Exists('Cl_cantKill'..ply:EntIndex()) then return end
+			ent:PillGesture('hit', 2, 1, 0.1, 0.3)
+			
+			timer.Create('Cl_cantKill'..ply:EntIndex(), 2, 1, function() end)
+			
+			net.Start("fh_net_killer_change")
+			net.WriteString("Kill")
+			net.WriteFloat(2)
+			net.Send(ply)
+			ply:EmitSound("hammer_ready.wav")
+			
+			timer.Simple( 0.85, function()
+				local hitpos = ent:GetPos() + (ent:GetForward() * 100)
+				local target = FindNearestPlayer(hitpos, 100, ply)
+				
+				local trace = util.TraceLine({
+					start = hitpos,
+					endpos = hitpos - Vector(0, 0, 150),
+					filter = ply,ent
+				})
+            
+				local distance = (hitpos - trace.HitPos):Length()
+				
+				if trace.Hit or target then
+				
+					local effectdata = EffectData()
+					effectdata:SetOrigin(trace.HitPos)
+					effectdata:SetScale(160)
+					util.Effect("ThumperDust", effectdata)
+					
+					ply:EmitSound("hammer_hit.wav")
+				
+				end
+				if !IsValid(target) then return end
+		
+				if target:IsNPC() then
+					target:TakeDamage(99999, ply)
+					return 
+				end
+			
+				target:TakeDamage(36, ply)
+				target:SetVelocity(ply:GetUp() * 249) -- чтоб он нахуй улетел
+				
+				--playVoiceline('clown', 'kill', ply, 2)
+				
+				timer.Simple( 2, function()
+					if !IsValid(target) then return end
+					//target:ConCommand( "pp_mat_overlay " )
+				end)
+			end)
+		end
+    },
+	
+	attack2={
+		mode="trigger",
+		func = function(ply,ent)
+			--ent:PillSound("laugh")
+			--ent:PillAnim("cloak",true)
+		end
+	},
+
+	noragdoll=true,
+	reload=function(ply,ent)
+		HighlightPlayers(ply)
+	end,
+	
+	land=function(ply,ent)
+		ent.anim = nil
+		if ply:IsFrozen() then return end
+		if ply:WaterLevel() < 1 and ply:GetVelocity().z < -100 then
+			ent:PillGesture('land', 1, 2, 0.1, 0.3, 0.06)
+		end
 	end,
 	jump=function(ply,ent)
 		ent:PillSound("jump", true)
@@ -1577,7 +1833,7 @@ function takePlayer(ply, ent)
 
     local nearestPlayer = FindNearestPlayer(ply:EyePos(), 125, ply)
 
-    if nearestPlayer and nearestPlayer:IsPlayer() then
+    if nearestPlayer and nearestPlayer:IsPlayer() and !nearestPlayer:IsFrozen() then
 		ply:EmitSound("grab_player.wav")
         nearestPlayer:SetMoveType(MOVETYPE_NONE)
         nearestPlayer:SetCollisionGroup(COLLISION_GROUP_DEBRIS)
@@ -1634,6 +1890,7 @@ hook.Add("KeyRelease", "PlayerRightClickRelease", function(ply, key)
         local target = playersHoldingRightClick[ply]
         if IsValid(target) then
             ply:EmitSound("throw_player.wav")
+			playVoiceline('endo', 'throw', ply, 0.1)
 
             target:SetMoveType(MOVETYPE_WALK)
             target:SetCollisionGroup(COLLISION_GROUP_PLAYER)
@@ -1774,15 +2031,7 @@ if SERVER then
 		for _, index in pairs(cupcakes) do
 			if ents.GetByIndex(index):GetOwner() == ply then
 				ents.GetByIndex(index):Remove()
-				table.RemoveByValue(cupcakes, index)
-			end
-		end
-		if table.Count(cupcakes) > 0 then -- тупая нахуй проверка пиздец, Я НЕ ЕБУ ПОЧЕМУ НО КАКОЙ ТО ИЗ КЕКСОВ НЕ ИСЧЕЗАЕТ
-			for _, index in pairs(cupcakes) do
-				if ents.GetByIndex(index):GetOwner() == ply then
-					ents.GetByIndex(index):Remove()
-					table.RemoveByValue(cupcakes, index)
-				end
+				table.RemoveByValue(cupcakes, 1)
 			end
 		end
 	end

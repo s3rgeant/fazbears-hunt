@@ -11,6 +11,18 @@ sound.Add({
 						,"2footstep4.mp3"}
 })
 
+//clown
+sound.Add({
+	name = 			"clown.foot1",
+	channel = 		CHAN_USER_BASE+10,
+	level = 		SNDLVL_110dB,
+	volume = 		1.0,
+	sound = 			{"fnaf3/clown1.wav"
+						,"fnaf3/clown2.wav"
+						,"fnaf3/clown3.wav"
+						,"fnaf3/clown4.wav"}
+})
+
 sound.Add({
 	name = 			"freddy.foot2",
 	channel = 		CHAN_USER_BASE+10,
@@ -237,6 +249,14 @@ sound.Add({
 						 "vo/bonnie_chase5.mp3",
 						 "vo/bonnie_chase6.mp3"}
 })
+sound.Add({
+	name = 			"bonnie.spotted",
+	channel = 		CHAN_USER_BASE+10,
+	volume = 		1.0,
+	sound = 			{"vo/bonnie_spotted1.mp3",
+						 "vo/bonnie_spotted2.mp3",
+						 "vo/bonnie_spotted3.mp3"}
+})
 
 //foxy voicelines
 sound.Add({
@@ -275,4 +295,12 @@ sound.Add({
 	sound = 			{"vo/endo_chase1.mp3",
 						 "vo/endo_chase2.mp3",
 						 "vo/endo_chase3.mp3"}
+})
+sound.Add({
+	name = 			"endo.throw",
+	channel = 		CHAN_USER_BASE+10,
+	volume = 		1.0,
+	sound = 			{"vo/endo_throw1.mp3",
+						 "vo/endo_throw2.mp3",
+						 "vo/endo_throw3.mp3"}
 })

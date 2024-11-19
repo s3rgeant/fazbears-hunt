@@ -1,0 +1,25 @@
+"VertexlitGeneric"
+{
+	"$basetexture" "models\tetTris\FNaF\SD\ClownSpringtrap\Weapon_D"
+	"$normalmap" "models\tetTris\FNaF\SD\ClownSpringtrap\Weapon_N"
+
+	"$maskmap2" 	"models\tetTris\FNaF\SD\ClownSpringtrap\Weapon_CH"
+
+	"$nocull" "0"
+	"$additive" "1"
+
+	"$specularexponent"		"20"
+	"$specularscale"		 	"0"
+	"$specularcolor" 			"[1 1 1]"
+	"$rimlightcolor" 			"[1 1 1]"
+
+	"$rimlightscale" 			"0"
+	"$ambientscale"			"0"
+
+	"$envmap" "models\cubemaps\fallout4cube_dithered_grey"
+	"$maskenvbymetalness" "0"
+
+	"$metalnessblendtofull"	"1"
+
+	"$envmapintensity"		"0"
+}

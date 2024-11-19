@@ -1,6 +1,6 @@
-AddCSLuaFile()
+ENT.Base = "base_anim"
 ENT.Type = "ai"
-ENT.Base = "base_entity"
+ENT.AutomaticFrameAdvance	= true
 
 function ENT:Initialize()
     self:SetRenderMode(RENDERMODE_TRANSALPHA)

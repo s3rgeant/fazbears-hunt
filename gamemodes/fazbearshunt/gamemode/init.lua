@@ -29,6 +29,9 @@ util.AddNetworkString("nv_on")
 
 util.AddNetworkString("fh_initpostentity")
 
+util.AddNetworkString("fh_hl_teammates")
+util.AddNetworkString("fh_uhl_teammates")
+
 util.AddNetworkString("StartPostGame")
 util.AddNetworkString("StartGame")
 util.AddNetworkString("ResetTimer")
@@ -57,7 +60,7 @@ local roundCount = 0
 postGameOn = true
 isGameOn = false
 roundEnding = false
-local roundActive = false
+roundActive = false
 
 alivePlayers = {}
 deadPlayers = {}
@@ -86,7 +89,6 @@ function assignKillers()
     end
 	
     local availableKillers = table.GetKeys(killerInfo)
-	local killers = killerInfo
 	
 	for _, v in pairs(lastKillers) do
 		if table.Count(players) >= table.Count(lastKillers) then
@@ -106,8 +108,7 @@ function assignKillers()
 		
 		if i == 2 then
 			for k, v in pairs(duoKillerInfo) do
-				//table.insert(availableKillers, k)
-				//killers[k] = v
+				table.insert(availableKillers, k)
 			end
 		end
 			
@@ -115,7 +116,7 @@ function assignKillers()
 		table.RemoveByValue(players, chosenPlayer)
 	
 		local command = randomChoice(availableKillers)
-		local killerData = killerInfo[command]
+		local killerData = getAllKillers()[command]
 		table.RemoveByValue(availableKillers, command)
 	
 		RunConsoleCommand("pk_pill_apply", chosenPlayer:Nick(), command)
@@ -195,6 +196,7 @@ function setupPlayerVars(ply)
 	ply:SetJumpPower(200)
 	ply:SetDuckSpeed(0.1)
 	ply:SetUnDuckSpeed(0.1)
+	ply:GetStepSize(1)
 end
 
 function endGame()
@@ -205,6 +207,10 @@ function endGame()
 	
 	if timer.Exists("UnfrozeAnimatronics") then
 		timer.Remove("UnfrozeAnimatronics")
+	end
+	
+	if timer.Exists("RandomGifts") then
+		timer.Remove("RandomGifts")
 	end
 	
 	timer.Create("endGameWait", 5, 1, function() 
@@ -244,6 +250,21 @@ function startGame()
 	if timer.Exists("endGameWait") then
 		timer.Remove("endGameWait")
 	end
+	
+    local randomTime = math.random(192, 320)
+    //local randomTime = math.random(60, 65)
+    timer.Create("RandomGifts", randomTime, 0, function()
+        for _, ply in ipairs(team.GetPlayers(TEAM_UNASSIGNED)) do
+            if math.random(1, 100) <= 33 and ply:Alive() then
+				timer.Simple(math.random(1, 8), function()
+				local gift = ents.Create("fh_gift")
+				gift:SetPos(ply:GetPos() + Vector(0, 0, 10))
+				gift:SetOwner(ply)
+				gift:Spawn()
+				end)
+            end
+        end
+    end)
 	
 	timer.Create("EndGameTimer", gameDuration, 1, function()
 		local plys = {}
@@ -429,7 +450,7 @@ hook.Add("PlayerDeath", "fh_deaths", function( victim, inflictor, attacker )
 	
     local ent = pk_pills.getMappedEnt(attacker)
 	
-    if IsValid(victim) and victim:IsPlayer() and IsValid(ent) and string.match(ent:GetPuppet():GetModel(), "([^/]+)%.mdl$") == 'oldbonnie' then
+    if IsValid(victim) and victim:IsPlayer() and IsValid(ent) and string.match(ent:GetModel(), "([^/]+)%.mdl$") == 'oldbonnie' then
 		local ragdoll = victim:GetRagdollEntity()
         if IsValid(ragdoll) then
             local forward = victim:GetAimVector()
@@ -478,7 +499,7 @@ hook.Add("PlayerChangedTeam", "fh_jointeam", function(ply, oldteam, team)
 		end
 		local ent = pk_pills.getMappedEnt(ply)
 		if IsValid(ent) then
-			local name = string.match(ent:GetPuppet():GetModel(), "([^/]+)%.mdl$")
+			local name = string.match(ent:GetModel(), "([^/]+)%.mdl$")
 			
 			if name == 'oldfreddy' then name = 'freddy' end
 			if name == 'oldbonnie' then name = 'bonnie' end
@@ -486,14 +507,22 @@ hook.Add("PlayerChangedTeam", "fh_jointeam", function(ply, oldteam, team)
 			if name == 'oldfoxy' then name = 'foxy' end
 			if name == 'endo02' then name = 'endo' end
 			if name == 'oldgoldenfreddy' then name = 'sfreddy' end
+			if name == 'springtrap_clown' then name = 'clown' end
 			
 			net.Start("ApplyKiller")
 			net.WriteString(name)
 			net.Send(ply)
 			
+			timer.Simple(1, function()
+				net.Start("fh_hl_teammates")
+				net.Broadcast()
+			end)
 		end
 	else
 		net.Start("RemoveKiller")
+		net.Send(ply)
+		
+		net.Start("fh_uhl_teammates")
 		net.Send(ply)
 	end
 end)
