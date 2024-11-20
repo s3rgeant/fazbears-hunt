@@ -320,7 +320,7 @@ function ENT:Think()
         if self.animFreeze and not self.plyFrozen then
             ply:SetWalkSpeed(5)
             ply:SetRunSpeed(5)
-            ply:SetJumpPower(5)
+            ply:SetJumpPower(0)
             self.plyFrozen = true
         elseif not self.animFreeze and self.plyFrozen then
             local speed = self.formTable.moveSpeed or {}

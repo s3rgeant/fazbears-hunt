@@ -87,7 +87,7 @@ net.Receive("fh_hl_animatronics", function()
 			table.insert(animatronics, pk_pills.getMappedEnt(ply))
 		end
 	end
-	surface.PlaySound(visionSuccessSound)
+	surface.PlaySound("human_gift_vision.wav")
 	timer.Simple(30, function()
 		table.Empty(animatronics)
 	end)

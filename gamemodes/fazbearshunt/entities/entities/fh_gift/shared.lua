@@ -36,7 +36,6 @@ if SERVER then
 
     function ENT:Touch(ent)
         if CurTime() - self.SpawnTime > 1.5 and (ent:IsPlayer() and !ent:IsBot()) and ent:Team() != 2701 then
-			self:EmitSound( "items/battery_pickup.wav" )
             self:ApplyEffect(ent)
             self:Remove()
         end
@@ -110,13 +109,31 @@ function ENT:ApplyEffect(player)
     -- Негативные эффекты
     local negativeEffects = {
         function(ply)
+			local startPos = ply:GetPos()
+			local endPos = ply:GetPos() + Vector(0, 0, 5000)
+			
+			local tr = util.TraceLine({
+				start = startPos,
+				endpos = endPos,
+				filter = ply
+			})
+			
+			local spawnPos
+			if tr.Hit then
+				spawnPos = tr.HitPos + Vector(0, 0, 35)
+			else
+				spawnPos = ply:GetPos() + Vector(0, 0, 500)
+			end
+			
             local car = ents.Create("prop_physics")
             car:SetModel("models/props_vehicles/truck001a.mdl")
-            car:SetPos(ply:GetPos() + Vector(0, 0, 500))
+            car:SetPos(spawnPos)
             car:Spawn()
             car:Activate()
 			timer.Simple(10, function()
-				car:Remove()
+				if IsValid(car) then
+					car:Remove()
+				end
 			end)
         end,
         function(ply)
@@ -172,5 +189,11 @@ function ENT:ApplyEffect(player)
     
     -- Выбираем случайный эффект
     local effect = effects[math.random(#effects)]
+	if table.HasValue(positiveEffects, effect) then
+		self:EmitSound( "orch_hit_csharp_short.wav" )
+	end
+	if table.HasValue(negativeEffects, effect) then
+		self:EmitSound( "ahuitebe.mp3" )
+	end
     effect(player)
 end

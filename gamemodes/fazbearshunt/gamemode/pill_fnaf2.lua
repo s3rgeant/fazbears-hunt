@@ -150,7 +150,7 @@ pk_pills.register("pill_wfreddy2",{
 		func = function(ply,ent)
 			local target = fh_random_stalk_target(ply)
 			
-			if !IsValid(target) then return end
+			if !IsValid(target) or !ply:OnGround() then return end
 			
 			local totalDistance = 0
 			local lastPosition = target:GetPos()
@@ -167,8 +167,6 @@ pk_pills.register("pill_wfreddy2",{
 					timer.Remove("SmoothLookAt_" .. ply:EntIndex())
 					timer.Remove("stalk_check"..ent:EntIndex())
 					ply:SetFOV(0, 1)
-					net.Start('fh_stalk_sound_stop')
-					net.Send(ply)
 					return
 				end
 				
@@ -186,6 +184,8 @@ pk_pills.register("pill_wfreddy2",{
 					timer.Remove("SmoothLookAt_" .. ply:EntIndex())
 					timer.Remove("stalk_check"..ent:EntIndex())
 					ply:SetFOV(0, 1)
+					net.Start('fh_stalk_sound_stop')
+					net.Send(ply)
 				end
 			end)
 		end
