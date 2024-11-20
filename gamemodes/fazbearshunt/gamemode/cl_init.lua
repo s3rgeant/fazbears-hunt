@@ -131,7 +131,9 @@ net.Receive("SetKillerAngle", function()
 	local ent = net.ReadEntity()
 	if IsValid(ent) then
 		timer.Create('fh_rotatekiller', 0.1, 5, function()
-			ent:ResetAngle()
+			if IsValid(ent) then
+				ent:ResetAngle()
+			end
 		end)
 	end
 end)

@@ -62,6 +62,33 @@ function addAffected(ply)
 	end)
 end
 
+local target
+function addPermanentAffected(ply)
+	if !table.HasValue(affectedPlayers, ply) then
+		table.insert(affectedPlayers, ply)
+	end
+	target = ply
+	toggleShadows(false)
+end
+
+function toggleShadows(bool)
+	if bool then
+		for _, ply in ipairs(player.GetAll()) do
+            ply:DrawShadow(true)
+		end
+	else
+		for _, ply in ipairs(player.GetAll()) do
+			if ply ~= target and ply:Team() != 2701 then
+				ply:DrawShadow(false)
+			end
+		end
+	end
+end
+
+net.Receive("fh_addaffected_stalk", function()
+	addPermanentAffected(net.ReadEntity())
+end)
+
 net.Receive("NotifySoundCupcakeOwner", function()
 	surface.PlaySound(visionSuccessCake)
 end)
@@ -74,10 +101,23 @@ net.Receive("NotifyCupcakeVictim", function()
 	surface.PlaySound(visionAffectedCake)
 end)
 
+net.Receive("fh_yoursmine_bonnie_snd", function()
+	surface.PlaySound('bonnie_ability_bonnie.wav')
+end)
+
+net.Receive("fh_yoursmine_target_snd", function()
+	surface.PlaySound('bonnie_ability_target.wav')
+end)
+
 net.Receive("RemoveAffectedPlayer", function()
     targetPlayer = net.ReadEntity()
 	if table.HasValue(affectedPlayers, targetPlayer) then
 		table.RemoveByValue(affectedPlayers, targetPlayer)
+	end
+	
+	if targetPlayer == target then
+		target = nil
+		toggleShadows(true)
 	end
 end)
 
@@ -206,4 +246,96 @@ hook.Add("HUDPaint", "PlayerDrawAnywhere", function()
             end
         end
     cam.End3D()
+end)
+
+hook.Add("PrePlayerDraw", "fh_stalker_pv", function(ply)
+	if target then
+		if (ply ~= target and ply:Team() != 2701) then
+			return true
+		end
+	end
+end)
+
+hook.Add("PostCleanupMap", "fh_cleanup", function(ply)
+	target = nil
+	toggleShadows(true)
+	table.Empty(affectedPlayers)
+end)
+
+net.Receive("fh_start_yoursmine_view", function()
+    local target = net.ReadEntity()
+    LocalPlayer().fh_target_player = target
+    LocalPlayer().fh_start_time = CurTime()
+    LocalPlayer().fh_initial_phase_duration = 5
+    LocalPlayer().fh_rotation_duration = 0.7
+    LocalPlayer().fh_total_duration = LocalPlayer().fh_initial_phase_duration + LocalPlayer().fh_rotation_duration
+	
+	LocalPlayer():SetFOV(0, 0)
+	
+	local ent = pk_pills.getMappedEnt(LocalPlayer())
+	
+	if IsValid(ent) and !table.HasValue(animatronics, ent) then
+		table.insert(animatronics, ent)
+	end
+
+    hook.Add("CalcView", "fh_yoursmine_view", function(viewer, origin, angles, fov)
+        if viewer ~= LocalPlayer() then return end
+        if not IsValid(viewer.fh_target_player) then return end
+
+        local t = CurTime() - viewer.fh_start_time
+
+        if t < viewer.fh_initial_phase_duration then
+            local view = {}
+            view.origin = viewer.fh_target_player:EyePos()
+            view.angles = viewer.fh_target_player:EyeAngles()
+            view.fov = fov
+            return view
+        elseif t < viewer.fh_total_duration then
+            local progress = (t - viewer.fh_initial_phase_duration) / viewer.fh_rotation_duration
+            progress = math.Clamp(progress, 0, 1)
+
+            local view = {}
+            view.origin = viewer.fh_target_player:EyePos()
+
+            local targetPos = viewer:EyePos()
+            local direction = (targetPos - viewer.fh_target_player:EyePos()):GetNormalized()
+            local targetAngle = direction:Angle()
+
+            local currentAngle = viewer.fh_target_player:EyeAngles()
+            view.angles = LerpAngle(progress, currentAngle, targetAngle)
+            view.fov = fov
+            return view
+        else
+            local view = {}
+            view.origin = viewer.fh_target_player:EyePos()
+            local targetPos = viewer:EyePos()
+            local direction = (targetPos - viewer.fh_target_player:EyePos()):GetNormalized()
+            view.angles = direction:Angle()
+            view.fov = fov
+            return view
+        end
+    end)
+
+    hook.Add("PrePlayerDraw", "fh_yoursmine_ply", function(ply)
+        if not IsValid(LocalPlayer().fh_target_player) then return end
+        if ply == LocalPlayer().fh_target_player then
+            return true
+        end
+    end)
+end)
+
+net.Receive("fh_stop_yoursmine_view", function()
+    hook.Remove("CalcView", "fh_yoursmine_view")
+    hook.Remove("CalcView", "fh_yoursmine_ply")
+    LocalPlayer().fh_target_player = nil
+    LocalPlayer().fh_start_time = nil
+    LocalPlayer().fh_initial_phase_duration = nil
+    LocalPlayer().fh_rotation_duration = nil
+    LocalPlayer().fh_total_duration = nil
+	
+	local ent = pk_pills.getMappedEnt(LocalPlayer())
+	
+	if IsValid(ent) and table.HasValue(animatronics, ent) then
+		table.RemoveByValue(animatronics, ent)
+	end
 end)

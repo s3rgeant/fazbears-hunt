@@ -46,13 +46,16 @@ if CLIENT then
     function ENT:Draw()
         self:DrawModel()
         if IsValid(self:GetOwner()) then
-            local ang = LocalPlayer():EyeAngles()
-            ang:RotateAroundAxis(ang:Forward(), 90)
-            ang:RotateAroundAxis(ang:Right(), 90)
-            
-            cam.Start3D2D(self:GetPos() + Vector(0, 0, 80), Angle(0, ang.y, 90), 0.25)
-            draw.SimpleText("Подарок для " .. self:GetOwner():Nick(), "DermaLarge", 0, 0, Color(255, 255, 255), TEXT_ALIGN_CENTER, TEXT_ALIGN_CENTER)
-            cam.End3D2D()
+            local distance = LocalPlayer():GetPos():Distance(self:GetPos())
+            if distance <= 1300 then
+				local ang = LocalPlayer():EyeAngles()
+				ang:RotateAroundAxis(ang:Forward(), 90)
+				ang:RotateAroundAxis(ang:Right(), 90)
+				
+				cam.Start3D2D(self:GetPos() + Vector(0, 0, 80), Angle(0, ang.y, 90), 0.25)
+				draw.SimpleText("Подарок для " .. self:GetOwner():Nick(), "DermaLarge", 0, 0, Color(255, 255, 255), TEXT_ALIGN_CENTER, TEXT_ALIGN_CENTER)
+				cam.End3D2D()
+            end
         end
     end
 
@@ -141,6 +144,16 @@ function ENT:ApplyEffect(player)
             net.WriteEntity(ply)
             net.Broadcast()
             ply:ChatPrint("Они знают...")
+			
+			table.insert(affectedPlayers, ply)
+		
+			if timer.Exists( "RemoveAffectedPlayer"..ply:SteamID64() ) then
+				timer.Remove( "RemoveAffectedPlayer"..ply:SteamID64())
+			end
+		
+			timer.Create( "RemoveAffectedPlayer"..ply:SteamID64(), conVars.halo_time:GetFloat(), 1, function()
+				table.RemoveByValue(affectedPlayers, ply)
+			end)
         end,
         function(ply)
 			ply:SetStepSize(0)
@@ -175,7 +188,6 @@ function ENT:ApplyEffect(player)
         end
     }
     
-    -- Формируем список эффектов в зависимости от владельца
     if isOwner then
         effects = positiveEffects
     else
@@ -187,7 +199,6 @@ function ENT:ApplyEffect(player)
         end
     end
     
-    -- Выбираем случайный эффект
     local effect = effects[math.random(#effects)]
 	if table.HasValue(positiveEffects, effect) then
 		self:EmitSound( "orch_hit_csharp_short.wav" )

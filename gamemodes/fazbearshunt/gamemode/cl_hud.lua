@@ -24,10 +24,10 @@ if currentKiller == "" or !currentKiller then return end
 
     for abilityName, abilityData in pairs(currentAbilities) do
         if abilityData.timeleft > 0 or !abilityData.hidden then
-            draw.RoundedBox(8, abilityX, abilityY, 125, 50, Color(32, 32, 32, 200))
+            draw.RoundedBox(8, abilityX, abilityY, 140, 50, Color(32, 32, 32, 200))
             draw.SimpleText(abilityData.text, "DermaLarge", abilityX + 10, abilityY + 10, Color(255, 255, 255, 255), TEXT_ALIGN_LEFT)
             if (abilityData.timeleft > 0) then 
-				draw.SimpleText(tostring(math.ceil(abilityData.timeleft)) .. " s", "DermaLarge", abilityX + 120, abilityY + 10, Color(255, 255, 255, 255), TEXT_ALIGN_RIGHT)
+				draw.SimpleText(tostring(math.ceil(abilityData.timeleft)) .. " s", "DermaLarge", abilityX + 128, abilityY + 10, Color(255, 255, 255, 255), TEXT_ALIGN_RIGHT)
 			end
 			
 			if abilityName == 'Mine' then
@@ -43,7 +43,7 @@ if currentKiller == "" or !currentKiller then return end
 				end
 			end
 			
-            abilityX = abilityX + 140
+            abilityX = abilityX + 155
         end
     end
 end
@@ -66,6 +66,10 @@ function assignAbilitiesByKiller(name)
 		addAbility('Mine', 'ПКМ', 0, false)
 	elseif name == "endo" then
 		addAbility('Grab', 'ПКМ', 0, false)
+	elseif name == "freddy" then
+		addAbility('Stalk', 'ПКМ', 0, false)
+	elseif name == "bonnie" then
+		addAbility('Yoursmine', 'ПКМ', 0, false)
 	end
 end
 

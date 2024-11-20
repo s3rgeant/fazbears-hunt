@@ -321,12 +321,14 @@ function ENT:Think()
             ply:SetWalkSpeed(5)
             ply:SetRunSpeed(5)
             ply:SetJumpPower(0)
+			ply:SetSlowWalkSpeed(5)
             self.plyFrozen = true
         elseif not self.animFreeze and self.plyFrozen then
             local speed = self.formTable.moveSpeed or {}
             ply:SetWalkSpeed(speed.walk or 200)
             ply:SetRunSpeed(speed.run or speed.walk or 500)
 			ply:SetJumpPower(self.formTable.jumpPower or 200)
+			ply:SetSlowWalkSpeed(speed.walk or 200)
             self.plyFrozen = nil
         end
 		
@@ -595,7 +597,7 @@ function ENT:Think()
             end
         end
     else
-		if self:GetPillUser() == LocalPlayer():GetObserverTarget() and LocalPlayer():GetObserverMode() == OBS_MODE_IN_EYE or self:GetPillUser() == LocalPlayer() and !pk_pills.convars.cl_thirdperson:GetBool() then
+		if self:GetPillUser() == LocalPlayer():GetObserverTarget() and LocalPlayer():GetObserverMode() == OBS_MODE_IN_EYE or self:GetPillUser() == LocalPlayer() and !pk_pills.convars.cl_thirdperson:GetBool() and !self:GetPillUser().fh_target_player then
 			if self:GetPillUser() != LocalPlayer() then
 				self:SetNoDraw(true)
 			else 
@@ -892,9 +894,16 @@ end
 function ENT:SetSpeed(walk, run, duck, jump)
     local ply = self:GetPillUser()
 	
+    local speed = self.formTable.moveSpeed or {}
+	
+	speed.walk = walk
+	speed.run = run
+	speed.ducked = duck
+	self.formTable.jumpPower = jump
+	
     ply:SetWalkSpeed(walk)
     ply:SetRunSpeed(run)
-    ply:SetCrouchedWalkSpeed(duck)
+    ply:SetCrouchedWalkSpeed(duck / (walk or 200))
 	ply:SetJumpPower(jump)
 end
 

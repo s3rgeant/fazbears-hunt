@@ -251,12 +251,12 @@ function startGame()
 		timer.Remove("endGameWait")
 	end
 	
-    local randomTime = math.random(192, 320)
+    local randomTime = math.random(120, 180)
     //local randomTime = math.random(60, 65)
     timer.Create("RandomGifts", randomTime, 0, function()
         for _, ply in ipairs(team.GetPlayers(TEAM_UNASSIGNED)) do
             if math.random(1, 100) <= 33 and ply:Alive() then
-				timer.Simple(math.random(1, 8), function()
+				timer.Simple(math.random(1, 15), function()
 				local gift = ents.Create("fh_gift")
 				gift:SetPos(ply:GetPos() + Vector(0, 0, 10))
 				gift:SetOwner(ply)

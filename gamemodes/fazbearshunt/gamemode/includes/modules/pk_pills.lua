@@ -493,7 +493,7 @@ if SERVER then
     hook.Add("DoAnimationEvent", "pk_pill_triggerAnims", function(ply, event, data)
         local ent = getMappedEnt(ply)
         if IsValid(ent) and ent.formTable.type == "ply" then
-            if event == PLAYERANIMEVENT_JUMP then
+            if event == PLAYERANIMEVENT_JUMP and !ent.animFreeze then
                 ent:PillAnim("jump")
                 ent:DoJump()
             end

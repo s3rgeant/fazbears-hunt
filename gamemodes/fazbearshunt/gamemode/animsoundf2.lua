@@ -127,62 +127,6 @@ sound.Add({
 	sound = 			{"fnaf2/endoscream.wav"}
 })
 
-sound.Add({
-	name = 			"freddyfall",
-	channel = 		CHAN_USER_BASE+10,
-	volume = 		1.0,
-	sound = 			{"fnaf2/freddyfall.wav"}
-})
-
-sound.Add({
-	name = 			"freddyup",
-	channel = 		CHAN_USER_BASE+10,
-	volume = 		1.0,
-	sound = 			{"fnaf2/freddygetup.wav"}
-})
-
-sound.Add({
-	name = 			"bonniefall",
-	channel = 		CHAN_USER_BASE+10,
-	volume = 		1.0,
-	sound = 			{"fnaf2/bonniefall.wav"}
-})
-
-sound.Add({
-	name = 			"bonnieup",
-	channel = 		CHAN_USER_BASE+10,
-	volume = 		1.0,
-	sound = 			{"fnaf2/bonniegetup.wav"}
-})
-
-sound.Add({
-	name = 			"chicafall",
-	channel = 		CHAN_USER_BASE+10,
-	volume = 		1.0,
-	sound = 			{"fnaf2/chicafall.wav"}
-})
-
-sound.Add({
-	name = 			"chicaup",
-	channel = 		CHAN_USER_BASE+10,
-	volume = 		1.0,
-	sound = 			{"fnaf2/chicagetup.wav"}
-})
-
-sound.Add({
-	name = 			"foxyfall",
-	channel = 		CHAN_USER_BASE+10,
-	volume = 		1.0,
-	sound = 			{"fnaf2/foxyfall.wav"}
-})
-
-sound.Add({
-	name = 			"foxyup",
-	channel = 		CHAN_USER_BASE+10,
-	volume = 		1.0,
-	sound = 			{"fnaf2/foxygetup.wav"}
-})
-
 //freddy voicelines
 sound.Add({
 	name = 			"freddy.kill",
@@ -201,6 +145,14 @@ sound.Add({
 	sound = 			{"vo/freddy_chase1.mp3",
 						 "vo/freddy_chase2.mp3",
 						 "vo/freddy_chase3.mp3"}
+})
+sound.Add({
+	name = 			"freddy.focus",
+	channel = 		CHAN_USER_BASE+10,
+	volume = 		1.0,
+	sound = 			{"vo/freddy_focus1.mp3",
+						 "vo/freddy_focus2.mp3",
+						 "vo/freddy_focus3.mp3"}
 })
 
 //chica voicelines
@@ -225,6 +177,14 @@ sound.Add({
 						 "vo/chica_chase3.mp3",
 						 "vo/chica_chase4.mp3",
 						 "vo/chica_chase5.mp3"}
+})
+sound.Add({
+	name = 			"chica.plant",
+	channel = 		CHAN_USER_BASE+10,
+	volume = 		1.0,
+	sound = 			{"vo/chica_placecake1.mp3",
+						 "vo/chica_placecake2.mp3",
+						 "vo/chica_placecake3.mp3"}
 })
 
 //bonnie voicelines
@@ -303,4 +263,21 @@ sound.Add({
 	sound = 			{"vo/endo_throw1.mp3",
 						 "vo/endo_throw2.mp3",
 						 "vo/endo_throw3.mp3"}
+})
+
+//clown voicelines
+sound.Add({
+	name = 			"clown.kill",
+	channel = 		CHAN_USER_BASE+10,
+	volume = 		1.0,
+	sound = 			{"vo/clown_kill1.mp3",
+						 "vo/clown_kill2.mp3",
+						 "vo/clown_kill3.mp3"}
+})
+sound.Add({
+	name = 			"clown.chase",
+	channel = 		CHAN_USER_BASE+10,
+	volume = 		1.0,
+	sound = 			{"vo/clown_chase1.mp3",
+						 "vo/clown_chase2.mp3"}
 })

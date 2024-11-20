@@ -8,6 +8,13 @@ if SERVER then
 	
 	util.AddNetworkString("fh_stalk_sound_play")
 	util.AddNetworkString("fh_stalk_sound_stop")
+	util.AddNetworkString("fh_addaffected_stalk")
+	
+	util.AddNetworkString("fh_start_yoursmine_view")
+	util.AddNetworkString("fh_stop_yoursmine_view")
+	
+	util.AddNetworkString("fh_yoursmine_bonnie_snd")
+	util.AddNetworkString("fh_yoursmine_target_snd")
 	
 	util.AddNetworkString("SF_cantout")
 	
@@ -27,6 +34,13 @@ local cupcakes = {}
 shadow_freddyability = CreateConVar( "fuppr_sfreddy_noclip", "1", { FCVAR_NOTIFY, FCVAR_ARCHIVE, FCVAR_REPLICATED }, "Noclip." )
 
 pk_pills.packStart("FUPPR 2 WE","FUPPR 2 WE","icon/fnafur2we.png")
+
+
+local stalker
+local stalkTarget
+
+local wfreddy_default_movement = {150, 480, 65, 250} -- обычное передвижение
+local wfreddy_stalk_movement = {150, 600, 70, 255} -- сталкер дохуя
 
 pk_pills.register("pill_wfreddy2",{
 	printName="Withered Freddy",
@@ -48,9 +62,9 @@ pk_pills.register("pill_wfreddy2",{
 		},
 	},
 	moveSpeed={
-		walk=150,
-		run=490,
-		ducked=65,
+		walk=wfreddy_default_movement[1],
+		run=wfreddy_default_movement[2],
+		ducked=wfreddy_default_movement[3],
 	},
 	sounds={
 		gs="fnaf2/stareshort.wav",
@@ -116,6 +130,9 @@ pk_pills.register("pill_wfreddy2",{
 			
 			local target = FindNearestPlayer(ent:GetPos(), 130, ply)
 			if !IsValid(target) then return end
+			
+			if stalkTarget and target ~= stalkTarget then return end
+			
 			playVoiceline('freddy', 'kill', ply, 2)
 			ent:PillSound("melee")
 			if target:IsNPC() then
@@ -152,21 +169,44 @@ pk_pills.register("pill_wfreddy2",{
 			
 			if !IsValid(target) or !ply:OnGround() then return end
 			
+			if timer.Exists("fh_stalking"..ply:EntIndex()) or ply == stalker then return end
+			
+			timer.Create('fh_stalking'..ply:EntIndex(), 1, 0, function() end)
+			
 			local totalDistance = 0
 			local lastPosition = target:GetPos()
 			smoothLookAt(ply, target)
 			ent:PillAnim("stalk",true)
 			ply:SetFOV(60, 8)
+
+			if math.random(1, 10) > 4 then playVoiceline('freddy', 'focus', ply, 0.1) end
 			
 			net.Start('fh_stalk_sound_play')
 			net.Send(ply)
 			
 			timer.Create("stalk_check"..ent:EntIndex(), 1, 11, function()
-				
-				if !IsValid(target) or timer.RepsLeft("stalk_check"..ent:EntIndex()) == 1 then
+				if timer.RepsLeft("stalk_check"..ent:EntIndex()) == 1 then
+					ent:PillAnim("idle")
 					timer.Remove("SmoothLookAt_" .. ply:EntIndex())
 					timer.Remove("stalk_check"..ent:EntIndex())
 					ply:SetFOV(0, 1)
+					successStalk(ply, ent, target)
+					return
+				end
+				if !IsValid(target) then
+					timer.Remove("SmoothLookAt_" .. ply:EntIndex())
+					timer.Remove("stalk_check"..ent:EntIndex())
+					timer.Adjust('fh_stalking'..ply:EntIndex(), 40, 1)
+					ply:SetFOV(0, 1)
+					net.Start('fh_stalk_sound_stop')
+					net.Send(ply)
+					
+					ent:EmitSound('freddy_cancelled.wav')
+			
+					net.Start("fh_net_killer_change")
+					net.WriteString("Stalk")
+					net.WriteFloat(40)
+					net.Send(ply)
 					return
 				end
 				
@@ -183,8 +223,16 @@ pk_pills.register("pill_wfreddy2",{
 					ent:PillAnim("idle")
 					timer.Remove("SmoothLookAt_" .. ply:EntIndex())
 					timer.Remove("stalk_check"..ent:EntIndex())
+					timer.Adjust('fh_stalking'..ply:EntIndex(), 40, 1)
 					ply:SetFOV(0, 1)
 					net.Start('fh_stalk_sound_stop')
+					net.Send(ply)
+					
+					ent:EmitSound('freddy_cancelled.wav')
+			
+					net.Start("fh_net_killer_change")
+					net.WriteString("Stalk")
+					net.WriteFloat(40)
 					net.Send(ply)
 				end
 			end)
@@ -193,12 +241,14 @@ pk_pills.register("pill_wfreddy2",{
 
 	noragdoll=true,
 	reload=function(ply,ent)
-		HighlightPlayers(ply)
+		if ply ~= stalker then
+			HighlightPlayers(ply)
+		end
 	end,
 	
 	land=function(ply,ent)
 		if ply:IsFrozen() then return end
-		if ply:WaterLevel() < 1 and ply:GetVelocity().z < -200 then
+		if ply:WaterLevel() < 1 and ply:GetVelocity().z < -200 and ent.anim != 'stalk' then
 			ent:PillAnim("land",true)
 		end
 	end,
@@ -208,6 +258,7 @@ pk_pills.register("pill_wfreddy2",{
 	restore=function(ply,ent)
 		timer.Remove("SmoothLookAt_"..ply:EntIndex())
 		timer.Remove("stalk_check"..ent:EntIndex())
+		stalker = nil
 	end
 })
 
@@ -235,7 +286,7 @@ function smoothLookAt(anim, targetPlayer)
     if not IsValid(anim) or not IsValid(targetPlayer) then return end
 
     timer.Create("SmoothLookAt_" .. anim:EntIndex(), 0.01, 0, function()
-        if not IsValid(anim) or not IsValid(targetPlayer) then
+        if not IsValid(anim) or not IsValid(targetPlayer) or !targetPlayer:Alive() then
             timer.Remove("SmoothLookAt_" .. anim:EntIndex())
             return
         end
@@ -253,6 +304,42 @@ function smoothLookAt(anim, targetPlayer)
     end)
 end
 
+local stalkerEnt
+function successStalk(ply, ent, target)
+	if IsValid(target) and target:Alive() then
+		stalker = ply
+		stalkerEnt = ent
+		stalkTarget = target
+		
+		ent:SetSpeed(wfreddy_stalk_movement[1], wfreddy_stalk_movement[2], wfreddy_stalk_movement[3], wfreddy_stalk_movement[4])
+		
+		table.insert(affectedPlayers, target)
+		
+		net.Start('fh_addaffected_stalk')
+		net.WriteEntity(target)
+		net.Send(ply)
+		
+		net.Start('PlayHighlightSounds')
+		net.WriteBool(true)
+		net.Send(target)
+	end
+end
+
+function noMoreStalk(ply)
+	local ent = stalkerEnt
+	
+	ent:SetSpeed(wfreddy_default_movement[1], wfreddy_default_movement[2], wfreddy_default_movement[3], wfreddy_default_movement[4])
+	stalker = nil
+	stalkTarget = nil
+	stalkerEnt = nil
+	
+	timer.Adjust('fh_stalking'..ply:EntIndex(), 60, 1)
+			
+	net.Start("fh_net_killer_change")
+	net.WriteString("Stalk")
+	net.WriteFloat(60)
+	net.Send(ply)
+end
 
 --bonnie
 
@@ -289,7 +376,6 @@ pk_pills.register("pill_wbonnie2",{
 		ducked=80,
 	},
 	sounds={
-	//	teleport="legitfreddy/laugh_giggle_girl_1d.wav",
 		gs="fnaf2/stareshort.wav",
 		loop_stare="fnaf2/with_s2_loop2.wav",
 		scream="fnaf2/bonniescream.wav",
@@ -385,7 +471,54 @@ pk_pills.register("pill_wbonnie2",{
 	attack2={
 		mode="trigger",
 		func = function(ply,ent)
-			if ply:IsFrozen() then return end
+			if ply:IsFrozen() or timer.Exists('fh_yoursmine' .. ply:EntIndex()) or !ply:OnGround() then return end
+
+			local target = fh_random_yoursmine_target(ply)
+			
+			if not IsValid(target) then return end
+			
+			ply:Lock()
+			ent:PillAnim('idle', false)
+			
+			timer.Create('fh_yoursmine' .. ply:EntIndex(), 10, 1, function() end)
+			
+			ent:EmitSound( "bonnie_ability_others.wav" )
+			
+			timer.Simple(1, function()
+				net.Start("fh_start_yoursmine_view")
+				net.WriteEntity(target)
+				net.Send(ply)
+			end)
+			
+			net.Start("fh_yoursmine_bonnie_snd")
+			net.Send(ply)
+			
+			net.Start("fh_yoursmine_target_snd")
+			net.Send(target)
+			
+			timer.Simple(8, function()
+				if IsValid(ply) then
+					net.Start("fh_stop_yoursmine_view")
+					net.Send(ply)
+					ply:UnLock()
+					ply:SetFOV(0, 0)
+			
+					net.Start("fh_net_killer_change")
+					net.WriteString("Yoursmine")
+					net.WriteFloat(35)
+					net.Send(ply)
+					
+					timer.Adjust('fh_yoursmine'..ply:EntIndex(), 35, 1)
+				end
+			end)
+			
+			timer.Simple(6, function()
+				if IsValid(ply) then
+					ply:SetFOV(40, 2)
+				end
+			end)
+			
+			--[[
 			if !ply:Crouching() then
 				ent:PillGesture('point', 1, 1, 0.1, 0.1)
 				
@@ -394,6 +527,7 @@ pk_pills.register("pill_wbonnie2",{
 				
 				playVoiceline('bonnie', 'spotted', ply, 1)
 			end
+			--]]
 		end
 	},
 	
@@ -414,6 +548,20 @@ pk_pills.register("pill_wbonnie2",{
 	end
 })
 
+function fh_random_yoursmine_target(ignore)
+    local candidates = {}
+    for _, ply in ipairs(player.GetAll()) do
+        if IsValid(ply) and ply:Alive() and ply ~= ignore and ply:Team() != 2701 then
+            table.insert(candidates, ply)
+        end
+    end
+
+    if #candidates > 0 then
+        return candidates[math.random(#candidates)]
+    else
+        return nil
+    end
+end
 
 
 
@@ -554,6 +702,8 @@ pk_pills.register("pill_wchica2",{
 				ent:PillSound('deploy')
 				
 				if not IsValid(cupcake) then return end
+
+				if math.random(1, 10) > 4 then playVoiceline('chica', 'plant', ply, 0.1) end
 				
 				cupcake:SetPos(spawnPos)
 				cupcake:SetOwner(ply)
@@ -1172,7 +1322,7 @@ options=function() return {
 			idle="sidle",
 			crouch="scrouch",
 			crouch_walk="scrouchmove",
-			walk="swalk",
+			walk="srun",
 			cloak="sdisappear",
 			uncloak="sappear",
 			teleport="zombie_leap_mid",
@@ -1617,7 +1767,6 @@ pk_pills.register("pill_springtrap",{
 		return ent.active
 	end,
 	
-	--[[
 	moveFunction=function(ply,ent)
 		if IsValid(ent) then
 			if CLIENT then return end
@@ -1635,11 +1784,10 @@ pk_pills.register("pill_springtrap",{
 					return
 				end
 				
-				chaseCheck(ply, 'freddy')
+				chaseCheck(ply, 'clown')
 			end)
 		end
 	end,
-	--]]
 
 	noFallDamage=true,
 	hideHud = true,
@@ -1690,12 +1838,9 @@ pk_pills.register("pill_springtrap",{
 				target:TakeDamage(36, ply)
 				target:SetVelocity(ply:GetUp() * 249) -- чтоб он нахуй улетел
 				
-				--playVoiceline('clown', 'kill', ply, 2)
-				
-				timer.Simple( 2, function()
-					if !IsValid(target) then return end
-					//target:ConCommand( "pp_mat_overlay " )
-				end)
+				if !target:Alive() then
+					playVoiceline('clown', 'kill', ply, 2)
+				end
 			end)
 		end
     },
@@ -2006,6 +2151,13 @@ if SERVER then
 	
 
 	hook.Add( "PlayerDeath", "GlobalDeathMessage", function( victim, inflictor, attacker )
+		if victim == stalkTarget then
+			if IsValid(attacker) and attacker:IsPlayer() then
+				if IsValid(stalker) then
+					noMoreStalk(stalker)
+				end
+			end
+		end
 		if table.HasValue(affectedPlayers, victim) then
 			table.RemoveByValue(affectedPlayers, victim)
 			
