@@ -93,20 +93,13 @@ net.Receive("NotifySoundCupcakeOwner", function()
 	surface.PlaySound(visionSuccessCake)
 end)
 
-net.Receive("SF_cantout", function()
-	surface.PlaySound("sfreddyerror.wav")
-end)
-
 net.Receive("NotifyCupcakeVictim", function()
 	surface.PlaySound(visionAffectedCake)
 end)
 
-net.Receive("fh_yoursmine_bonnie_snd", function()
-	surface.PlaySound('bonnie_ability_bonnie.wav')
-end)
-
-net.Receive("fh_yoursmine_target_snd", function()
-	surface.PlaySound('bonnie_ability_target.wav')
+net.Receive("fh_play_sound", function()
+	local sound = net.ReadString()
+	surface.PlaySound(sound)
 end)
 
 net.Receive("RemoveAffectedPlayer", function()
@@ -155,41 +148,53 @@ net.Receive("fh_hl_badkid", function ()
 	end
 	
 	if LocalPlayer() == player then
-		drawHighlightTimer()
+		drawHighlightTimer(true)
 		surface.PlaySound(visionAffectedSound)
 	end
 end)
 
-local mySound
-local isPlaying = false
+local playerSounds = {}
 
-local function UpdateSound()
-    if mySound and isPlaying then
-        mySound:ChangeVolume(1, 0)
-    end
-end
-
-net.Receive("fh_stalk_sound_play", function()
+net.Receive("fh_adv_sound_play", function()
 	local ply = LocalPlayer()
+	local snd = net.ReadString()
 	
-    if mySound then
-        mySound:Stop()
+    if not playerSounds[snd] then
+        local sound = CreateSound(ply, snd)
+        sound:SetSoundLevel(0)
+        sound:Play()
+		
+        playerSounds[snd] = sound
+    else
+        playerSounds[snd]:Play()
     end
-    mySound = CreateSound(ply, "freddy_stalking.wav")
-    mySound:SetSoundLevel(0)
-    mySound:Play()
-	
-    isPlaying = true
-    timer.Create("UpdateMySoundTimer", 0.1, 0, UpdateSound)
 end)
 
-net.Receive("fh_stalk_sound_stop", function()
-    if mySound then
-        mySound:Stop()
-        mySound = nil
-        isPlaying = false
+net.Receive("fh_ent_sound_play", function()
+	local ply = LocalPlayer()
+	local ent = net.ReadEntity()
+	
+	local pill = pk_pills.getMappedEnt(ply)
+	local snd = net.ReadString()
+	if snd == 'freddy_stalking_others.wav' and pill and pill.formTable.printName == "Withered Freddy" then
+		//print('ya freddy')
+		return
+	end
+    if not playerSounds[snd] then
+        local sound = CreateSound(ent, snd)
+        sound:Play()
+		
+        playerSounds[snd] = sound
+    else
+        playerSounds[snd]:Play()
+    end
+end)
 
-        timer.Remove("UpdateMySoundTimer")
+net.Receive("fh_sound_stop", function()
+	local snd = net.ReadString()
+    if playerSounds[snd] then
+        playerSounds[snd]:Stop()
+        playerSounds[snd] = nil
     end
 end)
 
@@ -197,25 +202,36 @@ net.Receive("PlayHighlightSounds", function()
     local isAffected = net.ReadBool()
     if isAffected then
 		surface.PlaySound(visionAffectedSound)
-		drawHighlightTimer()
+		drawHighlightTimer(true)
     else
 		surface.PlaySound(visionUnaffectedSound)
     end
 end)
 
-function drawHighlightTimer()
+net.Receive("fh_draw_hl_overlay", function()
+    local bool = net.ReadBool()
+    drawHighlightTimer(bool)
+end)
+
+net.Receive("fh_nodraw_hl_overlay", function()
+	hook.Remove("HUDPaint", "fh_hl_overlay_draw")
+end)
+
+function drawHighlightTimer(bool)
 	hook.Add("HUDPaint", "fh_hl_overlay_draw", drawHighlight)
 	
 	if timer.Exists('fh_hud_hl_overlay') then
 		timer.Remove('fh_hud_hl_overlay')
 	end
 	
+	if !bool then return end
 	timer.Create( "fh_hud_hl_overlay", conVars.halo_time:GetFloat(), 1, function()
 		hook.Remove("HUDPaint", "fh_hl_overlay_draw")
 	end)
 end
 
 function drawHighlight()
+	if !GetConVar("cl_drawhud"):GetBool() then return end
     surface.SetDrawColor(255, 255, 255, 23)
     
     surface.SetMaterial(Material("vgui/highlightOverlay.png"))

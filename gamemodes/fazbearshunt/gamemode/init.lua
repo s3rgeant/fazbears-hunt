@@ -16,6 +16,7 @@ AddCSLuaFile("pill_fnaf2.lua")
 include( "sv_admin.lua" )
 include( "sv_spectate.lua" )
 include( "sv_nostuck.lua" )
+include( "sv_ragdolls.lua" )
 include( "mount/push.lua" )
 
 include( "pill_fnaf2.lua" )
@@ -32,6 +33,10 @@ util.AddNetworkString("fh_initpostentity")
 util.AddNetworkString("fh_hl_teammates")
 util.AddNetworkString("fh_uhl_teammates")
 
+util.AddNetworkString("fh_net_display")
+
+util.AddNetworkString("fh_update_list")
+
 util.AddNetworkString("StartPostGame")
 util.AddNetworkString("StartGame")
 util.AddNetworkString("ResetTimer")
@@ -39,6 +44,7 @@ util.AddNetworkString("ResetTimer")
 util.AddNetworkString( "DeadHUDEnable" )
 util.AddNetworkString( "DeadHUDChange" )
 util.AddNetworkString( "DeadHUDDisable" )
+util.AddNetworkString( "DeadHUDChangeString" )
 
 util.AddNetworkString("AnimatronicsWin")
 util.AddNetworkString("SurvivorsWin")
@@ -196,7 +202,7 @@ function setupPlayerVars(ply)
 	ply:SetJumpPower(200)
 	ply:SetDuckSpeed(0.1)
 	ply:SetUnDuckSpeed(0.1)
-	ply:GetStepSize(1)
+	ply:SetStepSize(18)
 end
 
 function endGame()
@@ -255,12 +261,13 @@ function startGame()
     //local randomTime = math.random(60, 65)
     timer.Create("RandomGifts", randomTime, 0, function()
         for _, ply in ipairs(team.GetPlayers(TEAM_UNASSIGNED)) do
-            if math.random(1, 100) <= 33 and ply:Alive() then
-				timer.Simple(math.random(1, 15), function()
-				local gift = ents.Create("fh_gift")
-				gift:SetPos(ply:GetPos() + Vector(0, 0, 10))
-				gift:SetOwner(ply)
-				gift:Spawn()
+            if math.random(1, 100) <= 77 and (ply:Alive() and ply:Team() != TEAM_SPECTATOR) then
+				timer.Simple(math.random(1, 12), function()
+					if (!ply:Alive() or ply:Team() == TEAM_SPECTATOR) then return end
+					local gift = ents.Create("fh_gift")
+					gift:SetPos(ply:GetPos() + Vector(0, 0, 10))
+					gift:SetOwner(ply)
+					gift:Spawn()
 				end)
             end
         end
@@ -300,7 +307,6 @@ function registerNewRound()
     for _, ply in pairs(player.GetAll()) do
         ply:Spawn()
 		table.insert(survivors, ply)
-		table.insert(alivePlayers, ply)
     end
 	assignKillers()
 	
@@ -346,21 +352,6 @@ hook.Add("PlayerInitialSpawn", "fh_ply_spawn", function(ply)
 			table.RemoveByValue(alivePlayers, ply)
 		end
 	end
-end)
-
-hook.Add("PlayerSpawn", "fh_spawn", function(ply)
-	player_manager.SetPlayerClass( ply, "player_sandbox" )
-	
-	if !table.HasValue(alivePlayers) then
-		table.insert(alivePlayers, ply)
-		ply:SetTeam(TEAM_UNASSIGNED)
-		
-		net.Start('DeadHUDDisable')
-		net.Send(ply)
-	end
-	
-	net.Start('nv_off')
-	net.Send(ply)
 end)
 
 gameevent.Listen( "player_connect_client" )
@@ -409,16 +400,33 @@ hook.Add("PlayerDisconnected", "PlayerLeft", function(ply)
 end)
 
 hook.Add( "PlayerNoClip", "DisallowNoclip", function( ply, desiredNoClipState )
-	if ply:IsAdmin()  and ply:Team() != 2701 then
+	if ply:IsAdmin() and ply:Team() != 2701 then
 		return true
 	end
 end )
 
-hook.Add("PlayerDeath", "fh_deaths", function( victim, inflictor, attacker )
-	if table.HasValue(alivePlayers, victim) then
-		table.RemoveByValue(alivePlayers, victim)
-	end
+
+local ragdolls = {}
+hook.Add("PlayerSpawn", "fh_spawn", function(ply)
+	player_manager.SetPlayerClass( ply, "player_sandbox" )
+	ply:SetShouldServerRagdoll(true)
 	
+	if !table.HasValue(alivePlayers, ply) then
+		table.insert(alivePlayers, ply)
+		ply:SetTeam(TEAM_UNASSIGNED)
+	end
+	net.Start('DeadHUDDisable')
+	net.Send(ply)
+	
+	net.Start('nv_off')
+	net.Send(ply)
+	
+	if IsValid(ply.DeathRagdoll) then
+		ply.DeathRagdoll:Remove()
+	end
+end)
+
+hook.Add("PlayerDeath", "fh_deaths", function( victim, inflictor, attacker )
 	if table.HasValue(survivors, victim) then
 		table.RemoveByValue(survivors, victim)
 		
@@ -443,12 +451,13 @@ hook.Add("PlayerDeath", "fh_deaths", function( victim, inflictor, attacker )
 		
 		net.Start('DeadHUDEnable')
 		net.Send(victim)
-	else
-		victim:Spawn()
-		victim:SetTeam(TEAM_UNASSIGNED)
 	end
 	
     local ent = pk_pills.getMappedEnt(attacker)
+	
+	if IsValid(victim:GetRagdollEntity()) then
+		victim:GetRagdollEntity():Remove()
+	end
 	
     if IsValid(victim) and victim:IsPlayer() and IsValid(ent) and string.match(ent:GetModel(), "([^/]+)%.mdl$") == 'oldbonnie' then
 		local ragdoll = victim:GetRagdollEntity()
@@ -465,11 +474,9 @@ hook.Add("PlayerDeath", "fh_deaths", function( victim, inflictor, attacker )
     end
 end)
 
-hook.Add("CreateEntityRagdoll", "DisableRagdollCollision", function(entity, ragdoll)
-    if entity:IsPlayer() then
-        ragdoll:SetCollisionGroup(COLLISION_GROUP_DEBRIS_TRIGGER)
-    end
-end)
+hook.Add( "CreateEntityRagdoll", "fh_ragdoll_handle", function( ply, ragdoll )
+	ragdolls[ply] = ragdoll
+end )
 
 hook.Add( "CanPlayerSuicide", "AllowOwnerSuicide", function( ply )
 	if ply:Team() == 2701 then
@@ -538,10 +545,16 @@ end)
 
 hook.Add("Think", "UpdateObserverPosition", function()
     for _, ply in ipairs(team.GetPlayers(TEAM_SPECTATOR)) do
-        if IsValid(ply:GetObserverTarget()) then
+        if IsValid(ply:GetObserverTarget()) and ply:GetObserverMode() != OBS_MODE_ROAMING then
             ply:SetPos(ply:GetObserverTarget():GetPos())
         end
     end
+end)
+
+hook.Add("PlayerCanSeePlayersChat", "fh_chat_management", function(text, team, list, speak)
+	if (speak:IsPlayer() and speak:Team() == TEAM_SPECTATOR) and list:Team() != TEAM_SPECTATOR then
+		return false
+	end
 end)
 
 net.Receive("fh_initpostentity", function(len, ply)

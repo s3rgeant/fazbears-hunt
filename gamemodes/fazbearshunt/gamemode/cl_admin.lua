@@ -25,7 +25,7 @@ local function OpenAdminPanel()
     PlayerList:AddColumn("Игроки")
     PlayerList:AddColumn("Команда")
 	PlayerList:SetMultiSelect(true)
-	updateListPlayers()
+	createListPlayers()
 	
     AnimatronicList = vgui.Create("DListView", AdminPanel)
     AnimatronicList:SetPos(490, 30)
@@ -35,7 +35,7 @@ local function OpenAdminPanel()
 	AnimatronicList.OnRowSelected = function( panel, rowIndex, row )
 		selectedAnimatron = row:GetValue( 1 )
 	end
-	updateListAnimatronics()
+	createListAnimatronics()
 
 	local function GetSelectedByList(list)
 		local selectedLines = list:GetSelected()
@@ -77,6 +77,7 @@ local function OpenAdminPanel()
 					net.WriteUInt(#targets, 8)
 					for _, target in pairs(targets) do
 						net.WriteEntity(target)
+						updatePlayer(target, btn.action)
 					end
 					if btn.action == 'give_animatronic' then
 						if selectedAnimatron == nil then
@@ -126,24 +127,29 @@ local function OpenAdminPanel()
     end
 end
 	
-function updateListPlayers()
+local list_plys = {}
+function createListPlayers()
 	PlayerList:Clear()
 
 	for _, v in pairs(player.GetAll()) do
-		local team = 'Выжившие'
-		
-		if v:Team() == 2701 then 
-			team = 'Аниматроники'
-		elseif v:Team() == TEAM_SPECTATOR then 
-			team = ' '
-		end
+	
+		local team = getTeam(v:Team())
 		
 		local line = PlayerList:AddLine(v:Nick(), team)
 		line.Player = v
+		table.insert(list_plys, line)
 	end
 end
 	
-function updateListAnimatronics()
+function updatePlayer(ply, team)
+	for _, line in pairs(list_plys) do
+		if line.Player == ply then
+			line:SetValue(2, getTeam(team))
+		end
+	end
+end
+	
+function createListAnimatronics()
 	AnimatronicList:Clear()
 	
 	local killers = killerInfo
@@ -155,7 +161,19 @@ function updateListAnimatronics()
 
 	for _, v in pairs(killers) do
 		local line = AnimatronicList:AddLine(v.name)
+		table.insert(list_plys, line)
 	end
+end
+
+function getTeam(team)
+	local teamname = 'Выжившие'
+	
+	if team == 2701 or string.find(team, 'animatronic') then
+		teamname = 'Аниматроники'
+	elseif team == TEAM_SPECTATOR or string.find(team, 'kill') then 
+		teamname = ' '
+	end
+	return teamname
 end
 
 concommand.Add("open_admin_panel", function()

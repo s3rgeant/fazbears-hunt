@@ -33,7 +33,7 @@ local function cyclePlayers(ply, am)
 		ply:SpectateEntity( players[num] )
 		
 		net.Start('DeadHUDChange')
-		net.WriteString(players[num]:Nick())
+		net.WriteEntity(players[num])
 		net.Send(ply)
 	end
 end
@@ -46,12 +46,21 @@ end)
 
 hook.Add( "KeyPress", "KEY_PRESS_SPECTATOR", function( ply, key )
 	if ply:Team() == TEAM_SPECTATOR then
+		local players = getPlrs(ply)
 		
-		if key == IN_JUMP then	
-			if ply:GetObserverMode() == OBS_MODE_CHASE then
+		if key == IN_JUMP and table.KeyFromValue(players, ply:GetObserverTarget()) then	
+			if ply:GetObserverMode() == OBS_MODE_ROAMING then
 				ply:Spectate(OBS_MODE_IN_EYE)
+				net.Start('DeadHUDChange')
+				net.WriteEntity(ply:GetObserverTarget())
+				net.Send(ply)
 			elseif ply:GetObserverMode() == OBS_MODE_IN_EYE then
 				ply:Spectate(OBS_MODE_CHASE)
+			elseif ply:GetObserverMode() == OBS_MODE_CHASE then
+				ply:Spectate(OBS_MODE_ROAMING)
+				net.Start('DeadHUDChangeString')
+				net.WriteString('')
+				net.Send(ply)
 			end
 			
 		elseif ( key == IN_ATTACK ) then

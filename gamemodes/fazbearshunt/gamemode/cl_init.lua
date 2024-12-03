@@ -26,6 +26,7 @@ local function FormatTime(secs)
 end
 
 local function DrawTimer()
+	if !GetConVar("cl_drawhud"):GetBool() then return end
     local timeLeft = math.max(0, timerEnd - CurTime())
 
     local x = (ScrW() / 2) - (330 / 2)
@@ -60,6 +61,19 @@ hook.Add("InitPostEntity", "fh_player_fullconnect", function()
 	net.Start('fh_initpostentity')
 	net.SendToServer()
 end)
+
+hook.Add( "OnPlayerChat", "HelloCommand", function( ply, text, bTeam, dead ) 
+    if ( ply != LocalPlayer() ) then return end
+
+	if teamColors[ply:Team()] then
+		if !dead then
+			chat.AddText(teamColors[ply:Team()], ply:Nick(), Color(255, 255, 255), ': ', text)
+		else
+			chat.AddText(Color(255,0,0), '*DEAD* ', teamColors[ply:Team()], ply:Nick(), Color(255, 255, 255), ': ', text)
+		end
+		return true
+	end
+end )
 
 net.Receive("StartPostGame", function()
 	local timerDuration = net.ReadFloat()

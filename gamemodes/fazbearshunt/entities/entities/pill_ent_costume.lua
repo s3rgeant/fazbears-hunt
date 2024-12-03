@@ -465,7 +465,7 @@ function ENT:Think()
             self.formTable.glideThink(ply, self)
         end
 
-        if not ply:IsOnGround() and not self.touchingWater and ply:WaterLevel() > 0 and self.formTable.land then
+        if not ply:IsOnGround() and not self.touchingWater and ply:WaterLevel() > 0 and self.formTable.land and !ply:IsFrozen() then
             self.formTable.land(ply, self)
         end
 

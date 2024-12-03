@@ -5,7 +5,7 @@ cupcakes = 0
 
 
 function DrawKillerInterface()
-if currentKiller == "" or !currentKiller then return end
+if currentKiller == "" or !currentKiller or !GetConVar("cl_drawhud"):GetBool() then return end
 	local killerIcon = Material( "vgui/"..currentKiller.."_header.png" )
 	
 	local cake = Material( "vgui/cake.png" )
@@ -133,4 +133,120 @@ net.Receive("fh_net_killer_change", function()
         end)
 	end
 	]]
+end)
+
+
+
+
+
+-- текст смешной сверху
+surface.CreateFont("BigTextFont", {
+    font = "Arial",
+	outline = true,
+    size = 48,
+    weight = 700
+})
+
+surface.CreateFont("SmallTextFont", {
+    font = "Arial",
+	outline = true,
+    size = 32,
+    weight = 500
+})
+
+local displayText1 = ""
+local displayText2 = ""
+local displayDuration = 0
+local startTime = 0
+local isDisplaying = false
+hook.Add("HUDPaint", "fh_display_text", function()
+    if isDisplaying and GetConVar("cl_drawhud"):GetBool() then
+        local elapsedTime = CurTime() - startTime
+        local alpha = 255
+
+        if elapsedTime > displayDuration then
+            local fadeDuration = 1
+            local fadeTime = elapsedTime - displayDuration
+            if fadeTime < fadeDuration then
+                alpha = 255 * (1 - fadeTime / fadeDuration)
+            else
+                isDisplaying = false
+                return
+            end
+        end
+
+        surface.SetFont("BigTextFont")
+        surface.SetTextColor(255, 255, 255, alpha)
+
+        local w, h = surface.GetTextSize(displayText1)
+        local x = ScrW() / 2 - w / 2
+        local y = ScrH() / 4
+
+        surface.SetTextPos(x, y)
+        surface.DrawText(displayText1)
+
+        surface.SetFont("SmallTextFont")
+        surface.SetTextColor(255, 255, 255, alpha)
+
+        local w2, h2 = surface.GetTextSize(displayText2)
+        local x2 = ScrW() / 2 - w2 / 2
+        local y2 = y + h + 5
+
+        surface.SetTextPos(x2, y2)
+        surface.DrawText(displayText2)
+    end
+end)
+
+function fh_change_display(text1, text2, duration)
+    displayText1 = text1
+    displayText2 = text2
+    displayDuration = duration
+    startTime = CurTime()
+    isDisplaying = true
+end
+
+concommand.Add("fh_test_broadcast", function(ply, cmd, args)
+	if ply:IsAdmin() then
+		local text1 = args[1] or "Hello"
+		local text2 = args[2] or "World"
+		local duration = tonumber(args[3]) or 5
+		
+		fh_change_display(text1, text2, duration)
+	end
+end)
+
+net.Receive("fh_net_display", function()
+    local text1 = net.ReadString()
+    local text2 = net.ReadString()
+    local duration = net.ReadFloat()
+    fh_change_display(text1, text2, duration)
+end)
+
+//think fast chucklenuts
+
+function chucklenuts()
+    if GetConVar("cl_drawhud"):GetBool() then
+		surface.SetDrawColor(255, 255, 255, 255)
+		
+		surface.SetMaterial(Material("vgui/thinkFast.png"))
+		
+		surface.DrawTexturedRect(0, 0, ScrW(), ScrH())
+    end
+end
+
+net.Receive("fh_net_thinkfast", function()
+	hook.Add("HUDPaint", "fh_thinkfast", chucklenuts)
+	
+	surface.PlaySound('thinkfast.wav')
+	
+	timer.Simple(1.2, function() 
+		LocalPlayer():ScreenFade( SCREENFADE.IN, Color( 255, 255, 255, 255 ), 2, 2 )
+		LocalPlayer():SetDSP(35, false)
+		
+		hook.Remove("HUDPaint", "fh_thinkfast")
+		
+		timer.Simple(1.5, function()
+			LocalPlayer():SetDSP(35, true)
+		end)
+	end)
 end)

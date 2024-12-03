@@ -591,7 +591,7 @@ else -- CLIENT HOOKS
         if pk_pills.convars.cl_hidehud:GetBool() then return end
         local ent = getMappedEnt(LocalPlayer())
 
-        if IsValid(ent) then
+        if IsValid(ent) and GetConVar("cl_drawhud"):GetBool() then
             if (ent.formTable.health) and !ent.formTable.hideHud then
                 local hpMax = ent.formTable.health
                 local hpCurrent = ent:GetPillHealth()
@@ -711,7 +711,7 @@ hook.Add("SetupMove", "pk_pill_movemod", function(ply, mv, cmd)
         end
 		
 		if ent.formTable.moveFunction then
-			ent.formTable.moveFunction(ply, ent)
+			ent.formTable.moveFunction(ply, ent, mv)
 		end
 
         if ent.GetChargeTime and ent:GetChargeTime() ~= 0 then

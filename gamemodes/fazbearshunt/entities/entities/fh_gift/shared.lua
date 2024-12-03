@@ -13,6 +13,7 @@ ENT.InitialZ = 0
 if SERVER then
     util.AddNetworkString("fh_hl_badkid")
     util.AddNetworkString("fh_hl_animatronics")
+    util.AddNetworkString("fh_net_thinkfast")
 end
 
 function ENT:Initialize()
@@ -72,6 +73,7 @@ if CLIENT then
     end
 end
 
+local effectDesc = ''
 function ENT:ApplyEffect(player)
     local isOwner = self:GetOwner() == player
     local effects = {}
@@ -80,30 +82,51 @@ function ENT:ApplyEffect(player)
     local positiveEffects = {
         function(ply)
             ply:SetHealth(ply:Health() + 35)
+			effectDesc = '+35 HP'
         end,
         function(ply)
             ply:Give("weapon_physcannon")
+			effectDesc = '+ Гравити Ган'
         end,
         function(ply)
             net.Start("fh_hl_animatronics")
             net.Send(ply)
-            ply:ChatPrint("Теперь ты видишь аниматроников через стены!")
+			effectDesc = 'Теперь ты можешь видить аниматроников через стены.'
         end,
         function(ply)
-            ply:Give("weapon_rpg")
-            ply:GiveAmmo(8, "RPG_Round", true)
-            ply:ChatPrint("Вы получили RPG с 8 ракетами!")
+            ply:Give("weapon_gpee")
+			effectDesc = '+ Ссаньё'
+        end,
+        function(ply)
+            ply:Give("weapon_defibrilator")
+			effectDesc = '+ Дефибрилятор'
+        end,
+        function(ply)
+            ply:Give("weapon_banana")
+            ply:GiveAmmo(9, "ammo_banana", true)
+			effectDesc = '+ 10 бананов'
         end,
         function(ply)
             ply:SetWalkSpeed(ply:GetWalkSpeed() * 1.2)
             ply:SetRunSpeed(ply:GetRunSpeed() * 1.2)
-            ply:ChatPrint("Вы ускорены на 10 секунд!")
+            ply:SetCrouchedWalkSpeed(ply:GetCrouchedWalkSpeed() * 1.2)
+			effectDesc = 'Тебе выдано ускорение на 10 секунд!'
             
             timer.Simple(10, function()
                 if IsValid(ply) then
                     ply:SetWalkSpeed(ply:GetWalkSpeed() / 1.2)
                     ply:SetRunSpeed(ply:GetRunSpeed() / 1.2)
-                    ply:ChatPrint("Ваше ускорение закончилось.")
+					ply:SetCrouchedWalkSpeed(ply:GetCrouchedWalkSpeed() / 1.2)
+                end
+            end)
+        end,
+        function(ply)
+            ply:SetJumpPower(ply:GetJumpPower() * 2)
+			effectDesc = 'Теперь ты прыгаешь выше 10 секунд!'
+            
+            timer.Simple(10, function()
+                if IsValid(ply) then
+                    ply:SetJumpPower(ply:GetJumpPower() / 2)
                 end
             end)
         end
@@ -112,38 +135,49 @@ function ENT:ApplyEffect(player)
     -- Негативные эффекты
     local negativeEffects = {
         function(ply)
-			local startPos = ply:GetPos()
-			local endPos = ply:GetPos() + Vector(0, 0, 5000)
-			
-			local tr = util.TraceLine({
+			local playerPos = ply:GetPos()
+			local playerHeight = ply:OBBMaxs().z - ply:OBBMins().z
+		
+			local car = ents.Create("prop_physics")
+			car:SetModel("models/props_vehicles/truck001a.mdl")
+		
+			local carMins, carMaxs = car:GetCollisionBounds()
+			local carHeight = carMaxs.z - carMins.z
+		
+			local startPos = playerPos + Vector(0, 0, playerHeight + (carHeight / 2) + 10)
+			local endPos = startPos + Vector(0, 0, 500)
+		
+			local tr = util.TraceHull({
 				start = startPos,
 				endpos = endPos,
-				filter = ply
+				filter = {ply, car},
+				mins = carMins,
+				maxs = carMaxs
 			})
-			
+		
 			local spawnPos
 			if tr.Hit then
-				spawnPos = tr.HitPos + Vector(0, 0, 35)
+				spawnPos = tr.HitPos
 			else
-				spawnPos = ply:GetPos() + Vector(0, 0, 500)
+				spawnPos = endPos
 			end
-			
-            local car = ents.Create("prop_physics")
-            car:SetModel("models/props_vehicles/truck001a.mdl")
-            car:SetPos(spawnPos)
-            car:Spawn()
-            car:Activate()
+		
+			car:SetPos(spawnPos)
+			car:Spawn()
+			car:Activate()
+		
 			timer.Simple(10, function()
 				if IsValid(car) then
 					car:Remove()
 				end
 			end)
-        end,
+			effectDesc = ''
+		end,
         function(ply)
             net.Start("fh_hl_badkid")
             net.WriteEntity(ply)
             net.Broadcast()
-            ply:ChatPrint("Они знают...")
+			effectDesc = 'Все аниматроники знают где ты.'
 			
 			table.insert(affectedPlayers, ply)
 		
@@ -157,17 +191,22 @@ function ENT:ApplyEffect(player)
         end,
         function(ply)
 			ply:SetStepSize(0)
-            ply:ChatPrint("Вы не можете подниматься по ступенькам!")
+			effectDesc = 'Теперь тебе сложнее подниматься по ступенькам.'
         end,
         function(ply)
             ply:StripWeapons()
-            ply:ChatPrint("Все ваши оружия были изъяты!")
+			effectDesc = 'Больше у тебя нет оружия.'
+        end,
+        function(ply)
+			effectDesc = ''
+			net.Start('fh_net_thinkfast')
+			net.Send(ply)
         end,
         function(ply)
             ply:SetFOV(30, 1)
             ply:SetCanZoom(false)
             ply:StopZooming()
-            ply:ChatPrint("Ваше поле зрения уменьшено на 30 секунд!")
+			effectDesc = 'Твоё поле зрения увеличено на 30 секунд.'
             
             timer.Simple(30, function()
                 if IsValid(ply) then
@@ -178,7 +217,7 @@ function ENT:ApplyEffect(player)
         end,
         function(ply)
             ply:SetDSP(31, false)
-            ply:ChatPrint("Ваши звуки приглушены на 30 секунд!")
+			effectDesc = 'Твой звук приглушен на 30 секунд.'
             
             timer.Simple(30, function()
                 if IsValid(ply) then
@@ -200,11 +239,23 @@ function ENT:ApplyEffect(player)
     end
     
     local effect = effects[math.random(#effects)]
+    effect(player)
 	if table.HasValue(positiveEffects, effect) then
 		self:EmitSound( "orch_hit_csharp_short.wav" )
+		
+		net.Start('fh_net_display')
+		net.WriteString('Ты подобрал подарок!')
+		net.WriteString(effectDesc)
+		net.WriteFloat(5)
+		net.Send(player)
 	end
 	if table.HasValue(negativeEffects, effect) then
 		self:EmitSound( "ahuitebe.mp3" )
+		
+		net.Start('fh_net_display')
+		net.WriteString('Ты украл чужой подарок.')
+		net.WriteString(effectDesc)
+		net.WriteFloat(5)
+		net.Send(player)
 	end
-    effect(player)
 end

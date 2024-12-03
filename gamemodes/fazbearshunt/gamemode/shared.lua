@@ -41,3 +41,20 @@ function getAllKillers()
 	local duos = table.Copy(duoKillerInfo)
 	return table.Merge(solos, duos)
 end
+
+function getTeam(team)
+	local teamname = 'Выжившие'
+	
+	if team == 2701 or string.find(team, 'animatronic') then
+		teamname = 'Аниматроники'
+	elseif team == TEAM_SPECTATOR or string.find(team, 'kill') then 
+		teamname = ' '
+	end
+	return teamname
+end
+
+teamColors = {
+	[2701] = Color(255, 25, 25),
+	[TEAM_SPECTATOR] = Color(117, 117, 130),
+	[TEAM_UNASSIGNED] = Color(84, 163, 255)
+}

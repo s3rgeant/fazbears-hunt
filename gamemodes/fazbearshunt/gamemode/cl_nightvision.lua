@@ -21,17 +21,17 @@ function ToggleNightVision()
         end)
 
         hook.Add("Think", "NightVisionDynamicLight", function()
-			local lighttarget = LocalPlayer()
-            if not lighttarget:Alive() then 
-				if !IsValid(lighttarget:GetObserverTarget()) then
+			local lightpos = LocalPlayer():GetPos()
+            if !lightpos then 
+				if !IsValid(LocalPlayer():GetObserverTarget()) then
 					return
 				end
-				lighttarget = lighttarget:GetObserverTarget()
+				lightpos = LocalPlayer():GetObserverTarget():GetPos()
 			end
 
-            local dlight = DynamicLight(lighttarget:EntIndex())
+            local dlight = DynamicLight(LocalPlayer():EntIndex())
             if dlight then
-                dlight.pos = lighttarget:GetPos() + Vector(0, 0, 50)
+                dlight.pos = lightpos + Vector(0, 0, 50)
                 dlight.r = 200
                 dlight.g = 255
                 dlight.b = 200

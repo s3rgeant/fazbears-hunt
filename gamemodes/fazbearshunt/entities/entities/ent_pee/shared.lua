@@ -1,0 +1,6 @@
+ENT.Type 			= "anim"
+ENT.PrintName		= "Pee"
+ENT.Author			= "sergeant"
+ENT.Contact			= ""
+ENT.Purpose			= ""
+ENT.Instructions	= ""

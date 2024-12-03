@@ -265,6 +265,31 @@ sound.Add({
 						 "vo/endo_throw3.mp3"}
 })
 
+//sfreddy voicelines
+sound.Add({
+	name = 			"sfreddy.kill",
+	channel = 		CHAN_USER_BASE+10,
+	volume = 		1.0,
+	sound = 			{"vo/shadowfreddy_kill1.mp3",
+						 "vo/shadowfreddy_kill2.mp3",
+						 "vo/shadowfreddy_kill3.mp3",
+						 "vo/shadowfreddy_kill4.mp3",
+						 "vo/shadowfreddy_kill5.mp3",
+						 "vo/shadowfreddy_kill6.mp3"}
+})
+
+sound.Add({
+	name = 			"sfreddy.chase",
+	channel = 		CHAN_USER_BASE+10,
+	volume = 		1.0,
+	sound = 			{"vo/shadowfreddy_chase1.mp3",
+						 "vo/shadowfreddy_chase2.mp3",
+						 "vo/shadowfreddy_chase3.mp3",
+						 "vo/shadowfreddy_chase4.mp3",
+						 "vo/shadowfreddy_chase5.mp3",
+						 "vo/shadowfreddy_chase6.mp3"}
+})
+
 //clown voicelines
 sound.Add({
 	name = 			"clown.kill",
