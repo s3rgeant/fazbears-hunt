@@ -1,6 +1,8 @@
 util.AddNetworkString("OpenAdminPanel")
 util.AddNetworkString("AdminAction")
 
+util.AddNetworkString("fh_net_scarysound")
+
 function GiveAnimatronic(ply, killer)
 	if killer == nil or killer == "" then return end
 	
@@ -85,12 +87,34 @@ end
 function EndRound()
 	if !roundEnding and isGameOn then
 		endGame()
+		net.Start('fh_sound_stop')
+		net.WriteString('music/first_minute.wav')
+		net.Broadcast()
+		
+		net.Start('fh_net_scarysound')
+		net.WriteBool(false)
+		net.Broadcast()
+		
+		for _,v in ipairs(animatronics) do
+			v.lobbyFreeze = nil
+		end
 	end
 end
 
 function EndPostRound()
 	if !roundEnding and isGameOn then
 		roundActive = true
+		net.Start('fh_sound_stop')
+		net.WriteString('music/first_minute.wav')
+		net.Broadcast()
+		
+		net.Start('fh_net_scarysound')
+		net.WriteBool(true)
+		net.Broadcast()
+		
+		for _,v in ipairs(animatronics) do
+			v.lobbyFreeze = nil
+		end
 	end
 end
 

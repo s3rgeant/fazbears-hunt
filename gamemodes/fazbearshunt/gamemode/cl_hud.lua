@@ -3,7 +3,6 @@ currentKiller = ""
 currentAbilities = {}
 cupcakes = 0
 
-
 function DrawKillerInterface()
 if currentKiller == "" or !currentKiller or !GetConVar("cl_drawhud"):GetBool() then return end
 	local killerIcon = Material( "vgui/"..currentKiller.."_header.png" )
@@ -19,12 +18,17 @@ if currentKiller == "" or !currentKiller or !GetConVar("cl_drawhud"):GetBool() t
     local avatarX, avatarY = 50, screenH - size - 30
 	
     surface.DrawTexturedRect(avatarX, avatarY, size, size)
+	
 
     local abilityX, abilityY = size * 0.6, screenH - 80
 
     for abilityName, abilityData in pairs(currentAbilities) do
         if abilityData.timeleft > 0 or !abilityData.hidden then
-            draw.RoundedBox(8, abilityX, abilityY, 140, 50, Color(32, 32, 32, 200))
+            local clr = abilityData.color
+            if type(clr) == "function" then
+                clr = clr()
+            end
+            draw.RoundedBox(8, abilityX, abilityY, 140, 50, clr or Color(32, 32, 32, 200))
             draw.SimpleText(abilityData.text, "DermaLarge", abilityX + 10, abilityY + 10, Color(255, 255, 255, 255), TEXT_ALIGN_LEFT)
             if (abilityData.timeleft > 0) then 
 				draw.SimpleText(tostring(math.ceil(abilityData.timeleft)) .. " s", "DermaLarge", abilityX + 128, abilityY + 10, Color(255, 255, 255, 255), TEXT_ALIGN_RIGHT)
@@ -62,6 +66,9 @@ function assignAbilitiesByKiller(name)
 	
 	if name == "sfreddy" then
 		addAbility('Submerge', 'ПКМ', 0, false)
+        abilityParentClrFunc('Submerge', function()
+            return isNotStuck()
+        end)
 	elseif name == "chica" then
 		addAbility('Mine', 'ПКМ', 0, false)
 	elseif name == "endo" then
@@ -83,6 +90,27 @@ function addAbility(name, text, duration, hidden)
         timeleft = duration,
         hidden = hidden or false
     }
+end
+
+function isNotStuck()
+	local ply = LocalPlayer()
+	if ply:GetMoveType() == 2 then return end
+	local trace = util.TraceHull({
+		start = ply:GetPos(),
+		endpos = ply:GetPos(),
+        mins = ply:OBBMins(),
+        maxs = ply:OBBMaxs(),
+		filter = ply,
+		mask = MASK_ALL,
+	})
+	if trace.Hit then
+		return Color(200, 32, 32, 200)
+	end
+	return Color(32, 32, 32, 200)
+end
+
+function abilityParentClrFunc(name, func)
+	currentAbilities[name].color = func
 end
 
 function setDuration(name, newDuration)
@@ -205,6 +233,7 @@ function fh_change_display(text1, text2, duration)
     isDisplaying = true
 end
 
+--[[
 concommand.Add("fh_test_broadcast", function(ply, cmd, args)
 	if ply:IsAdmin() then
 		local text1 = args[1] or "Hello"
@@ -214,6 +243,7 @@ concommand.Add("fh_test_broadcast", function(ply, cmd, args)
 		fh_change_display(text1, text2, duration)
 	end
 end)
+]]--
 
 net.Receive("fh_net_display", function()
     local text1 = net.ReadString()
@@ -249,4 +279,9 @@ net.Receive("fh_net_thinkfast", function()
 			LocalPlayer():SetDSP(35, true)
 		end)
 	end)
+end)
+
+hook.Add("OnContextMenuOpen", "fh_contextmenu", function()
+	RunConsoleCommand( "playermodel_selector" )
+	-- 
 end)

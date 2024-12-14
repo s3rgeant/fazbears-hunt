@@ -20,51 +20,8 @@ hook.Add("PlayerSelectSpawn", "PreventPlayerStuckSpawn", function(ply)
     local attempts = 0
     local isPositionFound = false
 
-    while attempts < maxAttempts do
-        local isOccupied = false
-
-        for _, otherPly in ipairs(player.GetAll()) do
-            if otherPly ~= ply and IsValid(otherPly) then
-                if otherPly:GetPos():Distance(spawnPos) < spawnOffset then
-                    isOccupied = true
-                    break
-                end
-            end
-        end
-
-        if isOccupied then
-            local angle = math.rad(math.random(0, 360))
-            local offset = Vector(math.cos(angle), math.sin(angle), 0) * spawnOffset
-            spawnPos = chosenSpawn:GetPos() + offset
-            attempts = attempts + 1
-        else
-            local trace = {}
-            trace.start = spawnPos + Vector(0, 0, 10)
-            trace.endpos = spawnPos + Vector(0, 0, 10)
-            trace.mins = hullMin
-            trace.maxs = hullMax
-            trace.filter = ply
-
-            local tr = util.TraceHull(trace)
-
-            if not tr.Hit then
-                isPositionFound = true
-                break
-            else
-                local angle = math.rad(math.random(0, 360))
-                local offset = Vector(math.cos(angle), math.sin(angle), 0) * spawnOffset
-                spawnPos = spawnPos + offset
-                attempts = attempts + 1
-            end
-        end
-    end
-
-    if not isPositionFound then
-        spawnPos = chosenSpawn:GetPos()
-    end
-
     local tempSpawn = ents.Create("info_player_start")
-    tempSpawn:SetPos(spawnPos)
+    tempSpawn:SetPos(findSpawnPos(spawnPos, ply))
     tempSpawn:SetAngles(spawnAng)
     tempSpawn:Spawn()
 
@@ -76,3 +33,30 @@ hook.Add("PlayerSelectSpawn", "PreventPlayerStuckSpawn", function(ply)
 
     return tempSpawn
 end)
+
+function findSpawnPos(pos, player)
+    local maxDistance = 500
+    local stepSize = 25
+
+    for radius = stepSize, maxDistance, stepSize do
+        for angle = 0, 360, 45 do
+            local offsetX = math.cos(math.rad(angle)) * radius
+            local offsetY = math.sin(math.rad(angle)) * radius
+            local testPos = pos + Vector(offsetX, offsetY, 0)
+
+            local trace = util.TraceEntity({
+                start = testPos,
+                endpos = testPos,
+                filter = player,
+				mask = MASK_ALL,
+            }, player)
+
+            if !trace.Hit then
+				debugoverlay.Line(pos, testPos, 15, Color(255, 0, 0), true)
+                return testPos
+            end
+        end
+    end
+
+    return pos
+end

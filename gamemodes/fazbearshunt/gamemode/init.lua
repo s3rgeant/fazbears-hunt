@@ -9,6 +9,7 @@ AddCSLuaFile( "cl_playerlist.lua" )
 AddCSLuaFile( "cl_hud.lua" )
 AddCSLuaFile( "cl_nightvision.lua" )
 AddCSLuaFile( "cl_spechud.lua" )
+AddCSLuaFile( "cl_horror.lua" )
 
 AddCSLuaFile( "animsoundf2.lua" )
 AddCSLuaFile("pill_fnaf2.lua")
@@ -36,6 +37,8 @@ util.AddNetworkString("fh_uhl_teammates")
 util.AddNetworkString("fh_net_display")
 
 util.AddNetworkString("fh_update_list")
+
+util.AddNetworkString("fh_chat_message")
 
 util.AddNetworkString("StartPostGame")
 util.AddNetworkString("StartGame")
@@ -66,7 +69,6 @@ local roundCount = 0
 postGameOn = true
 isGameOn = false
 roundEnding = false
-roundActive = false
 
 alivePlayers = {}
 deadPlayers = {}
@@ -141,6 +143,7 @@ function assignKillers()
 		net.WriteColor(killerData.color)
 		net.Broadcast()
 		
+		chosenPlayer.lobbyFreeze = true
 		chosenPlayer:Freeze(true)
     end
 	
@@ -154,6 +157,7 @@ function assignKillers()
 	
 	timer.Create("UnfrozeAnimatronics", unfreezeAnimatronics, 1, function()
 		for _, ply in ipairs( animatronics ) do
+			ply.lobbyFreeze = nil
 			ply:Freeze(false)
 		end
 		roundActive = true
@@ -222,6 +226,10 @@ function endGame()
 	timer.Create("endGameWait", 5, 1, function() 
 		game.CleanUpMap( false )
 		
+		net.Start('fh_sound_stop')
+		net.WriteString('freddy_raged2_looped.wav')
+		net.Broadcast()
+		
 		isGameOn = false
 		roundActive = false
 		for _, ply in pairs(player.GetAll()) do
@@ -257,8 +265,8 @@ function startGame()
 		timer.Remove("endGameWait")
 	end
 	
-    local randomTime = math.random(120, 180)
-    //local randomTime = math.random(60, 65)
+    local randomTime = math.random(110, 165)
+    //local randomTime = math.random(30, 31)
     timer.Create("RandomGifts", randomTime, 0, function()
         for _, ply in ipairs(team.GetPlayers(TEAM_UNASSIGNED)) do
             if math.random(1, 100) <= 77 and (ply:Alive() and ply:Team() != TEAM_SPECTATOR) then
@@ -273,11 +281,19 @@ function startGame()
         end
     end)
 	
+	net.Start('fh_adv_sound_play')
+	net.WriteString('music/first_minute.wav')
+	net.Broadcast()
+	
 	timer.Create("EndGameTimer", gameDuration, 1, function()
 		local plys = {}
 		for _, ply in pairs(survivors) do
 			table.insert(plys, ply:Nick())
 		end
+		
+		net.Start('fh_net_scarysound')
+		net.WriteBool(false)
+		net.Broadcast()
 		
 		net.Start("SurvivorsWin")
 		net.WriteTable(plys)
@@ -405,8 +421,6 @@ hook.Add( "PlayerNoClip", "DisallowNoclip", function( ply, desiredNoClipState )
 	end
 end )
 
-
-local ragdolls = {}
 hook.Add("PlayerSpawn", "fh_spawn", function(ply)
 	player_manager.SetPlayerClass( ply, "player_sandbox" )
 	ply:SetShouldServerRagdoll(true)
@@ -475,7 +489,8 @@ hook.Add("PlayerDeath", "fh_deaths", function( victim, inflictor, attacker )
 end)
 
 hook.Add( "CreateEntityRagdoll", "fh_ragdoll_handle", function( ply, ragdoll )
-	ragdolls[ply] = ragdoll
+	print(ragdoll)
+	ragdoll:Remove()
 end )
 
 hook.Add( "CanPlayerSuicide", "AllowOwnerSuicide", function( ply )
@@ -573,3 +588,21 @@ net.Receive("fh_initpostentity", function(len, ply)
 		net.Send(ply)
 	end
 end)
+
+hook.Add( "PlayerSay", "", function( ply, text, teamChat )
+	net.Start("fh_chat_message")
+	net.WriteString(ply:Nick())
+	net.WriteString(text)
+	net.WriteBool(ply:Team() == TEAM_SPECTATOR or !ply:Alive())
+	net.WriteColor(teamColors[ply:Team()])
+	if !teamChat and ply:Team() != TEAM_SPECTATOR then
+		net.WriteBool(false)
+		net.Broadcast()
+	else
+		for _,v in ipairs(team.GetPlayers(ply:Team())) do
+			net.WriteBool(true)
+			net.Send(v)
+		end
+	end
+	return ""
+end )

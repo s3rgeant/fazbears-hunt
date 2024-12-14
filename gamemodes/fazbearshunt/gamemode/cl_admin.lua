@@ -5,7 +5,11 @@ local AnimatronicList = nil
 local function OpenAdminPanel()
 	local selectedAnimatron = nil
 	
-    if IsValid(AdminPanel) then AdminPanel:Remove() end
+    if IsValid(AdminPanel) then 
+		AdminPanel:Remove()
+		gui.EnableScreenClicker(false)
+		return
+	end
 
     AdminPanel = vgui.Create("DFrame")
     AdminPanel:SetSize(600, 500)
@@ -165,25 +169,14 @@ function createListAnimatronics()
 	end
 end
 
-function getTeam(team)
-	local teamname = 'Выжившие'
-	
-	if team == 2701 or string.find(team, 'animatronic') then
-		teamname = 'Аниматроники'
-	elseif team == TEAM_SPECTATOR or string.find(team, 'kill') then 
-		teamname = ' '
-	end
-	return teamname
-end
-
 concommand.Add("open_admin_panel", function()
     if LocalPlayer():IsAdmin() then
         OpenAdminPanel()
     end
 end)
 
-hook.Add("PlayerButtonDown", "BindAdminPanel", function(ply, button)
-	if button == KEY_Q and !gui.IsConsoleVisible() and LocalPlayer():IsAdmin() then
+hook.Add("OnSpawnMenuOpen", "BindAdminPanel", function(ply, button)
+	if !gui.IsConsoleVisible() and LocalPlayer():IsAdmin() then
 		OpenAdminPanel()
 	end
 end)

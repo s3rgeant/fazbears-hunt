@@ -109,22 +109,22 @@ function ENT:ApplyEffect(player)
         function(ply)
             ply:SetWalkSpeed(ply:GetWalkSpeed() * 1.2)
             ply:SetRunSpeed(ply:GetRunSpeed() * 1.2)
-            ply:SetCrouchedWalkSpeed(ply:GetCrouchedWalkSpeed() * 1.2)
-			effectDesc = 'Тебе выдано ускорение на 10 секунд!'
+            ply:SetCrouchedWalkSpeed(ply:GetCrouchedWalkSpeed() * 1.4)
+			effectDesc = 'Тебе выдано ускорение на 15 секунд!'
             
-            timer.Simple(10, function()
+            timer.Simple(15, function()
                 if IsValid(ply) then
                     ply:SetWalkSpeed(ply:GetWalkSpeed() / 1.2)
                     ply:SetRunSpeed(ply:GetRunSpeed() / 1.2)
-					ply:SetCrouchedWalkSpeed(ply:GetCrouchedWalkSpeed() / 1.2)
+					ply:SetCrouchedWalkSpeed(ply:GetCrouchedWalkSpeed() / 1.4)
                 end
             end)
         end,
         function(ply)
             ply:SetJumpPower(ply:GetJumpPower() * 2)
-			effectDesc = 'Теперь ты прыгаешь выше 10 секунд!'
+			effectDesc = 'Теперь ты прыгаешь выше 25 секунд!'
             
-            timer.Simple(10, function()
+            timer.Simple(25, function()
                 if IsValid(ply) then
                     ply:SetJumpPower(ply:GetJumpPower() / 2)
                 end

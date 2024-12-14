@@ -3,57 +3,34 @@
 sound.Add({
 	name = 			"freddy.foot1",
 	channel = 		CHAN_USER_BASE+10,
-	level = 		SNDLVL_110dB,
+	level = 		90,
 	volume = 		1.0,
 	sound = 			{"2footstep1.mp3"
 						,"2footstep2.mp3"
 						,"2footstep3.mp3"
 						,"2footstep4.mp3"}
+})
+sound.Add({
+	name = 			"freddy.stalkfoot1",
+	channel = 		CHAN_USER_BASE+10,
+	level = 		90,
+	volume = 		1.0,
+	sound = 			{"bigstep1.mp3"
+						,"bigstep2.mp3"
+						,"bigstep3.mp3"
+						,"bigstep4.mp3"}
 })
 
 //clown
 sound.Add({
 	name = 			"clown.foot1",
 	channel = 		CHAN_USER_BASE+10,
-	level = 		SNDLVL_110dB,
+	level = 		90,
 	volume = 		1.0,
 	sound = 			{"fnaf3/clown1.wav"
 						,"fnaf3/clown2.wav"
 						,"fnaf3/clown3.wav"
 						,"fnaf3/clown4.wav"}
-})
-
-sound.Add({
-	name = 			"freddy.foot2",
-	channel = 		CHAN_USER_BASE+10,
-	level = 		SNDLVL_110dB,
-	volume = 		1.0,
-	sound = 			{"2footstep1.mp3"
-						,"2footstep2.mp3"
-						,"2footstep3.mp3"
-						,"2footstep4.mp3"}
-})
-
-sound.Add({
-	name = 			"freddy.rfoot1",
-	channel = 		CHAN_USER_BASE+10,
-	level = 		SNDLVL_110dB,
-	volume = 		1.0,
-	sound = 			{"2footstep1.mp3"
-						,"2footstep2.mp3"
-						,"2footstep3.mp3"
-						,"2footstep4.mp3"}
-})
-
-sound.Add({
-	name = 			"freddy.rfoot2",
-	channel = 		CHAN_USER_BASE+10,
-	level = 		SNDLVL_110dB,
-	volume = 		1.0,
-	sound = 			{"2footstep1.mp3"
-						,"2footstep2.mp3"
-						,"2footstep3.mp3"
-						,"2footstep4.mp3"}
 })
 
 sound.Add({

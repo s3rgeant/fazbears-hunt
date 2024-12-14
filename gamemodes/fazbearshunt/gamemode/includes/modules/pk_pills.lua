@@ -512,11 +512,11 @@ if SERVER then
         end
     end)
 
-    hook.Add("OnPlayerHitGround", "pk_pill_hitground", function(ply)
+    hook.Add("OnPlayerHitGround", "pk_pill_hitground", function(ply, iW, oF, speed)
         local ent = getMappedEnt(ply)
 
-        if IsValid(ent) and !ply:IsFrozen() then
-            if ent.formTable.land then
+        if IsValid(ent) then
+            if ent.formTable.land and (!ply.lobbyFreeze or ply.lobbyFreeze == nil) then
                 ent.formTable.land(ply, ent)
                 ent:PillSound("land", true)
             end
@@ -539,7 +539,7 @@ if SERVER then
     hook.Add("PlayerCanPickupWeapon", "pk_pill_pickupWeapon", function(ply, wep)
         if IsValid(getMappedEnt(ply)) then
             if getMappedEnt(ply).formTable.type == "ply" then
-                if (getMappedEnt(ply).formTable.validHoldTypes and table.HasValue(getMappedEnt(ply).formTable.validHoldTypes, wep:GetHoldType())) then return true end
+                if (getMappedEnt(ply).formTable.validHoldTypes and table.HasValue(getMappedEnt(ply).formTable.validHoldTypes, wep:GetHoldType())) or string.StartWith(wep:GetClass(), "v_") then return true end
 
                 return false
             else

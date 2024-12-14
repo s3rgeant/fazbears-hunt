@@ -150,7 +150,7 @@ function SWEP:Think()
 
                     timer.Simple(1 / 100, function()
                         if IsValid(ply) and IsStuckInWall(ply) then
-                            ply:SetPos(FindSafePosition(ply))
+                            ply:SetPos(FindSafePosition(ply, self.Owner))
                         end
                     end)
                 end
@@ -495,8 +495,9 @@ function IsStuckInWall(player)
     return trace.Hit
 end
 
-function FindSafePosition(player)
+function FindSafePosition(player, reviver)
     local startPos = player:GetPos()
+    local startPosR = reviver:GetPos()
     local maxDistance = 100
     local stepSize = 10
 
@@ -505,6 +506,7 @@ function FindSafePosition(player)
             local offsetX = math.cos(math.rad(angle)) * radius
             local offsetY = math.sin(math.rad(angle)) * radius
             local testPos = startPos + Vector(offsetX, offsetY, 0)
+            local testPosR = startPosR + Vector(offsetX, offsetY, 0)
 
             local trace = util.TraceHull({
                 start = testPos,
@@ -512,10 +514,26 @@ function FindSafePosition(player)
                 mins = player:OBBMins(),
                 maxs = player:OBBMaxs(),
                 filter = player,
+				mask = MASK_ALL,
             })
 
             if not trace.Hit then
+				debugoverlay.Line(startPos, testPos, 5, Color(255, 0, 0), true)
                 return testPos
+            end
+
+            local trace = util.TraceHull({
+                start = testPosR,
+                endpos = testPosR,
+                mins = player:OBBMins(),
+                maxs = player:OBBMaxs(),
+                filter = player,
+				mask = MASK_ALL,
+            })
+
+            if not trace.Hit then
+				debugoverlay.Line(startPos, testPos, 5, Color(0, 255, 0), true)
+                return testPosR
             end
         end
     end

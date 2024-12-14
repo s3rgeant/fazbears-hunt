@@ -12,7 +12,7 @@ function ToggleNightVision()
                 ["$pp_colour_addb"] = 0,
                 ["$pp_colour_brightness"] = 0.1,
                 ["$pp_colour_contrast"] = 1.0,
-                ["$pp_colour_colour"] = 0.4,
+                ["$pp_colour_colour"] = 0.5,
                 ["$pp_colour_mulr"] = 0,
                 ["$pp_colour_mulg"] = 0,
                 ["$pp_colour_mulb"] = 0
@@ -38,7 +38,7 @@ function ToggleNightVision()
                 dlight.brightness = 1
                 dlight.Decay = 1000
                 dlight.Size = 750
-                dlight.DieTime = CurTime() + FrameTime() * 3
+                dlight.DieTime = CurTime() + 1
             end
         end)
     else

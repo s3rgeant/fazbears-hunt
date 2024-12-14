@@ -8,10 +8,12 @@ include( "cl_playerlist.lua" )
 include( "cl_hud.lua" )
 include( "cl_nightvision.lua" )
 include( "cl_spechud.lua" )
+include( "cl_horror.lua" )
 
 include( "animsoundf2.lua" )
 include("pill_fnaf2.lua")
 
+local fh_draw_timer = CreateClientConVar('fh_draw_timer', 1, true, false, 'Draw Timer?', 0, 1)
 
 local timerEnd = 0
 local timerTitle = 'ОЖИДАНИЕ ИГРОКОВ'
@@ -26,7 +28,7 @@ local function FormatTime(secs)
 end
 
 local function DrawTimer()
-	if !GetConVar("cl_drawhud"):GetBool() then return end
+	if !GetConVar("cl_drawhud"):GetBool() or !fh_draw_timer:GetBool() then return end
     local timeLeft = math.max(0, timerEnd - CurTime())
 
     local x = (ScrW() / 2) - (330 / 2)
@@ -67,7 +69,11 @@ hook.Add( "OnPlayerChat", "HelloCommand", function( ply, text, bTeam, dead )
 
 	if teamColors[ply:Team()] then
 		if !dead then
-			chat.AddText(teamColors[ply:Team()], ply:Nick(), Color(255, 255, 255), ': ', text)
+			if !bTeam then
+				chat.AddText(teamColors[ply:Team()], ply:Nick(), Color(255, 255, 255), ': ', text)
+			else
+				chat.AddText(Color(25, 160, 35), "(TEAM)", teamColors[ply:Team()], ply:Nick(), Color(255, 255, 255), ': ', text)
+			end
 		else
 			chat.AddText(Color(255,0,0), '*DEAD* ', teamColors[ply:Team()], ply:Nick(), Color(255, 255, 255), ': ', text)
 		end
@@ -82,11 +88,33 @@ net.Receive("StartPostGame", function()
     hook.Add("HUDPaint", "DrawGameTimer", DrawTimer)
 end)
 
+net.Receive("fh_chat_message", function()
+	local nick = net.ReadString()
+	local text = net.ReadString()
+	local dead = net.ReadBool()
+	local color = net.ReadColor()
+	local bTeam = net.ReadBool()
+
+	if !dead then
+		if !bTeam then
+			chat.AddText(color, nick, Color(255, 255, 255), ': ', text)
+		else
+			chat.AddText(Color(25, 160, 35), '(TEAM) ', color, nick, Color(255, 255, 255), ': ', text)
+		end
+	else
+		chat.AddText(Color(255,0,0), '*DEAD* ', color, nick, Color(255, 255, 255), ': ', text)
+	end
+end)
+
 net.Receive("StartGame", function()
 	local timerDuration = net.ReadFloat()
 	timerTitle = 'РАУНД '..net.ReadInt(32)
     timerEnd = CurTime() + timerDuration
     hook.Add("HUDPaint", "DrawGameTimer", DrawTimer)
+	
+	timer.Create('turnOnScarySound', 60, 1, function()
+		toggleScarySound(true)
+	end)
 	
 	surface.PlaySound( "ambient/alarms/warningbell1.wav" )
 end)
@@ -94,6 +122,12 @@ end)
 net.Receive("ResetTimer", function()
     hook.Remove("HUDPaint", "DrawGameTimer")
 	surface.PlaySound( "ambient/levels/canals/windchime2.wav" )
+	
+	if timer.Exists('turnOnScarySound') then
+		timer.Remove('turnOnScarySound')
+		return
+	end
+	toggleScarySound(false)
 end)
 
 net.Receive("KillerPicked", function()

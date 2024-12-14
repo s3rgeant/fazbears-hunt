@@ -50,6 +50,20 @@ function ENT:Initialize()
         else
             ply:SetMoveType(MOVETYPE_WALK)
         end
+		
+		if self.formTable.viewmodel and self.formTable.viewmodel.weapon then
+			ply:Give(self.formTable.viewmodel.weapon)
+			ply:SelectWeapon(self.formTable.viewmodel.weapon)
+			
+			if self.formTable.viewmodel.skin then
+				local wep = ply:GetActiveWeapon()
+				if IsValid(wep) then
+					ply:GetViewModel():SetSkin(self.formTable.viewmodel.skin or 0)
+				end
+			end
+		else
+			ply:DrawViewModel(false)
+		end
 
         if ply:FlashlightIsOn() then
             ply:Flashlight(false)
@@ -57,7 +71,6 @@ function ENT:Initialize()
 
         ply:Freeze(false)
         ply:SetNotSolid(false)
-        ply:DrawViewModel(false)
         --ply:DrawWorldModel(false)
         local camOffset = self.formTable.camera and self.formTable.camera.offset or Vector(0, 0, 64)
         --clside this?
@@ -314,6 +327,7 @@ function ENT:Think()
 
         if (not self.anim or not anims[self.anim]) then
             self.animFreeze = nil
+            self.ignoreFreeze = nil
             self.animStart = nil
         end
 
@@ -344,11 +358,15 @@ function ENT:Think()
 
             if not self.animStart then
                 if cycle == 1 or (self.animCycle and self.animCycle > cycle) or (string.lower(anim) ~= string.lower(self:GetSequenceName(self:GetSequence()))) then
-                    self.anim = nil
+					if self.formTable.animStopped then
+						self.formTable.animStopped(ply, self, anim)
+					end
+					self.anim = nil
                     self.animCycle = nil
 
                     if self.animFreeze then
                         self.animFreeze = nil
+						self.ignoreFreeze = nil
                     end
                 elseif self.animCycle then
                     self.animCycle = cycle
@@ -598,11 +616,7 @@ function ENT:Think()
         end
     else
 		if self:GetPillUser() == LocalPlayer():GetObserverTarget() and LocalPlayer():GetObserverMode() == OBS_MODE_IN_EYE or self:GetPillUser() == LocalPlayer() and !pk_pills.convars.cl_thirdperson:GetBool() and !self:GetPillUser().fh_target_player then
-			if self:GetPillUser() != LocalPlayer() then
-				self:SetNoDraw(true)
-			else 
-				self:SetColor(Color(255, 255, 255, 0))
-			end
+			self:SetColor(Color(255, 255, 255, 0))
         elseif (self:GetPillUser() ~= LocalPlayer()) then
 			self:SetNoDraw(false)
 			self:SetColor(Color(255, 255, 255, 255))
@@ -614,7 +628,7 @@ function ENT:Think()
         local realWep = self:GetPillUser():GetActiveWeapon()
 
         if IsValid(realWep) and realWep:GetModel() ~= "" and not realWep:GetNoDraw() then
-            realWep:SetNoDraw(true)
+            //realWep:SetNoDraw(true)
         end
     end
 	
@@ -667,7 +681,7 @@ end
 
 if SERVER then
     function ENT:DoKeyPress(ply, key)
-        if self.animFreeze then return end
+        if self.animFreeze and !self.ignoreFreeze then return end
 
         if self:GetChargeTime() ~= 0 then
             self:SetChargeTime(0)
@@ -676,7 +690,7 @@ if SERVER then
             return
         end
 
-        if key == IN_ATTACK and self.formTable.attack and self.formTable.attack.mode == "trigger" then
+        if key == IN_ATTACK and self.formTable.attack and self.formTable.attack.mode == "trigger" and !self.ignoreFreeze then
             self.formTable.attack.func(ply, self, self.formTable.attack)
         end
 

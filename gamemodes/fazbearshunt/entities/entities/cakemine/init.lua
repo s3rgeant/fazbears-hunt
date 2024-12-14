@@ -61,6 +61,25 @@ function ENT:CheckForPlayers()
 			table.insert(nearPlayers, ply)
 			table.insert(totalPlayers, ply)
 			
+            ply:SetRunSpeed(ply:GetRunSpeed() * 0.6)
+			
+			if timer.Exists('C_deploycake'..self:GetOwner():EntIndex()) then
+				timer.Adjust("C_deploycake"..self:GetOwner():EntIndex(), 10)
+			else
+				timer.Create("C_deploycake"..self:GetOwner():EntIndex(), 10, 1, function() end)
+			end
+			
+			net.Start("fh_net_killer_change")
+			net.WriteString("Mine")
+			net.WriteFloat(10)
+			net.Send(ply)
+            
+            timer.Simple(7, function()
+                if IsValid(ply) then
+					ply:SetRunSpeed(ply:GetRunSpeed() / 0.6)
+                end
+            end)
+			
 			timer.Simple(20, function()
 				table.RemoveByValue(nearPlayers, ply)
 			end)

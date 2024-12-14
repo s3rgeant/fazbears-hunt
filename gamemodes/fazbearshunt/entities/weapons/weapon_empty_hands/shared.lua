@@ -33,12 +33,13 @@ function SWEP:Initialize()
 end
 
 function SWEP:PrimaryAttack()
-	local Pos = self.Owner:GetShootPos()
-	local Aim = self.Owner:GetAimVector()
+	local ply = self.Owner
+	local Pos = ply:GetShootPos()
+	local Aim = ply:GetAimVector()
 
 	local Tr = util.TraceLine{
 		start = Pos,
-		endpos = Pos +Aim *self.Range,
+		endpos = Pos + Aim * self.Range,
 		filter = player.GetAll(),
 	}
 
@@ -46,34 +47,56 @@ function SWEP:PrimaryAttack()
 	if self.Drag then
 		HitEnt = self.Drag.Entity
 	else
-		if not IsValid( HitEnt ) or HitEnt:GetMoveType() ~= MOVETYPE_VPHYSICS or
-			HitEnt:IsVehicle() or HitEnt:GetNWBool( "NoDrag", false ) or
-			HitEnt.BlockDrag or
-			IsValid( HitEnt:GetParent() ) then
+		if !IsValid(HitEnt) or HitEnt:GetMoveType() ~= MOVETYPE_VPHYSICS or
+			HitEnt:IsVehicle() or HitEnt:GetNWBool("NoDrag", false) or
+			HitEnt.BlockDrag != nil or
+			IsValid(HitEnt:GetParent()) then
+			return
+		end
+		
+		if ply:GetUseEntity() == HitEnt then
+			//return
+			//эта хуйня ебанутая
+		end
+
+		local Phys = HitEnt:GetPhysicsObject()
+		if not IsValid(Phys) then return end
+		
+		local mass = Phys:GetMass()
+		if mass > 300 then
+			//return
+		end
+		
+		if ply:GetGroundEntity() == HitEnt then
 			return
 		end
 
-		if not self.Drag then
-			self.Drag = {
-				OffPos = HitEnt:WorldToLocal(Tr.HitPos),
-				Entity = HitEnt,
-				Fraction = Tr.Fraction,
-			}
-		end
+		self.Drag = {
+			OffPos = HitEnt:WorldToLocal(Tr.HitPos),
+			Entity = HitEnt,
+			Fraction = Tr.Fraction,
+		}
 	end
 
-	if CLIENT or not IsValid( HitEnt ) then return end
+	if CLIENT or not IsValid(HitEnt) then return end
 
 	local Phys = HitEnt:GetPhysicsObject()
+	if IsValid(Phys) then
+		local Pos2 = Pos + Aim * self.Range * self.Drag.Fraction
+		local OffPos = HitEnt:LocalToWorld(self.Drag.OffPos)
+		local Dif = Pos2 - OffPos
 
-	if IsValid( Phys ) then
-		local Pos2 = Pos +Aim *self.Range *self.Drag.Fraction
-		local OffPos = HitEnt:LocalToWorld( self.Drag.OffPos )
-		local Dif = Pos2 -OffPos
-		local Nom = (Dif:GetNormal() *math.min(1, Dif:Length() /100) *500 -Phys:GetVelocity()) *Phys:GetMass()
+		local mass = Phys:GetMass()
+		local forceMult = math.max(10, 500 - mass)
 
-		Phys:ApplyForceOffset( Nom, OffPos )
-		Phys:AddAngleVelocity( -Phys:GetAngleVelocity() /4 )
+		if ply:GetGroundEntity() == HitEnt then
+			self.Drag = nil
+			return
+		end
+
+		local Nom = (Dif:GetNormal() * math.min(1, Dif:Length() / 100) * forceMult - Phys:GetVelocity()) * mass
+		Phys:ApplyForceOffset(Nom, OffPos)
+		Phys:AddAngleVelocity(-Phys:GetAngleVelocity() / 4)
 	end
 end
 
@@ -97,11 +120,11 @@ function SWEP:SetupDataTables( )
 end
 
 function SWEP:Think()
-	if self.Drag and (not self.Owner:KeyDown(IN_ATTACK) or not IsValid(self.Drag.Entity)) then
+	local ply = self.Owner
+	if self.Drag and (not ply:KeyDown(IN_ATTACK) or not IsValid(self.Drag.Entity)) then
 		self.Drag = nil
 	end
 end
-
 
 if CLIENT then
 	local x, y = ScrW() /2, ScrH() /2

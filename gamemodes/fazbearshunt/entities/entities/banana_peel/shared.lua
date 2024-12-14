@@ -46,8 +46,10 @@ if SERVER then
 		if ent:IsNPC() or ent:IsPlayer() and (ent:Team() != TEAM_SPECTATOR and ent:Alive()) then
 			ent:EmitSound("slip_start.wav")
 			//ent:SetPos(ent:GetPos() + Vector(0,0,2) * self:NPCMult(ent))
-			ent:SetVelocity(Vector(math.Rand(150, 250), math.Rand(150, 250), 200) + ent:GetUp() * 100)
-			self:SetVelocity(-ent:GetVelocity() - ent:GetForward() * 200 + ent:GetUp() * 150)  
+			ent:SetVelocity(Vector(math.Rand(150, 250) * (math.random(2) == 1 and 1 or -1), math.Rand(150, 250) * (math.random(2) == 1 and 1 or -1), 200) + ent:GetUp() * 100)
+			local phys = self:GetPhysicsObject()
+			phys:ApplyForceCenter((-ent:GetVelocity() + -ent:GetForward()) * 25)
+			
 			timer.Simple( 0.1, function()
 				ent:SetNWBool("banana_slipped", true)
 			end)
@@ -74,7 +76,7 @@ if SERVER then
         for k, v in pairs(ents.GetAll()) do
             if (v:IsNPC() or (v:IsPlayer()) and v:Team() != TEAM_SPECTATOR) and v:IsOnGround() and v:GetNWBool("banana_slipped", false) then
                 v:SetNWBool("banana_slipped", false)
-				v:TakeDamage(6, self, self)
+				v:TakeDamage(math.random(1,2), self, self)
                 v:EmitSound("slip_end.wav") 
             end
         end

@@ -13,7 +13,7 @@ local animatronics = {}
 local teammates = {}
 
 net.Receive("NotifySpectators", function()
-	if LocalPlayer():Team() != TEAM_SPECTATOR then return end
+	if (LocalPlayer():Team() != TEAM_SPECTATOR) then return end
 	
 	local players = net.ReadTable()
 	local ply = net.ReadEntity()
@@ -176,8 +176,11 @@ net.Receive("fh_ent_sound_play", function()
 	
 	local pill = pk_pills.getMappedEnt(ply)
 	local snd = net.ReadString()
-	if snd == 'freddy_stalking_others.wav' and pill and pill.formTable.printName == "Withered Freddy" then
+	if snd == 'freddy_stalking_others.wav' and pill ~= nil and pill.formTable.printName == "Withered Freddy" then
 		//print('ya freddy')
+		return
+	end
+	if !IsValid(ent) then
 		return
 	end
     if not playerSounds[snd] then
