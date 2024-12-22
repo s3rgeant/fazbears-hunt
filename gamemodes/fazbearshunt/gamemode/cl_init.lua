@@ -21,12 +21,6 @@ local timerTitle = 'ОЖИДАНИЕ ИГРОКОВ'
 surface.CreateFont( "timerFontUpper", { font = "Tahoma", size = 48, weight = 330, antialias = true, bold = true } )
 surface.CreateFont( "timerFontBelow", { font = "Tahoma", size = 36, weight = 330, antialias = true, bold = false } )
 
-local function FormatTime(secs)
-    local minutes = math.floor(secs / 60)
-    local secs = math.floor(secs % 60)
-    return string.format("%02d:%02d", minutes, secs)
-end
-
 local function DrawTimer()
 	if !GetConVar("cl_drawhud"):GetBool() or !fh_draw_timer:GetBool() then return end
     local timeLeft = math.max(0, timerEnd - CurTime())
@@ -38,7 +32,7 @@ local function DrawTimer()
 
     draw.SimpleText(timerTitle, "timerFontUpper", ScrW() / 2, y + 28, Color(255, 0, 0, 255), TEXT_ALIGN_CENTER, TEXT_ALIGN_CENTER)
 	
-	draw.SimpleText(FormatTime(timeLeft), "timerFontBelow", ScrW() / 2, y + 74, Color(255, 255, 255), TEXT_ALIGN_CENTER, TEXT_ALIGN_CENTER)
+	draw.SimpleText(formatTime(timeLeft), "timerFontBelow", ScrW() / 2, y + 74, Color(255, 255, 255), TEXT_ALIGN_CENTER, TEXT_ALIGN_CENTER)
 end
 
 hook.Add("HUDDrawTargetID", "HidePlayerNames", function()
@@ -64,23 +58,6 @@ hook.Add("InitPostEntity", "fh_player_fullconnect", function()
 	net.SendToServer()
 end)
 
-hook.Add( "OnPlayerChat", "HelloCommand", function( ply, text, bTeam, dead ) 
-    if ( ply != LocalPlayer() ) then return end
-
-	if teamColors[ply:Team()] then
-		if !dead then
-			if !bTeam then
-				chat.AddText(teamColors[ply:Team()], ply:Nick(), Color(255, 255, 255), ': ', text)
-			else
-				chat.AddText(Color(25, 160, 35), "(TEAM)", teamColors[ply:Team()], ply:Nick(), Color(255, 255, 255), ': ', text)
-			end
-		else
-			chat.AddText(Color(255,0,0), '*DEAD* ', teamColors[ply:Team()], ply:Nick(), Color(255, 255, 255), ': ', text)
-		end
-		return true
-	end
-end )
-
 net.Receive("StartPostGame", function()
 	local timerDuration = net.ReadFloat()
 	timerTitle = 'НАЧАЛО ИГРЫ'
@@ -94,14 +71,15 @@ net.Receive("fh_chat_message", function()
 	local dead = net.ReadBool()
 	local color = net.ReadColor()
 	local bTeam = net.ReadBool()
+	local teamInt = net.ReadFloat()
 
 	if !dead then
 		if !bTeam then
 			chat.AddText(color, nick, Color(255, 255, 255), ': ', text)
-		else
+		elseif LocalPlayer():Team() == teamInt then
 			chat.AddText(Color(25, 160, 35), '(TEAM) ', color, nick, Color(255, 255, 255), ': ', text)
 		end
-	else
+	elseif LocalPlayer():Team() == teamInt then
 		chat.AddText(Color(255,0,0), '*DEAD* ', color, nick, Color(255, 255, 255), ': ', text)
 	end
 end)

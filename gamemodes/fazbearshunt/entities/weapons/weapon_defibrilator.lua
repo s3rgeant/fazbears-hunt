@@ -147,6 +147,8 @@ function SWEP:Think()
 					if !table.HasValue(survivors, ply) then
 						table.insert(survivors, ply)
 					end
+					
+					LogEvent("☦️ Игрок **" .. self.Owner:Nick() .. "** возродил **" .. ply:Nick() .. "** дефибриллятором")
 
                     timer.Simple(1 / 100, function()
                         if IsValid(ply) and IsStuckInWall(ply) then

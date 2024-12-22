@@ -33,24 +33,62 @@ function RevivePlayer(ply)
 	end
 end
 
+function highlightSelected(targets)
+	if !isGameOn or table.Count(survivors) == 0 or table.Count(animatronics) == 0 then return end
+	local affectedNicknames = {}
+	
+	for _,v in ipairs(targets) do
+		if table.HasValue(survivors, v) then
+			net.Start("PlayHighlightSounds")
+			net.WriteBool(table.HasValue(targets, v))
+			net.Send(v)
+			table.insert(affectedNicknames, v:Nick())
+		end
+	end
+	
+	if table.Count(affectedNicknames) == 0 then return end
+		
+	for _, ply in pairs(animatronics) do
+		net.Start("AddAffectedPlayers")
+		net.WriteTable(survivors)
+		net.Send(ply)
+		
+		net.Start("ToggleHighlightSound")
+		net.WriteBool(true)
+		net.Send(ply)
+	end
+		
+	if table.Count(team.GetPlayers(TEAM_SPECTATOR)) > 0 then
+		net.Start('NotifySpectators')
+		net.WriteTable(affectedNicknames)
+		net.WriteEntity(player.GetAll()[1])
+		net.Broadcast()
+	end
+	
+    LogEvent("(*АДМИН*) Подсвечено "..table.Count(targets).." игроков.")
+end
+
 function KillPlayer(ply)
 	if ply:Alive() then
-		ply:Kill()
 		if table.HasValue(alivePlayers, ply) then
 			table.RemoveByValue(alivePlayers, ply)
 		end
 		if table.HasValue(animatronics, ply) then
 			table.RemoveByValue(animatronics, ply)
+			RunConsoleCommand("pk_pill_restore", ply:Nick())
 		end
 		if table.HasValue(survivors, ply) then
 			table.RemoveByValue(survivors, ply)
 		end
+		ply:Kill()
+        LogEvent("(*АДМИН*) - Убит игрок **"..ply:Nick().."**")
 	end
 end
 
 function StartRound()
 	if !isGameOn and roundEnding or postGameOn then
 		registerNewRound()
+        LogEvent("(*АДМИН*) - ⌛️ Таймер раунда начат. Количество игроков: "..table.Count(alivePlayers))
 	end
 end
 
@@ -81,6 +119,8 @@ function HighlightAll()
 			net.WriteEntity(player.GetAll()[1])
 			net.Broadcast()
 		end
+		
+        LogEvent("(*АДМИН*) Все игроки подсвечены.")
 	end
 end
 
@@ -98,6 +138,8 @@ function EndRound()
 		for _,v in ipairs(animatronics) do
 			v.lobbyFreeze = nil
 		end
+		LogEvent(" ")
+        LogEvent("(*АДМИН*) - Раунд закончил *АДМИН*.")
 	end
 end
 
@@ -115,6 +157,8 @@ function EndPostRound()
 		for _,v in ipairs(animatronics) do
 			v.lobbyFreeze = nil
 		end
+		LogEvent(" ")
+        LogEvent("(*АДМИН*) - Все аниматроники разморожены, раунд начат.")
 	end
 end
 
@@ -135,7 +179,7 @@ net.Receive("AdminAction", function(len, ply)
 
     local action = net.ReadString()
 
-    if action == "give_animatronic" or action == "resurrect" or action == "kill" then
+    if action == "give_animatronic" or action == "resurrect" or action == "kill" or action == "highlight" then
         local numTargets = net.ReadUInt(8)
         local targets = {}
         for i = 1, numTargets do
@@ -144,6 +188,11 @@ net.Receive("AdminAction", function(len, ply)
                 table.insert(targets, target)
             end
         end
+		
+		if action == "highlight" then
+			highlightSelected(targets)
+			return
+		end
 			
 		local killer = net.ReadString()
         for _, target in pairs(targets) do
@@ -151,6 +200,7 @@ net.Receive("AdminAction", function(len, ply)
                 GiveAnimatronic(target, killer)
             elseif action == "resurrect" then
                 RevivePlayer(target)
+				LogEvent("(*АДМИН*) - Воскрешён игрок "..target:Nick())
             elseif action == "kill" then
                 KillPlayer(target)
             end
@@ -174,6 +224,121 @@ net.Receive("AdminAction", function(len, ply)
 			SetHighlightDistance(math.floor(value))
 		elseif action == "end_post_round" then
 			EndPostRound()
+		elseif action == "fh_gifts_spawning" then
+			local bool = net.ReadBool()
+			if !bool then
+				disableGiftSpawning()
+			else
+				game.ConsoleCommand("fh_gifts_spawning 1\n")
+				doGiftSpawning()
+			end
+		elseif action == "fh_spawn_gifts" then
+			fh_spawnGifts()
+		elseif action == "fh_auto_map_hl" then
+			local mapInfo = GetMapData()
+			
+			if !mapInfo then return end
+			
+			SetHighlightDelay(mapInfo.value1)
+			SetHighlightDuration(mapInfo.value2)
+			SetHighlightDistance(mapInfo.value3)
 		end
 	end
+end)
+
+local filePath = "fazbearshunt/fh_map_data.txt"
+
+function GetMapData()
+    local mapName = game.GetMap()
+
+    if not file.Exists(filePath, "DATA") then
+        print("Файл " .. filePath .. " не найден.")
+		file.Write(filePath, "")
+        return nil
+    end
+
+    local data = file.Read(filePath, "DATA")
+    if not data then
+        print("Не удалось прочитать файл " .. filePath)
+        return nil
+    end
+
+    local mapData = {}
+    for _, line in ipairs(string.Split(data, "\n")) do
+        local trimmedLine = string.Trim(line)
+        if trimmedLine ~= "" then
+            local parts = string.Split(trimmedLine, ",")
+            local map = string.Trim(parts[1])
+
+            if map == mapName then
+                mapData = {
+                    map = map,
+                    value1 = tonumber(string.Trim(parts[2])),
+                    value2 = tonumber(string.Trim(parts[3])),
+                    value3 = tonumber(string.Trim(parts[4]))
+                }
+                break
+            end
+        end
+    end
+
+    if next(mapData) == nil then
+        print("Данные для карты " .. mapName .. " не найдены.")
+        return nil
+    end
+
+    return mapData
+end
+
+local function AddOrUpdateMapData(value1, value2, value3, mapName)
+    if not file.Exists(filePath, "DATA") then
+        file.Write(filePath, "")
+    end
+
+    local data = file.Read(filePath, "DATA") or ""
+    local lines = string.Split(data, "\n")
+    local updated = false
+    local newLines = {}
+
+    for _, line in ipairs(lines) do
+        local trimmedLine = string.Trim(line)
+        if trimmedLine ~= "" then
+            local parts = string.Split(trimmedLine, ",")
+            local existingMap = string.Trim(parts[1])
+
+            if existingMap == mapName then
+                table.insert(newLines, string.format("%s, %d, %d, %d", mapName, value1, value2, value3))
+                updated = true
+            else
+                table.insert(newLines, trimmedLine)
+            end
+        end
+    end
+
+    if not updated then
+        table.insert(newLines, string.format("%s, %d, %d, %d", mapName, value1, value2, value3))
+    end
+
+    file.Write(filePath, table.concat(newLines, "\n"))
+    print("Данные обновлены или добавлены для карты:", mapName)
+end
+
+concommand.Add("fh_update_map_data", function(ply, cmd, args)
+    if not ply:IsAdmin() then return end
+
+    if #args < 3 then
+        print("Использование: update_map_data <value1> <value2> <value3> [mapName]")
+        return
+    end
+
+    local value1 = tonumber(args[1])
+    local value2 = tonumber(args[2])
+    local value3 = tonumber(args[3])
+    local mapName = args[4] and string.Trim(args[4]) or game.GetMap()
+
+    if not value1 or not value2 or not value3 then
+        return
+    end
+
+    AddOrUpdateMapData(value1, value2, value3, mapName)
 end)

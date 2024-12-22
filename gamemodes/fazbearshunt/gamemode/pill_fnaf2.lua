@@ -281,7 +281,21 @@ pk_pills.register("pill_wfreddy2",{
 		if ply:IsFrozen() then return end
 		if ply:WaterLevel() < 1 and ply:GetVelocity().z < -200 and ent.anim != 'stalk' then
 			ent:PillAnim("land",true)
+			return
 		end
+		
+		if ent.landTimes != nil then
+			ent.landTimes = 1 + ent.landTimes
+			if ent.landTimes == 5 then
+				playVoiceline('freddy', 'trip', ply, 0.1)
+			end
+		else
+			ent.landTimes = 1
+		end
+		timer.Simple(6,function()
+			if ent.landTimes == 0 or !IsValid(ent) then return end
+			ent.landTimes = ent.landTimes - 1
+		end)
 	end,
 	jump=function(ply,ent)
 		ent:PillSound("jump", true)
@@ -628,7 +642,21 @@ pk_pills.register("pill_wbonnie2",{
 		if ply:IsFrozen() then return end
 		if ply:WaterLevel() < 1 and ply:GetVelocity().z < -200 then
 			ent:PillAnim("land",true)
+			return
 		end
+		
+		if ent.landTimes != nil then
+			ent.landTimes = 1 + ent.landTimes
+			if ent.landTimes == 5 then
+				playVoiceline('bonnie', 'trip', ply, 0.1)
+			end
+		else
+			ent.landTimes = 1
+		end
+		timer.Simple(6,function()
+			if ent.landTimes == 0 or !IsValid(ent) then return end
+			ent.landTimes = ent.landTimes - 1
+		end)
 	end,
 
 	noragdoll=true,
@@ -815,7 +843,21 @@ pk_pills.register("pill_wchica2",{
 		if ply:IsFrozen() then return end
 		if ply:WaterLevel() < 1 and ply:GetVelocity().z < -200 then
 			ent:PillAnim("land",true)
+			return
 		end
+		
+		if ent.landTimes != nil then
+			ent.landTimes = 1 + ent.landTimes
+			if ent.landTimes == 5 then
+				playVoiceline('chica', 'trip', ply, 0.1)
+			end
+		else
+			ent.landTimes = 1
+		end
+		timer.Simple(6,function()
+			if ent.landTimes == 0 or !IsValid(ent) then return end
+			ent.landTimes = ent.landTimes - 1
+		end)
 	end,
 	
 	noragdoll=true,
@@ -987,7 +1029,21 @@ pk_pills.register("pill_wfoxy2",{
 		if ply:IsFrozen() then return end
 		if ply:WaterLevel() < 1 and ply:GetVelocity().z < -200 then
 			ent:PillAnim("land",true)
+			return
 		end
+		
+		if ent.landTimes != nil then
+			ent.landTimes = 1 + ent.landTimes
+			if ent.landTimes == 5 then
+				playVoiceline('foxy', 'trip', ply, 0.1)
+			end
+		else
+			ent.landTimes = 1
+		end
+		timer.Simple(6,function()
+			if ent.landTimes == 0 or !IsValid(ent) then return end
+			ent.landTimes = ent.landTimes - 1
+		end)
 	end,
 
 		
@@ -1815,6 +1871,11 @@ pk_pills.register("pill_endo02",{
 			net.WriteString("Kill")
 			net.WriteFloat(1.6)
 			net.Send(ply)
+			
+			local wep = ply:GetActiveWeapon()
+			if IsValid(wep) and wep:GetClass() == "v_endo" then
+				wep:PlayCustomAnimation("ACT_MELEE_ATTACK1", 1.6)
+			end
 		
 			timer.Simple( 1.6, function()
 				
@@ -1845,7 +1906,21 @@ pk_pills.register("pill_endo02",{
 		if ply:IsFrozen() then return end
 		if ply:WaterLevel() < 1 and ply:GetVelocity().z < -200 then
 			ent:PillAnim("land",true)
+			return
 		end
+		
+		if ent.landTimes != nil then
+			ent.landTimes = 1 + ent.landTimes
+			if ent.landTimes == 5 then
+				playVoiceline('endo', 'trip', ply, 0.1)
+			end
+		else
+			ent.landTimes = 1
+		end
+		timer.Simple(6,function()
+			if ent.landTimes == 0 or !IsValid(ent) then return end
+			ent.landTimes = ent.landTimes - 1
+		end)
 	end,
 
 	

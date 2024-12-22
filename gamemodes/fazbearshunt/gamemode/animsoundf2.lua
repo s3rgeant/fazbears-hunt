@@ -131,6 +131,15 @@ sound.Add({
 						 "vo/freddy_focus2.mp3",
 						 "vo/freddy_focus3.mp3"}
 })
+sound.Add({
+	name = 			"freddy.trip",
+	channel = 		CHAN_USER_BASE+10,
+	volume = 		1.0,
+	sound = 			{"vo/freddy_trip1.mp3",
+						 "vo/freddy_trip2.mp3",
+						 "vo/freddy_trip3.mp3",
+						 "vo/freddy_trip4.mp3"}
+})
 
 //chica voicelines
 sound.Add({
@@ -163,6 +172,16 @@ sound.Add({
 						 "vo/chica_placecake2.mp3",
 						 "vo/chica_placecake3.mp3"}
 })
+sound.Add({
+	name = 			"chica.trip",
+	channel = 		CHAN_USER_BASE+10,
+	volume = 		1.0,
+	sound = 			{"vo/chica_trip1.mp3",
+						 "vo/chica_trip2.mp3",
+						 "vo/chica_trip3.mp3",
+						 "vo/chica_trip4.mp3",
+						 "vo/chica_trip5.mp3"}
+})
 
 //bonnie voicelines
 sound.Add({
@@ -194,6 +213,16 @@ sound.Add({
 						 "vo/bonnie_spotted2.mp3",
 						 "vo/bonnie_spotted3.mp3"}
 })
+sound.Add({
+	name = 			"bonnie.trip",
+	channel = 		CHAN_USER_BASE+10,
+	volume = 		1.0,
+	sound = 			{"vo/bonnie_trip1.mp3",
+						 "vo/bonnie_trip2.mp3",
+						 "vo/bonnie_trip3.mp3",
+						 "vo/bonnie_trip4.mp3",
+						 "vo/bonnie_trip5.mp3"}
+})
 
 //foxy voicelines
 sound.Add({
@@ -211,6 +240,16 @@ sound.Add({
 	sound = 			{"vo/foxy_chase1.mp3",
 						 "vo/foxy_chase2.mp3",
 						 "vo/foxy_chase3.mp3"}
+})
+sound.Add({
+	name = 			"foxy.trip",
+	channel = 		CHAN_USER_BASE+10,
+	volume = 		1.0,
+	sound = 			{"vo/foxy_trip1.mp3",
+						 "vo/foxy_trip2.mp3",
+						 "vo/foxy_trip3.mp3",
+						 "vo/foxy_trip4.mp3",
+						 "vo/foxy_trip5.mp3"}
 })
 
 //endo voicelines
@@ -240,6 +279,17 @@ sound.Add({
 	sound = 			{"vo/endo_throw1.mp3",
 						 "vo/endo_throw2.mp3",
 						 "vo/endo_throw3.mp3"}
+})
+sound.Add({
+	name = 			"endo.trip",
+	channel = 		CHAN_USER_BASE+10,
+	volume = 		1.0,
+	sound = 			{"vo/endo_trip1.mp3",
+						 "vo/endo_trip2.mp3",
+						 "vo/endo_trip3.mp3",
+						 "vo/endo_trip4.mp3",
+						 "vo/endo_trip5.mp3",
+						 "vo/endo_trip6.mp3"}
 })
 
 //sfreddy voicelines

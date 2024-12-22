@@ -2,7 +2,6 @@ local meta = FindMetaTable("Player")
 
 if not meta then return end
 
-deathRagdolls = {}
 function meta:CreateRagdoll()
 	if !(self || self:IsValid() || self:IsPlayer()) then return end
 
@@ -48,7 +47,6 @@ function meta:CreateRagdoll()
 	end
 	
 	self.DeathRagdoll = ent
-	deathRagdolls[self] = ent
 	
 	if !ent:IsValid() then return end
 	
