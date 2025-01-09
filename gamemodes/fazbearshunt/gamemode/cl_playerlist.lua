@@ -14,7 +14,7 @@ function GM:ScoreboardShow()
     end
 
     customScoreboard = vgui.Create("DFrame")
-    customScoreboard:SetSize(300, ScrH() * 0.8)
+    customScoreboard:SetSize(400, ScrH() * 0.77)
     customScoreboard:SetTitle("")
     customScoreboard:ShowCloseButton(false)
     customScoreboard:SetDraggable(false)
@@ -22,8 +22,8 @@ function GM:ScoreboardShow()
 	customScoreboard:SetPos(customScoreboard.x, 155)
 	
 	customScoreboard.Paint = function(self, w, h)
-	    draw.RoundedBox(2, 0, 0, w, h, faded_black)
-	    draw.SimpleText(language.GetPhrase("fuppr.scoreboard.players"), "ScoreFont", 150, 2, color_white, TEXT_ALIGN_CENTER, TEXT_ALIGN_TOP)
+	    draw.RoundedBox(24, 0, 0, w, h, faded_black)
+	    draw.SimpleText(language.GetPhrase("fuppr.scoreboard.players") .. " ( " .. #player.GetAll() .. " / " .. game.MaxPlayers() .. " )", "ScoreFont", 200, 2, color_white, TEXT_ALIGN_CENTER, TEXT_ALIGN_TOP)
 	end
 
     scrollPanel = vgui.Create("DScrollPanel", customScoreboard)
@@ -45,6 +45,10 @@ function UpdatePlayerList()
         plyPanel:SetSize(0, 32)
         plyPanel:Dock(TOP)
         plyPanel:DockMargin(0, 0, 0, 5)
+		
+        plyPanel.Paint = function(self, w, h)
+            draw.RoundedBox(12, 0, 0, w, h, self:GetBackgroundColor())
+        end
 
 		local clr = Color(0, 0, 0)
 			
@@ -65,13 +69,10 @@ function UpdatePlayerList()
         avatar:SetSize(32, 32)
         avatar:SetPlayer(ply, 32)
         avatar:Dock(LEFT)
-		avatar:SetMouseInputEnabled(true)
-		avatar.DoClick = function()
-			local steamID64 = ply:SteamID64()
-			if steamID64 then
-				steamworks.ViewProfile(steamID64)
-			end
-		end
+        avatar.Paint = function(self, w, h)
+            surface.SetDrawColor(255, 255, 255)
+            draw.RoundedBox(16, 0, 0, w, h, Color(255, 255, 255))
+        end
 		
 		local avatarButton = vgui.Create("DButton", avatar)
 		avatarButton:SetSize(32, 32)
@@ -98,6 +99,23 @@ function UpdatePlayerList()
         nameLabel:SetSize(300, 30)
         nameLabel:Dock(FILL)
         nameLabel:SetContentAlignment(5)
+		
+		if ply != LocalPlayer() then
+
+			local muteButton = vgui.Create("DButton", plyPanel)
+			muteButton:SetSize(32, 32)
+			muteButton:Dock(RIGHT)
+			muteButton:SetText("")
+			muteButton:SetTooltip("Заглушить игрока")
+			muteButton.Paint = function(self, w, h)
+				local isMuted = ply:IsMuted()
+				local bgColor = isMuted and Color(200, 0, 0, 200) or Color(255, 255, 255, 200)
+				draw.RoundedBox(12, 0, 0, w, h, bgColor)
+			end
+			muteButton.DoClick = function()
+				ply:SetMuted(!ply:IsMuted())
+			end
+		end
     end
 end
 
@@ -108,10 +126,12 @@ function GM:ScoreboardHide()
     end
 end
 
-gameevent.Listen( "player_connect" )
-hook.Add("player_connect", "UpdateScoreboardJoin", function()
+gameevent.Listen( "player_connect_client" )
+hook.Add("player_connect_client", "UpdateScoreboardJoin", function()
     if IsValid(customScoreboard) then
-        UpdatePlayerList()
+		timer.Simple(0.5, function()
+			UpdatePlayerList()
+		end)
     end
 end)
 

@@ -68,7 +68,7 @@ function meta:CreateRagdoll()
 		phys:SetVelocity(plyvel)
 	end
 
-	ent.SetOwner(self)
+	ent:SetOwner(self)
 	
 	if self:IsOnFire() then ent:Ignite(math.Rand(6, 8), 0) end
 	
@@ -77,10 +77,3 @@ function meta:CreateRagdoll()
 	self:SpectateEntity(ent)
 	self:Spectate(OBS_MODE_CHASE)
 end
-
-
-hook.Add("PlayerSpawn", "fh_delete_ragdolls", function( victim, inflictor, attacker )
-	for k,v in ipairs(ents.FindByClass('prop_ragdoll')) do
-		v:Remove()
-	end
-end)

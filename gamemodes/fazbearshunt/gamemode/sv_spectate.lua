@@ -7,31 +7,28 @@ function getPlrs(ply)
 	return rf:GetPlayers()
 end
 
-local function cyclePlayers(ply, am)	
-	if ply:GetObserverMode() == OBS_MODE_CHASE or ply:GetObserverMode() == OBS_MODE_IN_EYE then
-		local num = 1
-		local players = getPlrs(ply)
-		local specindex = table.KeyFromValue(players, ply:GetObserverTarget()) or 1
-		//print(ply:GetObserverMode(), specindex, 'нихуя себе?')
-		if #players == 0 or !specindex then return false end
-		
-		if am > 0 then
-			if specindex < table.Count(players) then
-				num = specindex + am
-				//print(ply:Nick()..' спектати вперёд')
-			else
-				num = 1
-			end
+local function cyclePlayers(ply, am)
+	local num = 1
+	local players = getPlrs(ply)
+	local specindex = table.KeyFromValue(players, ply:GetObserverTarget()) or 1
+	if #players == 0 or !specindex then return false end
+	
+	if am > 0 then
+		if specindex < table.Count(players) then
+			num = specindex + am
 		else
-			if specindex > 1 then
-				num = specindex + am
-				//print(ply:Nick()..' спектатит назад')
-			else
-				num = #players
-			end
+			num = 1
 		end
-		ply:SpectateEntity( players[num] )
-		
+	else
+		if specindex > 1 then
+			num = specindex + am
+		else
+			num = #players
+		end
+	end
+	ply:SpectateEntity( players[num] )
+	
+	if ply:GetObserverMode() != OBS_MODE_ROAMING then
 		net.Start('DeadHUDChange')
 		net.WriteEntity(players[num])
 		net.Send(ply)

@@ -34,40 +34,10 @@ sound.Add({
 })
 
 sound.Add({
-	name = 			"freddy.stand",
-	channel = 		CHAN_USER_BASE+10,
-	volume = 		1.0,
-	sound = 			"fnaf2/frefr.mp3"
-
-})
-
-sound.Add({
-	name = 			"jjcrouch",
-	channel = 		CHAN_USER_BASE+10,
-	volume = 		1.0,
-	sound = 			"fnaf2/frefr.mp3"
-
-})
-
-sound.Add({
 	name = 			"bonnie.punch",
 	channel = 		CHAN_USER_BASE+10,
 	volume = 		1.0,
 	sound = 			{"bonnie_punch.mp3"}
-})
-
-sound.Add({
-	name = 			"chica.scream",
-	channel = 		CHAN_USER_BASE+10,
-	volume = 		1.0,
-	sound = 			{"fnaf2/glitching scream.wav"}
-})
-
-sound.Add({
-	name = 			"chica.glitch",
-	channel = 		CHAN_USER_BASE+10,
-	volume = 		1.0,
-	sound = 			{"fnaf2/glitching chica.wav"}
 })
 sound.Add({
 	name = 			"foxy.scream",

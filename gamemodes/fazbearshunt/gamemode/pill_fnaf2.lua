@@ -40,6 +40,11 @@ pk_pills.packStart("FUPPR 2 WE","FUPPR 2 WE","icon/fnafur2we.png")
 local stalker
 local stalkTarget
 
+hook.Add( "OnCleanup", "fh_freddy_reset", function( name )
+	stalker = nil
+	stalkTarget = nil
+end)
+
 local wfreddy_default_movement = {150, 480, 65, 250} -- обычное передвижение
 local wfreddy_stalk_movement = {150, 600, 70, 255} -- сталкер дохуя
 
@@ -132,7 +137,7 @@ pk_pills.register("pill_wfreddy2",{
 	attack={
 		mode="trigger",
 		func=function(ply,ent)
-			if ply:IsFrozen() then return end
+			if ply.lobbyFreeze != nil and ply.lobbyFreeze then return end
 			
 			local target = FindNearestPlayer(ent:GetPos(), 130, ply)
 			if !IsValid(target) then return end
@@ -176,6 +181,9 @@ pk_pills.register("pill_wfreddy2",{
 	attack2 = {
 		mode = "trigger",
 		func = function(ply, ent)
+		
+			if ply.lobbyFreeze != nil and ply.lobbyFreeze then return end
+			
 			local target = fh_random_stalk_target(ply)
 	
 			if not IsValid(target) or not ply:OnGround() then return end
@@ -278,7 +286,7 @@ pk_pills.register("pill_wfreddy2",{
 	end,
 	
 	land=function(ply,ent)
-		if ply:IsFrozen() then return end
+		if ply.lobbyFreeze != nil and ply.lobbyFreeze then return end
 		if ply:WaterLevel() < 1 and ply:GetVelocity().z < -200 and ent.anim != 'stalk' then
 			ent:PillAnim("land",true)
 			return
@@ -523,7 +531,7 @@ pk_pills.register("pill_wbonnie2",{
 	attack={
 		mode="trigger",
 		func=function(ply,ent)
-			if ply:IsFrozen() then return end
+			if ply.lobbyFreeze != nil and ply.lobbyFreeze then return end
 			
 			local target = FindNearestPlayer(ent:GetPos(), 130, ply)
 			if !IsValid(target) then return end
@@ -639,7 +647,7 @@ pk_pills.register("pill_wbonnie2",{
 	},
 	
 	land=function(ply,ent)
-		if ply:IsFrozen() then return end
+		if ply.lobbyFreeze != nil and ply.lobbyFreeze then return end
 		if ply:WaterLevel() < 1 and ply:GetVelocity().z < -200 then
 			ent:PillAnim("land",true)
 			return
@@ -775,7 +783,7 @@ pk_pills.register("pill_wchica2",{
 	attack={
 		mode="trigger",
 		func=function(ply,ent)
-			if ply:IsFrozen() then return end
+			if ply.lobbyFreeze != nil and ply.lobbyFreeze then return end
 			
 			local target = FindNearestPlayer(ent:GetPos(), 130, ply)
 			if !IsValid(target) then return end
@@ -840,7 +848,7 @@ pk_pills.register("pill_wchica2",{
 	},
 	
 	land=function(ply,ent)
-		if ply:IsFrozen() then return end
+		if ply.lobbyFreeze != nil and ply.lobbyFreeze then return end
 		if ply:WaterLevel() < 1 and ply:GetVelocity().z < -200 then
 			ent:PillAnim("land",true)
 			return
@@ -979,7 +987,7 @@ pk_pills.register("pill_wfoxy2",{
 	attack={
 		mode="trigger",
 		func=function(ply,ent)
-			if ply:IsFrozen() then return end
+			if ply.lobbyFreeze != nil and ply.lobbyFreeze then return end
 			
 			local target = FindNearestPlayer(ent:GetPos(), 130, ply)
 			if !IsValid(target) then return end
@@ -1026,7 +1034,7 @@ pk_pills.register("pill_wfoxy2",{
 	},
 	
 	land=function(ply,ent)
-		if ply:IsFrozen() then return end
+		if ply.lobbyFreeze != nil and ply.lobbyFreeze then return end
 		if ply:WaterLevel() < 1 and ply:GetVelocity().z < -200 then
 			ent:PillAnim("land",true)
 			return
@@ -1559,12 +1567,10 @@ options=function() return {
 		mode="trigger",
 		func=function(ply,ent)
 			if ent.cloaked or timer.Exists("SF_cantKill"..ply:EntIndex()) then return end
-			if ply:IsFrozen() then return end
+			if ply.lobbyFreeze then return end
 			
 			local target = FindNearestPlayer(ent:GetPos(), 130, ply)
 			if !IsValid(target) then return end
-			
-			//playVoiceline('sfreddy', 'kill', ply, 2)
 			
 			ent:PillSound("melee")
 			if target:IsNPC() then
@@ -1679,11 +1685,10 @@ options=function() return {
 						end)
 					end)
 				else
-					if !ply:OnGround() then return end
+					if !ply:OnGround() and ply:WaterLevel() == 0 then return end
 					if !IsValid(ent) or !IsValid(ent) then return end
 					timer.Create("SF_Cooldown"..ply:EntIndex(), sfreddy_cooldowns[2], 1, function() end)
 					
-					ply:EmitSound("sfreddyin.wav")
 					ply:EmitSound("sfreddyin.wav")
 			
 					local wep = ply:GetActiveWeapon()
@@ -1854,7 +1859,7 @@ pk_pills.register("pill_endo02",{
 	attack={
 		mode="trigger",
 		func=function(ply,ent)
-			if ply:IsFrozen() then return end
+			if ply.lobbyFreeze != nil and ply.lobbyFreeze then return end
 			
 			local target = FindNearestPlayer(ent:GetPos(), 130, ply)
 			if !IsValid(target) then return end
@@ -1903,7 +1908,7 @@ pk_pills.register("pill_endo02",{
 	},
 	
 	land=function(ply,ent)
-		if ply:IsFrozen() then return end
+		if ply.lobbyFreeze != nil and ply.lobbyFreeze then return end
 		if ply:WaterLevel() < 1 and ply:GetVelocity().z < -200 then
 			ent:PillAnim("land",true)
 			return
@@ -2084,7 +2089,7 @@ pk_pills.register("pill_springtrap",{
 	
 	land=function(ply,ent)
 		ent.anim = nil
-		if ply:IsFrozen() then return end
+		if ply.lobbyFreeze != nil and ply.lobbyFreeze then return end
 		if ply:WaterLevel() < 1 and ply:GetVelocity().z < -100 then
 			ent:PillGesture('land', 1, 2, 0.1, 0.3, 0.06)
 			ent:PillLoopStop('dance')

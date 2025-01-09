@@ -17,9 +17,9 @@ hook.Add( "KeyPress", "ussy ussy ur a pussy", function( ply, key )
 if key == IN_USE and !(push[ply:UserID()]) then
 local ent = ply:GetEyeTrace().Entity
 	if ply and ply:IsValid() and ent and ent:IsValid() then
-			if ply:IsPlayer() and ply:Team() != TEAM_SPECTATOR and ent:IsPlayer() then
+			if ply:IsPlayer() and ply:Team() != TEAM_SPECTATOR and !ent.lobbyFreeze then
 				if ply:GetPos():Distance( ent:GetPos() ) <= 100 then
-					if ent:Alive() and ent:GetMoveType() == MOVETYPE_WALK then
+					if (ent:IsPlayer() and ent:Alive()) and ent:GetMoveType() == MOVETYPE_WALK and !ent:IsFlagSet(FL_FROZEN) then
 						ply:EmitSound( PushSound[math.random(#PushSound)], 100, 100 )
 						local velAng = ply:EyeAngles():Forward()
 						ent:SetVelocity( velAng * 500 )

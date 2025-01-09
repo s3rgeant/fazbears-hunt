@@ -127,22 +127,22 @@ end
 -- Concommands, Convars, etc.
 if SERVER then
     concommand.Add("pk_pill_apply", function(ply, cmd, args, str)
-		if !ply:IsAdmin() then return end
+		if IsValid(ply) and !ply:IsAdmin() then return end
         apply(args[1], args[2], "user", tonumber(args[3]))
     end)
 
     concommand.Add("pk_pill_restore", function(ply, cmd, args, str)
-		if !ply:IsAdmin() then return end
+		if IsValid(ply) and !ply:IsAdmin() then return end
         restore(args[1])
     end)
 
     concommand.Add("pk_pill_restore_force", function(ply, cmd, args, str)
-        if not ply:IsAdmin() then return end
+		if IsValid(ply) and !ply:IsAdmin() then return end
         restore(ply, true)
     end)
 
     concommand.Add("pk_pill_spawnent", function(ply, cmd, args, str)
-        if not ply:IsAdmin() then return end
+		if IsValid(ply) and !ply:IsAdmin() then return end
         local tr = ply:GetEyeTrace()
         local e = ents.Create("pill_worldent")
         e:SetPos(tr.HitPos + tr.HitNormal * 5)
@@ -151,7 +151,7 @@ if SERVER then
     end)
 
     concommand.Add("pk_pill_morphgun_select", function(ply, cmd, args, str)
-        if not ply:IsAdmin() then return end
+		if IsValid(ply) and !ply:IsAdmin() then return end
         local pill = args[1]
         local wep = ply:GetWeapon("pill_wep_morphgun")
 

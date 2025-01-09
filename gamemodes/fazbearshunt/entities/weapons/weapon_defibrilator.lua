@@ -2,6 +2,7 @@ AddCSLuaFile()
 
 if SERVER then
 	util.AddNetworkString( "DefibrilatorMelee_NW" )
+    util.AddNetworkString("DefibrilatorEffect")
 else -- CLIENT
 	SWEP.DrawWeaponInfoBox	= false
 	SWEP.BounceWeaponIcon	= false 
@@ -172,6 +173,7 @@ function SWEP:Think()
             self.OldPos = nil
         else
 			local v = self.ReviveTarget
+			
 			if !IsValid(v) then return end
 			
 			local effect2 = EffectData()
@@ -181,8 +183,26 @@ function SWEP:Think()
 			effect2:SetEntity(v)
 			util.Effect("teslaHitBoxes",effect2)
 			v:EmitSound("Weapon_StunStick.Activate")
+			
+			net.Start("DefibrilatorEffect")
+			net.WriteEntity(v)
+			net.Send(self.Owner)
         end
     end
+end
+
+if CLIENT then
+    net.Receive("DefibrilatorEffect", function()
+        local v = net.ReadEntity()
+		if !IsValid(v) then return end
+		
+        local effect2 = EffectData()
+		effect2:SetOrigin(v:GetPos())
+		effect2:SetStart(v:GetPos())
+        effect2:SetMagnitude(5)
+		effect2:SetEntity(v)
+        util.Effect("teslaHitBoxes", effect2)
+    end)
 end
 
 SWEP.Reviving = false
@@ -486,6 +506,22 @@ else -- CLIENT
             halo.Add(corpses, Color(255, 0, 0), 1, 1, 2, true, true)
         end
     end)
+
+	hook.Add("HUDPaint", "DefibDrawNames", function()
+		local ply = LocalPlayer()
+		local wep = ply:GetActiveWeapon()
+	
+		if IsValid(wep) and wep:GetClass() == "weapon_defibrilator" then
+			for _, ent in pairs(ents.FindByClass("prop_ragdoll")) do
+				if ent:GetPos():Distance(ply:GetPos()) <= 150 then
+					local ownerName = IsValid(ent:GetOwner()) and ent:GetOwner():Nick() or "???"
+					local screenPos = ent:GetPos():ToScreen() -- Позиция для отображения
+	
+					draw.SimpleText(ownerName, "DermaDefault", screenPos.x, screenPos.y, Color(255, 255, 255), TEXT_ALIGN_CENTER, TEXT_ALIGN_CENTER)
+				end
+			end
+		end
+	end)
 end
 
 function IsStuckInWall(player)

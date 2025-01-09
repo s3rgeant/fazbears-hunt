@@ -7,15 +7,15 @@ local functions = include('discord_integration.lua')
 function GetHostPlayer()
     for _, ply in ipairs(player.GetAll()) do
         if ply:IsListenServerHost() then
-            return ply
+            return ply:Nick()
         end
     end
-    return nil
+    return GetHostName()
 end
 
 local hostPlayer = "idk"
 hook.Add( "PlayerInitialSpawn", "fh_player_spawn_logs", function()
-	hostPlayer = GetHostPlayer():Nick()
+	hostPlayer = GetHostPlayer()
 end )
 
 function LogEvent(eventText, discord)

@@ -101,7 +101,6 @@ function isNotStuck()
         mins = ply:OBBMins(),
         maxs = ply:OBBMaxs(),
 		filter = ply,
-		mask = MASK_ALL,
 	})
 	if trace.Hit then
 		return Color(200, 32, 32, 200)

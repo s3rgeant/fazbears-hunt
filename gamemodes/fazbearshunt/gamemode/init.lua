@@ -10,6 +10,7 @@ AddCSLuaFile( "cl_hud.lua" )
 AddCSLuaFile( "cl_nightvision.lua" )
 AddCSLuaFile( "cl_spechud.lua" )
 AddCSLuaFile( "cl_horror.lua" )
+AddCSLuaFile( "cl_timer.lua" )
 
 AddCSLuaFile( "animsoundf2.lua" )
 AddCSLuaFile("pill_fnaf2.lua")
@@ -41,8 +42,8 @@ util.AddNetworkString("fh_update_list")
 
 util.AddNetworkString("fh_chat_message")
 
-util.AddNetworkString("StartPostGame")
-util.AddNetworkString("StartGame")
+util.AddNetworkString("fh_start_lobby_timer")
+util.AddNetworkString("fh_start_game_timer")
 util.AddNetworkString("ResetTimer")
 
 util.AddNetworkString( "DeadHUDEnable" )
@@ -63,7 +64,8 @@ lastKillers = {}
 local playerCount = 1
 lobbyDuration = 120
 unfreezeAnimatronics = 60
-gameDuration = 660
+gameDuration = 600
+setupGameDuration = 60
 
 local animatronics_win_count = 0
 local survivors_win_count = 0
@@ -87,11 +89,11 @@ function assignKillers()
 
     local numKillers
 
-    if totalPlayers >= 30 then
+    if totalPlayers >= 40 then
         numKillers = 5
-    elseif totalPlayers >= 21 then
+    elseif totalPlayers >= 24 then
         numKillers = 4
-    elseif totalPlayers >= 15 then
+    elseif totalPlayers >= 16 then
         numKillers = 3
     elseif totalPlayers >= 8 then
         numKillers = 2
@@ -109,7 +111,7 @@ function assignKillers()
 	
     for i = 1, numKillers do
 		if table.Count(players) == 0 and table.Count(lastKillers) > 0 then
-			players.insert(lastKillers[1])
+			table.insert(players, lastKillers[1])
 			table.RemoveByValue(lastKillers, lastKillers[1])
 		end
 		
@@ -263,14 +265,15 @@ function endGame()
 end
 
 function postGameTimer()
-    net.Start("StartPostGame")
+    net.Start("fh_start_lobby_timer")
 	net.WriteFloat(lobbyDuration)
     net.Broadcast()
 end
 
 function startGame()
-    net.Start("StartGame")
+    net.Start("fh_start_game_timer")
 	net.WriteFloat(gameDuration)
+	net.WriteFloat(setupGameDuration)
 	net.WriteInt(roundCount, 32)
     net.Broadcast()
 	
@@ -286,7 +289,7 @@ function startGame()
 	net.WriteString('music/first_minute.wav')
 	net.Broadcast()
 	
-	timer.Create("EndGameTimer", gameDuration, 1, function()
+	timer.Create("EndGameTimer", gameDuration + setupGameDuration, 1, function()
 		local plys = {}
 		for _, ply in pairs(survivors) do
 			table.insert(plys, ply:Nick())
@@ -453,6 +456,33 @@ hook.Add("PlayerDisconnected", "PlayerLeft", function(ply)
 	if table.HasValue(alivePlayers, ply) then
 		table.RemoveByValue(alivePlayers, ply)
 	end
+	
+	if table.Count(animatronics) == 0 and isGameOn then
+		local plys = {}
+		for _, ply in pairs(survivors) do
+			table.insert(plys, ply:Nick())
+		end
+		
+		net.Start('fh_net_scarysound')
+		net.WriteBool(false)
+		net.Broadcast()
+		
+		net.Start("SurvivorsWin")
+		net.WriteTable(plys)
+		net.Broadcast()
+		
+		LogEvent(" ")
+		
+		local log_embed_table = { fh_get_plytable_nicknames(survivors), {'все ливнули.'} }
+		
+		timer.Simple(1, function()
+			LogEmbedEvent("Все аниматроники вышли из игры. Победа выживших.", "survs_win", log_embed_table)
+		end)
+			
+		survivors_win_count = survivors_win_count + 1
+			
+		endGame()
+	end
 
     if playerCount == 1 and isGameOn then
         resetGameTimer()
@@ -510,7 +540,7 @@ hook.Add("PlayerDeath", "fh_deaths", function( victim, inflictor, attacker )
 			
 			LogEvent(" ")
 			
-			local log_embed_table = { victim:Nick(), formatTime(gameDuration - (timer.TimeLeft("EndGameTimer") or 0)), fh_get_plytable_nicknames(animatronics) }
+			local log_embed_table = { victim:Nick(), formatTime((gameDuration + setupGameDuration) - (timer.TimeLeft("EndGameTimer") or 0)), fh_get_plytable_nicknames(animatronics) }
 			
 			timer.Simple(1, function()
 				LogEmbedEvent("Победа аниматроников.", "anims_win", log_embed_table)
@@ -522,6 +552,36 @@ hook.Add("PlayerDeath", "fh_deaths", function( victim, inflictor, attacker )
 			end
 		
 		end
+	end
+	if table.HasValue(animatronics, victim) then
+		table.RemoveByValue(animatronics, victim)
+	end
+	
+	if table.Count(animatronics) == 0 and isGameOn then
+		local plys = {}
+		for _, ply in pairs(survivors) do
+			table.insert(plys, ply:Nick())
+		end
+		
+		net.Start('fh_net_scarysound')
+		net.WriteBool(false)
+		net.Broadcast()
+		
+		net.Start("SurvivorsWin")
+		net.WriteTable(plys)
+		net.Broadcast()
+		
+		LogEvent(" ")
+		
+		local log_embed_table = { fh_get_plytable_nicknames(survivors), {'все ливнули.'} }
+		
+		timer.Simple(1, function()
+			LogEmbedEvent("Все аниматроники вышли из игры. Победа выживших.", "survs_win", log_embed_table)
+		end)
+			
+		survivors_win_count = survivors_win_count + 1
+			
+		endGame()
 	end
 	
 	if isGameOn then
@@ -658,14 +718,14 @@ net.Receive("fh_initpostentity", function(len, ply)
 	if timer.Exists('EndGameTimer') then
 		local timeLeft = timer.TimeLeft('EndGameTimer')
 		
-		net.Start('StartGame')
+		net.Start('fh_start_game_timer')
 		net.WriteFloat(timeLeft)
 		net.WriteInt(roundCount, 32)
 		net.Send(ply)
 	elseif timer.Exists('GameStartTimer') then
 		local timeLeft = timer.TimeLeft('GameStartTimer')
 		
-		net.Start("StartPostGame")
+		net.Start("fh_start_lobby_timer")
 		net.WriteFloat(timeLeft)
 		net.Send(ply)
 	end

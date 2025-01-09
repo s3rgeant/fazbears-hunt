@@ -43,6 +43,8 @@ function highlightSelected(targets)
 			net.WriteBool(table.HasValue(targets, v))
 			net.Send(v)
 			table.insert(affectedNicknames, v:Nick())
+			
+			table.insert(affectedPlayers, v)
 		end
 	end
 	

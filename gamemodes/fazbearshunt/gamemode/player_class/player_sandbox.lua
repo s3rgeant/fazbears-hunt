@@ -120,7 +120,7 @@ function PLAYER:FinishMove( move )
 		-- HL2 normally provides a much weaker jump boost when sprinting
 		-- For some reason this never applied to GMod, so we won't perform
 		-- this check here to preserve the "authentic" feeling
-		local speedBoostPerc = ( ( not self.Player:Crouching() ) and 0.4 ) or 0.1
+		local speedBoostPerc = ( ( not self.Player:Crouching() ) and 0.45 ) or 0.1
 
 		local speedAddition = math.abs( move:GetForwardSpeed() * speedBoostPerc )
 		local maxSpeed = move:GetMaxSpeed() * ( 1 + speedBoostPerc )
