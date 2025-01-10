@@ -12,6 +12,8 @@ local affectedPlayers = {}
 local animatronics = {}
 local teammates = {}
 
+local fh_halo_teammates = CreateClientConVar('fh_halo_teammates', 1, true, false, 'Highlight Teammates? (Animatronics Only) Turn Off for Performance.', 0, 1)
+
 net.Receive("NotifySpectators", function()
 	if (LocalPlayer():Team() != TEAM_SPECTATOR) then return end
 	
@@ -43,6 +45,7 @@ net.Receive("AddAffectedPlayers", function()
 		end
 		
 		timer.Create( "RemoveAffectedPlayer"..targetPlayer:SteamID64(), conVars.halo_time:GetFloat(), 1, function()
+			if target == targetPlayer then return end
 			table.RemoveByValue(affectedPlayers, targetPlayer)
 		end)
 	end
@@ -58,6 +61,7 @@ function addAffected(ply)
 	end
 	
 	timer.Create( "RemoveAffectedPlayer"..ply:SteamID64(), conVars.halo_time:GetFloat(), 1, function()
+		if target == targetPlayer then return end
 		table.RemoveByValue(affectedPlayers, ply)
 	end)
 end
@@ -254,7 +258,9 @@ end)
 hook.Add( "PreDrawHalos", "HaloDo", function()
 	halo.Add(affectedPlayers, Color(255, 0, 0, 255), 0.5, 0.5, 1, true, true)
 	halo.Add(animatronics, Color(255, 155, 0, 255), 0.5, 0.5, 1, true, true)
-	halo.Add(teammates, Color(0, 255, 0, 255), 0.5, 0.5, 1, true, true)
+	if fh_halo_teammates:GetBool() then
+		halo.Add(teammates, Color(0, 255, 0, 255), 0.5, 0.5, 1, true, true)
+	end
 end)
 
 hook.Add("HUDPaint", "PlayerDrawAnywhere", function()
@@ -279,6 +285,8 @@ hook.Add("PostCleanupMap", "fh_cleanup", function(ply)
 	target = nil
 	toggleShadows(true)
 	table.Empty(affectedPlayers)
+	
+	hook.Remove("HUDPaint", "fh_hl_overlay_draw")
 end)
 
 net.Receive("fh_start_yoursmine_view", function()

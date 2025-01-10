@@ -108,6 +108,7 @@ function UpdatePlayerList()
 			muteButton:SetText("")
 			muteButton:SetTooltip("Заглушить игрока")
 			muteButton.Paint = function(self, w, h)
+				if !IsValid(ply) then return end
 				local isMuted = ply:IsMuted()
 				local bgColor = isMuted and Color(200, 0, 0, 200) or Color(255, 255, 255, 200)
 				draw.RoundedBox(12, 0, 0, w, h, bgColor)
@@ -138,13 +139,17 @@ end)
 gameevent.Listen( "player_hurt" )
 hook.Add("player_hurt", "UpdateScoreboardLeave", function()
     if IsValid(customScoreboard) then
-        UpdatePlayerList()
+		timer.Simple(0.5, function()
+			UpdatePlayerList()
+		end)
     end
 end)
 
 gameevent.Listen( "player_disconnect" )
 hook.Add("player_disconnect", "UpdateScoreboardLeave", function()
     if IsValid(customScoreboard) then
-        UpdatePlayerList()
+		timer.Simple(0.5, function()
+			UpdatePlayerList()
+		end)
     end
 end)

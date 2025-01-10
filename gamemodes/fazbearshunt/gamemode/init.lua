@@ -20,7 +20,11 @@ include( "sv_spectate.lua" )
 include( "sv_nostuck.lua" )
 include( "sv_ragdolls.lua" )
 include( "sv_logs.lua" )
+
 include( "mount/push.lua" )
+
+include( "mount/proximity.lua" )
+AddCSLuaFile( "mount/proximity.lua" )
 
 include( "pill_fnaf2.lua" )
 
@@ -61,9 +65,7 @@ end
 
 lastKillers = {}
 
-local playerCount = 1
 lobbyDuration = 120
-unfreezeAnimatronics = 60
 gameDuration = 600
 setupGameDuration = 60
 
@@ -164,7 +166,7 @@ function assignKillers()
 		end
 	end
 	
-	timer.Create("UnfrozeAnimatronics", unfreezeAnimatronics, 1, function()
+	timer.Create("UnfrozeAnimatronics", setupGameDuration, 1, function()
 		for _, ply in ipairs( animatronics ) do
 			ply.lobbyFreeze = nil
 			ply:Freeze(false)
@@ -394,15 +396,22 @@ end
 
 hook.Add( "Initialize", "fh_init", function()
 	RunConsoleCommand('sv_noclipspeed', 2)
+	
+	-- выделенный сервер не включает таймер. пробую делать вот так
+	postGameOn = true
+	isGameOn = false
+	roundEnding = false
+	
+	if timer.Exists("GameStartTimer") then
+		timer.Remove("GameStartTimer")
+	end
 end )
 
 hook.Add("PlayerInitialSpawn", "fh_ply_spawn", function(ply)
 	setupPlayerVars(ply)
 	
-    playerCount = playerCount + 1
-	
 	if isGameOn then
-		timer.Simple(1, function()
+		timer.Simple(0, function()
 			ply:StripWeapons()
 			ply:Spectate(OBS_MODE_CHASE)
 			ply:SetTeam(TEAM_SPECTATOR)
@@ -421,19 +430,6 @@ hook.Add("PlayerInitialSpawn", "fh_ply_spawn", function(ply)
 	end
 end)
 
-gameevent.Listen( "player_connect_client" )
-hook.Add("player_connect_client", "EnoughToStart", function(ply)
-    if playerCount >= 2 and not isGameOn and !timer.Exists("GameStartTimer") then
-        postGameTimer()
-
-        timer.Create("GameStartTimer", lobbyDuration, 1, function()
-            registerNewRound()
-			LogEvent(" ")
-			LogEvent("(*АВТО*) - ⌛️ Таймер раунда начат. Количество игроков: "..table.Count(alivePlayers))
-        end)
-    end
-end)
-
 hook.Add("FinishMove", "CanMove", function(ply)
 	ply:SetCustomCollisionCheck(true)
 	if ply:Team() == 2701 and !roundActive and !postGameOn then
@@ -442,8 +438,6 @@ hook.Add("FinishMove", "CanMove", function(ply)
 end)
 
 hook.Add("PlayerDisconnected", "PlayerLeft", function(ply)
-    playerCount = playerCount - 1
-	
 	if table.HasValue(lastKillers, ply) then
 		table.RemoveByValue(lastKillers, ply)
 	end
@@ -452,6 +446,9 @@ hook.Add("PlayerDisconnected", "PlayerLeft", function(ply)
 	end
 	if table.HasValue(animatronics, ply) then
 		table.RemoveByValue(animatronics, ply)
+		if isGameOn then
+			PrintMessage(HUD_PRINTTALK, "Аниматроник " .. ply:Nick() .. " вышел из игры.")
+		end
 	end
 	if table.HasValue(alivePlayers, ply) then
 		table.RemoveByValue(alivePlayers, ply)
@@ -484,7 +481,7 @@ hook.Add("PlayerDisconnected", "PlayerLeft", function(ply)
 		endGame()
 	end
 
-    if playerCount == 1 and isGameOn then
+    if #player.GetAll() == 1 and isGameOn then
         resetGameTimer()
         if timer.Exists("GameStartTimer") then
             timer.Remove("GameStartTimer")
@@ -720,6 +717,7 @@ net.Receive("fh_initpostentity", function(len, ply)
 		
 		net.Start('fh_start_game_timer')
 		net.WriteFloat(timeLeft)
+		net.WriteFloat(0)
 		net.WriteInt(roundCount, 32)
 		net.Send(ply)
 	elseif timer.Exists('GameStartTimer') then
@@ -728,6 +726,17 @@ net.Receive("fh_initpostentity", function(len, ply)
 		net.Start("fh_start_lobby_timer")
 		net.WriteFloat(timeLeft)
 		net.Send(ply)
+	end
+	if #player.GetAll() >= 2 and not isGameOn and !timer.Exists("GameStartTimer") then
+		postGameTimer()
+	
+		timer.Create("GameStartTimer", lobbyDuration, 1, function()
+			registerNewRound()
+			LogEvent(" ")
+			LogEvent("(*АВТО*) - ⌛️ Таймер раунда начат. Количество игроков: "..table.Count(alivePlayers))
+		end)
+		
+		lobbyDuration = 30
 	end
 end)
 

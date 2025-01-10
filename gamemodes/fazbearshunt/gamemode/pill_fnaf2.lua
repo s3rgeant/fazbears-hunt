@@ -40,7 +40,7 @@ pk_pills.packStart("FUPPR 2 WE","FUPPR 2 WE","icon/fnafur2we.png")
 local stalker
 local stalkTarget
 
-hook.Add( "OnCleanup", "fh_freddy_reset", function( name )
+hook.Add( "PostCleanupMap", "fh_freddy_reset", function( name )
 	stalker = nil
 	stalkTarget = nil
 end)
@@ -313,7 +313,10 @@ pk_pills.register("pill_wfreddy2",{
 		timer.Remove("stalk_check"..ent:EntIndex())
 		stalker = nil
 		stalkerEnt = nil
+		
 		ent.formTable.anims.default.run = 'run'
+		ent:SetSpeed(wfreddy_default_movement[1], wfreddy_default_movement[2], wfreddy_default_movement[3], wfreddy_default_movement[4])
+		
 		timer.Remove("fh_stalking"..ply:EntIndex())
 		
 		net.Start('fh_sound_stop')
@@ -1680,7 +1683,7 @@ options=function() return {
 							//ply:SetNoDraw( false )
 							//ent:SetNoDraw( false )
 							
-							ent:SetModel("models/speps/pill/oldgoldenfreddy.mdl")
+							//ent:SetModel("models/speps/pill/oldgoldenfreddy.mdl")
 							ent:DrawShadow(true)
 						end)
 					end)
@@ -1726,7 +1729,7 @@ options=function() return {
 						end
 						
 						ent:SetMaterial("null")
-						ent:SetModel("models/Items/AR2_Grenade.mdl")
+						//ent:SetModel("models/Items/AR2_Grenade.mdl")
 						ent:DrawShadow(false)
 						//ply:SetNoDraw( true )
 						//ent:SetNoDraw( true )
@@ -2101,11 +2104,11 @@ pk_pills.register("pill_springtrap",{
 })
 
 function playVoiceline(character, line, who, when)
-	if ( timer.Exists( "PlayVoiceLine" .. who:UserID()) or timer.Exists( "DontVoiceLine" .. who:UserID() ) ) then return end
+	if ( timer.Exists( "fh_PlayVoiceLine" .. who:SteamID64()) or timer.Exists( "fh_DontVoiceLine" .. who:SteamID64() ) ) then return end
 	
-	timer.Create("PlayVoiceLine" .. who:UserID(), when, 1, function()
+	timer.Create("fh_PlayVoiceLine" .. who:SteamID64(), when, 1, function()
 		who:EmitSound( character .."." .. line)
-		timer.Create("DontVoiceLine" .. who:UserID(), 5, 1, function() end)
+		timer.Create("fh_DontVoiceLine" .. who:SteamID64(), 5, 1, function() end)
 	end)
 end
 

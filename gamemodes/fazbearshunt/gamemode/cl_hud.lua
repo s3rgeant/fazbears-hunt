@@ -282,5 +282,5 @@ end)
 
 hook.Add("OnContextMenuOpen", "fh_contextmenu", function()
 	RunConsoleCommand( "playermodel_selector" )
-	-- 
+	-- ну и хуйня
 end)

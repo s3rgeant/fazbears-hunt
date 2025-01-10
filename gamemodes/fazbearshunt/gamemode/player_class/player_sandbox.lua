@@ -39,8 +39,6 @@ end
 
 function PLAYER:Loadout()
 
-	self.Player:RemoveAllAmmo()
-
 	self.Player:GiveAmmo( 256,	"Pistol", 		true )
 	self.Player:GiveAmmo( 20,	"grenade", 		true )
 

@@ -52,7 +52,7 @@ end)
 
 net.Receive("fh_start_lobby_timer", function()
     local timerDuration = net.ReadFloat()
-    timerTitle = 'НАЧАЛО ИГРЫ'
+    timerTitle = language.GetPhrase("fazhunt.generic.startup")
     
     timerMode = "lobby"
 	
@@ -68,7 +68,7 @@ net.Receive("fh_start_game_timer", function()
     local timerDuration = net.ReadFloat()
     local startupDuration = net.ReadFloat()
     
-    timerTitle = 'РАУНД ' .. net.ReadInt(32)
+    timerTitle = language.GetPhrase("fazhunt.generic.round") .. ' ' .. net.ReadInt(32)
     
     timerEnd = CurTime() + timerDuration + startupDuration
     timerSetupEnd = CurTime() + startupDuration
@@ -77,6 +77,8 @@ net.Receive("fh_start_game_timer", function()
 		timerMode = "game"
 		roundtimer_alpha = 255
 		roundtimer_y_target = 64
+		
+		toggleScarySound(true)
 	end)
     
     timerMode = "postlobby"
@@ -95,6 +97,11 @@ net.Receive("ResetTimer", function()
 	if timer.Exists('fh_timer_round_start') then 
 		timer.Remove('fh_timer_round_start') 
 	end
+	
+	toggleScarySound(false)
+	
+	timerSetupEnd = 0
+	timerEnd = 0
     
     hook.Remove("HUDPaint", "DrawGameTimer")
     surface.PlaySound("ambient/levels/canals/windchime2.wav")

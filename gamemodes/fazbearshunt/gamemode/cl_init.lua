@@ -11,6 +11,8 @@ include( "cl_spechud.lua" )
 include( "cl_horror.lua" )
 include( "cl_timer.lua" )
 
+include( "mount/proximity.lua" )
+
 include( "animsoundf2.lua" )
 include("pill_fnaf2.lua")
 
@@ -31,6 +33,29 @@ hook.Add( "PlayerBindPress", "fh_flash_nv", function( ply, bind, pressed )
 		return true
 	end
 end )
+
+hook.Add("PlayerStartVoice", "HideVoicePanels", function(ply)
+    if ply == LocalPlayer() then
+        hook.Add("HUDPaint", "DrawLocalPlayerVoiceIcon", function()
+            local x, y = (ScrW() / 2) - (64 / 2), ScrH() - 50 - (64 / 2)
+			draw.RoundedBox(12, x, y, 64, 64, Color(0, 0, 0, 120))
+			
+            local x, y = (ScrW() / 2) - (48 / 2), ScrH() - 50 - (48 / 2)
+            surface.SetMaterial(Material("voice/icntlk_pl.vtf"))
+            surface.SetDrawColor(255, 255, 255, 255)
+            surface.DrawTexturedRect(x, y, 48, 48)
+        end)
+		return false
+    end
+	if ply:Team() != 2701 then return false end
+	if LocalPlayer():Team() != 2701 then return false end
+end)
+
+hook.Add("PlayerEndVoice", "HideVoicePanels", function(ply)
+    if ply == LocalPlayer() then
+        hook.Remove("HUDPaint", "DrawLocalPlayerVoiceIcon")
+    end
+end)
 
 hook.Add("InitPostEntity", "fh_player_fullconnect", function()
 	net.Start('fh_initpostentity')
