@@ -82,7 +82,10 @@ function KillPlayer(ply)
 		if table.HasValue(survivors, ply) then
 			table.RemoveByValue(survivors, ply)
 		end
-		ply:Kill()
+		timer.Simple(0.1, function()
+			ply:Kill()
+			ply:SetTeam(TEAM_SPECTATOR)
+		end)
         LogEvent("(*АДМИН*) - Убит игрок **"..ply:Nick().."**")
 	end
 end

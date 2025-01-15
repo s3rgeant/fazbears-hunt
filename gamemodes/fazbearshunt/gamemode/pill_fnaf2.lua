@@ -11,6 +11,8 @@ if SERVER then
 	util.AddNetworkString("fh_sound_stop")
 	util.AddNetworkString("fh_addaffected_stalk")
 	
+	util.AddNetworkString("fh_play_voiceline")
+	
 	util.AddNetworkString("fh_draw_hl_overlay")
 	util.AddNetworkString("fh_nodraw_hl_overlay")
 	
@@ -144,7 +146,7 @@ pk_pills.register("pill_wfreddy2",{
 			
 			if stalkTarget and target ~= stalkTarget then return end
 			
-			playVoiceline('freddy', 'kill', ply, 2)
+			playVoiceline('freddy', "kill", ply, 2)
 			ent:PillSound("melee")
 			if target:IsNPC() then
 				target:TakeDamage(99999, ply)
@@ -538,7 +540,7 @@ pk_pills.register("pill_wbonnie2",{
 			
 			local target = FindNearestPlayer(ent:GetPos(), 130, ply)
 			if !IsValid(target) then return end
-			playVoiceline('bonnie', 'kill', ply, 2)
+			playVoiceline('bonnie', "kill", ply, 2)
 			ent:PillSound("melee")
 			if target:IsNPC() then
 				target:TakeDamage(99999, ply)
@@ -790,7 +792,7 @@ pk_pills.register("pill_wchica2",{
 			
 			local target = FindNearestPlayer(ent:GetPos(), 130, ply)
 			if !IsValid(target) then return end
-			playVoiceline('chica', 'kill', ply, 2)
+			playVoiceline('chica', "kill", ply, 2)
 			ent:PillSound("melee")
 			if target:IsNPC() then
 				target:TakeDamage(99999, ply)
@@ -994,7 +996,7 @@ pk_pills.register("pill_wfoxy2",{
 			
 			local target = FindNearestPlayer(ent:GetPos(), 130, ply)
 			if !IsValid(target) then return end
-			playVoiceline('foxy', 'kill', ply, 2)
+			playVoiceline('foxy', "kill", ply, 2)
 			ent:PillSound("melee")
 			if target:IsNPC() then
 				target:TakeDamage(99999, ply)
@@ -1599,7 +1601,7 @@ options=function() return {
 				target:UnLock()
 				ply:UnLock()
 				target:TakeDamage(99999, ply)
-				playVoiceline('sfreddy', 'kill', ply, 1)
+				playVoiceline('sfreddy', "kill", ply, 1)
 				
 				timer.Simple( 2, function()
 					if !IsValid(target) then return end
@@ -1854,7 +1856,7 @@ pk_pills.register("pill_endo02",{
 					return
 				end
 				
-				chaseCheck(ply, 'endo')
+				chaseCheck(ply, "endo")
 			end)
 		end
 	end,
@@ -1866,7 +1868,7 @@ pk_pills.register("pill_endo02",{
 			
 			local target = FindNearestPlayer(ent:GetPos(), 130, ply)
 			if !IsValid(target) then return end
-			playVoiceline('endo', 'kill', ply, 2)
+			playVoiceline("endo", "kill", ply, 2)
 			ent:PillSound("melee")
 			if target:IsNPC() then
 				target:TakeDamage(99999, ply)
@@ -1920,7 +1922,7 @@ pk_pills.register("pill_endo02",{
 		if ent.landTimes != nil then
 			ent.landTimes = 1 + ent.landTimes
 			if ent.landTimes == 5 then
-				playVoiceline('endo', 'trip', ply, 0.1)
+				playVoiceline("endo", 'trip', ply, 0.1)
 			end
 		else
 			ent.landTimes = 1
@@ -2107,7 +2109,13 @@ function playVoiceline(character, line, who, when)
 	if ( timer.Exists( "fh_PlayVoiceLine" .. who:SteamID64()) or timer.Exists( "fh_DontVoiceLine" .. who:SteamID64() ) ) then return end
 	
 	timer.Create("fh_PlayVoiceLine" .. who:SteamID64(), when, 1, function()
-		who:EmitSound( character .."." .. line)
+		
+		net.Start("fh_play_voiceline")
+		net.WriteString(character)
+		net.WriteString(line)
+		net.WritePlayer(who)
+		net.Broadcast()
+		
 		timer.Create("fh_DontVoiceLine" .. who:SteamID64(), 5, 1, function() end)
 	end)
 end
@@ -2307,7 +2315,7 @@ hook.Add("KeyRelease", "PlayerRightClickRelease", function(ply, key)
         local target = playersHoldingRightClick[ply]
         if IsValid(target) then
             ply:EmitSound("throw_player.wav")
-			playVoiceline('endo', 'throw', ply, 0.1)
+			playVoiceline("endo", 'throw', ply, 0.1)
 
             target:SetMoveType(MOVETYPE_WALK)
             target:SetCollisionGroup(COLLISION_GROUP_PLAYER)
@@ -2481,6 +2489,19 @@ if SERVER then
 			table.RemoveByValue(cupcakes, ent:EntIndex())
 		end
 	end)
+
+else
+	
+	net.Receive("fh_play_voiceline", function()
+		local character = net.ReadString()
+		local line = net.ReadString()
+		local who = net.ReadPlayer()
+		
+		if IsValid(who) then
+			who:EmitSound( character .. "." .. line)
+		end
+	end)
+
 end
 	
 hook.Add("PlayerNoClip", "BlockNoClipForHeldPlayer", function(ply, desiredState)

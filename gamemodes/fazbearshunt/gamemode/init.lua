@@ -155,7 +155,6 @@ function assignKillers()
 		end
 		
 		chosenPlayer.lobbyFreeze = true
-		chosenPlayer:Freeze(true)
     end
 	
 	table.Empty(lastKillers)
@@ -169,7 +168,6 @@ function assignKillers()
 	timer.Create("UnfrozeAnimatronics", setupGameDuration, 1, function()
 		for _, ply in ipairs( animatronics ) do
 			ply.lobbyFreeze = nil
-			ply:Freeze(false)
 		end
 		roundActive = true
 		LogEvent(" ")
@@ -212,7 +210,9 @@ function giveKiller(player, killer)
     net.WriteColor(killerData.color)
     net.Broadcast()
 	
-	ply:Freeze(true)
+	if timer.Exists("UnfrozeAnimatronics") then
+		ply.lobbyFreeze = true
+	end
 end
 
 function setupPlayerVars(ply)
@@ -412,6 +412,8 @@ hook.Add("PlayerInitialSpawn", "fh_ply_spawn", function(ply)
 	
 	if isGameOn then
 		timer.Simple(0, function()
+			ply:KillSilent()
+			
 			ply:StripWeapons()
 			ply:Spectate(OBS_MODE_CHASE)
 			ply:SetTeam(TEAM_SPECTATOR)
@@ -429,6 +431,10 @@ hook.Add("PlayerInitialSpawn", "fh_ply_spawn", function(ply)
 		end
 	end
 end)
+
+hook.Add( "AllowPlayerPickup", "fh_allow_pickup", function( ply, ent )
+    return ply:Team() != TEAM_SPECTATOR
+end )
 
 hook.Add("FinishMove", "CanMove", function(ply)
 	ply:SetCustomCollisionCheck(true)
@@ -454,7 +460,7 @@ hook.Add("PlayerDisconnected", "PlayerLeft", function(ply)
 		table.RemoveByValue(alivePlayers, ply)
 	end
 	
-	if table.Count(animatronics) == 0 and isGameOn then
+	if table.Count(animatronics) == 0 and isGameOn and !roundEnding then
 		local plys = {}
 		for _, ply in pairs(survivors) do
 			table.insert(plys, ply:Nick())
@@ -554,7 +560,7 @@ hook.Add("PlayerDeath", "fh_deaths", function( victim, inflictor, attacker )
 		table.RemoveByValue(animatronics, victim)
 	end
 	
-	if table.Count(animatronics) == 0 and isGameOn then
+	if table.Count(animatronics) == 0 and isGameOn and !roundEnding then
 		local plys = {}
 		for _, ply in pairs(survivors) do
 			table.insert(plys, ply:Nick())

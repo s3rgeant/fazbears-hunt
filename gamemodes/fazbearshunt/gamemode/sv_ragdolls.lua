@@ -76,4 +76,6 @@ function meta:CreateRagdoll()
 
 	self:SpectateEntity(ent)
 	self:Spectate(OBS_MODE_CHASE)
+	
+	hook.Run("fh_createragdoll", self, ent)
 end

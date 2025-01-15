@@ -35,9 +35,20 @@ local function cyclePlayers(ply, am)
 	end
 end
 
-hook.Add('PlayerDeathThink', 'BlockRespawn', function(ply)
+hook.Add('PlayerDeathThink', 'fh_block_respawn', function(ply)
 	if isGameOn then
 		return false
+	end
+end)
+
+hook.Add('fh_createragdoll', 'fh_spectate_dead', function(player, ragdoll)
+	for k, v in ipairs(team.GetPlayers(TEAM_SPECTATOR)) do
+		if v:GetObserverTarget() == player then
+			if ragdoll then
+				v:SpectateEntity(ragdoll)
+				v:Spectate(OBS_MODE_CHASE)
+			end
+		end
 	end
 end)
 
