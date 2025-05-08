@@ -10,6 +10,8 @@ util.AddNetworkString("fh_remove_hud_mine")
 
 util.AddNetworkString("AddServerAffectedPlayers")
 
+util.PrecacheModel("models/team vr/cupcake.mdl")
+
 local nearPlayers = {}
 
 function ENT:Initialize()
@@ -31,7 +33,7 @@ function ENT:Initialize()
 
     self:SetHealth(10)
 
-    timer.Create("CheckPlayersTimer_" .. self:EntIndex(), 1, 0, function()
+    timer.Create("CheckPlayersTimer_" .. self:EntIndex(), 0.5, 0, function()
         if not IsValid(self) then return end
         self:CheckForPlayers()
     end)
@@ -54,6 +56,17 @@ function ENT:CheckForPlayers()
 
     for _, ply in pairs(ents.FindInSphere(pos, radius)) do
         if ply:IsPlayer() and ply ~= self:GetOwner() and ply:Team() != 2701 and ply:Team() != TEAM_SPECTATOR and !table.HasValue(nearPlayers, ply) then
+			
+			local trace = util.TraceLine({
+				start = pos,
+				endpos = ply:GetPos(),
+				filter = function(ent)
+					return ent != ignorePlayer and !ent:IsPlayer() and !ent:IsNPC()
+				end,
+				mask = MASK_PLAYERSOLID_BRUSHONLY
+			})
+			
+			if trace.Hit then return end
 			
 			net.Start("NotifyCupcakeVictim")
 			net.Send(ply)
@@ -117,6 +130,18 @@ end
 function ENT:PhysgunPickup(ply, ent)
     return false
 end
+
+hook.Add("GravGunPickupAllowed", "fh_cakemine_pickup", function(player, entity)
+    if entity:GetClass() == "cakemine" then
+        return false
+    end
+end)
+
+hook.Add("GravGunPunt", "fh_cakemine_punt", function(player, entity)
+    if entity:GetClass() == "cakemine" then
+        return false
+    end
+end)
 
 function ENT:EmitExplosion()
     local effectdata = EffectData()

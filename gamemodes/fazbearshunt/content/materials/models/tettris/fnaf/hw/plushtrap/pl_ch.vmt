@@ -1,0 +1,25 @@
+VertexlitGeneric
+{
+	"$basetexture" "models\tetTris\FNaF\HW\Plushtrap\PL_Diffuse"
+	"$normalmap" "models\tetTris\FNaF\HW\Plushtrap\PL_Normal"
+
+	"$maskmap2" 	"models\tetTris\FNaF\HW\Plushtrap\PL_CH"
+
+	"$nocull" "0"
+	"$additive" "1"
+
+	"$specularexponent"		"20"
+	"$specularscale"		 	"0"
+	"$specularcolor" 			"[1 1 1]"
+	"$rimlightcolor" 			"[1 1 1]"
+
+	"$rimlightscale" 			"0"
+	"$ambientscale"			"0"
+
+	"$envmap" "models\cubemaps\fallout4cube_dithered_grey"
+	"$maskenvbymetalness" "0"
+
+	"$metalnessblendtofull"	"1"
+
+	"$envmapintensity"		0
+}

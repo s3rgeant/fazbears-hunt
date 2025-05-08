@@ -1,9 +1,16 @@
 local highlightEnabled = false
 
+-- звук для аниматронов
 local visionSuccessSound = "vision_success.wav"
 local visionUnsuccessSound = "vision_unsuccess.wav"
+
+-- звук для выживших
 local visionAffectedSound = "vision_affected.wav"
 local visionUnaffectedSound = "vision_unaffected.wav"
+
+-- спрингтрап
+local spr_visionAffectedSound = "fnaf3/spr_vision_affected.wav"
+local spr_visionUnaffectedSound = "fnaf3/spr_vision_unaffected.wav"
 
 local visionSuccessCake = "vision_success_cake.wav"
 local visionAffectedCake = "vision_affected_cake.wav"
@@ -61,18 +68,37 @@ function addAffected(ply)
 	end
 	
 	timer.Create( "RemoveAffectedPlayer"..ply:SteamID64(), conVars.halo_time:GetFloat(), 1, function()
-		if target == targetPlayer then return end
+		if target == ply then return end
 		table.RemoveByValue(affectedPlayers, ply)
 	end)
 end
 
 local target
-function addPermanentAffected(ply)
+function fh_addpermanent_affected_freddy(ply)
 	if !table.HasValue(affectedPlayers, ply) then
 		table.insert(affectedPlayers, ply)
 	end
 	target = ply
 	toggleShadows(false)
+end
+
+
+--
+-- НЕ ЗАБУДЬ ПОФИКСИТЬ ТУТ КОРОЧЕ БЕСКОНЕЧНО ПРОСВЕТ ДАЁТСЯ ПИЗДА
+--
+function fh_add_affected_springtrap(ply)
+	if !table.HasValue(affectedPlayers, ply) then
+		table.insert(affectedPlayers, ply)
+	end
+	
+	if timer.Exists( "RemoveAffectedPlayer"..ply:SteamID64() ) then
+		timer.Remove( "RemoveAffectedPlayer"..ply:SteamID64())
+	end
+	
+	timer.Create( "RemoveAffectedPlayer"..ply:SteamID64(), 90, 1, function()
+		if target == ply then return end
+		table.RemoveByValue(affectedPlayers, ply)
+	end)
 end
 
 function toggleShadows(bool)
@@ -90,7 +116,11 @@ function toggleShadows(bool)
 end
 
 net.Receive("fh_addaffected_stalk", function()
-	addPermanentAffected(net.ReadEntity())
+	fh_addpermanent_affected_freddy(net.ReadEntity())
+end)
+
+net.Receive("fh_addaffected_springtrap", function()
+	fh_add_affected_springtrap(net.ReadEntity())
 end)
 
 net.Receive("NotifySoundCupcakeOwner", function()
@@ -175,18 +205,9 @@ net.Receive("fh_adv_sound_play", function()
 end)
 
 net.Receive("fh_ent_sound_play", function()
-	local ply = LocalPlayer()
-	local ent = net.ReadEntity()
-	
-	local pill = pk_pills.getMappedEnt(ply)
+	local ent = net.ReadPlayer()
 	local snd = net.ReadString()
-	if snd == 'freddy_stalking_others.wav' and pill ~= nil and pill.formTable.printName == "Withered Freddy" then
-		//print('ya freddy')
-		return
-	end
-	if !IsValid(ent) then
-		return
-	end
+	
     if not playerSounds[snd] then
         local sound = CreateSound(ent, snd)
         sound:Play()
@@ -207,11 +228,12 @@ end)
 
 net.Receive("PlayHighlightSounds", function()
     local isAffected = net.ReadBool()
+	local springtrap = net.ReadBool() or false
     if isAffected then
-		surface.PlaySound(visionAffectedSound)
+		surface.PlaySound(springtrap and spr_visionAffectedSound or visionAffectedSound)
 		drawHighlightTimer(true)
     else
-		surface.PlaySound(visionUnaffectedSound)
+		surface.PlaySound(springtrap and spr_visionUnaffectedSound or visionUnaffectedSound)
     end
 end)
 
@@ -256,22 +278,99 @@ net.Receive("ToggleHighlightSound", function()
 end)
 
 hook.Add( "PreDrawHalos", "HaloDo", function()
-	halo.Add(affectedPlayers, Color(255, 0, 0, 255), 0.5, 0.5, 1, true, true)
+	-- ДЛЯ ВЫЖИВШИХ
 	halo.Add(animatronics, Color(255, 155, 0, 255), 0.5, 0.5, 1, true, true)
+	
+	-- ДЛЯ АНИМАТРОНИКОВ
+	halo.Add(affectedPlayers, Color(255, 0, 0, 255), 0.5, 0.5, 1, true, true)
+	
 	if fh_halo_teammates:GetBool() then
+	
 		halo.Add(teammates, Color(0, 255, 0, 255), 0.5, 0.5, 1, true, true)
+		
+		if LocalPlayer():Team() == 2701 then
+			halo.Add(ents.FindByClass("plushtrap"), Color(0, 255, 0, 255), 0.5, 0.5, 1, true, true)
+		end
+		
+	end
+	
+	local ent = pk_pills.getMappedEnt(LocalPlayer())
+	
+	if ent and ent.formTable then
+		if ent.formTable.name == "pill_wchica2" then -- ДЛЯ ЧИКИ
+			halo.Add(ents.FindByClass("cakemine"), Color(255, 155, 0, 255), 0.5, 0.5, 1, true, true)
+		end
 	end
 end)
 
-hook.Add("HUDPaint", "PlayerDrawAnywhere", function()
+hook.Add("HUDPaint", "fh_cupcake_count_draw", function()
+	local ent = pk_pills.getMappedEnt(LocalPlayer())
+	if !ent then return end
+	if ent.formTable and ent.formTable.name != "pill_wchica2" then return end
+    local cakemines = ents.FindByClass("cakemine")
+
+    for i, ent in ipairs(cakemines) do
+        if not IsValid(ent) then continue end
+
+        local pos = ent:GetPos():ToScreen() -- Преобразуем координаты в экранные
+
+        if pos.visible then
+            draw.SimpleTextOutlined(
+                i, 
+                "DermaLarge", 
+                pos.x, pos.y - 25, 
+                Color(255, 155, 0, 255), 
+                TEXT_ALIGN_CENTER, TEXT_ALIGN_CENTER, 
+                1, Color(0, 0, 0, 255)
+            )
+        end
+    end
+end)
+
+local texture = Material("vgui/target_orb.png", "noclamp smooth")
+local maxDistance = 1650
+
+hook.Add("HUDPaint", "fh_draw_affected", function()
     cam.Start3D()
-        for k,v in pairs(affectedPlayers) do
+        for k, v in pairs(affectedPlayers) do
             if v ~= LocalPlayer() and v:IsValid() and v:Health() > 0 then
                 v:DrawModel()
             end
         end
     cam.End3D()
+	
+	draw_orbs(affectedPlayers)
 end)
+
+function draw_orbs(tbl)
+    local ply = LocalPlayer()
+    if !IsValid(ply) or !ply:Alive() then return end
+	
+    local screenW, screenH = ScrW(), ScrH()
+    local halfW, halfH = screenW / 2, screenH / 2
+    local textureSize = 64 / 2 -- Половина размера текстуры
+    
+    for _, target in ipairs(tbl) do
+        if IsValid(target) and target:Alive() and target:Team() != TEAM_SPECTATOR then
+            local min, max = target:GetCollisionBounds()
+            local targetPos = target:GetPos() + Vector(0, 0, (min.z + max.z) / 2) -- Размещение в центре хитбокса
+            local screenPos = targetPos:ToScreen()
+            local dist = ply:GetPos():Distance(target:GetPos())
+            
+            if dist > maxDistance then
+                local alpha = math.Clamp((dist - maxDistance) / 200, 0, 1) * 255 -- Плавное появление
+                
+                -- ограничиваем координаты, чтобы текстура не уходила за границы экрана более чем на половину
+                local clampedX = math.Clamp(screenPos.x, textureSize, screenW - textureSize)
+                local clampedY = math.Clamp(screenPos.y, textureSize, screenH - textureSize)
+                
+                surface.SetDrawColor(255, 255, 255, alpha)
+                surface.SetMaterial(texture)
+                surface.DrawTexturedRect(clampedX - textureSize, clampedY - textureSize, 64, 64)
+            end
+        end
+    end
+end
 
 hook.Add("PrePlayerDraw", "fh_stalker_pv", function(ply)
 	if target then
@@ -287,6 +386,7 @@ hook.Add("PostCleanupMap", "fh_cleanup", function(ply)
 	table.Empty(affectedPlayers)
 	
 	hook.Remove("HUDPaint", "fh_hl_overlay_draw")
+	hook.Remove("HUDPaint", "fh_pt_draw_affected")
 end)
 
 net.Receive("fh_start_yoursmine_view", function()
@@ -296,6 +396,8 @@ net.Receive("fh_start_yoursmine_view", function()
     LocalPlayer().fh_initial_phase_duration = 5
     LocalPlayer().fh_rotation_duration = 0.7
     LocalPlayer().fh_total_duration = LocalPlayer().fh_initial_phase_duration + LocalPlayer().fh_rotation_duration
+	
+	LocalPlayer():DrawViewModel( false, 0 )
 	
 	LocalPlayer():SetFOV(0, 0)
 	
@@ -359,6 +461,8 @@ net.Receive("fh_stop_yoursmine_view", function()
     LocalPlayer().fh_initial_phase_duration = nil
     LocalPlayer().fh_rotation_duration = nil
     LocalPlayer().fh_total_duration = nil
+	
+	LocalPlayer():DrawViewModel( true, 0 )
 	
 	local ent = pk_pills.getMappedEnt(LocalPlayer())
 	

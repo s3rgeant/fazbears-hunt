@@ -10,6 +10,7 @@ include( "cl_nightvision.lua" )
 include( "cl_spechud.lua" )
 include( "cl_horror.lua" )
 include( "cl_timer.lua" )
+include( "cl_optionmenu.lua" )
 
 include( "mount/proximity.lua" )
 
@@ -21,7 +22,12 @@ hook.Add("HUDDrawTargetID", "HidePlayerNames", function()
 end)
 
 hook.Add("ShouldCollide", "CustomPlayerCollision", function(ent1, ent2)
-    if ent1:GetCollisionGroup() == COLLISION_GROUP_WORLD or ent2:GetCollisionGroup() == COLLISION_GROUP_WORLD then
+    if ent1:GetCollisionGroup() == COLLISION_GROUP_WORLD 
+	or ent2:GetCollisionGroup() == COLLISION_GROUP_WORLD 
+	or (ent1:GetCollisionGroup() == COLLISION_GROUP_DEBRIS and ent1:IsPlayer()) -- s freddy
+	or (ent1:GetCollisionGroup() == COLLISION_GROUP_PASSABLE_DOOR and ent1:IsPlayer() and ent2:IsPlayer())
+	or (ent2:GetCollisionGroup() == COLLISION_GROUP_PASSABLE_DOOR and ent2:IsPlayer() and ent1:IsPlayer())
+	then
         return false
     end
     return true
@@ -35,7 +41,7 @@ hook.Add( "PlayerBindPress", "fh_flash_nv", function( ply, bind, pressed )
 end )
 
 hook.Add("PlayerStartVoice", "HideVoicePanels", function(ply)
-    if ply == LocalPlayer() then
+    if ply == LocalPlayer() and ply:Team() != 2701 then
         hook.Add("HUDPaint", "DrawLocalPlayerVoiceIcon", function()
             local x, y = (ScrW() / 2) - (64 / 2), ScrH() - 50 - (64 / 2)
 			draw.RoundedBox(12, x, y, 64, 64, Color(0, 0, 0, 120))
@@ -47,8 +53,9 @@ hook.Add("PlayerStartVoice", "HideVoicePanels", function(ply)
         end)
 		return false
     end
-	if ply:Team() != 2701 then return false end
-	if LocalPlayer():Team() != 2701 then return false end
+	if (LocalPlayer():Team() == 2701 and ply:Team() != 2701) or (LocalPlayer():Team() == TEAM_SPECTATOR and ply:Team() != TEAM_SPECTATOR) then
+		return false
+	end
 end)
 
 hook.Add("PlayerEndVoice", "HideVoicePanels", function(ply)
@@ -57,7 +64,7 @@ hook.Add("PlayerEndVoice", "HideVoicePanels", function(ply)
     end
 end)
 
-hook.Add("InitPostEntity", "fh_player_fullconnect", function()
+hook.Add("InitPostEntity", "fh_player_fullconnect", function(ent)
 	net.Start('fh_initpostentity')
 	net.SendToServer()
 end)
@@ -135,4 +142,95 @@ net.Receive("SetKillerAngle", function()
 			end
 		end)
 	end
+end)
+
+net.Receive("ragColor", function(len)
+	local rag = Entity(net.ReadInt(16))
+	local col = net.ReadVector()
+
+	rag.GetPlayerColor = function() return col end
+end)
+
+net.Receive("fh_set_calcview_entity", function(len)
+	local entity = net.ReadEntity()
+	
+	print(entity)
+
+	hook.Add("CalcView", "fh_override_entity_calcview", function(ply,pos,angles,fov)
+		if !IsValid(entity) then
+			hook.Remove("CalcView", "fh_override_entity_calcview")
+			return
+		end
+		
+		return {
+			origin = entity:GetPos(),
+			angles = entity:GetAngles(),
+			fov = fov
+		}
+	end)
+end)
+
+local customViewPos = nil
+local customViewAng = nil
+
+local dynamic_firstperson = CreateClientConVar('fh_dynamic_firstperson', 1, true, false, 'Toggle dynamic firstperson (Animatronics only)')
+
+hook.Add("CalcView", "fh_animatronic_head_bop", function(ply, pos, angles, fov)
+	customViewPos = nil
+    customViewAng = nil
+	
+    if !IsValid(ply) or !ply:Alive() or ply:GetMoveType() == MOVETYPE_NOCLIP or ply:GetCollisionGroup() == COLLISION_GROUP_DEBRIS or !dynamic_firstperson:GetBool() then return end
+	
+    local targetEnt = pk_pills.getMappedEnt(ply)
+
+    if !IsValid(targetEnt) then return end
+
+    local boneIndex = targetEnt:LookupBone("bip_head")
+    if !boneIndex then return end
+
+    local headPos = select(1, targetEnt:GetBonePosition(boneIndex))
+    if !headPos then return end
+
+    local adjustedHeadPos = Vector(pos.x, pos.y, headPos.z)
+    local desiredPos = LerpVector(0.7, pos, adjustedHeadPos)
+
+    local tr = util.TraceLine({
+        start = ply:GetPos(),
+        endpos = desiredPos,
+        filter = ply,
+        mask = MASK_SOLID_BRUSHONLY
+    })
+
+    local safePos = tr.Hit and tr.HitPos + tr.HitNormal * 4 or desiredPos
+
+    customViewPos = safePos
+    customViewAng = angles
+
+    return {
+        origin = safePos,
+        angles = angles,
+        fov = fov
+    }
+end)
+
+local smoothedVM_Ang = nil
+local smoothSpeed = 16
+
+hook.Add("CalcViewModelView", "MatchViewModelToCustomView", function(wep, vm, oldPos, oldAng, pos, ang)
+    if !dynamic_firstperson:GetBool() or not customViewPos or not customViewAng then return end
+
+    if not smoothedVM_Ang then
+        smoothedVM_Ang = Angle(customViewAng)
+    end
+
+    local angDiff = customViewAng - smoothedVM_Ang
+    angDiff:Normalize()
+
+    local delta = math.abs(angDiff.pitch) + math.abs(angDiff.yaw) + math.abs(angDiff.roll)
+
+    local adaptiveSpeed = math.Clamp(8 + delta * 2, 8, 60)
+
+    smoothedVM_Ang = LerpAngle(FrameTime() * adaptiveSpeed, smoothedVM_Ang, customViewAng)
+
+    return customViewPos, smoothedVM_Ang
 end)

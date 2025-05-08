@@ -183,26 +183,8 @@ function SWEP:Think()
 			effect2:SetEntity(v)
 			util.Effect("teslaHitBoxes",effect2)
 			v:EmitSound("Weapon_StunStick.Activate")
-			
-			net.Start("DefibrilatorEffect")
-			net.WriteEntity(v)
-			net.Send(self.Owner)
         end
     end
-end
-
-if CLIENT then
-    net.Receive("DefibrilatorEffect", function()
-        local v = net.ReadEntity()
-		if !IsValid(v) then return end
-		
-        local effect2 = EffectData()
-		effect2:SetOrigin(v:GetPos())
-		effect2:SetStart(v:GetPos())
-        effect2:SetMagnitude(5)
-		effect2:SetEntity(v)
-        util.Effect("teslaHitBoxes", effect2)
-    end)
 end
 
 SWEP.Reviving = false
@@ -232,39 +214,41 @@ function SWEP:PrimaryAttack()
 
     self:SetNextPrimaryFire(CurTime() + self.Primary.Delay + 0.2)
 
-    if SERVER then
-        if IsValid(tr.Entity) then
-            for k, v in pairs(ents.FindInSphere(self.Owner:GetShootPos(), 70)) do
-                if v:GetClass() == 'prop_ragdoll' then
-                    self.Reviving = true
-                    self.ReviveStartTime = CurTime()
-                    self.ReviveTarget = v
-                    self.OldPos = v:GetPos()
+    if IsValid(tr.Entity) then
+        for k, v in pairs(ents.FindInSphere(self.Owner:GetShootPos(), 70)) do
+            if v:GetClass() == 'prop_ragdoll' then
+                self.Reviving = true
+                self.ReviveStartTime = CurTime()
+                self.ReviveTarget = v
+                self.OldPos = v:GetPos()
 
-					local spark = ents.Create("env_spark")
-					spark:SetPos(v:GetPos())
-					spark:SetKeyValue("spawnflags", "192")
-					spark:SetKeyValue("traillength", "1")
-					spark:SetKeyValue("magnitude", "2")
-					spark:Spawn()
-					spark:Fire("SparkOnce", "", 0.05)
-					spark:Fire("kill", "", 0.1)
-
-                    if not self.ReviveSound then
-                        self.ReviveSound = CreateSound(self.Owner, "defibl/defibrillator_use_start.wav")
-                    end
-                    self.ReviveSound:Play()
-
-                    self.Owner:ViewPunch(Angle(-10, 0, 0))
-                    self:SetClip1(10)
-
-                    return
-                end
+				if CLIENT then
+					return
+				end
+				
+				local spark = ents.Create("env_spark")
+				spark:SetPos(v:GetPos())
+				spark:SetKeyValue("spawnflags", "192")
+				spark:SetKeyValue("traillength", "1")
+				spark:SetKeyValue("magnitude", "2")
+				spark:Spawn()
+				spark:Fire("SparkOnce", "", 0.05)
+				spark:Fire("kill", "", 0.1)
+	
+				if not self.ReviveSound then
+					self.ReviveSound = CreateSound(self.Owner, "defibl/defibrillator_use_start.wav")
+				end
+				self.ReviveSound:Play()
+	
+				self.Owner:ViewPunch(Angle(-10, 0, 0))
+				self:SetClip1(10)
+	
+				return
             end
-            self.Owner:EmitSound("HL2Player.UseDeny")
-        else
-            self.Owner:EmitSound("HL2Player.UseDeny")
         end
+        self.Owner:EmitSound("HL2Player.UseDeny")
+    else
+        self.Owner:EmitSound("HL2Player.UseDeny")
     end
 
     self.Owner:SetAnimation(PLAYER_ATTACK1)
@@ -513,11 +497,11 @@ else -- CLIENT
 	
 		if IsValid(wep) and wep:GetClass() == "weapon_defibrilator" then
 			for _, ent in pairs(ents.FindByClass("prop_ragdoll")) do
-				if ent:GetPos():Distance(ply:GetPos()) <= 150 then
+				if ent:GetPos():Distance(ply:GetPos()) <= 377 then
 					local ownerName = IsValid(ent:GetOwner()) and ent:GetOwner():Nick() or "???"
 					local screenPos = ent:GetPos():ToScreen() -- Позиция для отображения
 	
-					draw.SimpleText(ownerName, "DermaDefault", screenPos.x, screenPos.y, Color(255, 255, 255), TEXT_ALIGN_CENTER, TEXT_ALIGN_CENTER)
+					draw.SimpleText(ownerName, "timerFontBelow", screenPos.x, screenPos.y, Color(255, 255, 255), TEXT_ALIGN_CENTER, TEXT_ALIGN_CENTER)
 				end
 			end
 		end

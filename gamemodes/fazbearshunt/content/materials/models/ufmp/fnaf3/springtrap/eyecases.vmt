@@ -1,0 +1,21 @@
+"VertexlitGeneric"
+{
+$basetexture "models\ufmp\white"
+$surfaceprop metal
+$phong "1"
+$tranlucent "1"
+$phongexponent "30"
+$phongboost "0.3"
+$color2 "[0 0 0]"
+$alpha2 "0.6"
+$color "0.26"
+$phongfresnelranges "[0.05 0.5 1]"
+$ambientocclusion "0"
+$halflambert "1"
+$nodecal "1"
+$model "1"
+$diffuseexp "1.5"
+$normalmapalphaenvmapmask   "1"
+$basemapalphaphongmask "1"
+$nocull 1
+}

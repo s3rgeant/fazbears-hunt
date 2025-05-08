@@ -48,6 +48,8 @@ function SWEP:SecondaryAttack()
     return true
 end
 
+SWEP.run_string = "run"
+SWEP.run_act = ACT_VM_SPRINT_IDLE
 function SWEP:Think()
     if SERVER then
         local ply = self.Owner
@@ -79,9 +81,9 @@ function SWEP:Think()
 
         if (onGround and ply:WaterLevel() <= 1) and walkSpeed > 10 then
             if speed >= runSpeed * 0.9 and walkSpeed != runSpeed then
-                if self.CurAnim ~= 'run' then
-                    self.Weapon:SendWeaponAnim(ACT_VM_SPRINT_IDLE)
-                    self.CurAnim = 'run'
+                if self.CurAnim ~= self.run_string then
+                    self.Weapon:SendWeaponAnim(self.run_act)
+                    self.CurAnim = self.run_string
                 end
             elseif speed >= walkSpeed * 0.9 and speed > 5 or ply:Crouching() and speed >= crouchSpeed then
                 if self.CurAnim ~= 'walk' then

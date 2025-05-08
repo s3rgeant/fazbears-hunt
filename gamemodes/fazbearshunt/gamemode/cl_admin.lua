@@ -1,4 +1,4 @@
-local AdminPanel = nil
+fh_admin_panel = nil
 local PlayerList = nil
 local AnimatronicList = nil
 local lastSelectedTab = 1
@@ -6,25 +6,40 @@ local lastSelectedTab = 1
 local function OpenAdminPanel()
     local selectedAnimatron = nil
 
-    if IsValid(AdminPanel) then 
-        AdminPanel:Remove()
-        gui.EnableScreenClicker(false)
-        return
+    if IsValid(fh_admin_panel) then
+		fh_admin_panel:Remove()
+		gui.EnableScreenClicker(false)
+		return
     end
 
-    AdminPanel = vgui.Create("DFrame")
-    AdminPanel:SetSize(600, 500)
-    AdminPanel:Center()
-    AdminPanel:SetScreenLock(true)
-    AdminPanel:SetTitle("Админ-Панель")
+	--[[
+    if IsValid(fh_admin_panel) then
+		if fh_admin_panel:IsVisible() then 
+			fh_admin_panel:Hide()
+			gui.EnableScreenClicker(false)
+			return
+		else
+			createListPlayers()
+			fh_admin_panel:Show()
+			gui.EnableScreenClicker(true)
+			return
+		end
+    end
+	]]--
+
+    fh_admin_panel = vgui.Create("DFrame")
+    fh_admin_panel:SetSize(600, 500)
+    fh_admin_panel:Center()
+    fh_admin_panel:SetScreenLock(true)
+    fh_admin_panel:SetTitle("Админ-Панель")
     gui.EnableScreenClicker(true)
 
-    AdminPanel.OnClose = function()
+    fh_admin_panel.OnClose = function()
         gui.EnableScreenClicker(false)
     end
 
     -- Создаем PropertySheet для вкладок
-    local PropertySheet = vgui.Create("DPropertySheet", AdminPanel)
+    local PropertySheet = vgui.Create("DPropertySheet", fh_admin_panel)
     PropertySheet:Dock(FILL)
 
     -- Первая вкладка: управление игроками
@@ -85,13 +100,14 @@ local function OpenAdminPanel()
                 net.WriteUInt(#targets, 8)
                 for _, target in pairs(targets) do
                     net.WriteEntity(target)
-					if btn.action != "highlight" then
+					if (btn.action == "give_animatronic" and selectedAnimatron != nil) or btn.action == "resurrect" or btn.action == "kill" then
 						updatePlayer(target, btn.action)
 					end
                 end
                 if btn.action == "give_animatronic" then
                     if selectedAnimatron == nil then
                         chat.AddText(Color(255, 0, 0), "Выберите аниматроника!")
+                        net.WriteString(tostring(""))
                     else
                         net.WriteString(tostring(selectedAnimatron))
                     end
@@ -112,7 +128,8 @@ local function OpenAdminPanel()
     local roundActions = {
         {text = language.GetPhrase("fuppr.adminpanel.startgame"), action = "start_round"},
         {text = language.GetPhrase("fuppr.adminpanel.endgame"), action = "end_round"},
-        {text = language.GetPhrase("fuppr.adminpanel.endpostround"), action = "end_post_round"}
+        {text = language.GetPhrase("fuppr.adminpanel.endroundstartup"), action = "end_post_round"},
+        {text = language.GetPhrase("fuppr.adminpanel.endlobbytimer"), action = "end_lobby_timer"}
     }
 
     local roundY = 10
@@ -130,9 +147,9 @@ local function OpenAdminPanel()
     end
 
     local sliders = {
-        {label = language.GetPhrase("fuppr.highlight.cooldown"), action = "set_highlight_delay", min = 10, max = 240, default = GetConVar('halo_cooldown'):GetInt(), decimals = 0},
-        {label = language.GetPhrase("fuppr.highlight.time"), action = "set_highlight_duration", min = 3, max = 30, default = GetConVar('halo_time'):GetInt(), decimals = 0},
-        {label = language.GetPhrase("fuppr.highlight.radius"), action = "set_highlight_distance", min = 100, max = 4000, default = GetConVar('halo_radius'):GetInt(), decimals = 0}
+        {label = language.GetPhrase("fuppr.highlight.cooldown"), action = "set_highlight_delay", min = 10, max = 240, default = GetConVar('halo_cooldown'):GetInt(), decimals = 0, callback = "halo_cooldown"},
+        {label = language.GetPhrase("fuppr.highlight.time"), action = "set_highlight_duration", min = 3, max = 30, default = GetConVar('halo_time'):GetInt(), decimals = 0, callback = "halo_time"},
+        {label = language.GetPhrase("fuppr.highlight.radius"), action = "set_highlight_distance", min = 100, max = 4000, default = GetConVar('halo_radius'):GetInt(), decimals = 0, callback = "halo_radius"}
     }
 
     local sliderY = roundY
@@ -150,10 +167,10 @@ local function OpenAdminPanel()
         slider.OnValueChanged = function(self, value)
             net.Start("AdminAction")
             net.WriteString(sld.action)
-			net.WriteEntity(nil)
             net.WriteFloat(value)
             net.SendToServer()
         end
+		
         sliderY = sliderY + 40
     end
 
@@ -165,6 +182,17 @@ local function OpenAdminPanel()
 	function button:DoClick(bool)
 		net.Start("AdminAction")
 		net.WriteString('fh_auto_map_hl')
+		net.SendToServer()
+	end
+
+	local button = vgui.Create("DButton", RoundManagementPanel)
+	button:SetPos(235, sliderY)
+	button:SetSize(200, 40)
+	button:SetText("Сохранить настройки")
+	button:SetDark(true)
+	function button:DoClick(bool)
+		net.Start("AdminAction")
+		net.WriteString('fh_auto_map_save')
 		net.SendToServer()
 	end
 
@@ -182,7 +210,6 @@ local function OpenAdminPanel()
 	function button:OnChange(bool)
 		net.Start("AdminAction")
 		net.WriteString('fh_gifts_spawning')
-		net.WriteEntity(nil)
 		net.WriteBool(bool)
 		net.SendToServer()
 	end
@@ -205,6 +232,55 @@ local function OpenAdminPanel()
 	DLabel:SetSize(150, 100)
 
     PropertySheet:AddSheet("Ивенты", fh_events_management, "icon16/cog.png")
+
+    local ExperimentalPanel = vgui.Create("DPanel")
+    ExperimentalPanel:Dock(FILL)
+
+	local button = vgui.Create("DCheckBoxLabel", ExperimentalPanel)
+	button:SetPos(10, 15)
+	//button:SetSize(280, 30)
+	button:SetText("Урон по аниматроникам")
+	button:SetDark(true)
+	button:SetChecked(!conVars.fh_animatronic_immortal:GetBool())
+	function button:OnChange(bool)
+		net.Start("AdminAction")
+		net.WriteString('fh_animatronic_immortal')
+		net.WriteBool(!bool)
+		net.SendToServer()
+	end
+
+	local button = vgui.Create("DCheckBoxLabel", ExperimentalPanel)
+	button:SetPos(10, 35)
+	button:SetText("Полёт Шедоу Фредди")
+	button:SetDark(true)
+	button:SetChecked(shadow_freddyability:GetBool())
+	function button:OnChange(bool)
+		net.Start("AdminAction")
+		net.WriteString('fuppr_sfreddy_noclip')
+		net.WriteBool(bool)
+		net.SendToServer()
+	end
+
+	local button = vgui.Create("DCheckBoxLabel", ExperimentalPanel)
+	button:SetPos(10, 55)
+	button:SetText("Тихие аниматроники")
+	button:SetDark(true)
+	button:SetChecked(conVars.fh_less_steps:GetBool())
+	function button:OnChange(bool)
+		net.Start("AdminAction")
+		net.WriteString('fh_less_steps')
+		net.WriteBool(bool)
+		net.SendToServer()
+	end
+	
+	local DLabel = vgui.Create( "DLabel", ExperimentalPanel )
+	DLabel:SetPos( 220, 15 )
+	DLabel:SetText( "- Если выключить полёт Шедоу Фредди, \nон всё ещё сможет использовать способность ухода под пол, \nно не сможет летать, но будет передвигаться по полу как игрок, \nи будет уметь проходить сквозь двери.\n" ..
+	"\n- Если включить тихих аниматроников, \nто звуки шагов аниматроников будут играть только тогда, \nкогда аниматроник будет рендериться.")
+	DLabel:SetDark(true)
+	DLabel:SetSize(345, 100)
+
+    PropertySheet:AddSheet("Эксперименты", ExperimentalPanel, "icon16/chart_line.png")
 	
     if IsValid(PropertySheet) then
         PropertySheet:SetActiveTab(PropertySheet.Items[lastSelectedTab].Tab)
@@ -220,9 +296,11 @@ local function OpenAdminPanel()
 			end
 		end)
     end
+	
 end
 
 function createListPlayers()
+	if !IsValid(fh_admin_panel) then return end
     PlayerList:Clear()
     for _, v in pairs(player.GetAll()) do
         local team = getTeam(v:Team())
@@ -243,8 +321,14 @@ function createListAnimatronics()
     AnimatronicList:Clear()
     local killers = killerInfo
     local duoKillers = duoKillerInfo
+	local springtrap = springtrapInfo
 
     for k, v in pairs(duoKillers) do
+        killers[k] = v
+    end
+	
+	--а ещё спрингтрапа сюда
+    for k, v in pairs(springtrap) do
         killers[k] = v
     end
 
@@ -264,3 +348,17 @@ hook.Add("OnSpawnMenuOpen", "BindAdminPanel", function()
         OpenAdminPanel()
     end
 end)
+
+gameevent.Listen( "player_connect" )
+hook.Add("player_connect", "sexmortalcombat", function( data )
+	timer.Simple(1, function()
+		createListPlayers()
+	end)
+end)
+
+gameevent.Listen( "player_disconnect" )
+hook.Add( "player_disconnect", "player_disconnect_example", function( data )
+	timer.Simple(1, function()
+		createListPlayers()
+	end)
+end )

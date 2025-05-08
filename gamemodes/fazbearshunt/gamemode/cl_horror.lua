@@ -11,12 +11,17 @@ local function CheckPlayersAndPlaySound()
     local eyeAngles = localPlayer:EyeAngles()
     local forward = eyeAngles:Forward()
 
-    local viewRadius = 1200
+    local viewRadius = 125
 
     for _, ply in ipairs(player.GetAll()) do
-        if ply ~= localPlayer and IsValid(ply) and ply:Alive() and localPlayer:Alive() and ply:GetMoveType() != MOVETYPE_NOCLIP then
+        if ply ~= localPlayer and IsValid(ply) and ply:Alive() and localPlayer:Alive() and localPlayer:Team() != TEAM_SPECTATOR 
+		and ply:GetMoveType() != MOVETYPE_NOCLIP then
             if pk_pills and pk_pills.getMappedEnt and pk_pills.getMappedEnt(ply) ~= nil then
                 local plyPos = ply:EyePos()
+				
+				if ply:IsSprinting() and ply:GetVelocity():LengthSqr() >= ply:GetRunSpeed() then
+					viewRadius = 1200
+				end
 
                 local toPly = (plyPos - eyePos)
                 local distance = toPly:Length()

@@ -4,13 +4,25 @@ local hullMin = Vector(-16, -16, 0)
 local hullMax = Vector(16, 16, 72)
 
 hook.Add("PlayerSelectSpawn", "PreventPlayerStuckSpawn", function(ply)
-    local spawns = ents.FindByClass("info_player_start")
-    if #spawns == 0 then
-        spawns = ents.FindByClass("info_player_deathmatch")
+    local spawns
+
+    if ply:Team() == 2701 then
+        spawns = ents.FindByClass("info_player_killer") -- кастомные спавны для аниматроников
+        if #spawns == 0 then
+            spawns = ents.FindByClass("info_player_start")
+            spawns = updateSpawnList(spawns)
+        end
+    else
+        spawns = ents.FindByClass("info_player_start")
+        spawns = updateSpawnList(spawns)
     end
 
     if #spawns == 0 then
-        return Vector(0, 0, 0)
+        spawns = ents.FindByClass("info_player_start")
+    end
+
+    if #spawns == 0 then
+        return
     end
 
     local chosenSpawn = spawns[math.random(#spawns)]
@@ -49,7 +61,7 @@ hook.Add("PlayerSelectSpawn", "PreventPlayerStuckSpawn", function(ply)
 
             if not tr.Hit then
                 isPositionFound = true
-				debugoverlay.Line(spawnPos + Vector(0, 0, 10), spawnPos + Vector(0, 0, 10), 15, Color(255, 0, 0), true)
+                debugoverlay.Line(spawnPos + Vector(0, 0, 10), spawnPos + Vector(0, 0, 10), 15, Color(255, 0, 0), true)
                 break
             else
                 local angle = math.rad(math.random(0, 360))
@@ -76,4 +88,101 @@ hook.Add("PlayerSelectSpawn", "PreventPlayerStuckSpawn", function(ply)
     end)
 
     return tempSpawn
+end)
+
+function updateSpawnList(tab)
+	spws = tab
+	
+	spws = table.Add( spws, ents.FindByClass( "info_player_deathmatch" ) )
+	spws = table.Add( spws, ents.FindByClass( "info_player_combine" ) )
+	spws = table.Add( spws, ents.FindByClass( "info_player_rebel" ) )
+	spws = table.Add( spws, ents.FindByClass( "info_coop_spawn" ) )
+	spws = table.Add( spws, ents.FindByClass( "info_player_counterterrorist" ) )
+	spws = table.Add( spws, ents.FindByClass( "info_player_terrorist" ) )
+	spws = table.Add( spws, ents.FindByClass( "info_player_axis" ) )
+	spws = table.Add( spws, ents.FindByClass( "info_player_allies" ) )
+	spws = table.Add( spws, ents.FindByClass( "gmod_player_start" ) )
+	spws = table.Add( spws, ents.FindByClass( "info_player_teamspawn" ) )
+	spws = table.Add( spws, ents.FindByClass( "ins_spawnpoint" ) )
+	spws = table.Add( spws, ents.FindByClass( "aoc_spawnpoint" ) )
+	spws = table.Add( spws, ents.FindByClass( "dys_spawn_point" ) )
+	spws = table.Add( spws, ents.FindByClass( "info_player_pirate" ) )
+	spws = table.Add( spws, ents.FindByClass( "info_player_viking" ) )
+	spws = table.Add( spws, ents.FindByClass( "info_player_knight" ) )
+	spws = table.Add( spws, ents.FindByClass( "diprip_start_team_blue" ) )
+	spws = table.Add( spws, ents.FindByClass( "diprip_start_team_red" ) )
+	spws = table.Add( spws, ents.FindByClass( "info_player_red" ) )
+	spws = table.Add( spws, ents.FindByClass( "info_player_blue" ) )
+	spws = table.Add( spws, ents.FindByClass( "info_player_coop" ) )
+	spws = table.Add( spws, ents.FindByClass( "info_player_human" ) )
+	spws = table.Add( spws, ents.FindByClass( "info_player_zombie" ) )
+	spws = table.Add( spws, ents.FindByClass( "info_player_zombiemaster" ) )
+	spws = table.Add( spws, ents.FindByClass( "info_player_fof" ) )
+	spws = table.Add( spws, ents.FindByClass( "info_player_desperado" ) )
+	spws = table.Add( spws, ents.FindByClass( "info_player_vigilante" ) )
+	spws = table.Add( spws, ents.FindByClass( "info_survivor_rescue" ) )
+	spws = table.Add( spws, ents.FindByClass( "info_player_attacker" ) )
+	spws = table.Add( spws, ents.FindByClass( "info_player_defender" ) )
+	spws = table.Add( spws, ents.FindByClass( "info_ff_teamspawn" ) )
+	
+	return spws
+end
+
+local ignoredCollisionGroups = {COLLISION_GROUP_DEBRIS_TRIGGER, COLLISION_GROUP_PASSABLE_DOOR, COLLISION_GROUP_WEAPON}
+
+local function IsPlayerStuck(ply)
+    local tr = util.TraceHull({
+        start = ply:GetPos(),
+        endpos = ply:GetPos(),
+        mins = ply:OBBMins(),
+        maxs = ply:OBBMaxs(),
+		filter = function(ent)
+			return ent != ply and !table.HasValue(ignoredCollisionGroups, ent:GetCollisionGroup())
+		end,
+		mask = MASK_PLAYERSOLID
+    })
+    return tr.Hit
+end
+
+local function FindSafePosition(ply)
+    local startPos = ply:GetPos()
+    local directions = {
+        Vector(50, 0, 0),
+        Vector(-50, 0, 0),
+        Vector(0, 50, 0),
+        Vector(0, -50, 0),
+        Vector(0, 0, 50),
+        Vector(0, 0, -50),
+    }
+
+    for i = 1, 10 do
+        for _, dir in ipairs(directions) do
+            local checkPos = startPos + dir * i
+            local tr = util.TraceHull({
+                start = checkPos,
+                endpos = checkPos,
+                mins = ply:OBBMins(),
+                maxs = ply:OBBMaxs(),
+                filter = ply
+            })
+
+            if not tr.Hit then
+                return checkPos
+            end
+        end
+    end
+
+    return nil
+end
+
+hook.Add("KeyPress", "CheckStuckAndTeleport", function(ply, key)
+	if (!ply:Alive() or ply:Team() == TEAM_SPECTATOR) or ply:GetMoveType() == MOVETYPE_NOCLIP or ply:GetCollisionGroup() == COLLISION_GROUP_DEBRIS then return end
+    if key == IN_FORWARD or key == IN_BACK or key == IN_MOVELEFT or key == IN_MOVERIGHT then
+        if IsPlayerStuck(ply) then
+            local safePos = FindSafePosition(ply)
+            if safePos then
+                ply:SetPos(safePos)
+            end
+        end
+    end
 end)

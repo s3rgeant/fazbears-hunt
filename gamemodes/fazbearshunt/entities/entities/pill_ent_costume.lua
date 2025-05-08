@@ -74,11 +74,12 @@ function ENT:Initialize()
         --ply:DrawWorldModel(false)
         local camOffset = self.formTable.camera and self.formTable.camera.offset or Vector(0, 0, 64)
         --clside this?
-        ply:SetStepSize(hull.z / 4)
+        ply:SetStepSize(self.formTable.stepSize or (hull.z / 4))
         ply:SetViewOffset(camOffset)
         ply:SetViewOffsetDucked(camOffset - Vector(0, 0, duckBy))
         local speed = self.formTable.moveSpeed or {}
         ply:SetWalkSpeed(speed.walk or 200)
+		ply:SetSlowWalkSpeed(speed.walk or 200)
         ply:SetRunSpeed(speed.run or speed.walk or 500)
 
         if speed.ducked then
@@ -241,6 +242,10 @@ function ENT:Initialize()
         if self.formTable.cloak then
             self:SetCloakLeft(self.formTable.cloak.max)
         end
+		
+		if self.formTable.startFunction then
+            self.formTable.startFunction(ply, self)
+		end
 
         --puppet:SetParent(self)
         //puppet:Spawn()
@@ -277,9 +282,9 @@ function ENT:OnRemove()
 
             if ply:Alive() then
                 ply:SetMoveType(MOVETYPE_WALK)
-            end
 
-            ply:SetNotSolid(false)
+				ply:SetNotSolid(false)
+            end
 
             if ply:Alive() then
                 -- Just respawn the player to reset most stuff.
@@ -357,7 +362,7 @@ function ENT:Think()
             local cycle = self:GetCycle()
 
             if not self.animStart then
-                if cycle == 1 or (self.animCycle and self.animCycle > cycle) or (string.lower(anim) ~= string.lower(self:GetSequenceName(self:GetSequence()))) then
+                if ( cycle == 1 or (self.animCycle and self.animCycle > cycle) or (string.lower(anim) ~= string.lower(self:GetSequenceName(self:GetSequence()))) ) and !self.animLoop then
 					if self.formTable.animStopped then
 						self.formTable.animStopped(ply, self, anim)
 					end
@@ -615,8 +620,17 @@ function ENT:Think()
             end
         end
     else
-		if self:GetPillUser() == LocalPlayer():GetObserverTarget() and LocalPlayer():GetObserverMode() == OBS_MODE_IN_EYE or self:GetPillUser() == LocalPlayer() and !pk_pills.convars.cl_thirdperson:GetBool() and !self:GetPillUser().fh_target_player then
+		local ply = self:GetPillUser()
+		
+		if ply == LocalPlayer():GetObserverTarget() 
+		and LocalPlayer():GetViewEntity() == LocalPlayer()
+		and LocalPlayer():GetObserverMode() == OBS_MODE_IN_EYE or ply == LocalPlayer() 
+		and ply:GetViewEntity() == ply
+		and !pk_pills.convars.cl_thirdperson:GetBool() 
+		and !ply.fh_target_player then
+		
 			self:SetColor(Color(255, 255, 255, 0))
+			
         elseif (self:GetPillUser() ~= LocalPlayer()) then
 			self:SetNoDraw(false)
 			self:SetColor(Color(255, 255, 255, 255))
@@ -636,6 +650,30 @@ function ENT:Think()
     if self.formTable.aim then
         if self.formTable.aim.xPose then
             local yaw = math.AngleDifference(ply:EyeAngles().y, self:GetAngles().y)
+			
+			--[[
+			if SERVER then
+				print(ply:EyeAngles().y, self:GetAngles().y)
+			end
+			
+			if anims["turnleft"] and yaw > 85 and yaw < 95 then
+				local angs = ply:EyeAngles()
+				angs.p = 0
+					
+				if SERVER then 
+					self:SetAngles(angs)
+					self:PillGesture('turnleft')
+				else
+					self:SetRenderAngles(angs)
+				
+				end
+			end
+			]]
+			
+			--[[
+				КОРОЧЕ. self:GetAngles() на сервере и клиенте выдаёт разные значения, поэтому одновременная
+				проверка не сильно возможна. На сервере в основном всё хуёво. Поэтому код сверху хуйня не работает
+			]]--
 
             if self.formTable.aim.xInvert then
                 yaw = -yaw
@@ -662,7 +700,7 @@ function ENT:Think()
         self:SetRenderOrigin(ply:GetPos())
     end
 
-    if vel > 0 then
+    if vel > 5 or ply:IsFlagSet(FL_FROZEN) then
         local angs = ply:EyeAngles()
         angs.p = 0
 
@@ -799,6 +837,30 @@ if SERVER then
 		self:SetLayerBlendIn(id, blendin or 0.1)
 		self:SetLayerBlendOut(id, out or 0.1)
 		
+    end
+	
+    function ENT:PillStopGesture(name)
+        local ply = self:GetPillUser()
+        if not IsValid(self) then return end
+        local anims = table.Copy(self.formTable.anims.default or {})
+        table.Merge(anims, IsValid(ply:GetActiveWeapon()) and self.formTable.anims[ply:GetActiveWeapon():GetHoldType()] or {})
+        local gesture = anims[name]
+		local seq = self:LookupSequence(gesture)
+		local id = nil
+		
+		if self.usedLayers[seq] then
+			id = self.usedLayers[seq]
+		end
+		if !id then
+			return
+		end
+		
+		self:SetLayerPlaybackRate(id, 0.5)
+		self:SetLayerCycle(id, 0)
+		
+		self:SetLayerWeight(id, 0)
+		self:SetLayerBlendIn(id, 0)
+		self:SetLayerBlendOut(id, 0)
     end
 
     function ENT:PillChargeAttack()

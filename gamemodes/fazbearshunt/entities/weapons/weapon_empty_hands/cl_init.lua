@@ -1,8 +1,6 @@
 include( 'shared.lua' )
 
 SWEP.PrintName        = "Empty Hands"
-SWEP.Author           = "sergeant"
-SWEP.Purpose          = "yo?"
 
 SWEP.Slot             = 0
 SWEP.SlotPos          = 0

@@ -1,0 +1,23 @@
+"VertexlitGeneric"
+{
+	"$basetexture" "models\tetTris\FNaF\HW\Plushtrap\PL_Diffuse"
+	"$bumpmap" "models\tetTris\FNaF\HW\Plushtrap\PL_Normal"
+
+	"$phongexponenttexture" "models\tetTris\FNaF\HW\Plushtrap\PL_Exponent"
+
+	"$color2"	"[0 0 0]"
+	"$blendTintByBaseAlpha"	"1"
+
+	"$phong" "1"
+	"$phongboost"	"0.9934895"
+
+	"$phongfresnelranges"	"[0.1 0.23 0.945]"
+
+	"$phongdisablehalflambert"	"1"
+
+	"$envmap" "models\cubemaps\fallout4cube_dithered_grey"
+	"$normalmapalphaenvmapmask"		"1"
+	"$envmapfresnel"	"1"
+
+	"$envmaptint"		0
+}

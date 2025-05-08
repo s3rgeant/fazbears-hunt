@@ -1,5 +1,7 @@
 local meta = FindMetaTable("Player")
 
+util.AddNetworkString("ragColor")
+
 if not meta then return end
 
 function meta:CreateRagdoll()
@@ -64,6 +66,13 @@ function meta:CreateRagdoll()
 				bone:SetVelocity(plyvel)
 			end
 		end
+		
+		local ply_ragcol = self:GetPlayerColor()
+		ent.RagColor = Vector(ply_ragcol.r, ply_ragcol.g, ply_ragcol.b)
+		net.Start("ragColor")
+	    net.WriteInt(ent:EntIndex(), 16)
+	    net.WriteVector(ent.RagColor)
+	    net.Broadcast()
 	else
 		phys:SetVelocity(plyvel)
 	end

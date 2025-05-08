@@ -7,17 +7,25 @@ function GiveAnimatronic(ply, killer)
 	if killer == nil or killer == "" then return end
 	
 	RevivePlayer(ply)
-	giveKiller(ply, killer)
+	giveKiller(ply, killer, true)
+	ply:SetTeam(2701)
+	ply:Spawn()
 end
 
 function RevivePlayer(ply)
+	ply:SetTeam(TEAM_UNASSIGNED)
     ply:Spawn()
 	setupPlayerVars(ply)
-	ply:SetTeam(TEAM_UNASSIGNED)
 	
 	if isGameOn then
 		if !table.HasValue(survivors, ply) then
 			table.insert(survivors, ply)
+		end
+	end
+	
+	for k,v in pairs(usedKillers) do
+		if usedKillers[k] == ply then
+			usedKillers[k] = nil
 		end
 	end
 	
@@ -77,16 +85,19 @@ function KillPlayer(ply)
 		end
 		if table.HasValue(animatronics, ply) then
 			table.RemoveByValue(animatronics, ply)
-			RunConsoleCommand("pk_pill_restore", ply:Nick())
 		end
 		if table.HasValue(survivors, ply) then
 			table.RemoveByValue(survivors, ply)
 		end
-		timer.Simple(0.1, function()
-			ply:Kill()
-			ply:SetTeam(TEAM_SPECTATOR)
-		end)
+		
+		ply:Kill()
+		ply:SetTeam(TEAM_SPECTATOR)
+		
         LogEvent("(*АДМИН*) - Убит игрок **"..ply:Nick().."**")
+		
+		if !roundEnding and isGameOn then
+			animatronicsVictory_check(ply)
+		end
 	end
 end
 
@@ -131,9 +142,9 @@ end
 
 function EndRound()
 	if !roundEnding and isGameOn then
-		endGame()
+		endGame(true)
 		net.Start('fh_sound_stop')
-		net.WriteString('music/first_minute.wav')
+		net.WriteString(roundType == 0 and 'music/first_minute.wav' or 'music/freeze_timer_springtrap.wav')
 		net.Broadcast()
 		
 		net.Start('fh_net_scarysound')
@@ -152,7 +163,7 @@ function EndPostRound()
 	if !roundEnding and isGameOn then
 		roundActive = true
 		net.Start('fh_sound_stop')
-		net.WriteString('music/first_minute.wav')
+		net.WriteString(roundType == 0 and 'music/first_minute.wav' or 'music/freeze_timer_springtrap.wav')
 		net.Broadcast()
 		
 		net.Start('fh_net_scarysound')
@@ -164,6 +175,15 @@ function EndPostRound()
 		end
 		LogEvent(" ")
         LogEvent("(*АДМИН*) - Все аниматроники разморожены, раунд начат.")
+	end
+end
+
+function EndLobbyTimer()
+	if timer.Exists("GameStartTimer") then
+		timer.Remove("GameStartTimer")
+		
+		net.Start("ResetTimer")
+		net.Broadcast()
 	end
 end
 
@@ -199,9 +219,9 @@ net.Receive("AdminAction", function(len, ply)
 			return
 		end
 			
-		local killer = net.ReadString()
         for _, target in pairs(targets) do
             if action == "give_animatronic" then
+				local killer = net.ReadString()
                 GiveAnimatronic(target, killer)
             elseif action == "resurrect" then
                 RevivePlayer(target)
@@ -211,7 +231,7 @@ net.Receive("AdminAction", function(len, ply)
             end
         end
     else
-		local target = net.ReadEntity()
+		--local target = net.ReadEntity()
 		if action == "start_round" then
 			StartRound()
 		elseif action == "highlight_all" then
@@ -229,6 +249,8 @@ net.Receive("AdminAction", function(len, ply)
 			SetHighlightDistance(math.floor(value))
 		elseif action == "end_post_round" then
 			EndPostRound()
+		elseif action == "end_lobby_timer" then
+			EndLobbyTimer()
 		elseif action == "fh_gifts_spawning" then
 			local bool = net.ReadBool()
 			if !bool then
@@ -237,6 +259,10 @@ net.Receive("AdminAction", function(len, ply)
 				game.ConsoleCommand("fh_gifts_spawning 1\n")
 				doGiftSpawning()
 			end
+		elseif action == "fh_animatronic_immortal" or action == "fuppr_sfreddy_noclip" or action == "fh_less_steps" then
+			local bool = net.ReadBool() and 1 or 0
+			
+			game.ConsoleCommand(action .. " " .. bool .. "\n")
 		elseif action == "fh_spawn_gifts" then
 			fh_spawnGifts()
 		elseif action == "fh_auto_map_hl" then
@@ -247,11 +273,16 @@ net.Receive("AdminAction", function(len, ply)
 			SetHighlightDelay(mapInfo.value1)
 			SetHighlightDuration(mapInfo.value2)
 			SetHighlightDistance(mapInfo.value3)
+		elseif action == "fh_auto_map_save" then
+			AddOrUpdateMapData(GetConVar('halo_cooldown'):GetInt(),
+			GetConVar('halo_time'):GetInt(),
+			GetConVar('halo_radius'):GetInt(),
+			game.GetMap())
 		end
 	end
 end)
 
-local filePath = "fazbearshunt/fh_map_data.txt"
+local filePath = "fh_map_data.txt"
 
 function GetMapData()
     local mapName = game.GetMap()
@@ -295,7 +326,7 @@ function GetMapData()
     return mapData
 end
 
-local function AddOrUpdateMapData(value1, value2, value3, mapName)
+function AddOrUpdateMapData(value1, value2, value3, mapName)
     if not file.Exists(filePath, "DATA") then
         file.Write(filePath, "")
     end

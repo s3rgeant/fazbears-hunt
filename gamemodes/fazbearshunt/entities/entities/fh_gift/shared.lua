@@ -23,7 +23,7 @@ function ENT:Initialize()
         self:SetSolid(SOLID_BBOX)
         self:SetCollisionGroup(COLLISION_GROUP_DEBRIS_TRIGGER)
         self:SetTrigger(true)
-        self:SetCollisionBounds(Vector(-16, -16, 0), Vector(16, 16, 64))
+        self:SetCollisionBounds(Vector(-16, -16, 0), Vector(16, 16, 32))
         self:EmitSound("items/battery_pickup.wav")
         self.IsUsed = false
     end
@@ -56,8 +56,8 @@ if CLIENT then
                 ang:RotateAroundAxis(ang:Forward(), 90)
                 ang:RotateAroundAxis(ang:Right(), 90)
                 
-                cam.Start3D2D(self:GetPos() + Vector(0, 0, 80), Angle(0, ang.y, 90), 0.25)
-                draw.SimpleText("Подарок для " .. self:GetOwner():Nick(), "DermaLarge", 0, 0, Color(255, 255, 255), TEXT_ALIGN_CENTER, TEXT_ALIGN_CENTER)
+                cam.Start3D2D(self:GetPos() + Vector(0, 0, 65), Angle(0, ang.y, 90), 0.25)
+                draw.SimpleText("Подарок для " .. self:GetOwner():Nick(), "timerFontUpper", 0, 0, Color(255, 255, 255), TEXT_ALIGN_CENTER, TEXT_ALIGN_CENTER)
                 cam.End3D2D()
             end
         end
@@ -127,12 +127,15 @@ function ENT:ApplyEffect(player)
                 ply:SetRunSpeed(ply:GetRunSpeed() * 1.2)
                 ply:SetCrouchedWalkSpeed(ply:GetCrouchedWalkSpeed() * 1.4)
                 effectDesc = 'Тебе выдано ускорение на 15 секунд!'
+				
+				local trail = util.SpriteTrail(ply, ply:LookupAttachment( "chest" ), Color(0, 169, 255, 255), true, 32, 0, 1, 1 / ( ( 32 + 0 ) * 0.5 ), "trails/physbeam")
                 
                 timer.Simple(15, function()
                     if IsValid(ply) then
                         ply:SetWalkSpeed(ply:GetWalkSpeed() / 1.2)
                         ply:SetRunSpeed(ply:GetRunSpeed() / 1.2)
                         ply:SetCrouchedWalkSpeed(ply:GetCrouchedWalkSpeed() / 1.4)
+						trail:Remove()
                     end
                 end)
             end

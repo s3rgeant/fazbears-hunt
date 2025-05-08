@@ -61,7 +61,10 @@ timer.Create("UpdateAbilitiesTime", 0.1, 0, function()
 end)
 
 function assignAbilitiesByKiller(name)
-	addAbility('Highlight', 'R', 0, false)
+	if name != "plushtrap" then
+		addAbility('Highlight', 'R', 0, false)
+	end
+	
 	addAbility('Kill', 'ЛКМ', 0, true)
 	
 	if name == "sfreddy" then
@@ -77,6 +80,8 @@ function assignAbilitiesByKiller(name)
 		addAbility('Stalk', 'ПКМ', 0, false)
 	elseif name == "bonnie" then
 		addAbility('Yoursmine', 'ПКМ', 0, false)
+	elseif name == "springtrap" then
+		addAbility('Summon', 'ПКМ', 0, false)
 	end
 end
 
@@ -281,6 +286,14 @@ net.Receive("fh_net_thinkfast", function()
 end)
 
 hook.Add("OnContextMenuOpen", "fh_contextmenu", function()
-	RunConsoleCommand( "playermodel_selector" )
-	-- ну и хуйня
+
+    local newv = list.Get( "DesktopWindows" )[ "PlayerEditor" ]
+
+	local Window = vgui.Create( "DFrame" )
+	Window:SetSize( newv.width, newv.height )
+	Window:SetTitle( newv.title )
+	Window:Center()
+	Window:MakePopup()
+	
+	newv.init( nil, Window )
 end)

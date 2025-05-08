@@ -229,12 +229,6 @@ if SERVER then
 
         local old = getMappedEnt(ply)
 
-        if (not ply:Alive() or ply:Team() == TEAM_SPECTATOR) and not IsValid(old) then
-            ply:ChatPrint("You are DEAD! Dead people can't use pill!")
-
-            return
-        end
-
         local locked
         local overridePos
         local overrideAng
@@ -318,25 +312,7 @@ if SERVER then
 
         local e
 
-        if t.type == "phys" then
-            e = ents.Create("pill_ent_phys")
-
-            if overridePos then
-                e:SetPos(overridePos)
-                --elseif old&&old.formTable&&old.formTable.type=="phys" then
-                --	e:SetPos(old:LocalToWorld(t.spawnOffset or Vector(0,0,60)))
-            else
-                e:SetPos(ply:LocalToWorld(t.spawnOffset or Vector(0, 0, 60)))
-            end
-
-            if overrideAng then
-                e:SetAngles(overrideAng)
-            else
-                local angs = ply:EyeAngles()
-                angs.p = 0
-                e:SetAngles(angs)
-            end
-        elseif t.type == "ply" then
+		if t.type == "ply" then
             e = ents.Create("pill_ent_costume")
 
             if old and old.formTable.type == "phys" then
@@ -365,32 +341,37 @@ if SERVER then
             old:Remove()
         end
 
-        e:SetPillForm(name)
-        e:SetPillUser(ply)
-        e.locked = locked
-        e.option = option
-        e:Spawn()
-        e:Activate()
+		timer.Simple(0.01, function()
+			e:SetPillForm(name)
+			e:SetPillUser(ply)
+			e.locked = locked
+			e.option = option
+			e:Spawn()
+			e:Activate()
+			
+			ply:SetTeam(TEAM_PILLS)
+			
+			hook.Run("PillApply", ply, name)
+	
+			--if mode=="user" then
+			if t.type == "phys" then
+				--ply:SetLocalVelocity(oldvel)
+				--else
+				local phys = e:GetPhysicsObject()
+	
+				if IsValid(phys) then
+					phys:SetVelocity(oldvel)
+				end
+			end
+	
+			--end
+			if t.type ~= "ply" then
+				ply:SetLocalVelocity(Vector(0, 0, 0))
+			end
+	
+			return e
 		
-		ply:SetTeam(TEAM_PILLS)
-
-        --if mode=="user" then
-        if t.type == "phys" then
-            --ply:SetLocalVelocity(oldvel)
-            --else
-            local phys = e:GetPhysicsObject()
-
-            if IsValid(phys) then
-                phys:SetVelocity(oldvel)
-            end
-        end
-
-        --end
-        if t.type ~= "ply" then
-            ply:SetLocalVelocity(Vector(0, 0, 0))
-        end
-
-        return e
+		end)
     end
 
     local driveModes = {}
@@ -493,7 +474,7 @@ if SERVER then
     hook.Add("DoAnimationEvent", "pk_pill_triggerAnims", function(ply, event, data)
         local ent = getMappedEnt(ply)
         if IsValid(ent) and ent.formTable.type == "ply" then
-            if event == PLAYERANIMEVENT_JUMP and !ent.animFreeze then
+            if event == PLAYERANIMEVENT_JUMP and !ent.animFreeze and ent.formTable.jumpPower > 0 then
                 ent:PillAnim("jump")
                 ent:DoJump()
             end
@@ -531,8 +512,6 @@ if SERVER then
                 getMappedEnt(ply):PillDie()
 				ply:SetTeam(TEAM_UNASSIGNED)
             end
-
-            return false
         end
     end)
 	
@@ -617,6 +596,7 @@ else -- CLIENT HOOKS
                 draw.SimpleText("Cloak: " .. string.format("%.3f", ent:GetCloakLeft()) .. " Seconds", "ChatFont", ScrW() - 200, ScrH() - 86, Color(255, 255, 255, 255), TEXT_ALIGN_CENTER, TEXT_ALIGN_BOTTOM)
             end
 
+			--[[
             if ent.formTable.aim and (not ent.formTable.aim.usesSecondaryEnt or IsValid(ent:GetPillAimEnt())) and not ent.formTable.aim.nocrosshair then
                 local aimEnt = (ent.GetPillAimEnt and IsValid(ent:GetPillAimEnt()) and ent:GetPillAimEnt()) or ent
                 local attachment
@@ -653,6 +633,7 @@ else -- CLIENT HOOKS
                     })
                 end
             end
+			]]--
         end
 
         -- nametags

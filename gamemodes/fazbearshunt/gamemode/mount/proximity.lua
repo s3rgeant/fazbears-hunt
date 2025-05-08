@@ -10,7 +10,7 @@ if SERVER then
 		local maxDistance = GetConVar("proximity_radius"):GetInt()
 		local proximityEnabled = GetConVar("proximity_enabled"):GetInt()
 		
-		if listener:Team() == 2701 and talker:Team() == 2701 then
+		if (listener:Team() == 2701 and talker:Team() == 2701) or listener:Team() == TEAM_SPECTATOR and talker:Team() == TEAM_SPECTATOR then
 			return true, false
 		end
 		
@@ -69,10 +69,10 @@ else
 		local mute = muteVolume:GetFloat()
 		
 		if distance < 200 then
-			mute = math.min(muteVolume:GetFloat() * 2, 1)
+			mute = math.min(mute * 2, 1)
 		end
 		if talker:WaterLevel() == 3 then
-			mute = math.max(muteVolume:GetFloat() / 2, 0)
+			mute = math.max(mute / 2, 0)
 		end
 		if (trace.Hit and (trace.MatType or 0) != 71) or talker:WaterLevel() == 3 then
 			volume = (((distance / maxDistance:GetInt()) * -1) + 1) * mute
@@ -99,7 +99,7 @@ else
 	end)
 	
 	hook.Add("PlayerStartVoice", "ClientVoiceFilterStart", function(ply)
-		if ply:Team() == 2701 then
+		if ply:Team() == 2701 and LocalPlayer() == 2701 then
 			ply:SetVoiceVolumeScale(1)
 		end
 	end)

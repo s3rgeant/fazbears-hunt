@@ -1,10 +1,16 @@
 function getPlrs(ply)
-	local rf = RecipientFilter()
-	rf:AddAllPlayers()
-	for _, v in ipairs(rf:GetPlayers()) do
-		if v:Team() == TEAM_SPECTATOR or !v:Alive() then rf:RemovePlayer(v) end
+	local entities = {}
+
+	for _, v in ipairs(player.GetAll()) do
+		if v:Team() ~= TEAM_SPECTATOR and v:Alive() then
+			table.insert(entities, v)
+		end
 	end
-	return rf:GetPlayers()
+	for _, ent in ipairs(ents.FindByClass("plushtrap")) do
+		table.insert(entities, ent)
+	end
+
+	return entities
 end
 
 local function cyclePlayers(ply, am)
@@ -18,6 +24,7 @@ local function cyclePlayers(ply, am)
 			num = specindex + am
 		else
 			num = 1
+			num = 1
 		end
 	else
 		if specindex > 1 then
@@ -27,6 +34,7 @@ local function cyclePlayers(ply, am)
 		end
 	end
 	ply:SpectateEntity( players[num] )
+	ply:SetupHands( players[num] )
 	
 	if ply:GetObserverMode() != OBS_MODE_ROAMING then
 		net.Start('DeadHUDChange')
@@ -43,7 +51,7 @@ end)
 
 hook.Add('fh_createragdoll', 'fh_spectate_dead', function(player, ragdoll)
 	for k, v in ipairs(team.GetPlayers(TEAM_SPECTATOR)) do
-		if v:GetObserverTarget() == player then
+		if v:GetObserverTarget() == player and v:GetObserverMode() != OBS_MODE_ROAMING then
 			if ragdoll then
 				v:SpectateEntity(ragdoll)
 				v:Spectate(OBS_MODE_CHASE)
@@ -53,7 +61,7 @@ hook.Add('fh_createragdoll', 'fh_spectate_dead', function(player, ragdoll)
 end)
 
 hook.Add( "KeyPress", "KEY_PRESS_SPECTATOR", function( ply, key )
-	if ply:Team() == TEAM_SPECTATOR then
+	if ply:Team() == TEAM_SPECTATOR and ply:GetViewEntity() == ply then
 		local players = getPlrs(ply)
 		
 		if key == IN_JUMP and table.KeyFromValue(players, ply:GetObserverTarget()) then	

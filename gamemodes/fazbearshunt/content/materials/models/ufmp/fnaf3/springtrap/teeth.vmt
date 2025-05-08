@@ -1,0 +1,19 @@
+"VertexlitGeneric"
+{
+$basetexture "models\UFMP\FNAF3\SPRINGTRAP\Teeth"
+$bumpmap "models\UFMP\FNAF3\SPRINGTRAP/TeethBump"
+$surfaceprop metal
+$phong "1"
+$phongexponent "5"
+$phongboost "1"
+$ambientocclusion "0"
+$phongfresnelranges "[0.05 0.5 1]"
+$phongalbedotint "1"
+$color "[0.5137255	0.5529412	0.5764706	1.000]"
+$halflambert "1"
+$basetexturetransform "1"
+$nodecal "1"
+$model "1"
+$diffuseexp "1.5"
+$nocull 1
+}

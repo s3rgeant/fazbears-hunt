@@ -1,0 +1,20 @@
+"VertexlitGeneric"
+{
+$basetexture "models\UFMP\FNAF3\SPRINGTRAP\white"
+$bumpmap "models\UFMP\FNAF3\SPRINGTRAP/Flat"
+$surfaceprop metal
+$phong "1"
+$phongexponent "15"
+$phongtint "[0.3803922	0.2078431	0.2078431	1.000]"
+$phongboost "5"
+$ambientocclusion "0"
+$color "[0.2274510	0.0549020	0.0823529	1.000]"
+$color2 "[0.2274510	0.0549020	0.0823529	1.000]"
+$phongfresnelranges "[0.05 0.5 1]"
+$halflambert "1"
+$basetexturetransform "1"
+$nodecal "1"
+$model "1"
+$diffuseexp "1.5"
+$nocull 1
+}

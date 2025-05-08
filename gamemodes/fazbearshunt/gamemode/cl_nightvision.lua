@@ -1,18 +1,29 @@
 local nightVisionEnabled = false
 
+function UpdateFlashlightPosition()
+    if !nightVisionEnabled or !IsValid(LocalPlayer().HiddenFlashlight) then return end
+    
+    local light = LocalPlayer().HiddenFlashlight
+    local ang = RenderAngles()
+    local pos = EyePos() + ang:Forward() * 1
+    light:SetPos(pos)
+    light:SetAngles(ang)
+    light:Update()
+end
+
 function ToggleNightVision()
-	surface.PlaySound('items/flashlight1.wav')
+    surface.PlaySound('items/flashlight1.wav')
     nightVisionEnabled = not nightVisionEnabled
 
     if nightVisionEnabled then
         hook.Add("RenderScreenspaceEffects", "NightVisionEffect", function()
             local colorCorrection = {
                 ["$pp_colour_addr"] = 0,
-                ["$pp_colour_addg"] = 0,
-                ["$pp_colour_addb"] = 0,
-                ["$pp_colour_brightness"] = 0.1,
-                ["$pp_colour_contrast"] = 1.0,
-                ["$pp_colour_colour"] = 0.5,
+                ["$pp_colour_addg"] = 0.05,
+                ["$pp_colour_addb"] = 0.05,
+                ["$pp_colour_brightness"] = 0.025,
+                ["$pp_colour_contrast"] = 1.2,
+                ["$pp_colour_colour"] = 0.45,
                 ["$pp_colour_mulr"] = 0,
                 ["$pp_colour_mulg"] = 0,
                 ["$pp_colour_mulb"] = 0
@@ -20,47 +31,44 @@ function ToggleNightVision()
             DrawColorModify(colorCorrection)
         end)
 
-        hook.Add("Think", "NightVisionDynamicLight", function()
-			local lightpos = LocalPlayer():GetPos()
-            if !lightpos then 
-				if !IsValid(LocalPlayer():GetObserverTarget()) then
-					return
-				end
-				lightpos = LocalPlayer():GetObserverTarget():GetPos()
-			end
-
-            local dlight = DynamicLight(LocalPlayer():EntIndex())
-            if dlight then
-                dlight.pos = lightpos + Vector(0, 0, 50)
-                dlight.r = 200
-                dlight.g = 255
-                dlight.b = 200
-                dlight.brightness = 1
-                dlight.Decay = 1000
-                dlight.Size = 750
-                dlight.DieTime = CurTime() + 1
-            end
-        end)
+        if not LocalPlayer().HiddenFlashlight then
+            local light = ProjectedTexture()
+            light:SetTexture("effects/flashlight001_infected")
+            light:SetFarZ(1024)
+            light:SetNearZ(1)
+            light:SetFOV(100)
+            light:SetBrightness(5)
+            light:SetEnableShadows(false)
+            light:SetColor(Color(255, 255, 255))
+            light:Update()
+            LocalPlayer().HiddenFlashlight = light
+        end
+        
+        hook.Add("Think", "UpdateNightVisionFlashlight", UpdateFlashlightPosition)
     else
         hook.Remove("RenderScreenspaceEffects", "NightVisionEffect")
-        hook.Remove("Think", "NightVisionDynamicLight")
+        hook.Remove("Think", "UpdateNightVisionFlashlight")
+        if LocalPlayer().HiddenFlashlight then
+            LocalPlayer().HiddenFlashlight:Remove()
+            LocalPlayer().HiddenFlashlight = nil
+        end
     end
 end
 
 net.Receive("nv_off", function()
-	if nightVisionEnabled then
-		ToggleNightVision()
-	end
+    if nightVisionEnabled then
+        ToggleNightVision()
+    end
 end)
 
 net.Receive("nv_on", function()
-	if !nightVisionEnabled then
-		ToggleNightVision()
-	end
+    if not nightVisionEnabled then
+        ToggleNightVision()
+    end
 end)
 
 concommand.Add("toggle_nightvision", function()
-	if LocalPlayer():IsAdmin() then
-		ToggleNightVision()
-	end
+    if LocalPlayer():IsAdmin() then
+        ToggleNightVision()
+    end
 end)

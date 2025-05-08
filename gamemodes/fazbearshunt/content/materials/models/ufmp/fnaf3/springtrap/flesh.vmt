@@ -1,0 +1,19 @@
+"VertexlitGeneric"
+{
+$basetexture "models\UFMP\FNAF3\SPRINGTRAP\Flesh"
+$bumpmap "models\UFMP\FNAF3\SPRINGTRAP/FleshBump"
+$surfaceprop metal
+$phong "1"
+$phongexponent "35"
+$phongboost "6"
+$color "[0.62 0.62 0.62]"
+$color2 "[0.62 0.62 0.62]"
+$ambientocclusion "0"
+$phongfresnelranges "[0.05 0.5 1]"
+$halflambert "1"
+$basetexturetransform "1"
+$nodecal "1"
+$model "1"
+$diffuseexp "1.5"
+$nocull 1
+}

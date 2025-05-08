@@ -21,6 +21,45 @@ sound.Add({
 						,"bigstep4.mp3"}
 })
 
+//springtrap
+sound.Add({
+	name = 			"springtrap.foot1",
+	channel = 		CHAN_USER_BASE+10,
+	level = 		90,
+	volume = 		1.0,
+	sound = 			{"fnaf3/sprstep1.wav"
+						,"fnaf3/sprstep2.wav"
+						,"fnaf3/sprstep3.wav"}
+})
+sound.Add({
+	name = 			"plushtrap.foot1",
+	channel = 		CHAN_USER_BASE+10,
+	level = 		65,
+	volume = 		1.0,
+	sound = 			{"fnaf3/plushtrap/ptrun1.wav"
+						,"fnaf3/plushtrap/ptrun2.wav"
+						,"fnaf3/plushtrap/ptrun3.wav"
+						,"fnaf3/plushtrap/ptrun4.wav"}
+})
+sound.Add({
+	name = 			"plushtrap.crouch1",
+	channel = 		CHAN_USER_BASE+10,
+	level = 		65,
+	volume = 		1.0,
+	sound = 			{"fnaf3/plushtrap/ptcrawl1.wav"
+						,"fnaf3/plushtrap/ptcrawl2.wav"
+						,"fnaf3/plushtrap/ptcrawl3.wav"
+						,"fnaf3/plushtrap/ptcrawl4.wav"}
+})
+
+sound.Add({
+	name = 			"springtrap.breath",
+	channel = 		CHAN_USER_BASE+10,
+	level = 		60,
+	volume = 		1.0,
+	sound = 			{"fnaf3/breathing.wav"}
+})
+
 //clown
 sound.Add({
 	name = 			"clown.foot1",
@@ -86,6 +125,15 @@ sound.Add({
 						 "vo/freddy_kill5.mp3"}
 })
 sound.Add({
+	name = 			"freddy.lastkill",
+	channel = 		CHAN_USER_BASE+10,
+	volume = 		1.0,
+	sound = 			{"vo/freddy_lastkill1.mp3",
+						 "vo/freddy_lastkill2.mp3",
+						 "vo/freddy_lastkill3.mp3",
+						 "vo/freddy_lastkill4.mp3"}
+})
+sound.Add({
 	name = 			"freddy.chase",
 	channel = 		CHAN_USER_BASE+10,
 	volume = 		1.0,
@@ -122,6 +170,16 @@ sound.Add({
 						 "vo/chica_kill4.mp3",
 						 "vo/chica_kill5.mp3",
 						 "vo/chica_kill6.mp3"}
+})
+sound.Add({
+	name = 			"chica.lastkill",
+	channel = 		CHAN_USER_BASE+10,
+	volume = 		1.0,
+	sound = 			{"vo/chica_lastkill1.mp3",
+						 "vo/chica_lastkill2.mp3",
+						 "vo/chica_lastkill3.mp3",
+						 "vo/chica_lastkill4.mp3",
+						 "vo/chica_lastkill5.mp3"}
 })
 
 sound.Add({
@@ -165,6 +223,13 @@ sound.Add({
 						 "vo/bonnie_kill5.mp3"}
 })
 sound.Add({
+	name = 			"bonnie.lastkill",
+	channel = 		CHAN_USER_BASE+10,
+	volume = 		1.0,
+	sound = 			{"vo/bonnie_lastkill1.mp3",
+						 "vo/bonnie_lastkill2.mp3"}
+})
+sound.Add({
 	name = 			"bonnie.chase",
 	channel = 		CHAN_USER_BASE+10,
 	volume = 		1.0,
@@ -204,6 +269,15 @@ sound.Add({
 						 "vo/foxy_kill3.mp3"}
 })
 sound.Add({
+	name = 			"foxy.lastkill",
+	channel = 		CHAN_USER_BASE+10,
+	volume = 		1.0,
+	sound = 			{"vo/foxy_lastkill1.mp3",
+						 "vo/foxy_lastkill2.mp3",
+						 "vo/foxy_lastkill3.mp3",
+						 "vo/foxy_lastkill4.mp3"}
+})
+sound.Add({
 	name = 			"foxy.chase",
 	channel = 		CHAN_USER_BASE+10,
 	volume = 		1.0,
@@ -233,6 +307,15 @@ sound.Add({
 						 "vo/endo_kill4.mp3",
 						 "vo/endo_kill5.mp3",
 						 "vo/endo_kill6.mp3"}
+})
+sound.Add({
+	name = 			"endo.lastkill",
+	channel = 		CHAN_USER_BASE+10,
+	volume = 		1.0,
+	sound = 			{"vo/endo_lastkill1.mp3",
+						 "vo/endo_lastkill2.mp3",
+						 "vo/endo_lastkill3.mp3",
+						 "vo/endo_lastkill4.mp3"}
 })
 sound.Add({
 	name = 			"endo.chase",
@@ -295,6 +378,12 @@ sound.Add({
 	sound = 			{"vo/clown_kill1.mp3",
 						 "vo/clown_kill2.mp3",
 						 "vo/clown_kill3.mp3"}
+})
+sound.Add({
+	name = 			"clown.lastkill",
+	channel = 		CHAN_USER_BASE+10,
+	volume = 		1.0,
+	sound = 			{"vo/clown_lastkill1.mp3"}
 })
 sound.Add({
 	name = 			"clown.chase",
