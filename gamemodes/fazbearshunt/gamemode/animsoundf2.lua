@@ -158,6 +158,14 @@ sound.Add({
 						 "vo/freddy_trip3.mp3",
 						 "vo/freddy_trip4.mp3"}
 })
+sound.Add({
+	name = 			"freddy.negative",
+	channel = 		CHAN_USER_BASE+10,
+	volume = 		1.0,
+	sound = 			{"vo/freddy_negative1.mp3",
+						 "vo/freddy_negative2.mp3",
+						 "vo/freddy_negative3.mp3"}
+})
 
 //chica voicelines
 sound.Add({

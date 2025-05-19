@@ -5,6 +5,7 @@ ENT.PrintName       = "Plushtrap"
 
 local PT_DEFAULT_SPEED = 540
 local PT_BOOST_SPEED = 600
+local PT_ACCEL_SPEED = 1000
 
 function ENT:Initialize()
     self:SetModel("models/tetTris/FNaF/HW/Plushtrap.mdl")
@@ -20,7 +21,7 @@ function ENT:Initialize()
 		
 		self.loco:SetJumpHeight( 50 )
 		self.loco:SetDesiredSpeed(PT_DEFAULT_SPEED)
-		self.loco:SetAcceleration(900)
+		self.loco:SetAcceleration(PT_ACCEL_SPEED)
 		self.loco:SetDeceleration(200)
 	end
 	
@@ -30,7 +31,9 @@ function ENT:Initialize()
 	timer.Simple(0.5, function()
 		if IsValid(self) then
 			self:SetMaterial()
-			self.Active = true
+			timer.Simple(1.5, function()
+				self.Active = true
+			end)
 		end
 	end)
 
@@ -53,7 +56,7 @@ function ENT:RunBehaviour()
 			self:StartActivity( ACT_RUN )
 			self.Target = target
             self:ChaseTarget(target)
-        else
+        elseif self.Active then
 			self:PlaySequenceNoWait( 'idle' )
 			self.Target = nil
             coroutine.wait(1) 
@@ -129,6 +132,7 @@ function ENT:Think()
 					self.NextAttackTime = CurTime() + self.AttackDelay
 					
 					self:PillGesture('bite'.. (math.random(1,2) == 1 and "1" or "2"), 1, 1, 0, 1)
+					self:EmitSound("fnaf3/spr_punch_hit.wav")
 					break
 				end
 			end
@@ -136,7 +140,7 @@ function ENT:Think()
 	
 		self:CheckDoorBreak()
 		if self.Target then
-			self:CheckStuck()
+			--self:CheckStuck()
 		end
 		self:NextThink(CurTime())
 		return true
@@ -146,7 +150,12 @@ end
 function ENT:CheckDoorBreak()
 	local doors = ents.FindInSphere(self:GetPos(), 50)
 	for _, door in ipairs(doors) do
-		if door:GetClass() == "prop_door_rotating" or door:GetClass() == "func_door" or door:GetClass() == "func_door_rotating" then
+		local class = door:GetClass()
+		if class == "prop_door_rotating" or class == "func_door" or class == "func_door_rotating" then
+			local canUse = door:HasSpawnFlags(8192)
+			
+			if !canUse then continue end
+
 			door:Fire("Open")
 			door:TakeDamage(100, self, self)
 		end
@@ -155,7 +164,7 @@ end
 
 function ENT:CheckStuck()
     if not self.LastPos then self.LastPos = self:GetPos() end
-    if self.LastStuckCheck and CurTime() - self.LastStuckCheck < 2 then return end
+    if self.LastStuckCheck and CurTime() - self.LastStuckCheck < 2 or !self.Active then return end
     self.LastStuckCheck = CurTime()
 
     if self:GetPos():DistToSqr(self.LastPos) < 5 then
@@ -198,7 +207,7 @@ end
 
 function ENT:OnLandOnGround( ent )
 	self.loco:SetDesiredSpeed(PT_DEFAULT_SPEED)
-	self.loco:SetAcceleration(900)
+	self.loco:SetAcceleration(PT_ACCEL_SPEED)
 	
 	if self.Target then
 		self:StartActivity( ACT_RUN )

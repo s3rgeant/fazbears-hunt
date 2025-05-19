@@ -59,6 +59,7 @@ killerData = {
     ["pill_endo02"] = {name = "endo"},
     ["pill_wchica2"] = {name = "chica"},
     ["pill_wfoxy2"] = {name = "foxy"},
+    ["pill_wgfreddy2"] = {name = "sfreddy"},
     ["pill_sfreddy2"] = {name = "sfreddy"},
     ["pill_clown"] = {name = "clown"},
     ["pill_springtrap"] = {name = "springtrap"},

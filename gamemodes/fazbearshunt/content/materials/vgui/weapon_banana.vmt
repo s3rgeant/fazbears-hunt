@@ -1,6 +1,6 @@
 "UnlitGeneric"
 {
-	"$basetexture" "vgui/entities/weapon_banana"
+	"$basetexture" "vgui/weapon_banana"
 	"$nolod" 1
 	"$vertexalpha" 1
 	"$vertexcolor" 1

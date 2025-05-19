@@ -31,8 +31,8 @@ SWEP.Secondary.DefaultClip = -1
 SWEP.Secondary.Ammo = "none"
 
 SWEP.HitSize = {
-	Min = Vector( -6, -6, -6 ),
-	Max = Vector( 6, 6, 6 )
+	Min = Vector( -18, -18, -12 ),
+	Max = Vector( 18, 18, 12 )
 }
 
 local LAND_ANIM_DELAY = 0.2
@@ -72,7 +72,7 @@ function SWEP:DealDamage()
 	
 	if !IsValid(ent) then return end
 	
-	timer.Create('PT_cantKill'..ply:EntIndex(), 2, 1, function() end)
+	timer.Create('PT_cantKill'..ply:EntIndex(), 1.5, 1, function() end)
 	
 	if CLIENT then return end
 	
@@ -80,7 +80,7 @@ function SWEP:DealDamage()
 	
 	net.Start("fh_net_killer_change")
 	net.WriteString("Kill")
-	net.WriteFloat(2)
+	net.WriteFloat(1.5)
 	net.Send(ply)
 		
 	ply:LagCompensation(true)

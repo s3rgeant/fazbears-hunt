@@ -5,4 +5,16 @@
 	"category"	    "pvp"
 	"menusystem"	"1"
 	"workshopid"	"15895"
+
+	"settings"
+	{
+		1
+		{
+			"name"		"fh_mountsandbox"
+			"text"		"fh_mountsandbox"
+			"help"		"Enables Sandbox Features like Q-Menu, Tool Gun and etc."
+			"type"		"CheckBox"
+			"default"	"0"
+		}
+	}
 }

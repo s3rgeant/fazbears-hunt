@@ -34,7 +34,9 @@ local function cyclePlayers(ply, am)
 		end
 	end
 	ply:SpectateEntity( players[num] )
-	ply:SetupHands( players[num] )
+	if players[num]:IsPlayer() then
+		ply:SetupHands( players[num] )
+	end
 	
 	if ply:GetObserverMode() != OBS_MODE_ROAMING then
 		net.Start('DeadHUDChange')

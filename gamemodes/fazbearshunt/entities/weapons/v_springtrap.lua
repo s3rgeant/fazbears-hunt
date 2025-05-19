@@ -38,8 +38,8 @@ SWEP.IsCharging = false -- переменная для отслеживания 
 SWEP.ChargeStartTime = 0 -- время начала удержания ЛКМ
 
 SWEP.HitSize = {
-	Min = Vector( -16, -16, -8 ),
-	Max = Vector( 16, 16, 8 )
+	Min = Vector( -24, -24, -16 ),
+	Max = Vector( 24, 24, 16 )
 }
 
 local LAND_ANIM_DELAY = 0.2

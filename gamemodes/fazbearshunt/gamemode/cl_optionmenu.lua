@@ -97,7 +97,7 @@ end)
 net.Receive("st_request_get", function()
 	local ply = net.ReadPlayer()
 	
-	print(#menuData.options)
+	if #menuData.options == 9 then return end
 	
 	sel_menu_add_title("Замените Плюштрапа игроком:")
 	sel_menu_add_option(ply:Nick(), 

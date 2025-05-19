@@ -41,7 +41,8 @@ hook.Add( "PlayerBindPress", "fh_flash_nv", function( ply, bind, pressed )
 end )
 
 hook.Add("PlayerStartVoice", "HideVoicePanels", function(ply)
-    if ply == LocalPlayer() and ply:Team() != 2701 then
+    local listener = LocalPlayer()
+    if ply == LocalPlayer() and listener:Team() != 2701 and listener:Team() != TEAM_SPECTATOR then
         hook.Add("HUDPaint", "DrawLocalPlayerVoiceIcon", function()
             local x, y = (ScrW() / 2) - (64 / 2), ScrH() - 50 - (64 / 2)
 			draw.RoundedBox(12, x, y, 64, 64, Color(0, 0, 0, 120))
@@ -53,9 +54,18 @@ hook.Add("PlayerStartVoice", "HideVoicePanels", function(ply)
         end)
 		return false
     end
-	if (LocalPlayer():Team() == 2701 and ply:Team() != 2701) or (LocalPlayer():Team() == TEAM_SPECTATOR and ply:Team() != TEAM_SPECTATOR) then
-		return false
-	end
+    local listenerTeam = listener:Team()
+    local speakerTeam = ply:Team()
+	
+    if listenerTeam == TEAM_SPECTATOR and speakerTeam == TEAM_SPECTATOR then
+        return
+    end
+
+    if listenerTeam == 2701 and speakerTeam == 2701 then
+        return
+    end
+
+    return false
 end)
 
 hook.Add("PlayerEndVoice", "HideVoicePanels", function(ply)
@@ -153,8 +163,6 @@ end)
 
 net.Receive("fh_set_calcview_entity", function(len)
 	local entity = net.ReadEntity()
-	
-	print(entity)
 
 	hook.Add("CalcView", "fh_override_entity_calcview", function(ply,pos,angles,fov)
 		if !IsValid(entity) then

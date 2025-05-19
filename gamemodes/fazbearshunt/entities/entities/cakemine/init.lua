@@ -74,7 +74,7 @@ function ENT:CheckForPlayers()
 			table.insert(nearPlayers, ply)
 			table.insert(totalPlayers, ply)
 			
-            ply:SetRunSpeed(ply:GetRunSpeed() * 0.6)
+            ply:SetRunSpeed(ply:GetRunSpeed() * 0.5)
 			
 			if timer.Exists('C_deploycake'..self:GetOwner():EntIndex()) then
 				timer.Adjust("C_deploycake"..self:GetOwner():EntIndex(), 10)

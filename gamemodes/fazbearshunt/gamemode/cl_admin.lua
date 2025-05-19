@@ -345,7 +345,7 @@ end)
 
 hook.Add("OnSpawnMenuOpen", "BindAdminPanel", function()
     if not gui.IsConsoleVisible() and LocalPlayer():IsAdmin() then
-        OpenAdminPanel()
+		OpenAdminPanel()
     end
 end)
 

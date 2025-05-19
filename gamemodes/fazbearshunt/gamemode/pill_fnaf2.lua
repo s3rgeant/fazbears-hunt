@@ -34,6 +34,9 @@ if SERVER then
 	util.AddNetworkString("dead_pt_request_start")
 	util.AddNetworkString("dead_pt_request_stop")
 	
+	util.AddNetworkString("fh_plushalert_inrange")
+	util.AddNetworkString("fh_plushalert_outrange")
+	
 	util.AddNetworkString("PlayHighlightSounds")
 	util.AddNetworkString("AddAffectedPlayers")
 	util.AddNetworkString("RemoveAffectedPlayer")
@@ -70,6 +73,8 @@ hook.Add( "PostCleanupMap", "fh_pill_reset", function( name )
 	stalker = nil
 	stalkTarget = nil
 	
+	table.Empty(haloUsers)
+	
 	if IsValid(pt_request_springtrap_ply) then
 		net.Start("fh_sel_menu_close")
 		net.Send(pt_request_springtrap_ply)
@@ -85,7 +90,7 @@ hook.Add( "PostCleanupMap", "fh_pill_reset", function( name )
 	spring_enraged = false
 end)
 
-local wfreddy_default_movement = {150, 480, 65, 250} -- обычное передвижение
+local wfreddy_default_movement = {150, 490, 65, 250} -- обычное передвижение
 local wfreddy_stalk_movement = {150, 600, 70, 255} -- сталкер дохуя
 
 pk_pills.register("pill_wfreddy2",{
@@ -115,9 +120,6 @@ pk_pills.register("pill_wfreddy2",{
 	sounds={
 		gs="fnaf2/stareshort.wav",
 		loop_stare="fnaf2/with_s2_loop2.wav",
-		laugh={"fnaf2/giggling1.wav",
-			   "fnaf2/giggling2.wav",
-			   "fnaf2/giggling3.wav"},
 		jump="jump.wav",
 		land="land.wav",
 		melee=pk_pills.helpers.makeList("fnaf2/xscream2.wav",2),
@@ -257,8 +259,6 @@ pk_pills.register("pill_wfreddy2",{
 				end
 			end
 			
-			PrintTable(recipients)
-			
 			net.Start('fh_ent_sound_play')
 			net.WritePlayer(ply)
 			net.WriteString('freddy_stalking_others.wav')
@@ -303,6 +303,8 @@ pk_pills.register("pill_wfreddy2",{
 							net.Broadcast()
 	
 							ent:EmitSound('freddy_cancelled.wav')
+		
+							if math.random(1, 10) > 4 then playVoiceline('freddy', 'negative', ply, 0.1) end
 	
 							local wep = ply:GetActiveWeapon()
 							if IsValid(wep) and wep:GetClass() == "v_freddy" then
@@ -360,14 +362,20 @@ pk_pills.register("pill_wfreddy2",{
 	jump=function(ply,ent)
 		ent:PillSound("jump", true)
 	end,
-	restore=function(ply,ent)
+	restore=function(ply,ent,formtable)
 		timer.Remove("SmoothLookAt_"..ply:EntIndex())
 		timer.Remove("stalk_check"..ent:EntIndex())
 		stalker = nil
 		stalkerEnt = nil
 		
-		ent.formTable.anims.default.run = 'run'
-		ent:SetSpeed(wfreddy_default_movement[1], wfreddy_default_movement[2], wfreddy_default_movement[3], wfreddy_default_movement[4])
+		formtable.anims.default.run = 'run'
+		
+		local speed = formtable.moveSpeed or {}
+		
+		speed.walk = wfreddy_default_movement[1]
+		speed.run = wfreddy_default_movement[2]
+		speed.ducked = wfreddy_default_movement[3]
+		formtable.jumpPower = wfreddy_default_movement[4]
 		
 		timer.Remove("fh_stalking"..ply:EntIndex())
 		
@@ -487,6 +495,12 @@ function noMoreStalk(ply)
 	ent:SetSpeed(wfreddy_default_movement[1], wfreddy_default_movement[2], wfreddy_default_movement[3], wfreddy_default_movement[4])
 	ent.formTable.anims.default.run = 'run'
 	
+	local wep = ply:GetActiveWeapon()
+	if IsValid(wep) and wep:GetClass() == "v_freddy" then
+		wep.run_string = "run"
+		wep.run_act = ACT_VM_SPRINT_IDLE
+	end
+	
 	stalker = nil
 	stalkTarget = nil
 	stalkerEnt = nil
@@ -511,7 +525,7 @@ end
 pk_pills.register("pill_wbonnie2",{
 	printName="Withered Bonnie",
 	model="models/speps/pill/oldbonnie.mdl",
---	bodyGroups={0},		-- рофлянка лицо бонни
+	bodyGroups={math.random(1,1000) == 27 and 0 or 10},		-- рофлянка лицо бонни
 	anims={
 		default={
 			idle="idle",
@@ -2321,7 +2335,7 @@ pk_pills.register("pill_springtrap",{
 								local loh
 								
 								for k,v in pairs(spring_rage) do
-									if v > val and k:Alive() and k:Team() != TEAM_SPECTATOR and k:Team() != 2701 then
+									if IsValid(k) and v > val and k:Alive() and k:Team() != TEAM_SPECTATOR and k:Team() != 2701 then
 										loh = k
 									end
 								end
@@ -2420,19 +2434,7 @@ pk_pills.register("pill_springtrap",{
 				if IsValid(plushtrap) then
 					plushtrap:Remove()
 				end
-				if IsValid(request_plushtrap) then
-					if IsValid(request_plushtrap) then
-						request_plushtrap:Kill()
-						request_plushtrap:SetTeam(TEAM_SPECTATOR)
-						request_plushtrap:ChatPrint('Ваше время за плюштрапа вышло.')
-	
-						if IsValid(request_plushtrap.DeathRagdoll) then
-							request_plushtrap.DeathRagdoll:Remove()
-						end
-						
-						request_plushtrap = nil
-					end
-				end
+				kill_plushtrap(request_plushtrap)
 							
 				spectators = team.GetPlayers(TEAM_SPECTATOR)
 				
@@ -2467,11 +2469,14 @@ pk_pills.register("pill_springtrap",{
 		ent:PillSound("jump", true)
 	end,
 	
-	restore=function(ply,ent)
-		ent:SetSpeed(spring_default_movement[1], 
-		spring_default_movement[2], 
-		spring_default_movement[3], 
-		spring_default_movement[4])
+	restore=function(ply,ent, formtable)
+	
+		local speed = formtable.moveSpeed or {}
+		
+		speed.walk = spring_default_movement[1]
+		speed.run = spring_default_movement[2]
+		speed.ducked = spring_default_movement[3]
+		formtable.jumpPower = spring_default_movement[4]
 	end
 })
 
@@ -2505,7 +2510,7 @@ net.Receive("pt_request_complete", function(len, springtrap)
 	setupPlayerVars(ply)
 	ply:SetTeam(TEAM_UNASSIGNED)
 	
-	local pt_lastpos
+	local pt_lastpos = nil
 	local pt_found = false
 	
 	if IsValid(pt_request_springtrap_ply) then
@@ -2520,7 +2525,10 @@ net.Receive("pt_request_complete", function(len, springtrap)
 	end
 	
 	RunConsoleCommand("pk_pill_apply", ply:Nick(), "pill_plushtrap")
-	ply:SetPos(pt_lastpos)
+	
+	if pt_lastpos != nil then
+		ply:SetPos(pt_lastpos)
+	end
 	
 	request_plushtrap = ply
 	
@@ -2533,19 +2541,7 @@ net.Receive("pt_request_complete", function(len, springtrap)
 		timer.Adjust('fh_pt_summon', plushtrap_summon_cd, nil, nil)
 			
 		timer.Create("pt_waiting" .. springtrap:EntIndex(), 60, 1, function()
-			if IsValid(request_plushtrap) then
-				if IsValid(request_plushtrap) then
-					request_plushtrap:Kill()
-					request_plushtrap:SetTeam(TEAM_SPECTATOR)
-					request_plushtrap:ChatPrint('Ваше время за плюштрапа вышло.')
-	
-					if IsValid(request_plushtrap.DeathRagdoll) then
-						request_plushtrap.DeathRagdoll:Remove()
-					end
-					
-					request_plushtrap = nil
-				end
-			end
+			kill_plushtrap(request_plushtrap)
 			pt_request_springtrap_ply = nil
 			springtrap:ChatPrint('Плюштрап сдох ебать')
 		end)
@@ -2562,6 +2558,23 @@ net.Receive("pt_request_complete", function(len, springtrap)
 	
 	pt_request_springtrap_ply = nil
 end)
+
+function kill_plushtrap(ply)
+	if IsValid(ply) then
+		ply:Kill()
+		ply:SetTeam(TEAM_SPECTATOR)
+		ply:ChatPrint('Ваше время за плюштрапа вышло.')
+	
+		if IsValid(ply.DeathRagdoll) then
+			ply.DeathRagdoll:Remove()
+		end
+		
+		request_plushtrap = nil
+	end
+	
+	net.Start("fh_plushalert_outrange")
+	net.Broadcast()
+end
 
 local spring_rage_target = nil
 function successRage(ply, ent, target)
@@ -2680,12 +2693,18 @@ pk_pills.register("pill_plushtrap",{
 	end,
 	startFunction=function(ply,ent)
 		ply:SetCollisionGroup(COLLISION_GROUP_PASSABLE_DOOR)
+		--request_plushtrap = ply
 	end,
 	
-	restore=function(ply,ent)
+	restore=function(ply,ent, formtable)
 		ply:SetCollisionGroup(COLLISION_GROUP_NONE)
+	
+		local speed = formtable.moveSpeed or {}
 		
-		ent:SetSpeed(pt_speed_normal[1], pt_speed_normal[1], pt_speed_normal[2], pt_speed_normal[3])
+		speed.walk = pt_speed_normal[1]
+		speed.run = pt_speed_normal[2]
+		speed.ducked = pt_speed_normal[3]
+		formtable.jumpPower = pt_speed_normal[4]
 	end,
 
 	noFallDamage=true,
@@ -3067,6 +3086,7 @@ if SERVER then
 		end
 	end)
 
+	local plushtrap_vision_range = 2200
 	hook.Add("SetupPlayerVisibility", "SetupVisibilityForAffectedPlayers", function(ply, viewent)
 		if table.Count(affectedPlayers) > 0 then
 			for _, player in ipairs(affectedPlayers) do
@@ -3088,15 +3108,44 @@ if SERVER then
 		
 		if IsValid(request_plushtrap) then
 			for _, ent in pairs(team.GetPlayers( TEAM_UNASSIGNED )) do
-				if ent:GetPos():Distance(request_plushtrap:GetPos()) <= 2200 then
+				if ent:GetPos():Distance(request_plushtrap:GetPos()) <= plushtrap_vision_range then
 					AddOriginToPVS(ent:GetPos())
 				end
 			end
 		end
 	end)
 	
+	local nextPingTime = {}
 
-	hook.Add( "PlayerDeath", "GlobalDeathMessage", function( victim, inflictor, attacker )
+	hook.Add("Think", "fh_plushalert_range_check", function()
+		if !IsValid(request_plushtrap) then return end
+	
+		for _, ply in ipairs(player.GetAll()) do
+			if !IsValid(ply) or !ply:IsPlayer() or ply:Team() == TEAM_SPECTATOR or ply:Team() == 2701 or ply == request_plushtrap then continue end
+	
+			local curTime = CurTime()
+			if not nextPingTime[ply] or curTime >= nextPingTime[ply] then
+				nextPingTime[ply] = curTime + 3
+	
+				local distance = ply:GetPos():Distance(request_plushtrap:GetPos())
+				if distance <= plushtrap_vision_range then
+					net.Start("fh_plushalert_inrange")
+					net.Send(ply)
+				else
+					net.Start("fh_plushalert_outrange")
+					net.Send(ply)
+				end
+			end
+		end
+	end)
+
+	hook.Add("PlayerSpawn", "fh_spawn_pill", function(ply)
+		if ply == request_plushtrap then
+			request_plushtrap = nil
+		end
+	end)
+
+	hook.Add( "PlayerDeath", "fh_pill_death_check", function( victim, inflictor, attacker )
 		if victim == stalkTarget then
 			net.Start('fh_sound_stop')
 			net.WriteString('freddy_targeted_ambience.wav')
@@ -3106,6 +3155,9 @@ if SERVER then
 					noMoreStalk(stalker)
 				end
 			end
+		end
+		if victim == request_plushtrap then
+			request_plushtrap = nil
 		end
 		if table.HasValue(affectedPlayers, victim) then
 			table.RemoveByValue(affectedPlayers, victim)
@@ -3129,6 +3181,9 @@ if SERVER then
 				noMoreStalk(stalker)
 			end
 		end
+		if ply == request_plushtrap then
+			request_plushtrap = nil
+		end
 		if table.HasValue(affectedPlayers, ply) then
 			table.RemoveByValue(affectedPlayers, ply)
 			
@@ -3151,6 +3206,18 @@ if SERVER then
 	hook.Add("EntityRemoved", "RemoveKilledCupcake", function(ent)
 		if table.HasValue(cupcakes, ent:EntIndex()) then
 			table.RemoveByValue(cupcakes, ent:EntIndex())
+		end
+	end)
+	
+	hook.Add("OnPlayerPhysicsDrop", "fh_endo_prop_drop", function(ply, ent, thrown)
+		local puppet = pk_pills.getMappedEnt(ply)
+		if !IsValid(puppet) then return end
+		name = puppet.formTable.name
+		
+		local phys = ent:GetPhysicsObject()
+		if IsValid(phys) and thrown and name == "pill_endo02" then
+			local dir = ply:GetAimVector()
+			phys:ApplyForceCenter(dir * 50000)
 		end
 	end)
 

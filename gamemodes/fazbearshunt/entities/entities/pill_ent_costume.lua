@@ -18,7 +18,7 @@ function ENT:Initialize()
     self.formTable = pk_pills.getPillTable(self:GetPillForm())
     local ply = self:GetPillUser()
 
-    if not self.formTable or not IsValid(ply) then
+    if not self.formTable or !IsValid(ply) then
         self:Remove()
 		if ply:Team() == 2701 then
 			ply:SetTeam(TEAM_UNASSIGNED)
@@ -264,7 +264,7 @@ function ENT:OnRemove()
         self:PillLoopStopAll()
 	
 		if self.formTable.restore then
-			self.formTable.restore(ply, self)
+			self.formTable.restore(ply, self, self.formTable)
 		end
     end
 

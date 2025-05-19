@@ -107,7 +107,9 @@ function SWEP:DealDamage()
 		dmgInfo:SetDamageType(DMG_SLASH)
 		
 		for k,v in ipairs(props) do
+			SuppressHostEvents( NULL )
 			v:TakeDamageInfo(dmgInfo)
+			SuppressHostEvents( ply )
 			local phys = v:GetPhysicsObject()
 			if IsValid(phys) then
 				local force = ply:GetAimVector() * 10000 + Vector(0,0,200) * 20
@@ -139,8 +141,6 @@ function SWEP:DealDamage()
 	end
 	
 	ply:LagCompensation(false)
-	
-	if CLIENT then return end
 	
 	if !targets then return end
 	

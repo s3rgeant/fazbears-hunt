@@ -135,7 +135,9 @@ function ENT:ApplyEffect(player)
                         ply:SetWalkSpeed(ply:GetWalkSpeed() / 1.2)
                         ply:SetRunSpeed(ply:GetRunSpeed() / 1.2)
                         ply:SetCrouchedWalkSpeed(ply:GetCrouchedWalkSpeed() / 1.4)
-						trail:Remove()
+						if IsValid(trail) then
+							trail:Remove()
+						end
                     end
                 end)
             end

@@ -37,6 +37,7 @@ function SWEP:Initialize()
 end
 
 function SWEP:Deploy()
+	self.CurAnim = "deploy"
     return true
 end
 

@@ -106,29 +106,30 @@ function SWEP:Think()
         end
 
         local elapsed = CurTime() - self.ReviveStartTime
-        if elapsed >= 5 and IsValid(self.ReviveTarget) then
+        if elapsed >= 5 and IsValid(self.ReviveTarget) then -- оживление
             local oldpos = self.OldPos
 
-            local spark = ents.Create("env_spark")
-            spark:SetPos(oldpos)
-            spark:SetKeyValue("spawnflags", "192")
-            spark:SetKeyValue("traillength", "1")
-            spark:SetKeyValue("magnitude", "2")
-            spark:Spawn()
-            spark:Fire("SparkOnce", "", 0.05)
-            spark:Fire("kill", "", 0.1)
-
-            local FireLight1 = ents.Create("light_dynamic")
-            FireLight1:SetKeyValue("brightness", "4")
-            FireLight1:SetKeyValue("distance", "160")
-            FireLight1:SetPos(oldpos)
-            FireLight1:Fire("Color", "60 150 255")
-            FireLight1:Spawn()
-            FireLight1:Activate()
-            FireLight1:Fire("TurnOn", "", 0)
-            FireLight1:Fire("Kill", "", 0.07)
-            self:DeleteOnRemove(FireLight1)
-            if SERVER then
+			if SERVER then
+				local spark = ents.Create("env_spark")
+				spark:SetPos(oldpos)
+				spark:SetKeyValue("spawnflags", "192")
+				spark:SetKeyValue("traillength", "1")
+				spark:SetKeyValue("magnitude", "2")
+				spark:Spawn()
+				spark:Fire("SparkOnce", "", 0.05)
+				spark:Fire("kill", "", 0.1)
+	
+				local FireLight1 = ents.Create("light_dynamic")
+				FireLight1:SetKeyValue("brightness", "4")
+				FireLight1:SetKeyValue("distance", "160")
+				FireLight1:SetPos(oldpos)
+				FireLight1:Fire("Color", "60 150 255")
+				FireLight1:Spawn()
+				FireLight1:Activate()
+				FireLight1:Fire("TurnOn", "", 0)
+				FireLight1:Fire("Kill", "", 0.07)
+				self:DeleteOnRemove(FireLight1)
+				
                 local v = self.ReviveTarget
 
                 if self.ReviveSound then

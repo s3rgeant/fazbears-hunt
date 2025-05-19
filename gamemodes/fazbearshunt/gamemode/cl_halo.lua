@@ -245,7 +245,7 @@ end)
 net.Receive("fh_nodraw_hl_overlay", function()
 	hook.Remove("HUDPaint", "fh_hl_overlay_draw")
 end)
-
+	
 function drawHighlightTimer(bool)
 	hook.Add("HUDPaint", "fh_hl_overlay_draw", drawHighlight)
 	
@@ -266,6 +266,50 @@ function drawHighlight()
     surface.SetMaterial(Material("vgui/highlightOverlay.png"))
     
     surface.DrawTexturedRect(0, 0, ScrW(), ScrH())
+end
+
+local scale = ScrH() / 1080
+local size = 128 * scale
+
+local plushalert_y = -size
+local plushalert_y_target = 0
+
+local plushalert_alpha = 0
+local plushalert_alpha_target = 20
+
+net.Receive("fh_plushalert_inrange", function()
+	hook.Add("HUDPaint", "fh_plushalert_draw", plushtrap_alert)
+	plushalert_y_target = 10
+	plushalert_alpha_target = 10
+end)
+
+net.Receive("fh_plushalert_outrange", function()
+	plushalert_y_target = -size
+	plushalert_alpha_target = 0
+	hook.Add("Think", "fh_plushalert_removing", function()
+		if math.floor(plushalert_y) == math.floor(plushalert_y_target) then
+			hook.Remove("HUDPaint", "fh_plushalert_draw")
+			hook.Remove("HUDPaint", "fh_plushalert_removing")
+		end
+	end)
+end)
+
+function plushtrap_alert()
+    local speed = FrameTime() * 2
+    plushalert_y = Lerp(speed, plushalert_y, plushalert_y_target)
+    plushalert_alpha = Lerp(speed, plushalert_alpha, plushalert_alpha_target)
+	
+	if !GetConVar("cl_drawhud"):GetBool() then return end
+	
+    surface.SetDrawColor(255, 255, 255, plushalert_alpha)
+    surface.SetMaterial(Material("vgui/plushtrap overlay.png"))
+    surface.DrawTexturedRect(0, 0, ScrW(), ScrH())
+	
+    surface.SetDrawColor(255, 255, 255, 255)
+    
+    surface.SetMaterial(Material("vgui/plushtrap_alert.vtf"))
+    
+    surface.DrawTexturedRect(ScrW() / 2 - size / 2, (ScrH() - size) - plushalert_y, size, size)
 end
 
 net.Receive("ToggleHighlightSound", function()
@@ -387,6 +431,9 @@ hook.Add("PostCleanupMap", "fh_cleanup", function(ply)
 	
 	hook.Remove("HUDPaint", "fh_hl_overlay_draw")
 	hook.Remove("HUDPaint", "fh_pt_draw_affected")
+	
+	hook.Remove("HUDPaint", "fh_plushalert_draw")
+	hook.Remove("HUDPaint", "fh_plushalert_removing")
 end)
 
 net.Receive("fh_start_yoursmine_view", function()

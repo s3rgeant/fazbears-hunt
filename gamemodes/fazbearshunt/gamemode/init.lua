@@ -381,7 +381,7 @@ function postGameTimer()
 end
 
 function startGame()
-	local springtrapRound = math.random(1,10) > 3 and table.Count(player.GetAll()) < 16 and true or false
+	local springtrapRound = math.random(1,10) > 4 and table.Count(player.GetAll()) < 16 and true or false
 	
 	if !springtrapRound then
 	
@@ -559,7 +559,7 @@ function disableGiftSpawning()
 end
 
 function fh_random_time(num1, num2)
-	return math.random(110, 165)
+	return math.random(num1, num2)
 end
 
 hook.Add( "Initialize", "fh_init", function()
@@ -901,14 +901,6 @@ hook.Add("SetupPlayerVisibility", "fh_spec_pvs", function(ply)
         local target = ply:GetObserverTarget()
         if IsValid(target) then
             AddOriginToPVS(target:GetPos())
-        end
-    end
-end)
-
-hook.Add("Think", "UpdateObserverPosition", function()
-    for _, ply in ipairs(team.GetPlayers(TEAM_SPECTATOR)) do
-        if IsValid(ply:GetObserverTarget()) and ply:GetObserverMode() != OBS_MODE_ROAMING then
-            ply:SetPos(ply:GetObserverTarget():GetPos())
         end
     end
 end)
