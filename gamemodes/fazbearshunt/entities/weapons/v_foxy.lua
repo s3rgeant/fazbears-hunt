@@ -110,6 +110,7 @@ function SWEP:PlayCustomAnimation(anim, hold)
     
     local animMap = {
         ["ACT_MELEE_ATTACK1"] = ACT_MELEE_ATTACK1,
+        ["ACT_GMOD_TAUNT_LAUGH"] = ACT_GMOD_TAUNT_LAUGH,
     }
     
     local act = animMap[anim]

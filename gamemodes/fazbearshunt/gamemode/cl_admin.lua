@@ -38,11 +38,9 @@ local function OpenAdminPanel()
         gui.EnableScreenClicker(false)
     end
 
-    -- Создаем PropertySheet для вкладок
     local PropertySheet = vgui.Create("DPropertySheet", fh_admin_panel)
     PropertySheet:Dock(FILL)
 
-    -- Первая вкладка: управление игроками
     local PlayerManagementPanel = vgui.Create("DPanel")
     PlayerManagementPanel:Dock(FILL)
 
@@ -60,7 +58,9 @@ local function OpenAdminPanel()
     AnimatronicList:AddColumn("Аниматроники")
     AnimatronicList:SetMultiSelect(false)
     AnimatronicList.OnRowSelected = function(panel, rowIndex, row)
-        selectedAnimatron = row:GetValue(1)
+        selectedAnimatron = row:GetValue(2)
+		
+		print(selectedAnimatron)
     end
     createListAnimatronics()
 
@@ -272,13 +272,31 @@ local function OpenAdminPanel()
 		net.WriteBool(bool)
 		net.SendToServer()
 	end
+
+	local button = vgui.Create("DNumSlider", ExperimentalPanel)
+	button:SetPos(10, 75)
+	button:SetText("Максимум Кексов")
+	button:SetMin( 3 )	
+	button:SetMax( 10 )	
+	button:SetDecimals( 0 )		
+	button:SetDark(true)
+	button:SetSize(220, 10)
+	button:SetDefaultValue(3)
+	button:SetValue(conVars.fh_max_cupcakes:GetInt())
+	
+	button.OnValueChanged = function( self, value )
+		net.Start("AdminAction")
+		net.WriteString('fh_max_cupcakes')
+		net.WriteFloat(value)
+		net.SendToServer()
+	end
 	
 	local DLabel = vgui.Create( "DLabel", ExperimentalPanel )
-	DLabel:SetPos( 220, 15 )
+	DLabel:SetPos( 220, 1 )
 	DLabel:SetText( "- Если выключить полёт Шедоу Фредди, \nон всё ещё сможет использовать способность ухода под пол, \nно не сможет летать, но будет передвигаться по полу как игрок, \nи будет уметь проходить сквозь двери.\n" ..
-	"\n- Если включить тихих аниматроников, \nто звуки шагов аниматроников будут играть только тогда, \nкогда аниматроник будет рендериться.")
+	"\n- Если включить тихих аниматроников, \nто звуки шагов аниматроников будут играть только тогда, \nкогда аниматроник будет рендериться. \n(У аниматроников начнутся сложности с \nпрослеживанием своих тиммейтов через стены)")
 	DLabel:SetDark(true)
-	DLabel:SetSize(345, 100)
+	DLabel:SetSize(345, 200)
 
     PropertySheet:AddSheet("Эксперименты", ExperimentalPanel, "icon16/chart_line.png")
 	
@@ -319,21 +337,10 @@ end
 
 function createListAnimatronics()
     AnimatronicList:Clear()
-    local killers = killerInfo
-    local duoKillers = duoKillerInfo
-	local springtrap = springtrapInfo
+    local killers = table.Copy(killerData)
 
-    for k, v in pairs(duoKillers) do
-        killers[k] = v
-    end
-	
-	--а ещё спрингтрапа сюда
-    for k, v in pairs(springtrap) do
-        killers[k] = v
-    end
-
-    for _, v in pairs(killers) do
-        AnimatronicList:AddLine(v.name)
+    for k, v in pairs(killers) do
+        AnimatronicList:AddLine(language.GetPhrase(v.fullname), k)
     end
 end
 

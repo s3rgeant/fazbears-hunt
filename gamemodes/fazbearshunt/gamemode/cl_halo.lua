@@ -434,6 +434,10 @@ hook.Add("PostCleanupMap", "fh_cleanup", function(ply)
 	
 	hook.Remove("HUDPaint", "fh_plushalert_draw")
 	hook.Remove("HUDPaint", "fh_plushalert_removing")
+	
+	if IsValid(selector) then
+		selector:Close()
+	end
 end)
 
 net.Receive("fh_start_yoursmine_view", function()

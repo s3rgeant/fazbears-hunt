@@ -89,7 +89,7 @@ function ENT:CheckForPlayers()
             
             timer.Simple(7, function()
                 if IsValid(ply) then
-					ply:SetRunSpeed(ply:GetRunSpeed() / 0.6)
+					ply:SetRunSpeed(ply:GetRunSpeed() / 0.5)
                 end
             end)
 			

@@ -263,6 +263,10 @@ net.Receive("AdminAction", function(len, ply)
 			local bool = net.ReadBool() and 1 or 0
 			
 			game.ConsoleCommand(action .. " " .. bool .. "\n")
+		elseif action == "fh_max_cupcakes"  then
+			local num = net.ReadFloat()
+			
+			game.ConsoleCommand(action .. " " .. num .. "\n")
 		elseif action == "fh_spawn_gifts" then
 			fh_spawnGifts()
 		elseif action == "fh_auto_map_hl" then

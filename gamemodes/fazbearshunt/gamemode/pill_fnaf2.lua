@@ -331,6 +331,7 @@ pk_pills.register("pill_wfreddy2",{
 
 	noragdoll=true,
 	reload=function(ply,ent)
+		if ply.lobbyFreeze != nil and ply.lobbyFreeze then return end
 		if ply ~= stalker then
 			HighlightPlayers(ply, ent)
 		end
@@ -750,6 +751,7 @@ pk_pills.register("pill_wbonnie2",{
 
 	noragdoll=true,
 	reload=function(ply,ent)
+		if ply.lobbyFreeze != nil and ply.lobbyFreeze then return end
 		HighlightPlayers(ply, ent)
 	end,
 
@@ -901,7 +903,7 @@ pk_pills.register("pill_wchica2",{
 		mode="trigger",
 		func = function(ply,ent)
 			if ply.lobbyFreeze != nil and ply.lobbyFreeze then return end
-			if table.Count(cupcakes) < 3 and not timer.Exists('C_deploycake'..ply:EntIndex()) then
+			if table.Count(cupcakes) < conVars.fh_max_cupcakes:GetInt() and not timer.Exists('C_deploycake'..ply:EntIndex()) then
 				timer.Create("C_deploycake"..ply:EntIndex(), 15, 1, function() end)
 				
 				local playerPos = ply:GetPos()
@@ -954,6 +956,7 @@ pk_pills.register("pill_wchica2",{
 	
 	noragdoll=true,
 	reload=function(ply,ent)
+		if ply.lobbyFreeze != nil and ply.lobbyFreeze then return end
 		HighlightPlayers(ply, ent)
 	end,
 	
@@ -1114,6 +1117,11 @@ pk_pills.register("pill_wfoxy2",{
 		func = function(ply,ent)
 			ent:PillSound("taunt", true)
 			ent:PillAnim("cloak", true)
+			
+			local wep = ply:GetActiveWeapon()
+			if IsValid(wep) and wep:GetClass() == "v_foxy" then
+				wep:PlayCustomAnimation("ACT_GMOD_TAUNT_LAUGH", 1.9)
+			end
 		end
 	},
 	
@@ -1143,6 +1151,7 @@ pk_pills.register("pill_wfoxy2",{
 		
 	noragdoll=true,
 	reload=function(ply,ent)
+		if ply.lobbyFreeze != nil and ply.lobbyFreeze then return end
 		HighlightPlayers(ply, ent)
 	end,
 	
@@ -1311,6 +1320,7 @@ pk_pills.register("pill_wgfreddy2",{
 	
 	noragdoll=true,
 	reload=function(ply,ent)
+		if ply.lobbyFreeze != nil and ply.lobbyFreeze then return end
 		HighlightPlayers(ply, ent)
 	end,
 
@@ -1827,6 +1837,7 @@ options=function() return {
  
 	noragdoll=true,
 	reload=function(ply,ent)
+		if ply.lobbyFreeze != nil and ply.lobbyFreeze then return end
 		HighlightPlayers(ply, ent)
 	end,
 	
@@ -2013,6 +2024,7 @@ pk_pills.register("pill_endo02",{
 	noragdoll=true,
 
 	reload=function(ply,ent)
+		if ply.lobbyFreeze != nil and ply.lobbyFreeze then return end
 		HighlightPlayers(ply, ent)
 	end,
 	jump=function(ply,ent)
@@ -2165,6 +2177,7 @@ pk_pills.register("pill_clown",{
 
 	noragdoll=true,
 	reload=function(ply,ent)
+		if ply.lobbyFreeze != nil and ply.lobbyFreeze then return end
 		HighlightPlayers(ply, ent)
 	end,
 	
@@ -2280,13 +2293,13 @@ pk_pills.register("pill_springtrap",{
 	moveFunction=function(ply,ent,mv)
 		if IsValid(ent) then
 			if CLIENT then return end
-			if timer.Exists( "CheckConditions"..ply:EntIndex()) then return end
 			
-			timer.Create("CheckConditions"..ply:EntIndex(), 1, 0, function()
-				if !IsValid(ent) then
-					if timer.Exists( "CheckConditions"..ply:EntIndex()) then
-						timer.Remove("CheckConditions"..ply:EntIndex())
-					end
+			local timerName = "CheckConditions" .. ply:EntIndex()
+			if timer.Exists( timerName ) then return end
+	
+			timer.Create( timerName , 1, 0, function()
+				if !IsValid(ent) or !IsValid(ply) then
+					timer.Remove( timerName )
 					return
 				end
 				
@@ -2315,10 +2328,7 @@ pk_pills.register("pill_springtrap",{
 						local angleDiff = math.abs(math.AngleDifference(eyeAngles.yaw, angleToTarget.yaw))
 						
 						if angleDiff < fov / 2 then
-							local add = 1
-							if request_plushtrap or timer.Exists("pt_kill_timer" .. ply:EntIndex()) then
-								add = 0.5
-							end
+							local add = (request_plushtrap or timer.Exists("pt_kill_timer" .. ply:EntIndex())) and 0.5 or 1
 							
 							if spring_rage[target] == nil then
 								spring_rage[target] = 1
@@ -2327,15 +2337,15 @@ pk_pills.register("pill_springtrap",{
 							end
 							
 							spring_rage_total = spring_rage_total + add
-							//ply:ChatPrint(spring_rage_total .. " / 60")
 							
-							if spring_rage_total == 60 then
+							if spring_rage_total >= 60 then
 							
 								local val = 0
 								local loh
 								
 								for k,v in pairs(spring_rage) do
 									if IsValid(k) and v > val and k:Alive() and k:Team() != TEAM_SPECTATOR and k:Team() != 2701 then
+										val = v
 										loh = k
 									end
 								end
@@ -2455,6 +2465,7 @@ pk_pills.register("pill_springtrap",{
 
 	noragdoll=true,
 	reload=function(ply,ent)
+		if ply.lobbyFreeze != nil and ply.lobbyFreeze then return end
 		HighlightPlayers(ply, ent)
 	end,
 	
@@ -2634,7 +2645,7 @@ end
 
 
 local pt_speed_normal = {450,200,190}
-local pt_speed_slowed = {360,150,0}
+local pt_speed_slowed = {410,150,0}
 
 --PLUSHTRAP
 pk_pills.register("pill_plushtrap",{
@@ -2702,9 +2713,9 @@ pk_pills.register("pill_plushtrap",{
 		local speed = formtable.moveSpeed or {}
 		
 		speed.walk = pt_speed_normal[1]
-		speed.run = pt_speed_normal[2]
-		speed.ducked = pt_speed_normal[3]
-		formtable.jumpPower = pt_speed_normal[4]
+		speed.run = pt_speed_normal[1]
+		speed.ducked = pt_speed_normal[2]
+		formtable.jumpPower = pt_speed_normal[3]
 	end,
 
 	noFallDamage=true,
@@ -2977,6 +2988,8 @@ hook.Add("KeyRelease", "PlayerRightClickRelease", function(ply, key)
 
             ply:SetCollisionGroup(COLLISION_GROUP_PASSABLE_DOOR)
             target:SetCollisionGroup(COLLISION_GROUP_PASSABLE_DOOR)
+			
+			hook.Run("fh_endo_release", ply, target)
 
             timer.Create("grabCooldown" .. ply:EntIndex(), 1, 1, function() end)
 

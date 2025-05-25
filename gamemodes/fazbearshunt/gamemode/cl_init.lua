@@ -105,7 +105,7 @@ net.Receive("KillerPicked", function()
     local color = net.ReadColor()
     
     chat.AddText(
-        color, "(" .. num .. ") - ", playerName, " - ", language.GetPhrase("fuppr.round.became"), " ", animatronicName
+        color, "(" .. num .. ") - ", playerName, " - ", language.GetPhrase("fuppr.round.became"), " ", language.GetPhrase(animatronicName)
     )
 end)
 
@@ -225,20 +225,42 @@ local smoothedVM_Ang = nil
 local smoothSpeed = 16
 
 hook.Add("CalcViewModelView", "MatchViewModelToCustomView", function(wep, vm, oldPos, oldAng, pos, ang)
-    if !dynamic_firstperson:GetBool() or not customViewPos or not customViewAng then return end
+    if !dynamic_firstperson:GetBool() or not customViewPos then return end
 
-    if not smoothedVM_Ang then
-        smoothedVM_Ang = Angle(customViewAng)
-    end
-
-    local angDiff = customViewAng - smoothedVM_Ang
-    angDiff:Normalize()
-
-    local delta = math.abs(angDiff.pitch) + math.abs(angDiff.yaw) + math.abs(angDiff.roll)
-
-    local adaptiveSpeed = math.Clamp(8 + delta * 2, 8, 60)
-
-    smoothedVM_Ang = LerpAngle(FrameTime() * adaptiveSpeed, smoothedVM_Ang, customViewAng)
-
-    return customViewPos, smoothedVM_Ang
+    return customViewPos, oldAng
 end)
+
+
+function GM:MouthMoveAnimation(ply)
+    local weight = ply:IsSpeaking() and math.Clamp(ply:VoiceVolume() * 2, 0, 2) or 0
+
+    local pillEnt = pk_pills and pk_pills.getMappedEnt and pk_pills.getMappedEnt(ply)
+
+	if IsValid(pillEnt) then
+        local jawBones = { "bip_jaw", "Jaw", "Jaw_Bn", "Jaw_jnt", "JawInner" }
+		local mp = 1
+
+        for _, boneName in ipairs(jawBones) do
+            local boneID = pillEnt:LookupBone(boneName)
+			if boneName == "Jaw_Bn" then mp = -1 end
+            if boneID then
+                local angle = ply:IsSpeaking() and Angle(0, 0, -weight * 25 * mp) or Angle(0, 0, 0)
+                pillEnt:ManipulateBoneAngles(boneID, angle)
+            end
+        end
+    else
+        local flexes = {
+            ply:GetFlexIDByName("jaw_drop"),
+            ply:GetFlexIDByName("left_part"),
+            ply:GetFlexIDByName("right_part"),
+            ply:GetFlexIDByName("left_mouth_drop"),
+            ply:GetFlexIDByName("right_mouth_drop")
+        }
+
+        for _, v in ipairs(flexes) do
+            if v and v >= 0 then
+                ply:SetFlexWeight(v, weight)
+            end
+        end
+    end
+end

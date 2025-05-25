@@ -12,9 +12,14 @@ conVars = {
 	halo_time = CreateConVar( "halo_time", 10, { FCVAR_ARCHIVE, FCVAR_REPLICATED}, "Time for halo to dissolve." ),
 	halo_cooldown = CreateConVar( "halo_cooldown", 120, { FCVAR_ARCHIVE, FCVAR_REPLICATED}, "Cooldown for halo." ),
 	
+	
+	--[[
+		ADMIN PANEL: EXPERIMENTS
+	]]
 	fh_gifts_spawning = CreateConVar( "fh_gifts_spawning", 0, { FCVAR_ARCHIVE, FCVAR_REPLICATED}, "Toggle gifts spawning" ),
 	fh_animatronic_immortal = CreateConVar( "fh_animatronic_immortal", 1, { FCVAR_ARCHIVE, FCVAR_REPLICATED}, "Toggle immortality for animatronic team" ),
 	fh_less_steps = CreateConVar( "fh_less_steps", 0, { FCVAR_ARCHIVE, FCVAR_REPLICATED}, "Toggle PVS adding for animatronics (makes footsteps silent when they're not rendered)" ),
+	fh_max_cupcakes = CreateConVar( "fh_max_cupcakes", 3, { FCVAR_ARCHIVE, FCVAR_REPLICATED}, "Maximum amount of cupcakes Chica can spawn" ),
 	
 	fh_discord_url_webhook = CreateConVar( "fh_discord_url_webhook", "none", {FCVAR_ARCHIVE, FCVAR_SERVER_CAN_EXECUTE}, "Discord Integration webhook." )
 	--fh_discord_url_avatar = CreateConVar( "fh_discord_url_avatar", "none", {FCVAR_ARCHIVE, FCVAR_SERVER_CAN_EXECUTE}, "Discord Integration avatar." )
@@ -32,44 +37,98 @@ local colors = {
     Springtrap = Color(105, 150, 70)
 }
 
--- Одиночные аниматроники. Могут вывезти в соло
-killerInfo = {
-    ["pill_wfreddy2"] = {name = "Фредди", color = colors.Freddy},
-    ["pill_wbonnie2"] = {name = "Бонни", color = colors.Bonnie},
-    ["pill_wchica2"] = {name = "Чика", color = colors.Chica},
-    ["pill_wfoxy2"] = {name = "Фокси", color = colors.Foxy},
-    ["pill_clown"] = {name = "Клоун", color = colors.Clown}
-}
-
--- Классы поддержки. В одиночку за них сложнее играть.
-duoKillerInfo = {
-    ["pill_endo02"] = {name = "Эндоскелет", color = colors.Endo},
-    ["pill_sfreddy2"] = {name = "Шедоу Фредди", color = colors.Shadow}
-}
-
--- ХЗ. Спрингтрап
-springtrapInfo = {
-    ["pill_springtrap"] = {name = "Спрингтрап", color = colors.Springtrap},
-    ["pill_plushtrap"] = {name = "Плюштрап", color = colors.Springtrap}
-}
-
 killerData = {
-    ["pill_wfreddy2"] = {name = "freddy"},
-    ["pill_wbonnie2"] = {name = "bonnie"},
-    ["pill_endo02"] = {name = "endo"},
-    ["pill_wchica2"] = {name = "chica"},
-    ["pill_wfoxy2"] = {name = "foxy"},
-    ["pill_wgfreddy2"] = {name = "sfreddy"},
-    ["pill_sfreddy2"] = {name = "sfreddy"},
-    ["pill_clown"] = {name = "clown"},
-    ["pill_springtrap"] = {name = "springtrap"},
-    ["pill_plushtrap"] = {name = "plushtrap"}
+    ["pill_wfreddy2"] = {name = "freddy", fullname = "fazhunt.animatronics.freddy", color = colors.Freddy},
+    ["pill_wbonnie2"] = {name = "bonnie", fullname = "fazhunt.animatronics.bonnie", color = colors.Bonnie},
+    ["pill_wchica2"] = {name = "chica", fullname = "fazhunt.animatronics.chica", color = colors.Chica},
+    ["pill_wfoxy2"] = {name = "foxy", fullname = "fazhunt.animatronics.foxy", color = colors.Foxy},
+    ["pill_endo02"] = {name = "endo", fullname = "fazhunt.animatronics.endo", color = colors.Endo},
+    ["pill_sfreddy2"] = {name = "sfreddy", fullname = "fazhunt.animatronics.sfreddy", color = colors.Shadow},
+    ["pill_wgfreddy2"] = {name = "sfreddy", fullname = "fazhunt.animatronics.gfreddy", color = colors.Gray},
+    ["pill_clown"] = {name = "clown", fullname = "fazhunt.animatronics.clown", color = colors.Clown},
+    ["pill_springtrap"] = {name = "springtrap", fullname = "fazhunt.animatronics.springtrap", color = colors.Springtrap},
+    ["pill_plushtrap"] = {name = "plushtrap", fullname = "fazhunt.animatronics.plushtrap", color = colors.Springtrap}
 }
+
+
+function getAllSolos()
+	local tablo = {}
+	for k, v in pairs( killerData ) do
+		if !killerData[k].secondary then
+			tablo[k] = v
+		end
+	end
+	return tablo
+end
+
+function getAllPreferables(secondaries)
+	secondaries = secondaries or false
+	local tablo = {}
+	for k, v in pairs( killerData ) do
+		if !secondaries and killerData[k].secondary then continue end
+		if killerData[k].preferable then
+			tablo[k] = v
+		end
+	end
+	return tablo
+end
+
+local dontPrefer = {"pill_springtrap", "pill_plushtrap", "pill_wgfreddy2"}
+
+-- по умолчанию нельзя выбирать этих аниматроников, пишем их в файлик, чтобы файликом можно было управлять
+if !file.Exists("fh_preferables.txt", "DATA") then
+	file.Write("fh_preferables.txt", table.concat(dontPrefer, "\n"))
+end
+
+function pill_makeSecondary(anim, bool)
+	bool = bool or true
+	if istable(anim) then
+		for k, v in pairs( anim ) do
+			killerData[v].secondary = bool
+		end
+	else
+		killerData[anim].secondary = bool
+	end
+end
+
+pill_makeSecondary( {"pill_endo02", "pill_sfreddy2", "pill_wgfreddy2"} )
+
+function pill_makePreferable(anim, bool)
+	bool = bool or false
+	if istable(anim) then
+		for k, v in pairs( anim ) do
+			killerData[v].preferable = bool
+		end
+	else
+		killerData[anim].preferable = bool
+	end
+end
+
+pill_makePreferable(table.GetKeys(killerData), true)
+
+if file.Exists("fh_preferables.txt", "DATA") then
+    local data = file.Read("fh_preferables.txt", "DATA") or ""
+	
+	if data != "" then 
+		local lines = string.Split(data, "\n")
+		
+		pill_makePreferable( lines )
+	end
+end
+
+function getAllSecondaries()
+	local tablo = {}
+	for k, v in pairs( killerData ) do
+		if killerData[k].secondary then
+			tablo[k] = v
+		end
+	end
+	return tablo
+end
 
 function getAllKillers()
-	local solos = table.Copy(killerInfo)
-	local duos = table.Copy(duoKillerInfo)
-	return table.Merge(solos, duos)
+	local tablo = table.Copy(killerData)
+	return tablo
 end
 
 function getTeam(team)

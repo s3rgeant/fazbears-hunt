@@ -105,11 +105,11 @@ function assignKillers()
     local players = player.GetAll()
     local totalPlayers = #players
 
-    if totalPlayers >= 40 then
+    if totalPlayers >= 48 then
         curMaxKillers = 5
-    elseif totalPlayers >= 24 then
+    elseif totalPlayers >= 28 then
         curMaxKillers = 4
-    elseif totalPlayers >= 16 then
+    elseif totalPlayers >= 18 then
         curMaxKillers = 3
     elseif totalPlayers >= 8 then
         curMaxKillers = 2
@@ -117,13 +117,7 @@ function assignKillers()
         curMaxKillers = 1
     end
 	
-    local availableKillers = table.GetKeys(killerInfo)
-		
-	if curMaxKillers > 1 then
-		for k, v in pairs(duoKillerInfo) do
-			table.insert(availableKillers, k)
-		end
-	end
+    local availableKillers = table.GetKeys(getAllPreferables(curMaxKillers > 1))
 	
 	for k, v in pairs(lastKillers) do
 		table.RemoveByValue(players, k)
@@ -190,10 +184,6 @@ function giveKiller(player, killer, force)
 	
 	local killers = getAllKillers()
 	
-	for k,v in pairs(springtrapInfo) do
-		killers[k] = v
-	end
-	
 	local killerData
 	local command
 	
@@ -232,7 +222,7 @@ function giveKiller(player, killer, force)
     net.Start("KillerPicked")
     net.WriteUInt(1, 8)
     net.WriteString(ply:Nick())
-    net.WriteString(killerData.name)
+    net.WriteString(killerData.fullname)
     net.WriteColor(killerData.color)
     net.Broadcast()
 	
@@ -381,7 +371,8 @@ function postGameTimer()
 end
 
 function startGame()
-	local springtrapRound = math.random(1,10) > 4 and table.Count(player.GetAll()) < 16 and true or false
+	RunConsoleCommand("proximity_enabled", 1)
+	--local springtrapRound = math.random(1,10) > 4 and table.Count(player.GetAll()) < 16 and true or false
 	
 	if !springtrapRound then
 	
@@ -437,6 +428,8 @@ function startGame()
 			LogEvent("(*АВТО*) - Спрингтрап разморожен, раунд начат.")
 		end)
 	end
+	
+	hook.Run("fh_startgame", springtrapRound)
 	
     net.Start("fh_start_game_timer")
 	net.WriteFloat(gameDuration)
@@ -494,8 +487,6 @@ function registerNewRound()
 		timer.Remove("GameStartTimer")
 	end
 	roundCount = roundCount + 1
-	
-	RunConsoleCommand("proximity_enabled", 1)
 	
 	postGameOn = false
 	isGameOn = true
@@ -926,13 +917,8 @@ end)
 
 function giveRandomKiller(ply, update)
 	update = update or false
-    local availableKillers = table.GetKeys(killerInfo)
-		
-	if curMaxKillers > 1 then
-		for k, v in pairs(duoKillerInfo) do
-			table.insert(availableKillers, k)
-		end
-	end
+	
+    local availableKillers = table.GetKeys(getAllPreferables(curMaxKillers > 1))
 	
 	for k, v in pairs(usedKillers) do
 		if table.HasValue(availableKillers, k) then
@@ -998,3 +984,49 @@ hook.Add( "PlayerSay", "fh_chat_messages", function( ply, text, teamChat )
 	
 	return ""
 end )
+
+local tm = nil
+hook.Add("Tick", "fh_tick", function()
+   for _, ply in player.Iterator() do
+      tm = ply:Team()
+      if tm == TEAM_UNASSIGNED and ply:Alive() then
+         if ply:WaterLevel() == 3 then
+            if ply:IsOnFire() then
+               ply:Extinguish()
+            end
+
+            if ply.drowning then
+               if ply.drowning < CurTime() then
+                  local dmginfo = DamageInfo()
+                  dmginfo:SetDamage(5)
+                  dmginfo:SetDamageType(DMG_DROWN)
+                  dmginfo:SetAttacker(game.GetWorld())
+                  dmginfo:SetInflictor(game.GetWorld())
+                  dmginfo:SetDamageForce(Vector(0,0,1))
+
+                  ply:TakeDamageInfo(dmginfo)
+
+                  ply.drowning = CurTime() + 1
+               end
+            else
+               ply.drowning = CurTime() + 8
+            end
+         else
+            ply.drowning = nil
+         end
+
+      elseif tm == TEAM_SPEC then
+         if ply.propspec then
+            PROPSPEC.Recharge(ply)
+
+            if IsValid(ply:GetObserverTarget()) then
+               ply:SetPos(ply:GetObserverTarget():GetPos())
+            end
+         end
+
+         if ply:Alive() then
+            self:SpectatorThink(ply)
+         end
+      end
+   end
+end)

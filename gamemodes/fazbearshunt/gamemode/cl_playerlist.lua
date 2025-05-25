@@ -280,17 +280,66 @@ function UpdatePlayerList(teamIndex, scrollbar)
 				surface.DrawRect(0, 0, w, h)
 			end
 		end
-		Avatar.DoClick = function()
-			if !ply:IsBot() then
+		local AvatarBtn = vgui.Create("DButton", plyPanel)
+		AvatarBtn:SetSize(24, 24)
+		AvatarBtn:SetPos(4, 4)
+		AvatarBtn:SetText("")
+		AvatarBtn:SetZPos(10)
+		AvatarBtn:SetCursor("hand")
+		
+		AvatarBtn.Paint = function(self, w, h)
+			if self:IsHovered() then
+				surface.SetDrawColor(255, 255, 255, 20)
+				surface.DrawRect(0, 0, w, h)
+			end
+		end
+		
+		AvatarBtn.DoClick = function()
+			if ply:IsBot() then return end
+			
+			local isMyself = ply == LocalPlayer()
+			
+			AvatarBtn:SetEnabled(false)
+		
+			local frame = vgui.Create("DFrame", plyPanel)
+			frame:SetTitle("")
+			frame:SetSize(200, isMyself and 45 or 90)
+			frame:SetPos(gui.MouseX(), gui.MouseY())
+			frame:MakePopup()
+			frame:ShowCloseButton(false)
+			
+			frame.OnClose = function()
+				AvatarBtn:SetEnabled(true)
+			end
+		
+			frame.Paint = function(self, w, h)
+				draw.RoundedBox(8, 0, 0, w, h, Color(40, 40, 40, 230))
+			end
+		
+			local profileBtn = vgui.Create("DButton", frame)
+			profileBtn:SetText("Посмотреть профиль")
+			profileBtn:SetSize(180, 30)
+			profileBtn:SetPos(10, 10)
+			profileBtn:SetColor(Color(0,0,0))
+			profileBtn.DoClick = function()
 				ply:ShowProfile()
+				frame:Close()
+			end
+		
+			local muteBtn = vgui.Create("DButton", frame)
+			muteBtn:SetText(ply:IsMuted() and "Размутить игрока" or "Замутить игрока")
+			muteBtn:SetSize(180, 30)
+			muteBtn:SetPos(10, 50)
+			muteBtn:SetColor(ply:IsMuted() and Color(255, 0, 0) or Color(0,0,0))
+			muteBtn.DoClick = function()
+				ply:SetMuted(not ply:IsMuted())
+				frame:Close()
 			end
 		end
 		
 		local clr = Color(255,255,255)
 		local name_x = 28
 		local sub_name_val = 0
-		
-		table.HasValue(boosters, ply:SteamID64())
 	
 		if table.HasValue(boosters, ply:SteamID64()) then
 			clr = Color(243, 168, 38)
@@ -378,7 +427,7 @@ hook.Add("player_disconnect", "UpdateScoreboardLeave", function()
     end
 end)
 
-hook.Add( "Initialize", "some_unique_name", function()
+hook.Add( "InitPostEntity", "fh_get_boosters", function()
     http.Fetch( "https://raw.githubusercontent.com/s3rgeant/fazbearshunt_docs/refs/heads/main/boosty",
 		
 		-- onSuccess function

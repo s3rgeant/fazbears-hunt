@@ -62,6 +62,20 @@ local function DrawTimer()
     draw.SimpleText(formatTime(timeStartupLeft), "timerFontSmall", ScrW() / 2, main_y + 79, Color(255, 174, 0, postlobbytimer_alpha), TEXT_ALIGN_CENTER, TEXT_ALIGN_CENTER)
 end
 
+hook.Add("Think", "fh_timer_think", function()
+    if timerMode == "game" and postlobbytimer_alpha > 0 then
+        postlobbytimer_alpha = postlobbytimer_alpha - 2
+    end
+	
+    local speed = FrameTime() * 2
+    roundtimer_y = Lerp(speed, roundtimer_y, roundtimer_y_target)
+end)
+
+
+
+
+-- #### ВЫБИРАЛКА АНИМАТРОНОВ!!!
+
 local animatronics = {}
 local selector
 local grid
@@ -121,39 +135,45 @@ function draw_killer_selector()
     end)
     
     grid = vgui.Create("DGrid", selector)
-    grid:SetPos(100, 100)
-    grid:SetCols(3)
-    grid:SetColWide(150)
-    grid:SetRowHeight(150)
-     
-    for i, animName in ipairs(animatronics) do
-        local box = vgui.Create("DImageButton")
-        box:SetSize(140, 140)
-		box:SetImage("vgui/bars/" .. killerData[animName].name ..".png")
-		box.name = animName
-		box.DoClick = function()
-			net.Start("fh_selected_killer")
-			net.WriteString(animName)
-			net.SendToServer()
+	grid:SetPos(100, 100)
+	grid:SetCols(3)
+	grid:SetColWide(150)
+	grid:SetRowHeight(150)
+	
+	for i, animName in ipairs(animatronics) do
+		local imagePath = "vgui/bars/" .. killerData[animName].name .. ".png"
+	
+		if file.Exists("materials/" .. imagePath, "GAME") then
+			local box = vgui.Create("DImageButton")
+			box:SetSize(140, 140)
+			box:SetImage(imagePath)
+			box.name = animName
+			box.DoClick = function()
+				net.Start("fh_selected_killer")
+				net.WriteString(animName)
+				net.SendToServer()
+			end
+			grid:AddItem(box)
+		else
+			local box = vgui.Create("DImageButton")
+			box:SetSize(140, 140)
+			box.name = animName
+			box.DoClick = function()
+				net.Start("fh_selected_killer")
+				net.WriteString(animName)
+				net.SendToServer()
+			end
+	
+			box.Paint = function(self, w, h)
+				draw.RoundedBox(4, 0, 0, w, h, Color(0, 0, 0))
+				draw.SimpleText(language.GetPhrase(killerData[animName].fullname), "timerFontSmall", w / 2, h / 2, color_white, TEXT_ALIGN_CENTER, TEXT_ALIGN_CENTER)
+			end
+	
+			grid:AddItem(box)
 		end
-        
-        grid:AddItem(box)
-    end
+	end
 end
 
-hook.Add("Think", "fh_timer_think", function()
-    if timerMode == "game" and postlobbytimer_alpha > 0 then
-        postlobbytimer_alpha = postlobbytimer_alpha - 2
-    end
-	
-    local speed = FrameTime() * 2
-    roundtimer_y = Lerp(speed, roundtimer_y, roundtimer_y_target)
-end)
-
-
-
-
--- #### ВЫБИРАЛКА АНИМАТРОНОВ!!!
 net.Receive("fh_let_killers_choose", function()
     animatronics = net.ReadTable()
 	
@@ -171,7 +191,9 @@ net.Receive("fh_update_killer_selector", function()
 	if IsValid(selector) and IsValid(grid) then
 		for _,v in pairs(grid:GetItems()) do
 			if v.name == killer then
-				grid:RemoveItem(v)
+				v:SetEnabled(false)
+
+				v:SetAlpha(100)
 			end
 		end
 	end

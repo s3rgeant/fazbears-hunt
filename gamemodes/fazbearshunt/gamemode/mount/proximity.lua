@@ -83,12 +83,27 @@ else
 		talker:SetVoiceVolumeScale(volume)
 	end
 	
+	local function ShouldProcessVoice(listener, talker)
+		local team1 = listener:Team()
+		local team2 = talker:Team()
+	
+		local bothInSameBlockedTeam =
+			(team1 == 2701 and team2 == 2701) or
+			(team1 == TEAM_SPECTATOR and team2 == TEAM_SPECTATOR)
+	
+		return talker ~= listener
+			and IsValid(talker)
+			and talker:IsSpeaking()
+			and !talker:IsMuted()
+			and !bothInSameBlockedTeam
+	end
+	
 	hook.Add("Think", "ClientVoiceFilterThink", function()
 		local listener = LocalPlayer()
 		if not IsValid(listener) then return end
-		
-		for _, talker in ipairs(player.GetAll()) do
-			if talker ~= listener and (talker:IsSpeaking() and !talker:IsMuted()) and talker:Team() != 2701 then
+	
+		for _, talker in player.Iterator() do
+			if IsValid(talker) and ShouldProcessVoice(listener, talker) then
 				UpdateVoiceDSP(listener, talker)
 			end
 		end
@@ -99,7 +114,7 @@ else
 	end)
 	
 	hook.Add("PlayerStartVoice", "ClientVoiceFilterStart", function(ply)
-		if ply:Team() == 2701 and LocalPlayer() == 2701 then
+		if ply:Team() == TEAM_SPECTATOR or ply:Team() == 2701 and LocalPlayer():Team() == 2701 then
 			ply:SetVoiceVolumeScale(1)
 		end
 	end)
