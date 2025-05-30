@@ -63,6 +63,8 @@ util.AddNetworkString("fh_let_killers_choose")
 util.AddNetworkString("fh_selected_killer")
 util.AddNetworkString("fh_update_killer_selector")
 
+util.AddNetworkString("fh_share_notprefered")
+
 util.AddNetworkString("fh_selector_nomore")
 
 
@@ -135,15 +137,19 @@ function assignKillers()
 				end
 			end
 			table.insert(players, chosenLastKiller)
-			--table.RemoveByValue(lastKillers, chosenLastKiller)
+			table.RemoveByValue(lastKillers, chosenLastKiller)
 			
 			lastKillers[chosenLastKiller] = 0
+		end
+		
+		if table.Count(players) == 0 then
+			players = player.GetAll()
 		end
 			
 		local chosenPlayer = randomChoice(players)
 		table.RemoveByValue(players, chosenPlayer)
 		
-		table.insert(animatronics, chosenPlayer)
+		smartTableInsert(animatronics,chosenPlayer)
 		table.RemoveByValue(survivors, chosenPlayer)
 		
 		chosenPlayer.lobbyFreeze = true
@@ -210,9 +216,8 @@ function giveKiller(player, killer, force)
 	
 	ply:Spawn()
 	
-	if !table.HasValue(animatronics, ply) then
-		table.insert(animatronics, ply)
-	end
+	smartTableInsert(animatronics,ply)
+	
 	if table.HasValue(survivors, ply) then
 		table.RemoveByValue(survivors, ply)
 	end
@@ -372,7 +377,7 @@ end
 
 function startGame()
 	RunConsoleCommand("proximity_enabled", 1)
-	--local springtrapRound = math.random(1,10) > 4 and table.Count(player.GetAll()) < 16 and true or false
+	local springtrapRound = math.random(1,10) > 4 and table.Count(player.GetAll()) < 16 and true or false
 	
 	if !springtrapRound then
 	
@@ -401,13 +406,19 @@ function startGame()
 			end
 			table.insert(players, chosenLastKiller)
 			table.RemoveByValue(lastKillers, chosenLastKiller)
+			
+			lastKillers[chosenLastKiller] = 0
+		end
+		
+		if table.Count(players) == 0 then
+			players = player.GetAll()
 		end
 		
 		local chosenPlayer = randomChoice(players)
 		
 		giveKiller(chosenPlayer, 'pill_springtrap', true)
 		
-		table.insert(animatronics, chosenPlayer)
+		smartTableInsert(animatronics,chosenPlayer)
 		table.RemoveByValue(survivors, chosenPlayer)
 		
 		chosenPlayer.lobbyFreeze = true
@@ -682,9 +693,6 @@ hook.Add("PlayerDeath", "fh_deaths", function( victim, inflictor, attacker )
 	
 	if isGameOn then
 		victim:Spectate(OBS_MODE_CHASE)
-		if attacker:IsPlayer() then 
-			victim:SpectateEntity(attacker)
-		end
 		victim:SetTeam(TEAM_SPECTATOR)
 		
 		net.Start('DeadHUDEnable')
@@ -715,6 +723,7 @@ hook.Add("PlayerDeath", "fh_deaths", function( victim, inflictor, attacker )
 end)
 
 function fh_get_plytable_nicknames(tbl)
+	tbl = tlb or {}
 	local ret_tbl = {}
 	for _, ply in pairs(tbl) do
 		table.insert(ret_tbl, ply:Nick())
@@ -823,7 +832,7 @@ hook.Add( "CreateEntityRagdoll", "fh_ragdoll_handle", function( ply, ragdoll )
 end )
 
 hook.Add( "CanPlayerSuicide", "AllowOwnerSuicide", function( ply )
-	if ply:Team() == 2701 then
+	if ply:Team() == 2701 or ply.jumpscared then
 		return false
 	end
 end )
@@ -855,9 +864,7 @@ hook.Add("ShouldCollide", "CustomPlayerCollision", function(ent1, ent2)
 end)
 
 hook.Add("PillApply", "fh_joinpill", function(ply, name)
-	if !table.HasValue(animatronics, ply) then
-		table.insert(animatronics, ply)
-	end
+	smartTableInsert(animatronics,ply)
 	
 	if table.HasValue(survivors, ply) then
 		table.RemoveByValue(survivors, ply)
@@ -942,6 +949,12 @@ function giveRandomKiller(ply, update)
 	end
 end
 
+function smartTableInsert(tab, val)
+	if !table.HasValue(tab,val) then
+		table.insert(tab,val)
+	end
+end
+
 net.Receive("fh_initpostentity", function(len, ply)
 	if timer.Exists('EndGameTimer') then
 		local timeLeft = timer.TimeLeft('EndGameTimer')
@@ -968,6 +981,12 @@ net.Receive("fh_initpostentity", function(len, ply)
 		end)
 		
 		lobbyDuration = 30
+	end
+	if !ply:IsListenServerHost() then
+	
+		net.Start("fh_share_notprefered")
+		net.WriteTable(getAllPreferables(true))
+		net.Send(ply)
 	end
 end)
 

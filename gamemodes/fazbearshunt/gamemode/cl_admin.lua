@@ -59,8 +59,6 @@ local function OpenAdminPanel()
     AnimatronicList:SetMultiSelect(false)
     AnimatronicList.OnRowSelected = function(panel, rowIndex, row)
         selectedAnimatron = row:GetValue(2)
-		
-		print(selectedAnimatron)
     end
     createListAnimatronics()
 
@@ -83,40 +81,59 @@ local function OpenAdminPanel()
         {text = language.GetPhrase("fuppr.adminpanel.give_killer"), action = "give_animatronic"},
         {text = language.GetPhrase("fuppr.adminpanel.revive"), action = "resurrect"},
         {text = language.GetPhrase("fuppr.adminpanel.kill"), action = "kill"},
-        {text = language.GetPhrase("fuppr.adminpanel.highlight"), action = "highlight"}
+        {text = language.GetPhrase("fuppr.adminpanel.highlight"), action = "highlight"},
+        {},
+        {text = language.GetPhrase("fuppr.adminpanel.addplayable"), action = "addplayable", superadmin = true},
+        {text = language.GetPhrase("fuppr.adminpanel.removeplayable"), action = "removeplayable", superadmin = true}
     }
 
     local yPos = 10
     for _, btn in ipairs(actions) do
-        local button = vgui.Create("DButton", PlayerManagementPanel)
-        button:SetPos(400, yPos)
-        button:SetSize(180, 30)
-        button:SetText(btn.text)
-        button.DoClick = function()
-            local targets = GetSelectedByList(PlayerList)
-            if targets and #targets > 0 then
-                net.Start("AdminAction")
-                net.WriteString(btn.action)
-                net.WriteUInt(#targets, 8)
-                for _, target in pairs(targets) do
-                    net.WriteEntity(target)
-					if (btn.action == "give_animatronic" and selectedAnimatron != nil) or btn.action == "resurrect" or btn.action == "kill" then
-						updatePlayer(target, btn.action)
+		if btn.superadmin and !LocalPlayer():IsSuperAdmin() then continue end
+	
+		if btn.text and btn.action then
+			local button = vgui.Create("DButton", PlayerManagementPanel)
+			button:SetPos(400, yPos)
+			button:SetSize(180, 30)
+			button:SetText(btn.text)
+			button.DoClick = function()
+				local targets = GetSelectedByList(PlayerList)
+				if targets and #targets > 0 and !string.match(btn.action, "playable") then
+					net.Start("AdminAction")
+					net.WriteString(btn.action)
+					net.WriteUInt(#targets, 8)
+					for _, target in pairs(targets) do
+						net.WriteEntity(target)
+						if (btn.action == "give_animatronic" and selectedAnimatron != nil) or btn.action == "resurrect" or btn.action == "kill" then
+							updatePlayer(target, btn.action)
+						end
 					end
-                end
-                if btn.action == "give_animatronic" then
-                    if selectedAnimatron == nil then
-                        chat.AddText(Color(255, 0, 0), "Выберите аниматроника!")
-                        net.WriteString(tostring(""))
-                    else
-                        net.WriteString(tostring(selectedAnimatron))
-                    end
-                end
-                net.SendToServer()
-            else
-                chat.AddText(Color(255, 0, 0), "Выберите игроков!")
-            end
-        end
+					if btn.action == "give_animatronic" then
+						if selectedAnimatron == nil then
+							chat.AddText(Color(255, 0, 0), "Выберите аниматроника!")
+							net.WriteString(tostring(""))
+						else
+							net.WriteString(tostring(selectedAnimatron))
+						end
+					end
+					net.SendToServer()
+				elseif !string.match(btn.action, "playable") then
+					chat.AddText(Color(255, 0, 0), "Выберите игроков!")
+				end
+				
+				if string.match(btn.action, "playable") then
+					net.Start("AdminAction")
+					net.WriteString(btn.action)
+					if selectedAnimatron == nil then
+						chat.AddText(Color(255, 0, 0), "Выберите аниматроника!")
+						net.WriteString(tostring(""))
+					else
+						net.WriteString(tostring(selectedAnimatron))
+					end
+					net.SendToServer()
+				end
+			end
+		end
         yPos = yPos + 40
     end
 
@@ -338,9 +355,23 @@ end
 function createListAnimatronics()
     AnimatronicList:Clear()
     local killers = table.Copy(killerData)
+	
+	local prefered = {}
+		
+	for k,v in pairs(getAllPreferables(true)) do
+		table.insert(prefered, k)
+	end
 
     for k, v in pairs(killers) do
-        AnimatronicList:AddLine(language.GetPhrase(v.fullname), k)
+		local line = AnimatronicList:AddLine(language.GetPhrase(v.fullname), k)
+		
+		function line:Paint(w, h)
+			if !table.HasValue(AnimatronicList:GetSelectedChildren(), line) then
+				draw.RoundedBox(0, 0, 0, w, h, table.HasValue(prefered, k) and Color(0, 255, 0, 100) or Color(255, 0, 0, 100))
+			else
+				draw.RoundedBox(0, 0, 0, w, h, table.HasValue(prefered, k) and Color(0, 125, 155, 200) or Color(255, 0, 155, 200))
+			end
+		end
     end
 end
 
@@ -357,14 +388,14 @@ hook.Add("OnSpawnMenuOpen", "BindAdminPanel", function()
 end)
 
 gameevent.Listen( "player_connect" )
-hook.Add("player_connect", "sexmortalcombat", function( data )
+hook.Add("player_connect", "fh_adminpanel_update_connect", function( data )
 	timer.Simple(1, function()
 		createListPlayers()
 	end)
 end)
 
 gameevent.Listen( "player_disconnect" )
-hook.Add( "player_disconnect", "player_disconnect_example", function( data )
+hook.Add( "player_disconnect", "fh_adminpanel_update_disconnect", function( data )
 	timer.Simple(1, function()
 		createListPlayers()
 	end)

@@ -157,6 +157,8 @@ function SWEP:Think()
                             ply:SetPos(FindSafePosition(ply, self.Owner))
                         end
                     end)
+					
+					hook.Run("fh_defibrillator_spawn", ply)
                 end
 
                 v:Remove()

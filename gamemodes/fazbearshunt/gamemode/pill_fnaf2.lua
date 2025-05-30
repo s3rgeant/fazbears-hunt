@@ -120,8 +120,8 @@ pk_pills.register("pill_wfreddy2",{
 	sounds={
 		gs="fnaf2/stareshort.wav",
 		loop_stare="fnaf2/with_s2_loop2.wav",
-		jump="jump.wav",
-		land="land.wav",
+		jump="jump.mp3",
+		land="land.mp3",
 		melee=pk_pills.helpers.makeList("fnaf2/xscream2.wav",2),
 		step=pk_pills.helpers.makeList("fnaf2/none.wav",1)
 	},
@@ -181,13 +181,15 @@ pk_pills.register("pill_wfreddy2",{
 		func=function(ply,ent)
 			if ply.lobbyFreeze != nil and ply.lobbyFreeze then return end
 			
+			if IsValid(ply:GetEntityInUse()) then return end
+			
 			local target = FindNearestPlayer(ent:GetPos(), 130, ply, 90)
 			if !IsValid(target) then return end
 			
 			if stalkTarget and target ~= stalkTarget then return end
 			
 			playVoiceline('freddy', "kill", ply, 2)
-			ent:PillSound("melee")
+			ent:PillSound("melee",false)
 			if target:IsNPC() then
 				target:TakeDamage(99999, ply)
 				return 
@@ -361,7 +363,7 @@ pk_pills.register("pill_wfreddy2",{
 		end)
 	end,
 	jump=function(ply,ent)
-		ent:PillSound("jump", true)
+		ent:PillSound("jump",false)
 	end,
 	restore=function(ply,ent,formtable)
 		timer.Remove("SmoothLookAt_"..ply:EntIndex())
@@ -554,8 +556,8 @@ pk_pills.register("pill_wbonnie2",{
 		loop_stare="fnaf2/with_s2_loop2.wav",
 		scream="fnaf2/bonniescream.wav",
 		melee=pk_pills.helpers.makeList("fnaf2/xscream2.wav",2),
-		jump="jump.wav",
-		land="land.wav",
+		jump="jump.mp3",
+		land="land.mp3",
 		step=pk_pills.helpers.makeList("fnaf2/none.wav",1)
 	},
 	type="ply",
@@ -613,10 +615,12 @@ pk_pills.register("pill_wbonnie2",{
 		func=function(ply,ent)
 			if ply.lobbyFreeze != nil and ply.lobbyFreeze then return end
 			
+			if IsValid(ply:GetEntityInUse()) then return end
+			
 			local target = FindNearestPlayer(ent:GetPos(), 130, ply, 90)
 			if !IsValid(target) then return end
 			playVoiceline('bonnie', "kill", ply, 2)
-			ent:PillSound("melee")
+			ent:PillSound("melee",false)
 			if target:IsNPC() then
 				target:TakeDamage(99999, ply)
 				return 
@@ -756,7 +760,7 @@ pk_pills.register("pill_wbonnie2",{
 	end,
 
 	jump=function(ply,ent)
-		ent:PillSound("jump", true)
+		ent:PillSound("jump",false)
 	end
 })
 
@@ -811,8 +815,8 @@ pk_pills.register("pill_wchica2",{
 	sounds={
 		gs="fnaf2/stareshort.wav",
 		loop_stare="fnaf2/with_s2_loop2.wav",
-		jump="jump.wav",
-		land="land.wav",
+		jump="jump.mp3",
+		land="land.mp3",
 		melee=pk_pills.helpers.makeList("fnaf2/xscream2.wav",2),
 		deploy="chica_deploycake.wav",
 		step=pk_pills.helpers.makeList("fnaf2/none.wav",1)
@@ -868,10 +872,12 @@ pk_pills.register("pill_wchica2",{
 		func=function(ply,ent)
 			if ply.lobbyFreeze != nil and ply.lobbyFreeze then return end
 			
+			if IsValid(ply:GetEntityInUse()) then return end
+			
 			local target = FindNearestPlayer(ent:GetPos(), 130, ply, 90)
 			if !IsValid(target) then return end
 			playVoiceline('chica', "kill", ply, 2)
-			ent:PillSound("melee")
+			ent:PillSound("melee",false)
 			if target:IsNPC() then
 				target:TakeDamage(99999, ply)
 				return 
@@ -961,7 +967,7 @@ pk_pills.register("pill_wchica2",{
 	end,
 	
 	jump=function(ply,ent)
-		ent:PillSound("jump", true)
+		ent:PillSound("jump", false)
 	end,
 	restore=function(ply,ent)
 		killCupcakes(ply)
@@ -1013,8 +1019,8 @@ pk_pills.register("pill_wfoxy2",{
 	sounds={
 	//	teleport="legitfreddy/laugh_giggle_girl_1d.wav",
 		gs="fnaf2/xscream2.wav",
-		jump="lunge.wav",
-		land="land_foxy.wav",
+		jump="jump.mp3",
+		land="land_foxy.mp3",
 		loop_stare="fnaf2/with_s2_loop2.wav",
 		scream="fnaf2/foxyflashed.wav",
 		taunt="foxy_laugh.wav",
@@ -1076,10 +1082,12 @@ pk_pills.register("pill_wfoxy2",{
 		func=function(ply,ent)
 			if ply.lobbyFreeze != nil and ply.lobbyFreeze then return end
 			
+			if IsValid(ply:GetEntityInUse()) then return end
+			
 			local target = FindNearestPlayer(ent:GetPos(), 130, ply, 90)
 			if !IsValid(target) then return end
 			playVoiceline('foxy', "kill", ply, 2)
-			ent:PillSound("melee")
+			ent:PillSound("melee",false)
 			if target:IsNPC() then
 				target:TakeDamage(99999, ply)
 				return 
@@ -1115,7 +1123,7 @@ pk_pills.register("pill_wfoxy2",{
 	attack2={
 		mode="trigger",
 		func = function(ply,ent)
-			ent:PillSound("taunt", true)
+			ent:PillSound("taunt",false)
 			ent:PillAnim("cloak", true)
 			
 			local wep = ply:GetActiveWeapon()
@@ -1156,7 +1164,7 @@ pk_pills.register("pill_wfoxy2",{
 	end,
 	
 	jump=function(ply,ent)
-		ent:PillSound("jump", true)
+		ent:PillSound("jump",false)
 	end
 })
 
@@ -1249,10 +1257,12 @@ pk_pills.register("pill_wgfreddy2",{
 		func=function(ply,ent)
 			if ply.lobbyFreeze then return end
 			
+			if IsValid(ply:GetEntityInUse()) then return end
+			
 			local target = FindNearestPlayer(ent:GetPos(), 130, ply, 90)
 			if !IsValid(target) then return end
 			
-			ent:PillSound("melee")
+			ent:PillSound("melee",false)
 			if target:IsNPC() then
 				target:TakeDamage(99999, ply)
 				return 
@@ -1427,7 +1437,7 @@ pk_pills.register("pill_wgfreddyhead2",{
 			local target = FindNearestPlayer(ent:GetPos(), 130, ply, 90)
 			if !IsValid(target) then return end
 			target:TakeDamage(99999, ply)
-			ent:PillSound("melee")
+			ent:PillSound("melee",false)
 			if target:IsNPC() then
 				timer.Simple( 1.5, function()
 					if !IsValid(ent) then return end
@@ -1486,6 +1496,7 @@ pk_pills.register("pill_wgfreddyhead2",{
 	reload=function(ply,ent)
 		ent:PillAnim("out",true)
 	
+		--[[
 		timer.Simple(0.6,function()
 			if !IsValid(ent) then return end
 
@@ -1497,6 +1508,7 @@ pk_pills.register("pill_wgfreddyhead2",{
 				ply:SetPos(attach.Pos)
 			end
 		end)
+		]]--
 	end,
 	
 
@@ -1521,7 +1533,7 @@ pk_pills.register("pill_wgfreddyhead2",{
 	end,
 	
 	jump=function(ply,ent)
-		ent:PillSound("gs")
+		ent:PillSound("gs",false)
 	end
 })
 
@@ -1584,7 +1596,7 @@ options=function() return {
 		ducked=sfreddy_default_movement[3],
 	},
 	sounds={
-		jump="sfreddylunge.wav",
+		jump="sfreddylunge.mp3",
 		gs="fnaf2/shfreddy_laugh.wav",
 		stare={"fnaf2/garble1.wav",
 		"fnaf2/garble2.wav",
@@ -1654,10 +1666,12 @@ options=function() return {
 			if ent.cloaked or timer.Exists("SF_cantKill"..ply:EntIndex()) then return end
 			if ply.lobbyFreeze then return end
 			
+			if IsValid(ply:GetEntityInUse()) then return end
+			
 			local target = FindNearestPlayer(ent:GetPos(), 130, ply, 90)
 			if !IsValid(target) then return end
 			
-			ent:PillSound("melee")
+			ent:PillSound("melee",false)
 			if target:IsNPC() then
 				target:TakeDamage(99999, ply)
 				return 
@@ -1711,7 +1725,7 @@ options=function() return {
 					
 					if trace.Hit then
 						net.Start("fh_play_sound")
-						net.WriteString('sfreddyerror.wav')
+						net.WriteString('sfreddyerror.mp3')
 						net.Send(ply)
 						return 
 					end
@@ -1723,7 +1737,7 @@ options=function() return {
 					
 					ply:DrawViewModel(true)
 					
-					ply:EmitSound("sfreddyout.wav")
+					ply:EmitSound("sfreddyout.mp3")
 					
 					ent.cloaked=false
 	
@@ -1778,7 +1792,7 @@ options=function() return {
 					if !IsValid(ent) or !IsValid(ent) then return end
 					timer.Create("SF_Cooldown"..ply:EntIndex(), sfreddy_cooldowns[2], 1, function() end)
 					
-					ply:EmitSound("sfreddyin.wav")
+					ply:EmitSound("sfreddyin.mp3")
 			
 					local wep = ply:GetActiveWeapon()
 					if IsValid(wep) and wep:GetClass() == "v_freddy" then
@@ -1817,7 +1831,7 @@ options=function() return {
 							ply:SetMoveType( MOVETYPE_NOCLIP )
 						end
 						
-						ent:SetMaterial("null")
+						ent:SetMaterial("models/null")
 						//ent:SetModel("models/Items/AR2_Grenade.mdl")
 						ent:DrawShadow(false)
 						//ply:SetNoDraw( true )
@@ -1843,7 +1857,7 @@ options=function() return {
 	
 	jump=function(ply,ent)
 		if timer.Exists('SF_Cloacking'..ply:EntIndex()) or ent.cloaked then return end
-		ent:PillSound("jump")
+		ent:PillSound("jump",false)
 	end
 })
 
@@ -1890,8 +1904,8 @@ pk_pills.register("pill_endo02",{
 	sounds={
 		gs="fnaf2/stareshort.wav",
 		loop_stare="fnaf2/with_s2_loop2.wav",
-		jump="jump.wav",
-		land="land.wav",
+		jump="jump.mp3",
+		land="land.mp3",
 	//	scream="fnaf2/bonniescream.wav",
 		melee=pk_pills.helpers.makeList("fnaf2/xscream2.wav",2),
 		step=pk_pills.helpers.makeList("fnaf2/none.wav",1)
@@ -1951,10 +1965,12 @@ pk_pills.register("pill_endo02",{
 		func=function(ply,ent)
 			if ply.lobbyFreeze != nil and ply.lobbyFreeze then return end
 			
+			if IsValid(ply:GetEntityInUse()) then return end
+			
 			local target = FindNearestPlayer(ent:GetPos(), 130, ply, 90)
 			if !IsValid(target) then return end
 			playVoiceline("endo", "kill", ply, 2)
-			ent:PillSound("melee")
+			ent:PillSound("melee",false)
 			if target:IsNPC() then
 				target:TakeDamage(99999, ply)
 				return 
@@ -1991,8 +2007,11 @@ pk_pills.register("pill_endo02",{
 	attack2={
 		mode="trigger",
 		func = function(ply,ent)
+			if ply.lobbyFreeze != nil and ply.lobbyFreeze then return end
+			
 			if timer.Exists("grabCooldown"..ply:EntIndex()) then return end
 			takePlayer(ply,ent)
+			
 			//ent:PillGesture('hold')
 		end
 	},
@@ -2028,7 +2047,7 @@ pk_pills.register("pill_endo02",{
 		HighlightPlayers(ply, ent)
 	end,
 	jump=function(ply,ent)
-		ent:PillSound("jump", true)
+		ent:PillSound("jump",false)
 	end
 	
 })
@@ -2066,8 +2085,8 @@ pk_pills.register("pill_clown",{
 		ducked=70,
 	},
 	sounds={
-		jump="jump.wav",
-		land="land.wav",
+		jump="jump.mp3",
+		land="land.mp3",
 		loop_dance="kloun_ebanat.wav",
 		melee=pk_pills.helpers.makeList("fnaf2/xscream2.wav",2),
 		step=pk_pills.helpers.makeList("fnaf2/none.wav",1)
@@ -2190,7 +2209,7 @@ pk_pills.register("pill_clown",{
 		end
 	end,
 	jump=function(ply,ent)
-		ent:PillSound("jump", true)
+		ent:PillSound("jump",false)
 	end
 })
 
@@ -2242,8 +2261,8 @@ pk_pills.register("pill_springtrap",{
 		ducked=spring_default_movement[3],
 	},
 	sounds={
-		jump="fnaf3/sprjump.wav",
-		land="fnaf3/sprland.wav",
+		jump="fnaf3/sprjump.mp3",
+		land="fnaf3/sprland.mp3",
 		loop_breathing="springtrap.breath",
 		step=pk_pills.helpers.makeList("fnaf2/none.wav",1)
 	},
@@ -2477,7 +2496,7 @@ pk_pills.register("pill_springtrap",{
 		end
 	end,
 	jump=function(ply,ent)
-		ent:PillSound("jump", true)
+		ent:PillSound("jump",false)
 	end,
 	
 	restore=function(ply,ent, formtable)
@@ -2674,8 +2693,8 @@ pk_pills.register("pill_plushtrap",{
 	},
 	stepSize=16,
 	sounds={
-		jump="fnaf3/sprjump.wav",
-		land="fnaf3/sprland.wav",
+		jump="fnaf3/sprjump.mp3",
+		land="fnaf3/sprland.mp3",
 		step=pk_pills.helpers.makeList("fnaf2/none.wav",1)
 	},
 	type="ply",
@@ -2693,7 +2712,7 @@ pk_pills.register("pill_plushtrap",{
 	},
 	
 	muteSteps = true,
-	health=10000,
+	health=2000,
 	movePoseMode="xy",
 	aim = {
 		xPose="aim_yaw",
@@ -2750,7 +2769,7 @@ pk_pills.register("pill_plushtrap",{
 	end,
 	jump=function(ply,ent)
 		if ent.formTable.jumpPower <= 0 then return end
-		ent:PillSound("jump", true)
+		ent:PillSound("jump",false)
 	end
 })
 
@@ -2860,6 +2879,8 @@ function jumpscareEvent(ply, ent, target, dist)
 	
 	net.Start("JumpscareLight")
 	net.Send(target)
+	
+	target.jumpscared = true
 	
 	target:Lock()
 	ply:Lock()
@@ -3159,6 +3180,9 @@ if SERVER then
 	end)
 
 	hook.Add( "PlayerDeath", "fh_pill_death_check", function( victim, inflictor, attacker )
+		if victim.jumpscared then
+			victim.jumpscared = nil
+		end
 		if victim == stalkTarget then
 			net.Start('fh_sound_stop')
 			net.WriteString('freddy_targeted_ambience.wav')

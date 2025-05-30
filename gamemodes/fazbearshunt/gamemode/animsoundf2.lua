@@ -27,9 +27,9 @@ sound.Add({
 	channel = 		CHAN_USER_BASE+10,
 	level = 		90,
 	volume = 		1.0,
-	sound = 			{"fnaf3/sprstep1.wav"
-						,"fnaf3/sprstep2.wav"
-						,"fnaf3/sprstep3.wav"}
+	sound = 			{"fnaf3/sprstep1.mp3"
+						,"fnaf3/sprstep2.mp3"
+						,"fnaf3/sprstep3.mp3"}
 })
 sound.Add({
 	name = 			"plushtrap.foot1",
@@ -104,13 +104,6 @@ sound.Add({
 						,"ambient/energy/newspark07.wav"
 						,"ambient/energy/newspark05.wav"
 						}
-})
-
-sound.Add({
-	name = 			"endoscream",
-	channel = 		CHAN_USER_BASE+10,
-	volume = 		1.0,
-	sound = 			{"fnaf2/endoscream.wav"}
 })
 
 //freddy voicelines

@@ -211,6 +211,21 @@ hook.Add("fh_startgame", "fh_startgame_unstuck", function(springtrapRound)
 	end)
 end)
 
+hook.Add("fh_defibrillator_spawn", "fh_startgame_unstuck", function()
+	
+	hook.Add("KeyPress", "CheckStuckAndTeleport", function(ply, key)
+		keyPressCheck(ply,key)
+	end)
+	
+	if timer.Exists("remove_unstuck_hook") then 
+		timer.Remove("remove_unstuck_hook")
+	end
+	
+	timer.Create("remove_unstuck_hook", 10, 1, function()
+		hook.Remove("KeyPress", "CheckStuckAndTeleport")
+	end)
+end)
+
 hook.Add("fh_endo_release", "fh_endo_release_unstuck", function(springtrapRound)
 	
 	hook.Add("KeyPress", "CheckStuckAndTeleport", function(ply, key)

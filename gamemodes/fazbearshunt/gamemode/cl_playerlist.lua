@@ -19,15 +19,24 @@ surface.CreateFont("bySergeantFont", { font = "Share Tech Mono Regular",
 		bold = true 
 })
 
+nextTimeUpdate = 0
+
 function GM:ScoreboardShow()
 	gui.EnableScreenClicker(true)
     if IsValid(customScoreboard) then
-		UpdatePlayerList(2701, anim_scrollPanel)
-		UpdatePlayerList(TEAM_UNASSIGNED, surv_scrollPanel)
+		if CurTime() > nextTimeUpdate then
+			nextTimeCheck = CurTime() + 5
+			
+			UpdatePlayerList(TEAM_UNASSIGNED, surv_scrollPanel)
+			UpdatePlayerList(2701, anim_scrollPanel)
+		end
+		
         customScoreboard:SetVisible(true)
 		scoreboardHeader:SetVisible(true)
         return
     end
+	
+	nextTimeUpdate = CurTime() + 5
 
     customScoreboard = vgui.Create("DFrame")
     customScoreboard:SetSize(550, 500)
@@ -80,8 +89,10 @@ function GM:ScoreboardShow()
 		draw.RoundedBox(4, 0, 0, w*0.5, h, color_swag1)
 	end
 
-    UpdatePlayerList(2701, anim_scrollPanel)
-    UpdatePlayerList(TEAM_UNASSIGNED, surv_scrollPanel)
+	if #anim_scrollPanel:GetCanvas():GetChildren() == 0 and #surv_scrollPanel:GetCanvas():GetChildren() == 0 then
+		UpdatePlayerList(2701, anim_scrollPanel)
+		UpdatePlayerList(TEAM_UNASSIGNED, surv_scrollPanel)
+	end
 	
 	customScoreboard.Paint = function(self, w, h)
 		surface.SetDrawColor(255, 255, 255, 250)
@@ -304,9 +315,15 @@ function UpdatePlayerList(teamIndex, scrollbar)
 			local frame = vgui.Create("DFrame", plyPanel)
 			frame:SetTitle("")
 			frame:SetSize(200, isMyself and 45 or 90)
-			frame:SetPos(gui.MouseX(), gui.MouseY())
+			frame:SetPos(gui.MouseX() - 16, gui.MouseY() - 16)
 			frame:MakePopup()
 			frame:ShowCloseButton(false)
+			
+			hook.Add( "ScoreboardHide", "playerlist_frame_" .. tostring(frame), function()
+				if !IsValid(frame) then return end
+				frame:Close()
+				hook.Remove("ScoreboardHide", "playerlist_frame_" .. tostring(frame))
+			end )
 			
 			frame.OnClose = function()
 				AvatarBtn:SetEnabled(true)
@@ -324,6 +341,7 @@ function UpdatePlayerList(teamIndex, scrollbar)
 			profileBtn.DoClick = function()
 				ply:ShowProfile()
 				frame:Close()
+				hook.Remove("ScoreboardHide", "playerlist_frame_" .. tostring(frame))
 			end
 		
 			local muteBtn = vgui.Create("DButton", frame)
@@ -334,6 +352,13 @@ function UpdatePlayerList(teamIndex, scrollbar)
 			muteBtn.DoClick = function()
 				ply:SetMuted(not ply:IsMuted())
 				frame:Close()
+				hook.Remove("ScoreboardHide", "playerlist_frame_" .. tostring(frame))
+			end
+			
+			frame.OnCursorExited = function()
+				if muteBtn:IsHovered() or profileBtn:IsHovered() then return end
+				frame:Close()
+				hook.Remove("ScoreboardHide", "playerlist_frame_" .. tostring(frame))
 			end
 		end
 		
@@ -397,8 +422,8 @@ function GM:ScoreboardHide()
     end
 end
 
-gameevent.Listen( "player_connect_client" )
-hook.Add("player_connect_client", "UpdateScoreboardJoin", function()
+gameevent.Listen( "player_connect" )
+hook.Add("player_connect", "UpdateScoreboardJoin", function()
     if IsValid(customScoreboard) then
 		timer.Simple(0.5, function()
 			UpdatePlayerList(TEAM_UNASSIGNED, surv_scrollPanel)
@@ -408,7 +433,7 @@ hook.Add("player_connect_client", "UpdateScoreboardJoin", function()
 end)
 
 gameevent.Listen( "player_hurt" )
-hook.Add("player_hurt", "UpdateScoreboardLeave", function()
+hook.Add("player_hurt", "fh_playerlist_update_hurt", function()
     if IsValid(customScoreboard) then
 		timer.Simple(0.5, function()
 			UpdatePlayerList(TEAM_UNASSIGNED, surv_scrollPanel)
@@ -418,7 +443,7 @@ hook.Add("player_hurt", "UpdateScoreboardLeave", function()
 end)
 
 gameevent.Listen( "player_disconnect" )
-hook.Add("player_disconnect", "UpdateScoreboardLeave", function()
+hook.Add("player_disconnect", "fh_playerlist_update_disconnect", function()
     if IsValid(customScoreboard) then
 		timer.Simple(0.5, function()
 			UpdatePlayerList(TEAM_UNASSIGNED, surv_scrollPanel)

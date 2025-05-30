@@ -499,7 +499,7 @@ if SERVER then
         if IsValid(ent) then
             if ent.formTable.land and (!ply.lobbyFreeze or ply.lobbyFreeze == nil) then
                 ent.formTable.land(ply, ent)
-                ent:PillSound("land", true)
+                ent:PillSound("land", false)
             end
 
             if ent.formTable.noFallDamage or ent.formTable.type == "phys" then return true end

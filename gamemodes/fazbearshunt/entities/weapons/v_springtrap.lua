@@ -49,6 +49,7 @@ function SWEP:SetupDataTables()
 end
 
 function SWEP:Deploy()
+	self.CurAnim = "deploy"
     return true
 end
 
@@ -140,7 +141,10 @@ function SWEP:DealDamage()
 	
 	local target = tr.Entity
 	
-	if !IsValid(target) then return end
+	if !IsValid(target) then 
+		ply:LagCompensation(false)
+		return 
+	end
 	
     local class = target:GetClass()
     if class == "func_breakable" or class == "func_breakable_surf" then

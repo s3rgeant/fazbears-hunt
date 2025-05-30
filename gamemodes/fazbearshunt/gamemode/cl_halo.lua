@@ -12,9 +12,6 @@ local visionUnaffectedSound = "vision_unaffected.wav"
 local spr_visionAffectedSound = "fnaf3/spr_vision_affected.wav"
 local spr_visionUnaffectedSound = "fnaf3/spr_vision_unaffected.wav"
 
-local visionSuccessCake = "vision_success_cake.wav"
-local visionAffectedCake = "vision_affected_cake.wav"
-
 local affectedPlayers = {}
 local animatronics = {}
 local teammates = {}
@@ -26,52 +23,35 @@ net.Receive("NotifySpectators", function()
 	
 	local players = net.ReadTable()
 	local ply = net.ReadEntity()
-	local player = ''
-	
-	if (ply:SteamID64() == "76561199015248705") then 
-		player = 'пиздюк'
-	elseif (ply:SteamID64() == "76561198258358427") then
-		player = "мумук"
-	else
-		player = ply:Nick()
-	end	
+	local player = ply:Nick()
 	
 	chat:AddText(Color( 255, 0, 0 ), player, Color( 180, 20, 20 ), ' ', language.GetPhrase("fuppr.highlight_specs"), ': ', Color( 170, 55, 50 ), table.concat(players, ", "))
 end)
 
-net.Receive("AddAffectedPlayers", function()
-    players = net.ReadTable()
+function addAffected(ply, duration)
+	local duration = duration or conVars.halo_time:GetFloat()
 	
-	for _, targetPlayer in ipairs(players) do
-		if !table.HasValue(affectedPlayers, targetPlayer) then
-			table.insert(affectedPlayers, targetPlayer)
-		end
-		
-		if timer.Exists( "RemoveAffectedPlayer"..targetPlayer:SteamID64() ) then
-			timer.Remove( "RemoveAffectedPlayer"..targetPlayer:SteamID64())
-		end
-		
-		timer.Create( "RemoveAffectedPlayer"..targetPlayer:SteamID64(), conVars.halo_time:GetFloat(), 1, function()
-			if target == targetPlayer then return end
-			table.RemoveByValue(affectedPlayers, targetPlayer)
-		end)
-	end
-end)
-
-function addAffected(ply)
 	if !table.HasValue(affectedPlayers, ply) then
 		table.insert(affectedPlayers, ply)
 	end
 	
 	if timer.Exists( "RemoveAffectedPlayer"..ply:SteamID64() ) then
-		timer.Remove( "RemoveAffectedPlayer"..ply:SteamID64())
+		timer.Remove( "RemoveAffectedPlayer"..ply:SteamID64() )
 	end
 	
-	timer.Create( "RemoveAffectedPlayer"..ply:SteamID64(), conVars.halo_time:GetFloat(), 1, function()
+	timer.Create( "RemoveAffectedPlayer"..ply:SteamID64(), duration, 1, function()
 		if target == ply then return end
 		table.RemoveByValue(affectedPlayers, ply)
 	end)
 end
+
+net.Receive("AddAffectedPlayers", function()
+    players = net.ReadTable()
+	
+	for _, targetPlayer in ipairs(players) do
+		addAffected(targetPlayer)
+	end
+end)
 
 local target
 function fh_addpermanent_affected_freddy(ply)
@@ -82,32 +62,17 @@ function fh_addpermanent_affected_freddy(ply)
 	toggleShadows(false)
 end
 
-
---
--- НЕ ЗАБУДЬ ПОФИКСИТЬ ТУТ КОРОЧЕ БЕСКОНЕЧНО ПРОСВЕТ ДАЁТСЯ ПИЗДА
---
 function fh_add_affected_springtrap(ply)
-	if !table.HasValue(affectedPlayers, ply) then
-		table.insert(affectedPlayers, ply)
-	end
-	
-	if timer.Exists( "RemoveAffectedPlayer"..ply:SteamID64() ) then
-		timer.Remove( "RemoveAffectedPlayer"..ply:SteamID64())
-	end
-	
-	timer.Create( "RemoveAffectedPlayer"..ply:SteamID64(), 90, 1, function()
-		if target == ply then return end
-		table.RemoveByValue(affectedPlayers, ply)
-	end)
 end
 
 function toggleShadows(bool)
+	local players = player.GetAll()
 	if bool then
-		for _, ply in ipairs(player.GetAll()) do
+		for _, ply in ipairs( players ) do
             ply:DrawShadow(true)
 		end
 	else
-		for _, ply in ipairs(player.GetAll()) do
+		for _, ply in ipairs( players ) do
 			if ply ~= target and ply:Team() != 2701 then
 				ply:DrawShadow(false)
 			end
@@ -120,15 +85,7 @@ net.Receive("fh_addaffected_stalk", function()
 end)
 
 net.Receive("fh_addaffected_springtrap", function()
-	fh_add_affected_springtrap(net.ReadEntity())
-end)
-
-net.Receive("NotifySoundCupcakeOwner", function()
-	surface.PlaySound(visionSuccessCake)
-end)
-
-net.Receive("NotifyCupcakeVictim", function()
-	surface.PlaySound(visionAffectedCake)
+	addAffected(net.ReadEntity(), 90)
 end)
 
 net.Receive("fh_play_sound", function()
@@ -193,7 +150,7 @@ net.Receive("fh_adv_sound_play", function()
 	local ply = LocalPlayer()
 	local snd = net.ReadString()
 	
-    if not playerSounds[snd] then
+    if !playerSounds[snd] then
         local sound = CreateSound(ply, snd)
         sound:SetSoundLevel(0)
         sound:Play()
@@ -208,7 +165,9 @@ net.Receive("fh_ent_sound_play", function()
 	local ent = net.ReadPlayer()
 	local snd = net.ReadString()
 	
-    if not playerSounds[snd] then
+	if !IsValid(ent) then return end
+	
+    if !playerSounds[snd] then
         local sound = CreateSound(ent, snd)
         sound:Play()
 		

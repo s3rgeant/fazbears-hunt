@@ -1,7 +1,7 @@
-currentKiller = ""
+currentKiller = currentKiller or ""
 
-currentAbilities = {}
-cupcakes = 0
+currentAbilities = currentAbilities or {}
+cupcakes = cupcakes or 0
 
 function DrawKillerInterface()
 if currentKiller == "" or !currentKiller or !GetConVar("cl_drawhud"):GetBool() then return end
@@ -285,7 +285,56 @@ net.Receive("fh_net_thinkfast", function()
 	end)
 end)
 
+local contextmenu_options = nil
+
 hook.Add("OnContextMenuOpen", "fh_contextmenu", function()
+	
+	if IsValid(contextmenu_options) then 
+		contextmenu_options:Open()
+		contextmenu_options:SetPos(0, (ScrH() / 2))
+		return 
+	end
+	
+	contextmenu_options = DermaMenu() 
+	local playeredit_button = contextmenu_options:AddOption( language.GetPhrase("fazhunt.context.player_editor"), openPlayerEditor )
+	playeredit_button:SetIcon("icon16/user.png")
+	
+	local mutebutton = contextmenu_options:AddOption( language.GetPhrase("fazhunt.context.mute_spectators"), function() toggleConsoleCommand("proximity_hear_spectators") end )
+	mutebutton:SetIsCheckable( true )
+	mutebutton:SetChecked( GetConVar("proximity_hear_spectators"):GetBool() )
+	contextmenu_options:Open()
+	
+	contextmenu_options:AddSpacer()
+	
+	local mutebutton = contextmenu_options:AddOption( language.GetPhrase("fazhunt.context.thirperson"), function() toggleConsoleCommand("fh_thirdperson") end )
+	--mutebutton:SetIcon( "icon16/camera.png" )
+	mutebutton:SetIsCheckable( true )
+	mutebutton:SetChecked( GetConVar("fh_thirdperson"):GetBool() )
+	contextmenu_options:Open()
+	
+	local mutebutton = contextmenu_options:AddOption( language.GetPhrase("fazhunt.context.halo_teammates"), function() toggleConsoleCommand("fh_halo_teammates") end )
+	--mutebutton:SetIcon( "icon16/camera.png" )
+	mutebutton:SetIsCheckable( true )
+	mutebutton:SetChecked( GetConVar("fh_halo_teammates"):GetBool() )
+	contextmenu_options:Open()
+	
+	contextmenu_options:SetPos(0, (ScrH() / 2))
+end)
+
+hook.Add("OnContextMenuClose", "fh_contextmenu_close", function()
+	
+	if IsValid(contextmenu_options) then
+		contextmenu_options:Hide()
+	end
+end)
+
+function toggleConsoleCommand(str)
+	local ply = LocalPlayer()
+	local option = GetConVar(str):GetBool() and "0" or "1"
+	RunConsoleCommand(str, option)
+end
+
+function openPlayerEditor()
 
     local newv = list.Get( "DesktopWindows" )[ "PlayerEditor" ]
 
@@ -296,4 +345,5 @@ hook.Add("OnContextMenuOpen", "fh_contextmenu", function()
 	Window:MakePopup()
 	
 	newv.init( nil, Window )
-end)
+	
+end

@@ -7,6 +7,12 @@ GM.Author = "sergeant"
 GM.Email = "N/A"
 GM.Website = "N/A"
 
+--[[
+if GetConVar("fh_mountsandbox"):GetBool() then
+	DeriveGamemode("sandbox")
+end
+]]--
+
 conVars = {
 	halo_radius = CreateConVar( "halo_radius", 2000, { FCVAR_ARCHIVE, FCVAR_REPLICATED}, "Halo radius." ),
 	halo_time = CreateConVar( "halo_time", 10, { FCVAR_ARCHIVE, FCVAR_REPLICATED}, "Time for halo to dissolve." ),
@@ -73,11 +79,21 @@ function getAllPreferables(secondaries)
 	return tablo
 end
 
+function getAllNonPreferables()
+	local tablo = {}
+	for k, v in pairs( killerData ) do
+		if !killerData[k].preferable then
+			tablo[k] = v
+		end
+	end
+	return tablo
+end
+
 local dontPrefer = {"pill_springtrap", "pill_plushtrap", "pill_wgfreddy2"}
 
 -- по умолчанию нельзя выбирать этих аниматроников, пишем их в файлик, чтобы файликом можно было управлять
-if !file.Exists("fh_preferables.txt", "DATA") then
-	file.Write("fh_preferables.txt", table.concat(dontPrefer, "\n"))
+if !file.Exists("fh_dontprefer.txt", "DATA") then
+	file.Write("fh_dontprefer.txt", table.concat(dontPrefer, "\n"))
 end
 
 function pill_makeSecondary(anim, bool)
@@ -91,10 +107,21 @@ function pill_makeSecondary(anim, bool)
 	end
 end
 
+function save_dontPrefer(net)
+	net = net or false
+
+	local tablo = {}
+	for k, v in pairs ( getAllNonPreferables() ) do
+		table.insert(tablo, k)
+	end
+	file.Write("fh_dontprefer.txt", table.concat(tablo, "\n"))
+end
+
 pill_makeSecondary( {"pill_endo02", "pill_sfreddy2", "pill_wgfreddy2"} )
 
 function pill_makePreferable(anim, bool)
 	bool = bool or false
+	
 	if istable(anim) then
 		for k, v in pairs( anim ) do
 			killerData[v].preferable = bool
@@ -106,8 +133,8 @@ end
 
 pill_makePreferable(table.GetKeys(killerData), true)
 
-if file.Exists("fh_preferables.txt", "DATA") then
-    local data = file.Read("fh_preferables.txt", "DATA") or ""
+if file.Exists("fh_dontprefer.txt", "DATA") then
+    local data = file.Read("fh_dontprefer.txt", "DATA") or ""
 	
 	if data != "" then 
 		local lines = string.Split(data, "\n")
@@ -163,4 +190,31 @@ utf8.sub = function(str, startChar, endChar)
     else
         return ""
     end
+end
+
+if CLIENT then
+	net.Receive("fh_change_notprefered", function()
+		local killer = net.ReadString()
+		local bool = net.ReadBool()
+	
+		pill_makePreferable(killer, bool)
+		--save_dontPrefer()
+
+		-- синхронизируем изменение со всеми у кого включена админ панель
+		if IsValid(fh_admin_panel) then
+			createListAnimatronics()
+		end
+	end)
+	
+	net.Receive("fh_share_notprefered", function()
+		local killers = net.ReadTable()
+	
+		for k,v in pairs(killers) do
+			pill_makePreferable(k, true)
+		end
+
+		if IsValid(fh_admin_panel) then
+			createListAnimatronics()
+		end
+	end)
 end

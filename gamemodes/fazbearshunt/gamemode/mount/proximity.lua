@@ -3,12 +3,18 @@ local proximityEnabled = CreateConVar("proximity_enabled", 1, { FCVAR_ARCHIVE,FC
 local maxDistance = CreateConVar("proximity_radius", 3000, { FCVAR_ARCHIVE,FCVAR_REPLICATED }, "Radius, in which players can hear each other.")
 local muteVolume = CreateConVar("proximity_mute", 0.3, { FCVAR_ARCHIVE,FCVAR_REPLICATED }, "Volume of players/sounds, when they're behind the walls. (0-1)", 0, 1)
 
+local muteSpecs = CreateConVar("proximity_hear_spectators", 1, { FCVAR_ARCHIVE,FCVAR_CLIENTDLL,FCVAR_USERINFO }, "Should local player hear other spectators? (0-1)", 0, 1)
+
 if SERVER then
 
 	hook.Add( "PlayerCanHearPlayersVoice", "Maximum Range", function(listener, talker)
 		local canSpec = GetConVar("proximity_deadtalk"):GetInt()
 		local maxDistance = GetConVar("proximity_radius"):GetInt()
 		local proximityEnabled = GetConVar("proximity_enabled"):GetInt()
+		
+		if listener:GetInfoNum( "proximity_hear_spectators", 1 ) == 0 then
+			return false, false 
+		end
 		
 		if (listener:Team() == 2701 and talker:Team() == 2701) or listener:Team() == TEAM_SPECTATOR and talker:Team() == TEAM_SPECTATOR then
 			return true, false
@@ -114,7 +120,7 @@ else
 	end)
 	
 	hook.Add("PlayerStartVoice", "ClientVoiceFilterStart", function(ply)
-		if ply:Team() == TEAM_SPECTATOR or ply:Team() == 2701 and LocalPlayer():Team() == 2701 then
+		if IsValid(ply) and ply:Team() == TEAM_SPECTATOR or ply:Team() == 2701 and LocalPlayer():Team() == 2701 then
 			ply:SetVoiceVolumeScale(1)
 		end
 	end)

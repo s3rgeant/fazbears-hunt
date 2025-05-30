@@ -434,11 +434,7 @@ function ENT:Think()
 
         --print(puppet:GetCycle())
         if self.formTable.movePoseMode then
-            --
-            if self.formTable.movePoseMode == "yaw" then
-                local move_dir = puppet:WorldToLocalAngles(ply:GetVelocity():Angle())
-                puppet:SetPoseParameter("move_yaw", move_dir.y)
-            elseif self.formTable.movePoseMode == "xy" then
+            if self.formTable.movePoseMode == "xy" then
                 if not overrideRate then
                     local localvel = ply:WorldToLocal(ply:GetPos() + ply:GetVelocity())
                     local maxdim = math.Max(math.abs(localvel.x), math.abs(localvel.y))
@@ -644,6 +640,14 @@ function ENT:Think()
         if IsValid(realWep) and realWep:GetModel() ~= "" and not realWep:GetNoDraw() then
             //realWep:SetNoDraw(true)
         end
+		
+        if self.formTable.movePoseMode then
+            if self.formTable.movePoseMode == "yaw" then
+                local move_dir = puppet:WorldToLocalAngles(ply:GetVelocity():Angle())
+                puppet:SetPoseParameter("move_yaw", move_dir.y)
+			end
+			
+		end
     end
 	
     --Aimage

@@ -2,13 +2,7 @@ AddCSLuaFile("cl_init.lua")
 AddCSLuaFile("shared.lua")
 include("shared.lua")
 
-util.AddNetworkString("NotifyCupcakeOwner")
-util.AddNetworkString("NotifySoundCupcakeOwner")
-util.AddNetworkString("NotifyCupcakeVictim")
-
 util.AddNetworkString("fh_remove_hud_mine")
-
-util.AddNetworkString("AddServerAffectedPlayers")
 
 util.PrecacheModel("models/team vr/cupcake.mdl")
 
@@ -68,7 +62,8 @@ function ENT:CheckForPlayers()
 			
 			if trace.Hit then return end
 			
-			net.Start("NotifyCupcakeVictim")
+			net.Start("fh_play_sound")
+			net.WriteString("vision_affected_cake.wav")
 			net.Send(ply)
 			
 			table.insert(nearPlayers, ply)
@@ -104,6 +99,10 @@ function ENT:CheckForPlayers()
 	net.Start("AddAffectedPlayers")
 	net.WriteTable(totalPlayers)
 	net.Send(self:GetOwner())
+			
+	net.Start("fh_draw_hl_overlay")
+	net.WriteBool(true)
+	net.Send(totalPlayers)
 	
 	for _, player in pairs(totalPlayers) do
 		if !table.HasValue(affectedPlayers, player) then
@@ -111,7 +110,8 @@ function ENT:CheckForPlayers()
 		end
 	end
 			
-	net.Start("NotifySoundCupcakeOwner")
+	net.Start("fh_play_sound")
+	net.WriteString("vision_success_cake.wav")
 	net.Send(self:GetOwner())
 end
 

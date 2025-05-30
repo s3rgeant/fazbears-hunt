@@ -2,6 +2,7 @@ util.AddNetworkString("OpenAdminPanel")
 util.AddNetworkString("AdminAction")
 
 util.AddNetworkString("fh_net_scarysound")
+util.AddNetworkString("fh_change_notprefered")
 
 function GiveAnimatronic(ply, killer)
 	if killer == nil or killer == "" then return end
@@ -180,6 +181,7 @@ end
 
 function EndLobbyTimer()
 	if timer.Exists("GameStartTimer") then
+		timer.Adjust("GameStartTimer", 1, 1, function() end)
 		timer.Remove("GameStartTimer")
 		
 		net.Start("ResetTimer")
@@ -230,6 +232,17 @@ net.Receive("AdminAction", function(len, ply)
                 KillPlayer(target)
             end
         end
+	elseif string.match(action, "playable") then
+		local killer = net.ReadString()
+		if killer == "" or string.len(killer) < 1 then return end
+		
+		pill_makePreferable(killer, string.match(action, "add"))
+		save_dontPrefer()
+	
+		net.Start("fh_change_notprefered")
+		net.WriteString(killer)
+		net.WriteBool(string.match(action, "add"))
+		net.Broadcast()
     else
 		--local target = net.ReadEntity()
 		if action == "start_round" then

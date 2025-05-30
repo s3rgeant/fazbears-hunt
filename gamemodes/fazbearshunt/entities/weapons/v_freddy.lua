@@ -33,6 +33,7 @@ SWEP.Secondary.Ammo = "none"
 local LAND_ANIM_DELAY = 0.2
 
 function SWEP:Deploy()
+	self.CurAnim = "deploy"
     return true
 end
 
