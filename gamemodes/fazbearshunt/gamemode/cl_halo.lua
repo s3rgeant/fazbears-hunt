@@ -218,11 +218,12 @@ function drawHighlightTimer(bool)
 	end)
 end
 
+local highlight_mat = Material("vgui/highlightOverlay.png")
 function drawHighlight()
 	if !GetConVar("cl_drawhud"):GetBool() then return end
     surface.SetDrawColor(255, 255, 255, 23)
     
-    surface.SetMaterial(Material("vgui/highlightOverlay.png"))
+    surface.SetMaterial(highlight_mat)
     
     surface.DrawTexturedRect(0, 0, ScrW(), ScrH())
 end
@@ -253,6 +254,9 @@ net.Receive("fh_plushalert_outrange", function()
 	end)
 end)
 
+local plushtrap_overlay_mat = Material("vgui/plushtrap overlay.png")
+local plushtrap_alert_mat = Material("vgui/plushtrap_alert.vtf")
+
 function plushtrap_alert()
     local speed = FrameTime() * 2
     plushalert_y = Lerp(speed, plushalert_y, plushalert_y_target)
@@ -261,13 +265,11 @@ function plushtrap_alert()
 	if !GetConVar("cl_drawhud"):GetBool() then return end
 	
     surface.SetDrawColor(255, 255, 255, plushalert_alpha)
-    surface.SetMaterial(Material("vgui/plushtrap overlay.png"))
+    surface.SetMaterial(plushtrap_overlay_mat)
     surface.DrawTexturedRect(0, 0, ScrW(), ScrH())
 	
     surface.SetDrawColor(255, 255, 255, 255)
-    
-    surface.SetMaterial(Material("vgui/plushtrap_alert.vtf"))
-    
+    surface.SetMaterial(plushtrap_alert_mat)
     surface.DrawTexturedRect(ScrW() / 2 - size / 2, (ScrH() - size) - plushalert_y, size, size)
 end
 

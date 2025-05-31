@@ -3,11 +3,11 @@ currentKiller = currentKiller or ""
 currentAbilities = currentAbilities or {}
 cupcakes = cupcakes or 0
 
+local killerIcon = Material( "vgui/"..currentKiller.."_header.png" )
+local cake = Material( "vgui/cake.png" )
+
 function DrawKillerInterface()
 if currentKiller == "" or !currentKiller or !GetConVar("cl_drawhud"):GetBool() then return end
-	local killerIcon = Material( "vgui/"..currentKiller.."_header.png" )
-	
-	local cake = Material( "vgui/cake.png" )
 	
     local screenW, screenH = ScrW(), ScrH()
 
@@ -18,7 +18,6 @@ if currentKiller == "" or !currentKiller or !GetConVar("cl_drawhud"):GetBool() t
     local avatarX, avatarY = 50, screenH - size - 30
 	
     surface.DrawTexturedRect(avatarX, avatarY, size, size)
-	
 
     local abilityX, abilityY = size * 0.6, screenH - 80
 
@@ -125,6 +124,7 @@ end
 net.Receive("ApplyKiller", function()
 	hook.Add("HUDPaint", "DrawKillerInterface", DrawKillerInterface)
     currentKiller = net.ReadString()
+	killerIcon = Material( "vgui/"..currentKiller.."_header.png" )
 	assignAbilitiesByKiller(currentKiller)
 end)
 
@@ -258,11 +258,12 @@ end)
 
 //think fast chucklenuts
 
+local thinkfast_mat = Material("vgui/thinkFast.png")
 function chucklenuts()
     if GetConVar("cl_drawhud"):GetBool() then
 		surface.SetDrawColor(255, 255, 255, 255)
 		
-		surface.SetMaterial(Material("vgui/thinkFast.png"))
+		surface.SetMaterial(thinkfast_mat)
 		
 		surface.DrawTexturedRect(0, 0, ScrW(), ScrH())
     end
@@ -301,9 +302,21 @@ hook.Add("OnContextMenuOpen", "fh_contextmenu", function()
 	
 	local mutebutton = contextmenu_options:AddOption( language.GetPhrase("fazhunt.context.mute_spectators"), function() toggleConsoleCommand("proximity_hear_spectators") end )
 	mutebutton:SetIsCheckable( true )
-	mutebutton:SetChecked( GetConVar("proximity_hear_spectators"):GetBool() )
+	mutebutton:SetChecked( !GetConVar("proximity_hear_spectators"):GetBool() )
 	contextmenu_options:Open()
 	
+	local panel = vgui.Create( "DPanel", contextmenu_options )
+	panel:SetSize( 55, 25 )
+	panel:SetBackgroundColor( Color( 255, 255, 255 ) )
+	
+	local dlable = vgui.Create( "DLabel", panel )
+	dlable:SetSize( 200, 25 )
+	dlable:SetText( language.GetPhrase("fazhunt.context.animatronics_only") )
+	dlable:SetPos( 12, 0 )
+	dlable:SetTextColor( Color(0,0,0) )
+	--panel:SetBackgroundColor( Color( 255, 255, 255 ) )
+	
+	contextmenu_options:AddPanel(panel)
 	contextmenu_options:AddSpacer()
 	
 	local mutebutton = contextmenu_options:AddOption( language.GetPhrase("fazhunt.context.thirperson"), function() toggleConsoleCommand("fh_thirdperson") end )

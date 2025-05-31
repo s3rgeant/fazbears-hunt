@@ -364,12 +364,13 @@ function createListAnimatronics()
 
     for k, v in pairs(killers) do
 		local line = AnimatronicList:AddLine(language.GetPhrase(v.fullname), k)
+		local doeshave = table.HasValue(prefered, k)
 		
 		function line:Paint(w, h)
-			if !table.HasValue(AnimatronicList:GetSelectedChildren(), line) then
-				draw.RoundedBox(0, 0, 0, w, h, table.HasValue(prefered, k) and Color(0, 255, 0, 100) or Color(255, 0, 0, 100))
+			if !line:IsLineSelected() then
+				draw.RoundedBox(0, 0, 0, w, h, doeshave and Color(0, 255, 0, 100) or Color(255, 0, 0, 100))
 			else
-				draw.RoundedBox(0, 0, 0, w, h, table.HasValue(prefered, k) and Color(0, 125, 155, 200) or Color(255, 0, 155, 200))
+				draw.RoundedBox(0, 0, 0, w, h, doeshave and Color(0, 125, 155, 200) or Color(255, 0, 155, 200))
 			end
 		end
     end

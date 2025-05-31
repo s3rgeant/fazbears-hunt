@@ -8,6 +8,14 @@ surface.CreateFont("ScoreFont", {font = "Trebuchet24", size = 24, weight = 500})
 surface.CreateFont("metaFont16", { font = "Share Tech Mono Regular", size = 28, extended = true, weight = fh_timer_width, antialias = true, bold = true })
 surface.CreateFont("metaFont14", { font = "Share Tech Mono Regular", size = 18, extended = true, weight = fh_timer_width, antialias = true, bold = true })
 
+local fh_logo = Material("vgui/playerlist/fh logo.png")
+local fh_logo_glow = Material("vgui/playerlist/logo_glow.png")
+
+local playerlist_mat = Material("vgui/playerlist/playerlist.png")
+local playerlist_header = Material("vgui/playerlist/playerlist_header.png")
+local right_tab_mat = Material("vgui/playerlist/tabs/right_t.png")
+local left_tab_mat = Material("vgui/playerlist/tabs/left_t.png")
+
 local faded_black = Color(0, 0, 0, 200)
 
 local boosters = {}
@@ -96,7 +104,7 @@ function GM:ScoreboardShow()
 	
 	customScoreboard.Paint = function(self, w, h)
 		surface.SetDrawColor(255, 255, 255, 250)
-		surface.SetMaterial(Material("vgui/playerlist/playerlist.png"))
+		surface.SetMaterial(playerlist_mat)
 		surface.DrawTexturedRect(0, 0, w, h)
 		
 		local anim_scroll_wide = 0
@@ -105,7 +113,7 @@ function GM:ScoreboardShow()
 			anim_scroll_wide = anim_scrollPanel:GetCanvas():GetChildren()[1]:GetWide()
 		
 			surface.SetDrawColor(255, 255, 255, 250)
-			surface.SetMaterial(Material("vgui/playerlist/tabs/left_t.png"))
+			surface.SetMaterial(left_tab_mat)
 			surface.DrawTexturedRect(16, 16, anim_scroll_wide, 32)
 			
 			draw.SimpleText(
@@ -125,7 +133,7 @@ function GM:ScoreboardShow()
 			surv_scroll_wide = surv_scrollPanel:GetCanvas():GetChildren()[1]:GetWide()
 		
 			surface.SetDrawColor(255, 255, 255, 250)
-			surface.SetMaterial(Material("vgui/playerlist/tabs/right_t.png"))
+			surface.SetMaterial(right_tab_mat)
 			surface.DrawTexturedRect(surv_scrollPanel.x + 16, 16, surv_scroll_wide, 32)
 			
 			draw.SimpleText(
@@ -162,15 +170,15 @@ function GM:ScoreboardShow()
 	
 	scoreboardHeader.Paint = function(self, w, h)
 		surface.SetDrawColor(255, 255, 255, 250)
-		surface.SetMaterial(Material("vgui/playerlist/playerlist_header.png"))
+		surface.SetMaterial(playerlist_header)
 		surface.DrawTexturedRect(0, 0, w, h)
 		
 		surface.SetDrawColor(255, 255, 255, 255)
-		surface.SetMaterial(Material("vgui/playerlist/fh logo.png"))
+		surface.SetMaterial(fh_logo)
 		surface.DrawTexturedRect((w / 2) - (156/2), 12, 156, 55)
 		
 		surface.SetDrawColor(255, 255, 255, 120)
-		surface.SetMaterial(Material("vgui/playerlist/logo_glow.png"))
+		surface.SetMaterial(fh_logo_glow)
 		surface.DrawTexturedRect((w / 2) - (242/2) + 15, 0, 242, 100)
 	
 		draw.SimpleText(
@@ -208,7 +216,7 @@ function GM:ScoreboardShow()
 		)
 	
 		draw.SimpleText(
-			table.Count(player.GetAll()) .. "|" .. game.MaxPlayers(),
+			player.GetCount() .. "|" .. game.MaxPlayers(),
 			"metaFont14",
 			w * 0.15,
 			74,
@@ -272,11 +280,13 @@ function UpdatePlayerList(teamIndex, scrollbar)
 		
 		local suffix = ply:Team() == TEAM_SPECTATOR and "_dead" or ""
 		
+		local plypanel_mat = Material("vgui/playerlist/tabs/player" .. suffix .. ".png")
+		
         plyPanel.Paint = function(self, w, h)
             draw.RoundedBox(8, 0, 0, w, h, Color(0, 0, 0, 255))
 		
 			surface.SetDrawColor(255, 255, 255, 120)
-			surface.SetMaterial(Material("vgui/playerlist/tabs/player" .. suffix .. ".png"))
+			surface.SetMaterial(plypanel_mat)
 			surface.DrawTexturedRect(0, 0, w, h)
         end
 

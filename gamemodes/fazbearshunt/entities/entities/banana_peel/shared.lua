@@ -32,20 +32,9 @@ if SERVER then
 		self.Owner = self.Owner or nil
 	end
 	
-	function ENT:NPCMult(ent)
-		local number = 1
-		if ent:IsNPC() then
-			number = 2
-		else
-			number = 1
-		end
-		return number
-	end
-	
 	function ENT:SlipPlayer(ent)
 		if ent:IsNPC() or ent:IsPlayer() and (ent:Team() != TEAM_SPECTATOR and ent:Alive()) then
 			ent:EmitSound("slip_start.wav")
-			//ent:SetPos(ent:GetPos() + Vector(0,0,2) * self:NPCMult(ent))
 			ent:SetVelocity(Vector(math.Rand(150, 250) * (math.random(2) == 1 and 1 or -1), math.Rand(150, 250) * (math.random(2) == 1 and 1 or -1), 200) + ent:GetUp() * 100)
 			local phys = self:GetPhysicsObject()
 			phys:ApplyForceCenter((-ent:GetVelocity() + -ent:GetForward()) * 25)
@@ -66,19 +55,19 @@ if SERVER then
 	function ENT:Think()
 		local find_ent = ents.FindInSphere(self:GetPos(), 25)
 		for k, v in pairs(find_ent) do
-			if ( v:IsNPC() or v:IsPlayer() ) and v:GetNWBool("banana_slipped", false) == false then
+			if ( v:IsPlayer() and v:GetMoveType() != MOVETYPE_NOCLIP ) and v:GetNWBool("banana_slipped", false) == false then
 				self:SlipPlayer(v) 
 			end
 		end
 	end
 
     hook.Add("Think", "IsBananaSlipped", function()
-        for k, v in pairs(ents.GetAll()) do
-            if (v:IsNPC() or (v:IsPlayer()) and v:Team() != TEAM_SPECTATOR) and v:IsOnGround() and v:GetNWBool("banana_slipped", false) then
+        for _, v in player.Iterator() do
+            if (v:IsPlayer()) and v:Team() != TEAM_SPECTATOR and v:IsOnGround() and v:GetNWBool("banana_slipped", false) then
                 v:SetNWBool("banana_slipped", false)
 				v:TakeDamage(math.random(1,2), self, self)
                 v:EmitSound("slip_end.wav") 
             end
         end
-    end)
+	end)
 end

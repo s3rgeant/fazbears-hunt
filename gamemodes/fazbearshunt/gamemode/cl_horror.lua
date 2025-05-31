@@ -13,7 +13,7 @@ local function CheckPlayersAndPlaySound()
 
     local viewRadius = 125
 
-    for _, ply in ipairs(player.GetAll()) do
+    for _, ply in player.Iterator() do
         if ply ~= localPlayer and IsValid(ply) and ply:Alive() and localPlayer:Alive() and localPlayer:Team() != TEAM_SPECTATOR 
 		and ply:GetMoveType() != MOVETYPE_NOCLIP then
             if pk_pills and pk_pills.getMappedEnt and pk_pills.getMappedEnt(ply) ~= nil then

@@ -191,7 +191,7 @@ pk_pills.register("pill_wfreddy2",{
 			playVoiceline('freddy', "kill", ply, 2)
 			ent:PillSound("melee",false)
 			if target:IsNPC() then
-				target:TakeDamage(99999, ply)
+				target:TakeDamage(target:Health(), ply)
 				return 
 			end
 			jumpscareEvent(ply, ent, target, 50)
@@ -212,7 +212,7 @@ pk_pills.register("pill_wfreddy2",{
 				//target:ConCommand( "pp_mat_overlay overlays/fivenights_static/static2" )
 				target:UnLock()
 				ply:UnLock()
-				target:TakeDamage(99999, ply)
+				target:TakeDamage(target:Health(), ply)
 				
 				timer.Simple( 2, function()
 					if !IsValid(target) then return end
@@ -622,7 +622,7 @@ pk_pills.register("pill_wbonnie2",{
 			playVoiceline('bonnie', "kill", ply, 2)
 			ent:PillSound("melee",false)
 			if target:IsNPC() then
-				target:TakeDamage(99999, ply)
+				target:TakeDamage(target:Health(), ply)
 				return 
 			end
 			jumpscareEvent(ply, ent, target, 52)
@@ -645,7 +645,7 @@ pk_pills.register("pill_wbonnie2",{
 				target:UnLock()
 				ply:UnLock()
 				target:SetVelocity(ply:GetForward() * 600) -- чтоб он нахуй улетел
-				target:TakeDamage(99999, ply)
+				target:TakeDamage(target:Health(), ply)
 			end)
 		end
     },
@@ -879,7 +879,7 @@ pk_pills.register("pill_wchica2",{
 			playVoiceline('chica', "kill", ply, 2)
 			ent:PillSound("melee",false)
 			if target:IsNPC() then
-				target:TakeDamage(99999, ply)
+				target:TakeDamage(target:Health(), ply)
 				return 
 			end
 			jumpscareEvent(ply, ent, target, 60)
@@ -895,7 +895,7 @@ pk_pills.register("pill_wchica2",{
 				//target:ConCommand( "pp_mat_overlay overlays/fivenights_static/static2" )
 				target:UnLock()
 				ply:UnLock()
-				target:TakeDamage(99999, ply)
+				target:TakeDamage(target:Health(), ply)
 				
 				timer.Simple( 2, function()
 					if !IsValid(target) then return end
@@ -1089,7 +1089,7 @@ pk_pills.register("pill_wfoxy2",{
 			playVoiceline('foxy', "kill", ply, 2)
 			ent:PillSound("melee",false)
 			if target:IsNPC() then
-				target:TakeDamage(99999, ply)
+				target:TakeDamage(target:Health(), ply)
 				return 
 			end
 			jumpscareEvent(ply, ent, target, 75)
@@ -1110,7 +1110,7 @@ pk_pills.register("pill_wfoxy2",{
 				//target:ConCommand( "pp_mat_overlay overlays/fivenights_static/static2" )
 				target:UnLock()
 				ply:UnLock()
-				target:TakeDamage(99999, ply)
+				target:TakeDamage(target:Health(), ply)
 				
 				timer.Simple( 2, function()
 					if !IsValid(target) then return end
@@ -1264,7 +1264,7 @@ pk_pills.register("pill_wgfreddy2",{
 			
 			ent:PillSound("melee",false)
 			if target:IsNPC() then
-				target:TakeDamage(99999, ply)
+				target:TakeDamage(target:Health(), ply)
 				return 
 			end
 			jumpscareEvent(ply, ent, target, 52)
@@ -1285,7 +1285,7 @@ pk_pills.register("pill_wgfreddy2",{
 				//target:ConCommand( "pp_mat_overlay overlays/fivenights_static/static2" )
 				target:UnLock()
 				ply:UnLock()
-				target:TakeDamage(99999, ply)
+				target:TakeDamage(target:Health(), ply)
 				timer.Simple( 2, function()
 					if !IsValid(target) then return end
 					//target:ConCommand( "pp_mat_overlay " )
@@ -1436,7 +1436,7 @@ pk_pills.register("pill_wgfreddyhead2",{
 		func=function(ply,ent)
 			local target = FindNearestPlayer(ent:GetPos(), 130, ply, 90)
 			if !IsValid(target) then return end
-			target:TakeDamage(99999, ply)
+			target:TakeDamage(target:Health(), ply)
 			ent:PillSound("melee",false)
 			if target:IsNPC() then
 				timer.Simple( 1.5, function()
@@ -1673,7 +1673,7 @@ options=function() return {
 			
 			ent:PillSound("melee",false)
 			if target:IsNPC() then
-				target:TakeDamage(99999, ply)
+				target:TakeDamage(target:Health(), ply)
 				return 
 			end
 			jumpscareEvent(ply, ent, target, 52)
@@ -1694,7 +1694,7 @@ options=function() return {
 				//target:ConCommand( "pp_mat_overlay overlays/fivenights_static/static2" )
 				target:UnLock()
 				ply:UnLock()
-				target:TakeDamage(99999, ply)
+				target:TakeDamage(target:Health(), ply)
 				playVoiceline('sfreddy', "kill", ply, 1)
 				
 				timer.Simple( 2, function()
@@ -1972,7 +1972,7 @@ pk_pills.register("pill_endo02",{
 			playVoiceline("endo", "kill", ply, 2)
 			ent:PillSound("melee",false)
 			if target:IsNPC() then
-				target:TakeDamage(99999, ply)
+				target:TakeDamage(target:Health(), ply)
 				return 
 			end
 			jumpscareEvent(ply, ent, target, 52)
@@ -1994,7 +1994,7 @@ pk_pills.register("pill_endo02",{
 				//target:ConCommand( "pp_mat_overlay overlays/fivenights_static/static2" )
 				target:UnLock()
 				ply:UnLock()
-				target:TakeDamage(99999, ply)
+				target:TakeDamage(target:Health(), ply)
 				
 				timer.Simple( 2, function()
 					if !IsValid(target) then return end
@@ -3280,7 +3280,7 @@ end)
 
 function chaseCheck(ply, name)
 	if ply:IsSprinting() and ply:GetVelocity():LengthSqr() > ply:GetRunSpeed() then
-		local target = FindNearestPlayer(ply:GetPos(), 750, ply)
+		local target = FindNearestPlayer(ply:GetPos(), 750, ply, 90)
 		
 		if !IsValid(target) then return end
 		if target:IsNPC() then return end

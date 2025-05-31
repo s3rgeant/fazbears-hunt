@@ -146,8 +146,8 @@ function SWEP:Think()
                     ply:SetPos(oldpos)
 					ply:SetTeam(TEAM_UNASSIGNED)
 					
-					if !table.HasValue(survivors, ply) then
-						table.insert(survivors, ply)
+					if !survivors[ply] then
+						survivors[ply] = true
 					end
 					
 					LogEvent("☦️ Игрок **" .. self.Owner:Nick() .. "** возродил **" .. ply:Nick() .. "** дефибриллятором")

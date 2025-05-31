@@ -12,7 +12,7 @@ if SERVER then
 		local maxDistance = GetConVar("proximity_radius"):GetInt()
 		local proximityEnabled = GetConVar("proximity_enabled"):GetInt()
 		
-		if listener:GetInfoNum( "proximity_hear_spectators", 1 ) == 0 then
+		if listener:Team() == TEAM_SPECTATOR and talker:Team() == TEAM_SPECTATOR and listener:GetInfoNum( "proximity_hear_spectators", 1 ) == 0 then
 			return false, false 
 		end
 		
@@ -120,7 +120,7 @@ else
 	end)
 	
 	hook.Add("PlayerStartVoice", "ClientVoiceFilterStart", function(ply)
-		if IsValid(ply) and ply:Team() == TEAM_SPECTATOR or ply:Team() == 2701 and LocalPlayer():Team() == 2701 then
+		if IsValid(ply) and (ply:Team() == TEAM_SPECTATOR or ply:Team() == 2701 and LocalPlayer():Team() == 2701) then
 			ply:SetVoiceVolumeScale(1)
 		end
 	end)

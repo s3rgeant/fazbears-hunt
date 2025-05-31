@@ -137,8 +137,6 @@ function assignKillers()
 				end
 			end
 			table.insert(players, chosenLastKiller)
-			table.RemoveByValue(lastKillers, chosenLastKiller)
-			
 			lastKillers[chosenLastKiller] = 0
 		end
 		
@@ -150,7 +148,7 @@ function assignKillers()
 		table.RemoveByValue(players, chosenPlayer)
 		
 		smartTableInsert(animatronics,chosenPlayer)
-		table.RemoveByValue(survivors, chosenPlayer)
+		survivors[chosenPlayer] = nil
 		
 		chosenPlayer.lobbyFreeze = true
 		chosenPlayer:SetTeam(2701)
@@ -162,8 +160,8 @@ function assignKillers()
 		end
     end
 	
-	for _, v in pairs(animatronics) do
-		if !table.HasValue(lastKillers, v) then
+	for v, _ in pairs(animatronics) do
+		if !lastKillers[v] then
 			lastKillers[v] = 0
 		end
 	
@@ -173,7 +171,7 @@ function assignKillers()
 	end
 	
 	timer.Create("UnfrozeAnimatronics", setupGameDuration, 1, function()
-		for _, ply in ipairs( animatronics ) do
+		for ply, _ in pairs( animatronics ) do
 			ply.lobbyFreeze = nil
 		end
 		roundActive = true
@@ -218,8 +216,8 @@ function giveKiller(player, killer, force)
 	
 	smartTableInsert(animatronics,ply)
 	
-	if table.HasValue(survivors, ply) then
-		table.RemoveByValue(survivors, ply)
+	if survivors[ply] then
+		survivors[ply] = nil
 	end
 	
     LogEvent("🤖 Игроку **" .. ply:Nick() .. "** выдан **" .. killerData.name.."**")
@@ -366,6 +364,8 @@ function endGame(killerVictory)
 			roundEnding = false
         end)
 		
+		RunConsoleCommand("proximity_enabled", 1)
+		
 	end )
 end
 
@@ -405,8 +405,6 @@ function startGame()
 				end
 			end
 			table.insert(players, chosenLastKiller)
-			table.RemoveByValue(lastKillers, chosenLastKiller)
-			
 			lastKillers[chosenLastKiller] = 0
 		end
 		
@@ -419,19 +417,19 @@ function startGame()
 		giveKiller(chosenPlayer, 'pill_springtrap', true)
 		
 		smartTableInsert(animatronics,chosenPlayer)
-		table.RemoveByValue(survivors, chosenPlayer)
+		survivors[chosenPlayer] = nil
 		
 		chosenPlayer.lobbyFreeze = true
 		chosenPlayer:SetTeam(2701)
 		
 		chosenPlayer:Spawn()
 		
-		if !table.HasValue(lastKillers, chosenPlayer) then
+		if !lastKillers[chosenPlayer] then
 			lastKillers[chosenPlayer] = 0
 		end
 		
 		timer.Create("fh_unfreeze_springtrap", setupGameDuration, 1, function()
-			for _, ply in ipairs( animatronics ) do
+			for ply, _ in pairs( animatronics ) do
 				ply.lobbyFreeze = nil
 			end
 			roundActive = true
@@ -462,7 +460,7 @@ function startGame()
 	
 	timer.Create("EndGameTimer", gameDuration + setupGameDuration, 1, function()
 		local plys = {}
-		for _, ply in pairs(survivors) do
+		for ply, _ in pairs(survivors) do
 			table.insert(plys, ply:Nick())
 		end
 		
@@ -507,7 +505,7 @@ function registerNewRound()
 	animatronics = {}
     for _, ply in pairs(player.GetAll()) do
         ply:Spawn()
-		table.insert(survivors, ply)
+		survivors[ply] = true
     end
 	LogEvent(" ")
 	
@@ -516,13 +514,13 @@ end
 
 function restoreAnimatronics()
 	if table.Count(animatronics) > 0 then
-		for _, ply in ipairs(animatronics) do
+		for ply, _ in pairs(animatronics) do
 			RunConsoleCommand("pk_pill_restore", ply:Nick())
 		end
 	end
 	
 	if table.Count(team.GetPlayers(2701)) > 0 then
-		for _, ply in ipairs(team.GetPlayers(2701)) do
+		for ply, _ in pairs(team.GetPlayers(2701)) do
 			RunConsoleCommand("pk_pill_restore", ply:Nick())
 		end
 	end
@@ -595,12 +593,12 @@ hook.Add("PlayerInitialSpawn", "fh_ply_spawn", function(ply)
 			net.Send(ply)
 		end)
 	
-		if table.HasValue(survivors, ply) then
-			table.RemoveByValue(survivors, ply)
+		if survivors[ply] then
+			survivors[ply] = nil
 		end
 	
-		if table.HasValue(alivePlayers, ply) then
-			table.RemoveByValue(alivePlayers, ply)
+		if alivePlayers[ply] then
+			alivePlayers[ply] = nil
 		end
 	end
 end)
@@ -611,26 +609,26 @@ end )
 
 hook.Add("FinishMove", "CanMove", function(ply)
 	ply:SetCustomCollisionCheck(true)
-	if (ply:Team() == 2701 or table.HasValue(animatronics, ply)) and !roundActive and isGameOn then
+	if (ply:Team() == 2701 or animatronics[ply]) and !roundActive and isGameOn then
 		return true
 	end
 end)
 
 hook.Add("PlayerDisconnected", "PlayerLeft", function(ply)
-	if table.HasValue(lastKillers, ply) then
-		table.RemoveByValue(lastKillers, ply)
+	if lastKillers[ply] then
+		lastKillers[ply] = nil
 	end
-	if table.HasValue(survivors, ply) then
-		table.RemoveByValue(survivors, ply)
+	if survivors[ply] then
+		survivors[ply] = nil
 	end
-	if table.HasValue(animatronics, ply) then
-		table.RemoveByValue(animatronics, ply)
+	if animatronics[ply] then
+		animatronics[ply] = nil
 		if isGameOn then
 			PrintMessage(HUD_PRINTTALK, "Аниматроник " .. ply:Nick() .. " вышел из игры.")
 		end
 	end
-	if table.HasValue(alivePlayers, ply) then
-		table.RemoveByValue(alivePlayers, ply)
+	if alivePlayers[ply] then
+		alivePlayers[ply] = nil
 	end
 	
 	animatronicsLeft_check()
@@ -658,8 +656,8 @@ hook.Add("PlayerSpawn", "fh_spawn", function(ply)
 	
 	ply:SendLua( 'if !system.HasFocus() then system.FlashWindow() end' )
 	
-	if !table.HasValue(alivePlayers, ply) then
-		table.insert(alivePlayers, ply)
+	if !alivePlayers[ply] then
+		alivePlayers[ply] = true
 		ply:SetTeam(TEAM_UNASSIGNED)
 	end
 	net.Start('DeadHUDDisable')
@@ -674,8 +672,8 @@ hook.Add("PlayerSpawn", "fh_spawn", function(ply)
 end)
 
 hook.Add("PlayerDeath", "fh_deaths", function( victim, inflictor, attacker )
-	if table.HasValue(survivors, victim) then
-		table.RemoveByValue(survivors, victim)
+	if survivors[victim] then
+		survivors[victim] = nil
 		
 		if attacker:IsPlayer() and victim != attacker then
 			LogEvent("☠️ Игрок **" .. attacker:Nick() .. "** убил **" .. victim:Nick().."**")
@@ -685,8 +683,8 @@ hook.Add("PlayerDeath", "fh_deaths", function( victim, inflictor, attacker )
 		
 		animatronicsVictory_check(victim)
 	end
-	if table.HasValue(animatronics, victim) then
-		table.RemoveByValue(animatronics, victim)
+	if animatronics[victim] then
+		animatronics[victim] = nil
 	end
 	
 	animatronicsDied_check()
@@ -725,7 +723,7 @@ end)
 function fh_get_plytable_nicknames(tbl)
 	tbl = tlb or {}
 	local ret_tbl = {}
-	for _, ply in pairs(tbl) do
+	for ply, _ in pairs(tbl) do
 		table.insert(ret_tbl, ply:Nick())
 	end
 	
@@ -772,7 +770,7 @@ end
 function animatronicsDied_check()
 	if table.Count(animatronics) == 0 and isGameOn and !roundEnding then
 		local plys = {}
-		for _, ply in pairs(survivors) do
+		for ply, _ in pairs(survivors) do
 			table.insert(plys, ply:Nick())
 		end
 		
@@ -801,7 +799,7 @@ end
 function animatronicsLeft_check()
 	if table.Count(animatronics) == 0 and isGameOn and !roundEnding then
 		local plys = {}
-		for _, ply in pairs(survivors) do
+		for ply, _ in pairs(survivors) do
 			table.insert(plys, ply:Nick())
 		end
 		
@@ -866,8 +864,8 @@ end)
 hook.Add("PillApply", "fh_joinpill", function(ply, name)
 	smartTableInsert(animatronics,ply)
 	
-	if table.HasValue(survivors, ply) then
-		table.RemoveByValue(survivors, ply)
+	if survivors[ply] then
+		survivors[ply] = nil
 	end
 	
 	timer.Simple(1, function()
@@ -909,7 +907,7 @@ net.Receive("fh_selected_killer", function(len, ply)
 	if !usedKillers[killer] then
 		giveKiller(ply, killer)
 		
-		for _, v in pairs(animatronics) do
+		for v, _ in pairs(animatronics) do
 			net.Start("fh_update_killer_selector")
 			net.WritePlayer(ply)
 			net.WriteString(killer)
@@ -938,7 +936,7 @@ function giveRandomKiller(ply, update)
 	giveKiller(ply, killer)
 	
 	if update then
-		for _, v in pairs(animatronics) do
+		for v, _ in pairs(animatronics) do
 			timer.Simple(0, function()
 				net.Start("fh_update_killer_selector")
 				net.WritePlayer(ply)
@@ -950,8 +948,8 @@ function giveRandomKiller(ply, update)
 end
 
 function smartTableInsert(tab, val)
-	if !table.HasValue(tab,val) then
-		table.insert(tab,val)
+	if !tab[val] then
+		tab[val] = true
 	end
 end
 

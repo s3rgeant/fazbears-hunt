@@ -2,6 +2,9 @@
 
 resource.AddFile("resource/fonts/ShareTechMonoRegular_0.ttf")
 
+local timerBg = Material("vgui/timer/timer_bg.png")
+local timerGlow = Material("vgui/timer/time_glow.png")
+
 local fh_draw_timer = CreateClientConVar('fh_draw_timer', 1, true, false, 'Draw Timer?', 0, 1)
 
 local timerEnd = 0
@@ -42,7 +45,7 @@ local function DrawTimer()
 	local main_y = y + redline_w + 10
 	
     surface.SetDrawColor(255, 255, 255, 250)
-    surface.SetMaterial(Material("vgui/timer/timer_bg.png"))
+    surface.SetMaterial(timerBg)
     surface.DrawTexturedRect(ScrW() / 2 - 200, main_y - 4, 400, 100)
 
     draw.RoundedBox(0, x, y, fh_timer_width, redline_w, Color(0, 0, 0, 250))
@@ -56,7 +59,7 @@ local function DrawTimer()
     draw.SimpleText("- " .. formatTime(timeLeft) .. " -", "timerFontBelow", ScrW() / 2, main_y + roundtimer_y, Color(255, 255, 255, roundtimer_alpha), TEXT_ALIGN_CENTER, TEXT_ALIGN_CENTER)
 	
     surface.SetDrawColor(255, 255, 255, 25 * (roundtimer_alpha/255))
-    surface.SetMaterial(Material("vgui/timer/time_glow.png"))
+    surface.SetMaterial(timerGlow)
     surface.DrawTexturedRect(ScrW() / 2 - 114, main_y + roundtimer_y - 24, 227, 46)
 
     draw.SimpleText(formatTime(timeStartupLeft), "timerFontSmall", ScrW() / 2, main_y + 79, Color(255, 174, 0, postlobbytimer_alpha), TEXT_ALIGN_CENTER, TEXT_ALIGN_CENTER)

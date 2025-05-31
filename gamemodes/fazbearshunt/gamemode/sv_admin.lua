@@ -19,8 +19,8 @@ function RevivePlayer(ply)
 	setupPlayerVars(ply)
 	
 	if isGameOn then
-		if !table.HasValue(survivors, ply) then
-			table.insert(survivors, ply)
+		if !survivors[ply] then
+			survivors[ply] = true
 		end
 	end
 	
@@ -30,15 +30,15 @@ function RevivePlayer(ply)
 		end
 	end
 	
-	if ply:Team() == 2701 or table.HasValue(animatronics, ply) or IsValid(pk_pills.getMappedEnt(ply)) then
+	if ply:Team() == 2701 or animatronics[ply] or IsValid(pk_pills.getMappedEnt(ply)) then
 		RunConsoleCommand("pk_pill_restore", ply:Nick())
-		if table.HasValue(animatronics, ply) then
-			table.RemoveByValue(animatronics, ply)
+		if animatronics[ply] then
+			animatronics[ply] = nil
 		end
 	end
 	
-	if !table.HasValue(alivePlayers, ply) then
-		table.insert(alivePlayers, ply)
+	if !alivePlayers[ply] then
+		alivePlayers[ply] = true
 	end
 end
 
@@ -47,7 +47,7 @@ function highlightSelected(targets)
 	local affectedNicknames = {}
 	
 	for _,v in ipairs(targets) do
-		if table.HasValue(survivors, v) then
+		if survivors[v] then
 			net.Start("PlayHighlightSounds")
 			net.WriteBool(table.HasValue(targets, v))
 			net.Send(v)
@@ -59,7 +59,7 @@ function highlightSelected(targets)
 	
 	if table.Count(affectedNicknames) == 0 then return end
 		
-	for _, ply in pairs(animatronics) do
+	for ply, _ in pairs(animatronics) do
 		net.Start("AddAffectedPlayers")
 		net.WriteTable(survivors)
 		net.Send(ply)
@@ -81,14 +81,14 @@ end
 
 function KillPlayer(ply)
 	if ply:Alive() then
-		if table.HasValue(alivePlayers, ply) then
-			table.RemoveByValue(alivePlayers, ply)
+		if alivePlayers[ply] then
+			alivePlayers[ply] = nil
 		end
-		if table.HasValue(animatronics, ply) then
-			table.RemoveByValue(animatronics, ply)
+		if animatronics[ply] then
+			animatronics[ply] = nil
 		end
-		if table.HasValue(survivors, ply) then
-			table.RemoveByValue(survivors, ply)
+		if survivors[ply] then
+			survivors[ply] = nil
 		end
 		
 		ply:Kill()
@@ -113,7 +113,7 @@ function HighlightAll()
 	if table.Count(survivors) > 0 and table.Count(animatronics) > 0 then
 		local affectedNicknames = {}
 		
-		for _, ply in pairs(animatronics) do
+		for ply, _ in pairs(animatronics) do
 			net.Start("AddAffectedPlayers")
 			net.WriteTable(survivors)
 			net.Send(ply)
@@ -152,7 +152,7 @@ function EndRound()
 		net.WriteBool(false)
 		net.Broadcast()
 		
-		for _,v in ipairs(animatronics) do
+		for v,_ in pairs(animatronics) do
 			v.lobbyFreeze = nil
 		end
 		LogEvent(" ")
@@ -171,7 +171,7 @@ function EndPostRound()
 		net.WriteBool(true)
 		net.Broadcast()
 		
-		for _,v in ipairs(animatronics) do
+		for v,_ in pairs(animatronics) do
 			v.lobbyFreeze = nil
 		end
 		LogEvent(" ")

@@ -116,8 +116,8 @@ function ENT:ApplyEffect(player)
             name = "bananas",
             func = function(ply)
                 ply:Give("weapon_banana")
-                ply:GiveAmmo(9, "ammo_banana", true)
-                effectDesc = '+ 10 бананов'
+                ply:GiveAmmo(4, "ammo_banana", true)
+                effectDesc = '+ 5 бананов'
             end
         },
         {
