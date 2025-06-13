@@ -21,6 +21,12 @@ hook.Add("HUDDrawTargetID", "HidePlayerNames", function()
 	return false
 end)
 
+hook.Add("SetupMove", "CanMove", function(ply) -- иронично не работает)
+	if ply:Team() == 2701 and ply:IsFlagSet(FL_FROZEN) then
+		return true
+	end
+end)
+
 hook.Add("ShouldCollide", "CustomPlayerCollision", function(ent1, ent2)
     if ent1:GetCollisionGroup() == COLLISION_GROUP_WORLD 
 	or ent2:GetCollisionGroup() == COLLISION_GROUP_WORLD 
@@ -54,8 +60,10 @@ hook.Add("PlayerStartVoice", "HideVoicePanels", function(ply)
         end)
 		return false
     end
+	if !IsValid(ply) then return end
+	
     local listenerTeam = listener:Team()
-    local speakerTeam = ply:Team()
+    local speakerTeam = ply:Team() or TEAM_UNASSIGNED
 	
     if listenerTeam == TEAM_SPECTATOR and speakerTeam == TEAM_SPECTATOR then
         return
@@ -77,25 +85,6 @@ end)
 hook.Add("InitPostEntity", "fh_player_fullconnect", function(ent)
 	net.Start('fh_initpostentity')
 	net.SendToServer()
-end)
-
-net.Receive("fh_chat_message", function()
-	local nick = net.ReadString()
-	local text = net.ReadString()
-	local dead = net.ReadBool()
-	local color = net.ReadColor()
-	local bTeam = net.ReadBool()
-	local teamInt = net.ReadFloat()
-
-	if !dead then
-		if !bTeam then
-			chat.AddText(color, nick, Color(255, 255, 255), ': ', text)
-		elseif LocalPlayer():Team() == teamInt then
-			chat.AddText(Color(25, 160, 35), '(TEAM) ', color, nick, Color(255, 255, 255), ': ', text)
-		end
-	elseif LocalPlayer():Team() == teamInt then
-		chat.AddText(Color(255,0,0), '*DEAD* ', color, nick, Color(255, 255, 255), ': ', text)
-	end
 end)
 
 net.Receive("KillerPicked", function()
@@ -264,3 +253,52 @@ function GM:MouthMoveAnimation(ply)
         end
     end
 end
+
+local history = {}
+net.Receive("fh_chat_message", function()
+	local nick = net.ReadString()
+	local text = net.ReadString()
+	local dead = net.ReadBool()
+	local color = net.ReadColor()
+	local bTeam = net.ReadBool()
+	local teamInt = net.ReadFloat()
+	
+	local localply = LocalPlayer()
+	
+	if nick == localply:Nick() then
+		table.insert(history, text)
+		current_pos = table.Count(history)
+	end
+
+	if !dead then
+		if !bTeam then
+			chat.AddText(color, nick, Color(255, 255, 255), ': ', text)
+		elseif localply:Team() == teamInt then
+			chat.AddText(Color(25, 160, 35), '(TEAM) ', color, nick, Color(255, 255, 255), ': ', text)
+		end
+	elseif localply:Team() == teamInt then
+		chat.AddText(Color(255,0,0), '*DEAD* ', color, nick, Color(255, 255, 255), ': ', text)
+	end
+end)
+
+local current_pos = 0
+
+hook.Remove("OnChatTab", "ULXPP.Autocomplete") -- в любом случае какая то хуета
+
+hook.Add( "FinishChat", "qolchat_finish", function()
+	current_pos = table.Count(history)
+end )
+
+hook.Add( "OnChatTab", "qolchat_tab", function( text )
+	if table.IsEmpty(history) then return end
+	
+	if current_pos <= 0 then
+		current_pos = table.Count(history)
+	end
+	
+	local ret = history[current_pos]
+	
+	current_pos = current_pos - 1
+	
+	return ret
+end )

@@ -33,24 +33,24 @@ conVars = {
 
 local colors = {
     Gray = Color(200, 200, 200),
-    Freddy = Color(139, 69, 19),
+    Freddy = Color(114, 51, 5),
     Bonnie = Color(50, 40, 255),
     Endo = Color(255, 255, 255),
-    Chica = Color(255, 255, 0),
+    Chica = Color(255, 201, 53),
     Foxy = Color(255, 0, 0),
     Shadow = Color(105, 0, 255), 
     Clown = Color(216, 93, 244),
     Springtrap = Color(105, 150, 70)
 }
 
-killerData = {
+killerData = killerData or {
     ["pill_wfreddy2"] = {name = "freddy", fullname = "fazhunt.animatronics.freddy", color = colors.Freddy},
     ["pill_wbonnie2"] = {name = "bonnie", fullname = "fazhunt.animatronics.bonnie", color = colors.Bonnie},
     ["pill_wchica2"] = {name = "chica", fullname = "fazhunt.animatronics.chica", color = colors.Chica},
     ["pill_wfoxy2"] = {name = "foxy", fullname = "fazhunt.animatronics.foxy", color = colors.Foxy},
     ["pill_endo02"] = {name = "endo", fullname = "fazhunt.animatronics.endo", color = colors.Endo},
     ["pill_sfreddy2"] = {name = "sfreddy", fullname = "fazhunt.animatronics.sfreddy", color = colors.Shadow},
-    ["pill_wgfreddy2"] = {name = "sfreddy", fullname = "fazhunt.animatronics.gfreddy", color = colors.Gray},
+    ["pill_wgfreddy2"] = {name = "gfreddy", fullname = "fazhunt.animatronics.gfreddy", color = colors.Gray},
     ["pill_clown"] = {name = "clown", fullname = "fazhunt.animatronics.clown", color = colors.Clown},
     ["pill_springtrap"] = {name = "springtrap", fullname = "fazhunt.animatronics.springtrap", color = colors.Springtrap},
     ["pill_plushtrap"] = {name = "plushtrap", fullname = "fazhunt.animatronics.plushtrap", color = colors.Springtrap}
@@ -100,10 +100,14 @@ function pill_makeSecondary(anim, bool)
 	bool = bool or true
 	if istable(anim) then
 		for k, v in pairs( anim ) do
-			killerData[v].secondary = bool
+			if killerData[v] then
+				killerData[v].secondary = bool
+			end
 		end
 	else
-		killerData[anim].secondary = bool
+		if killerData[anim] then
+			killerData[anim].secondary = bool
+		end
 	end
 end
 
@@ -124,24 +128,30 @@ function pill_makePreferable(anim, bool)
 	
 	if istable(anim) then
 		for k, v in pairs( anim ) do
-			killerData[v].preferable = bool
+			if killerData[v] then
+				killerData[v].preferable = bool
+			end
 		end
 	else
-		killerData[anim].preferable = bool
+		if killerData[anim] then
+			killerData[anim].preferable = bool
+		end
 	end
 end
 
 pill_makePreferable(table.GetKeys(killerData), true)
 
-if file.Exists("fh_dontprefer.txt", "DATA") then
-    local data = file.Read("fh_dontprefer.txt", "DATA") or ""
-	
-	if data != "" then 
-		local lines = string.Split(data, "\n")
+hook.Add("Initialize", "fh_dontprefer", function()
+	if file.Exists("fh_dontprefer.txt", "DATA") then
+		local data = file.Read("fh_dontprefer.txt", "DATA") or ""
 		
-		pill_makePreferable( lines )
+		if data != "" then 
+			local lines = string.Split(data, "\n")
+			
+			pill_makePreferable( lines )
+		end
 	end
-end
+end)
 
 function getAllSecondaries()
 	local tablo = {}

@@ -63,7 +63,7 @@ function SWEP:PrimaryAttack()
 	
 	if !IsValid(ent) then return end
 	
-	if self.IsCharging then return end
+	if self.IsCharging or ply.tasered then return end
 	
 	if ply:IsFrozen() or timer.Exists('ST_cantKill'..ply:EntIndex()) then return end
 	
@@ -98,19 +98,21 @@ function SWEP:DealDamage()
 	
 	timer.Create('ST_cantKill'..ply:EntIndex(), 1.5, 1, function() end)
 	
-	if CLIENT then return end
+	if SERVER then
 	
-	timer.Simple(0.15, function()
-		if !IsValid(ent) then return end
-		ent:PillStopGesture('swing')
-	end)
+		timer.Simple(0.15, function()
+			if !IsValid(ent) then return end
+			ent:PillStopGesture('swing')
+		end)
 	
-	ent:PillGesture('attack', 2, 1, 0.1, 0.3)
+		ent:PillGesture('attack', 2, 1, 0.1, 0.3)
+		
+		net.Start("fh_net_killer_change")
+		net.WriteString("attack")
+		net.WriteFloat(2)
+		net.Send(ply)
 	
-	net.Start("fh_net_killer_change")
-	net.WriteString("Kill")
-	net.WriteFloat(2)
-	net.Send(ply)
+	end
 		
 	ply:LagCompensation(true)
 	
@@ -146,6 +148,17 @@ function SWEP:DealDamage()
 		return 
 	end
 	
+	if target:IsPlayer() then
+	
+		local edata = EffectData()
+		edata:SetOrigin(tr.HitPos)
+        edata:SetEntity(target)
+		util.Effect("BloodImpact", edata)
+		
+	end
+	
+	if CLIENT then return end
+	
     local class = target:GetClass()
     if class == "func_breakable" or class == "func_breakable_surf" then
         target:Fire("Shatter", "0", 0)
@@ -159,23 +172,18 @@ function SWEP:DealDamage()
 		end
 	end
 	
-	local dmginfo = DamageInfo()
+	if class != "cakemine" then
+		local dmginfo = DamageInfo()
+		dmginfo:SetAttacker( ply )
+		dmginfo:SetInflictor( self )
+		dmginfo:SetDamage( 60 )
 	
-	dmginfo:SetAttacker( ply )
-
-	dmginfo:SetInflictor( self )
-
-	dmginfo:SetDamage( 60 )
-	
-	SuppressHostEvents( NULL )
-	tr.Entity:TakeDamageInfo( dmginfo )
-	SuppressHostEvents( ply )
+		SuppressHostEvents( NULL )
+		target:TakeDamageInfo( dmginfo )
+		SuppressHostEvents( ply )
+	end
 	
 	ply:LagCompensation(false)
-	
-	if CLIENT then return end
-	
-	if !IsValid(target) then return end
 	
 	if target:IsNPC() then
 		target:TakeDamage(99999, ply)

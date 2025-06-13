@@ -75,14 +75,16 @@ function SWEP:DealDamage()
 	
 	timer.Create('PT_cantKill'..ply:EntIndex(), 1.5, 1, function() end)
 	
-	if CLIENT then return end
+	if SERVER then
 	
-	ent:PillGesture('bite'.. (math.random(1,2) == 1 and "1" or "2"), 2, 1, 0.1, 0.3)
+		ent:PillGesture('bite'.. (math.random(1,2) == 1 and "1" or "2"), 2, 1, 0.1, 0.3)
+		
+		net.Start("fh_net_killer_change")
+		net.WriteString("attack")
+		net.WriteFloat(1.5)
+		net.Send(ply)
 	
-	net.Start("fh_net_killer_change")
-	net.WriteString("Kill")
-	net.WriteFloat(1.5)
-	net.Send(ply)
+	end
 		
 	ply:LagCompensation(true)
 	
@@ -118,6 +120,17 @@ function SWEP:DealDamage()
 		return 
 	end
 	
+	if target:IsPlayer() then
+	
+		local edata = EffectData()
+		edata:SetOrigin(tr.HitPos)
+        edata:SetEntity(target)
+		util.Effect("BloodImpact", edata)
+		
+	end
+	
+	if CLIENT then return end
+	
     local class = target:GetClass()
     if class == "func_breakable" or class == "func_breakable_surf" then
         target:Fire("Shatter", "0", 0)
@@ -131,23 +144,18 @@ function SWEP:DealDamage()
 		end
 	end
 	
-	local dmginfo = DamageInfo()
+	if class != "cakemine" then
+		local dmginfo = DamageInfo()
+		dmginfo:SetAttacker( ply )
+		dmginfo:SetInflictor( self )
+		dmginfo:SetDamage( class == "prop_physics" and math.random(20,22) or math.random(9,12) )
 	
-	dmginfo:SetAttacker( ply )
-
-	dmginfo:SetInflictor( self )
-
-	dmginfo:SetDamage( target:GetClass() == "prop_physics" and math.random(20,22) or math.random(9,12) )
-	
-	SuppressHostEvents( NULL )
-	tr.Entity:TakeDamageInfo( dmginfo )
-	SuppressHostEvents( ply )
+		SuppressHostEvents( NULL )
+		target:TakeDamageInfo( dmginfo )
+		SuppressHostEvents( ply )
+	end
 	
 	ply:LagCompensation(false)
-	
-	if CLIENT then return end
-	
-	if !IsValid(target) then return end
 	
 	if target:IsNPC() then
 		target:TakeDamage(99999, ply)
@@ -156,6 +164,10 @@ function SWEP:DealDamage()
 	
 	if (target:IsPlayer() and target:Team() != ply:Team()) or target:IsNPC() then
 		ply:EmitSound("fnaf3/spr_punch_hit.wav")
+	end
+	
+	if target:IsPlayer() and !target:Alive() then
+		playVoiceline('plushtrap', 'kill', ply, 2)
 	end
 end
 

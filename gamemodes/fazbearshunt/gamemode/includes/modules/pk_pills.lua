@@ -85,6 +85,10 @@ local function fixParent(name)
     end
 end
 
+function editPillTable(name, func, newfunc)
+	forms[name][func] = newfunc
+end
+
 function getPillTable(typ)
     return forms[typ]
 end
@@ -690,10 +694,6 @@ hook.Add("SetupMove", "pk_pill_movemod", function(ply, mv, cmd)
         if ent.formTable.moveMod then
             ent.formTable.moveMod(ply, ent, mv, cmd)
         end
-		
-		if ent.formTable.moveFunction then
-			ent.formTable.moveFunction(ply, ent, mv)
-		end
 
         if ent.GetChargeTime and ent:GetChargeTime() ~= 0 then
             local charge = ent.formTable.charge

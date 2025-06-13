@@ -18,7 +18,7 @@ local left_tab_mat = Material("vgui/playerlist/tabs/left_t.png")
 
 local faded_black = Color(0, 0, 0, 200)
 
-local boosters = {}
+local boosters = boosters or {}
 
 surface.CreateFont("bySergeantFont", { font = "Share Tech Mono Regular", 
 		size = 18, 

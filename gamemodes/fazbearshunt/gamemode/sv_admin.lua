@@ -17,11 +17,10 @@ function RevivePlayer(ply)
 	ply:SetTeam(TEAM_UNASSIGNED)
     ply:Spawn()
 	setupPlayerVars(ply)
+	ply.lobbyFreeze = false
 	
 	if isGameOn then
-		if !survivors[ply] then
-			survivors[ply] = true
-		end
+		survivors[ply] = true
 	end
 	
 	for k,v in pairs(usedKillers) do
@@ -32,14 +31,10 @@ function RevivePlayer(ply)
 	
 	if ply:Team() == 2701 or animatronics[ply] or IsValid(pk_pills.getMappedEnt(ply)) then
 		RunConsoleCommand("pk_pill_restore", ply:Nick())
-		if animatronics[ply] then
-			animatronics[ply] = nil
-		end
+		animatronics[ply] = nil
 	end
 	
-	if !alivePlayers[ply] then
-		alivePlayers[ply] = true
-	end
+	alivePlayers[ply] = true
 end
 
 function highlightSelected(targets)
@@ -47,7 +42,7 @@ function highlightSelected(targets)
 	local affectedNicknames = {}
 	
 	for _,v in ipairs(targets) do
-		if survivors[v] then
+		if survivors[v] and !table.HasValue(affectedPlayers,v) then
 			net.Start("PlayHighlightSounds")
 			net.WriteBool(table.HasValue(targets, v))
 			net.Send(v)
@@ -61,7 +56,7 @@ function highlightSelected(targets)
 		
 	for ply, _ in pairs(animatronics) do
 		net.Start("AddAffectedPlayers")
-		net.WriteTable(survivors)
+		net.WriteTable(targets)
 		net.Send(ply)
 		
 		net.Start("ToggleHighlightSound")
@@ -141,20 +136,25 @@ function HighlightAll()
 	end
 end
 
+local function endgame_shared()
+	net.Start('fh_sound_stop')
+	net.WriteString(fh.GetRoundType() == 0 and 'music/first_minute.wav' or 'music/freeze_timer_springtrap.wav')
+	net.Broadcast()
+	
+	net.Start('fh_net_scarysound')
+	net.WriteBool(true)
+	net.Broadcast()
+	
+	for v,_ in pairs(animatronics) do
+		v.lobbyFreeze = nil
+		v:Freeze(false)
+	end
+end
+
 function EndRound()
 	if !roundEnding and isGameOn then
 		endGame(true)
-		net.Start('fh_sound_stop')
-		net.WriteString(roundType == 0 and 'music/first_minute.wav' or 'music/freeze_timer_springtrap.wav')
-		net.Broadcast()
-		
-		net.Start('fh_net_scarysound')
-		net.WriteBool(false)
-		net.Broadcast()
-		
-		for v,_ in pairs(animatronics) do
-			v.lobbyFreeze = nil
-		end
+		endgame_shared()
 		LogEvent(" ")
         LogEvent("(*АДМИН*) - Раунд закончил *АДМИН*.")
 	end
@@ -163,17 +163,7 @@ end
 function EndPostRound()
 	if !roundEnding and isGameOn then
 		roundActive = true
-		net.Start('fh_sound_stop')
-		net.WriteString(roundType == 0 and 'music/first_minute.wav' or 'music/freeze_timer_springtrap.wav')
-		net.Broadcast()
-		
-		net.Start('fh_net_scarysound')
-		net.WriteBool(true)
-		net.Broadcast()
-		
-		for v,_ in pairs(animatronics) do
-			v.lobbyFreeze = nil
-		end
+		endgame_shared()
 		LogEvent(" ")
         LogEvent("(*АДМИН*) - Все аниматроники разморожены, раунд начат.")
 	end
@@ -220,10 +210,14 @@ net.Receive("AdminAction", function(len, ply)
 			highlightSelected(targets)
 			return
 		end
-			
+		
+		local killer = ""
+		if action == "give_animatronic" then 
+			killer = net.ReadString()
+		end
+		
         for _, target in pairs(targets) do
             if action == "give_animatronic" then
-				local killer = net.ReadString()
                 GiveAnimatronic(target, killer)
             elseif action == "resurrect" then
                 RevivePlayer(target)

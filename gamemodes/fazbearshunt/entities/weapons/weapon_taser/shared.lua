@@ -1,0 +1,172 @@
+AddCSLuaFile()
+	
+game.AddAmmoType( {
+	name = "TASER_AMMO",
+	dmgtype = DMG_SHOCK, 
+	tracer = TRACER_LINE_AND_WHIZ,
+	plydmg = 0, -- This can either be a number or a ConVar name.
+	npcdmg = 0, -- Ditto.
+	force = 2000,
+	maxcarry = 1, -- Ditto.
+	minsplash = 10,
+	maxsplash = 5
+} )
+
+SWEP.PrintName = "Taser Gun"
+
+SWEP.Spawnable = true
+SWEP.AdminOnly = false
+SWEP.Slot = 1
+SWEP.SlotPos = 2
+
+SWEP.Primary.ClipSize = -1
+SWEP.Primary.DefaultClip = 1
+SWEP.Primary.Automatic = false
+SWEP.Primary.Ammo = "TASER_AMMO"
+
+SWEP.Secondary.ClipSize = 0
+SWEP.Secondary.DefaultClip = 0
+SWEP.Secondary.Automatic = false
+SWEP.Secondary.Ammo = "none"
+
+SWEP.UseHands = true
+SWEP.ViewModel	= "models/realistic_police/taser/c_taser.mdl"
+SWEP.ViewModelFOV = 60
+SWEP.WorldModel = "models/realistic_police/taser/w_taser.mdl"
+
+SWEP.MinHitbox = Vector(-24,-24,-12)
+SWEP.MaxHitbox = Vector(24,24,12)
+
+function SWEP:Initialize()
+    self:SetHoldType("pistol")
+	self.Weapon:SetClip1( 100 )
+end
+
+function SWEP:Holster()
+	return true
+end
+
+if SERVER then
+    util.AddNetworkString("StunEffect_Shake")
+end
+
+local has_tasered_vl = {"pill_wfreddy2", "pill_wbonnie2", "pill_wchica2", "pill_wfoxy2", "pill_endo02", "pill_clown", "pill_plushtrap"}
+
+function SWEP:PrimaryAttack()
+
+    local owner = self:GetOwner()
+    if !IsValid(owner) then return end
+	local vm = owner:GetViewModel()
+	
+    self:SetNextPrimaryFire(CurTime() + 90)
+	timer.Create("taser" .. owner:EntIndex(), 90 / 100, 100, function()
+		if IsValid(self) then
+			self.Weapon:SetClip1( self.Weapon:Clip1() + 1 )
+		end
+	end)
+	
+	vm:SendViewModelMatchingSequence( vm:LookupSequence( "fire" ) )
+	
+	owner:LagCompensation(true)
+
+    local shootPos = owner:GetShootPos()
+    local aimDir = owner:GetAimVector()
+    local endPos = shootPos + aimDir * 600
+
+    local tr = util.TraceHull({
+		start = shootPos,
+		endpos = endPos,
+		mins = self.MinHitbox,
+		maxs = self.MaxHitbox,
+		filter = owner
+	})
+	
+	debugoverlay.Box(tr.HitPos, self.MinHitbox, self.MaxHitbox, 3, Color(255, 0, 0, 200))
+
+    self:EmitSound('weapons/tasergun/shoot.mp3')
+    local hitPos = tr.HitPos or endPos
+
+    local fx = EffectData()
+    fx:SetOrigin(hitPos + Vector(0, 0, 5))
+	fx:SetStart(hitPos)
+	util.Effect("cball_explode", fx)
+
+	owner:LagCompensation(false)
+	self.Weapon:SetClip1( 0 )
+
+    local entities = ents.FindInSphere(hitPos, 100)
+    for _, ent in ipairs(entities) do
+        if ent:IsPlayer() and ent:Team() == 2701 and ent:Alive() and !ent.tasered and !ent.lobbyFreeze then
+			
+			local puppet = pk_pills.getMappedEnt(ent)
+			local formtbl = puppet.formTable
+			local movespeed = formtbl.moveSpeed
+			
+			if SERVER then
+				ent.tasered = true
+				ent:DropToFloor()
+				
+				if IsValid(puppet) and formtbl.name == "pill_springtrap" then
+					ent:SetWalkSpeed(60)
+					ent:SetRunSpeed(60)
+					ent:SetSlowWalkSpeed(60)
+					timer.Simple(5, function()
+						if IsValid(ent) then
+							ent:SetRunSpeed(movespeed.run)
+							ent:SetWalkSpeed(movespeed.walk)
+							ent:SetSlowWalkSpeed(movespeed.walk)
+							ent.tasered = false
+						end
+					end)
+				else
+					ent:Lock()
+					timer.Simple(5, function()
+						if IsValid(ent) then
+							ent:UnLock() 
+							ent.tasered = false
+						end
+					end)
+				end
+	
+				net.Start("StunEffect_Shake")
+				net.Send(ent)
+	
+				ent:ScreenFade(SCREENFADE.IN, Color(255, 255, 255, 128), 2, 2)
+				
+				if IsValid(puppet) then
+					if formtbl.name == "pill_springtrap" then
+						puppet:PillGesture('stun', 3, 1, 0, 0.3)
+					else
+						puppet:PillAnim("stun", true)
+						if table.HasValue(has_tasered_vl, formtbl.name) then
+							playVoiceline(killerData[formtbl.name].name, 'tasered', ent, 0.05)
+						end
+					end
+					if formtbl == "pill_endo02" then
+						endoRelease(ent)
+					end
+					puppet:EmitSound('weapons/tasergun/active_stun.mp3')
+				end
+			end
+			
+			if !IsValid(puppet) then
+				puppet = ent
+			end
+
+            local fx = EffectData()
+            fx:SetOrigin(ent:GetPos() + Vector(0, 0, 40))
+			fx:SetStart(ent:GetPos())
+			fx:SetMagnitude(10)
+            fx:SetEntity(puppet)
+            util.Effect("teslaHitBoxes", fx)
+        end
+    end
+end
+
+function SWEP:SecondaryAttack()
+end
+
+net.Receive("StunEffect_Shake", function()
+    local ply = LocalPlayer()
+    util.ScreenShake(ply:GetPos(), 15, 5, 5, 500)
+end)

@@ -3,8 +3,6 @@ ENT.Base = "base_anim"
 ENT.Type = "ai"
 ENT.AutomaticFrameAdvance = true
 
-print(pcall(require,"pk_pills"))
-
 function ENT:SetupDataTables()
     self:NetworkVar("String", 0, "PillForm")
     self:NetworkVar("Entity", 0, "PillUser")
@@ -131,6 +129,7 @@ function ENT:Initialize()
         end
 
         ply:SetArmor(0)
+        ply:DropToFloor()
 
         if self.formTable.loadout then
             for _, v in pairs(self.formTable.loadout) do
@@ -393,9 +392,9 @@ function ENT:Think()
                     anim = anims["crouch"] or anims["idle"]
                 end
             else
-                if vel > (ply:GetWalkSpeed() + ply:GetRunSpeed()) / 2 then
+                if vel > (ply:GetWalkSpeed() + ply:GetRunSpeed()) / 2 and ply:GetWalkSpeed() != ply:GetRunSpeed() then
                     anim = anims["run"] or anims["walk"] or anims["idle"]
-                elseif vel > ply:GetWalkSpeed() / 4 then
+                elseif vel > 20 then
                     anim = anims["walk"] or anims["idle"]
                 else
                     anim = anims["idle"]
@@ -436,18 +435,37 @@ function ENT:Think()
         if self.formTable.movePoseMode then
             if self.formTable.movePoseMode == "xy" then
                 if not overrideRate then
-                    local localvel = ply:WorldToLocal(ply:GetPos() + ply:GetVelocity())
-                    local maxdim = math.Max(math.abs(localvel.x), math.abs(localvel.y))
-                    local clampedvel = maxdim == 0 and Vector(0, 0, 0) or localvel / maxdim
-                    puppet:SetPoseParameter("move_x", clampedvel.x)
-                    puppet:SetPoseParameter("move_y", -clampedvel.y)
-                    seq_vel = puppet:GetSequenceGroundSpeed(puppet:GetSequence())
-
-                    if seq_vel ~= 0 then
-                        puppet:SetPoseParameter("move_x", math.Clamp(localvel.x / seq_vel, -.99, .99))
-                        puppet:SetPoseParameter("move_y", math.Clamp(-localvel.y / seq_vel, -.99, .99))
-                    end
-                    --print(puppet:GetPlaybackRate())
+					local velocity = ply:GetVelocity()
+					local speed = velocity:Length2D()
+				
+					local forward = ply:GetForward()
+					local right = ply:EyeAngles():Right()
+				
+					local moveX = forward:Dot(velocity)
+					local moveY = right:Dot(velocity)
+				
+					local maxSpeed = math.max(80, ply:GetWalkSpeed())
+					if ply:IsSprinting() and ply:GetWalkSpeed() != ply:GetRunSpeed() then
+						maxSpeed = ply:GetRunSpeed()
+					end
+					if ply:Crouching() then
+						maxSpeed = maxSpeed * 0.5
+					end
+					
+					local len = math.sqrt(moveX * moveX + moveY * moveY)
+					if len > 0 then
+						moveX = moveX / len
+						moveY = moveY / len
+					end
+					
+					local speed = velocity:Length2D()
+					local speedRatio = math.Clamp(speed / maxSpeed, 0, 1)
+					
+					moveX = moveX * speedRatio
+					moveY = moveY * speedRatio
+					
+					puppet:SetPoseParameter("move_x", moveX)
+					puppet:SetPoseParameter("move_y", moveY)
                 else
                     puppet:SetPoseParameter("move_x", 0)
                     puppet:SetPoseParameter("move_y", 0)
@@ -894,6 +912,13 @@ if SERVER then
         net.WriteEntity(ent)
         net.Send(self:GetPillUser())
     end
+	
+	function ENT:HandleAnimEvent( event, eventTime, cycle, type, options )
+        if self.formTable.animEvent then
+            self.formTable.animEvent(self:GetPillUser(), self, event, eventTime, cycle, type, options)
+			return true
+        end
+	end
 else
     function ENT:GetPillHealth()
         return self:GetPillUser():Health()

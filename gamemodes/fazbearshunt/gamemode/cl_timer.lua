@@ -137,44 +137,46 @@ function draw_killer_selector()
         end
     end)
     
-    grid = vgui.Create("DGrid", selector)
-	grid:SetPos(100, 100)
+    local scroll = vgui.Create("DScrollPanel", selector)
+	scroll:SetPos(50, 100)
+	scroll:SetSize(500, 450) -- регулируй по нужной высоте
+	
+	grid = vgui.Create("DGrid", scroll)
 	grid:SetCols(3)
 	grid:SetColWide(150)
 	grid:SetRowHeight(150)
+	grid:Dock(TOP)
+	grid:DockMargin(0, 0, 0, 0)
+	
+	-- Важно: нужно обновить размер grid вручную после добавления всех элементов
+	local rowCount = math.ceil(#animatronics / 3)
+	grid:SetTall(rowCount * 150)
 	
 	for i, animName in ipairs(animatronics) do
 		local imagePath = "vgui/bars/" .. killerData[animName].name .. ".png"
 	
-		if file.Exists("materials/" .. imagePath, "GAME") then
-			local box = vgui.Create("DImageButton")
-			box:SetSize(140, 140)
-			box:SetImage(imagePath)
-			box.name = animName
-			box.DoClick = function()
-				net.Start("fh_selected_killer")
-				net.WriteString(animName)
-				net.SendToServer()
-			end
-			grid:AddItem(box)
-		else
-			local box = vgui.Create("DImageButton")
-			box:SetSize(140, 140)
-			box.name = animName
-			box.DoClick = function()
-				net.Start("fh_selected_killer")
-				net.WriteString(animName)
-				net.SendToServer()
-			end
+		local box = vgui.Create("DImageButton")
+		box:SetSize(140, 140)
+		box.name = animName
 	
+		box.DoClick = function()
+			net.Start("fh_selected_killer")
+			net.WriteString(animName)
+			net.SendToServer()
+		end
+	
+		if file.Exists("materials/" .. imagePath, "GAME") then
+			box:SetImage(imagePath)
+		else
 			box.Paint = function(self, w, h)
 				draw.RoundedBox(4, 0, 0, w, h, Color(0, 0, 0))
 				draw.SimpleText(language.GetPhrase(killerData[animName].fullname), "timerFontSmall", w / 2, h / 2, color_white, TEXT_ALIGN_CENTER, TEXT_ALIGN_CENTER)
 			end
-	
-			grid:AddItem(box)
 		end
+	
+		grid:AddItem(box)
 	end
+
 end
 
 net.Receive("fh_let_killers_choose", function()
@@ -209,6 +211,7 @@ end)
 net.Receive("fh_start_lobby_timer", function()
     local timerDuration = net.ReadFloat()
     timerTitle = language.GetPhrase("fazhunt.generic.startup")
+	local soundtoplay = net.ReadString()
     
     timerMode = "lobby"
 	
@@ -219,15 +222,37 @@ net.Receive("fh_start_lobby_timer", function()
     timerEnd = CurTime() + timerDuration
 	timerTotal = timerDuration
     hook.Add("HUDPaint", "DrawGameTimer", DrawTimer)
+	
+    surface.PlaySound(soundtoplay)
 end)
 
+net.Receive("fh_timer_cutback", function()
+    local timerDuration = net.ReadFloat()
+	local soundtoplay = net.ReadString()
+    
+    timerMode = "game"
+	
+    postlobbytimer_alpha = 0
+	roundtimer_y_target = 58
+	roundtimer_alpha = 255
+	
+    timerEnd = CurTime() + timerDuration
+    timerSetupEnd = CurTime()
+	timerTotal = timerDuration
+    hook.Add("HUDPaint", "DrawGameTimer", DrawTimer)
+	
+    surface.PlaySound(soundtoplay)
+end)
+
+// "ambient/alarms/warningbell1.wav"
 net.Receive("fh_start_game_timer", function()
     local timerDuration = net.ReadFloat()
     local startupDuration = net.ReadFloat()
+	local soundtoplay = net.ReadString()
+	
+    timerTitle = language.GetPhrase("fazhunt.generic.round") .. ' ' .. net.ReadString()
 	
 	timerTotal = timerDuration
-    
-    timerTitle = language.GetPhrase("fazhunt.generic.round") .. ' ' .. net.ReadInt(32)
     
     timerEnd = CurTime() + timerDuration + startupDuration
     timerSetupEnd = CurTime() + startupDuration
@@ -247,7 +272,7 @@ net.Receive("fh_start_game_timer", function()
     
     hook.Add("HUDPaint", "DrawGameTimer", DrawTimer)
     
-    surface.PlaySound("ambient/alarms/warningbell1.wav")
+    surface.PlaySound(soundtoplay)
 end)
 
 net.Receive("ResetTimer", function()

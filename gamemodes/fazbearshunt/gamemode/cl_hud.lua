@@ -1,25 +1,78 @@
 currentKiller = currentKiller or ""
+fh_hud_color = fh_hud_color or ""
 
 currentAbilities = currentAbilities or {}
 cupcakes = cupcakes or 0
 
-local killerIcon = Material( "vgui/"..currentKiller.."_header.png" )
-local cake = Material( "vgui/cake.png" )
+local scrollOffsets = {}
+local scrollSpeeds = {}
+
+local fh_ui_scale = CreateClientConVar('fh_ui_scale', 1, true, false, 'FH Ui Scale (Animatronics Hud Only)', 0, 2)
+	
+local uiScale = (1920 / ScrW()) * fh_ui_scale:GetFloat()
+
+--[[
+cvars.AddChangeCallback("fh_ui_scale", function(name, value_old, value_new)
+	hook.Remove("HUDPaint", "DrawKillerInterface")
+	uiScale = (1920 / ScrW()) * value_new
+	hook.Add("HUDPaint", "DrawKillerInterface", DrawKillerInterface)
+end)
+--]]
+
+local killerIconPath = killerIconPath or ""
+local killerIcon = killerIcon or Material( killerIconPath )
+local cake = Material( "vgui/cake.png", "smooth" )
+
+local circle_mat = Material( "vgui/animatronics_hud/circle.png", "smooth" )
+local circle_outline_mat = Material( "vgui/animatronics_hud/circle_outline.png", "smooth" )
+
+local abil_bg_mat = Material( "vgui/animatronics_hud/abilities/bg.png", "smooth" )
+local abil_bg_outline_mat = Material( "vgui/animatronics_hud/abilities/bg_outline.png", "smooth" )
+
+surface.CreateFont("fh_hud_ability_title", { font = "Share Tech Mono Regular", size = 28 * uiScale, extended = true, weight = 400, antialias = true, bold = true })
+surface.CreateFont("fh_hud_ability_button", { font = "Share Tech Mono Regular", size = 40 * uiScale, extended = true, weight = 400, antialias = true, bold = false })
+surface.CreateFont("fh_hud_ability_time", { font = "Share Tech Mono Regular", size = 16 * uiScale, extended = true, weight = 400, antialias = true, bold = false })
+
+local button_ability_mat = Material( "vgui/animatronics_hud/abilities/button_ability.png", "smooth" )
+local mouse_ability_mat = Material( "vgui/animatronics_hud/abilities/mouse_ability.png", "smooth" )
 
 function DrawKillerInterface()
 if currentKiller == "" or !currentKiller or !GetConVar("cl_drawhud"):GetBool() then return end
 	
     local screenW, screenH = ScrW(), ScrH()
-
-	surface.SetMaterial(killerIcon)
-    surface.SetDrawColor(255, 255, 255, 255)
 	
-	local size = 342 * (ScrW() / 1920)
-    local avatarX, avatarY = 50, screenH - size - 30
+	local size = 330 * uiScale
+	local avatar_y = 260 * uiScale
 	
-    surface.DrawTexturedRect(avatarX, avatarY, size, size)
+	local circle_width, circle_height = circle_mat:GetInt("$realwidth") * uiScale, circle_mat:GetInt("$realheight") * uiScale
+	
+	local circleX = 32 * uiScale
+	local circleY = screenH - avatar_y - (16 * uiScale)
+	
+	surface.SetMaterial(circle_mat)
+	surface.SetDrawColor(255, 255, 255, 255)
+	surface.DrawTexturedRect(circleX, circleY, circle_width, circle_height)
+	
+	local circle_outline_mat_width, circle_outline_mat_height = circle_outline_mat:GetInt("$realwidth") * uiScale, circle_outline_mat:GetInt("$realheight") * uiScale
+	
+	local hud_color = fh_hud_color or Color(255,255,255,255)
+	
+	surface.SetMaterial(circle_outline_mat)
+	surface.SetDrawColor(hud_color)
+	surface.DrawTexturedRect(32 * uiScale, screenH - avatar_y - (16 * uiScale), circle_outline_mat_width, circle_outline_mat_height)
 
-    local abilityX, abilityY = size * 0.6, screenH - 80
+	if file.Exists("materials/" .. killerIconPath, "GAME") then
+		local mat_width, mat_height = killerIcon:GetInt("$realwidth") * uiScale, killerIcon:GetInt("$realheight") * uiScale
+		local avatarX = circleX + (circle_width - mat_width) / 2
+		local avatarY = circleY + circle_height - mat_height - (7 * uiScale)
+	
+		surface.SetMaterial(killerIcon)
+		surface.SetDrawColor(255, 255, 255, 255)
+		
+		surface.DrawTexturedRect(avatarX, avatarY, mat_width, mat_height)
+	end
+
+    local abilityX, abilityY = size, screenH - (100 * uiScale)
 
     for abilityName, abilityData in pairs(currentAbilities) do
         if abilityData.timeleft > 0 or !abilityData.hidden then
@@ -27,14 +80,109 @@ if currentKiller == "" or !currentKiller or !GetConVar("cl_drawhud"):GetBool() t
             if type(clr) == "function" then
                 clr = clr()
             end
-            draw.RoundedBox(8, abilityX, abilityY, 140, 50, clr or Color(32, 32, 32, 200))
-            draw.SimpleText(abilityData.text, "DermaLarge", abilityX + 10, abilityY + 10, Color(255, 255, 255, 255), TEXT_ALIGN_LEFT)
-            if (abilityData.timeleft > 0) then 
-				draw.SimpleText(tostring(math.ceil(abilityData.timeleft)) .. " s", "DermaLarge", abilityX + 128, abilityY + 10, Color(255, 255, 255, 255), TEXT_ALIGN_RIGHT)
+			local abil_bg_width, abil_bg_height = abil_bg_mat:GetInt("$realwidth") * uiScale, abil_bg_mat:GetInt("$realheight") * uiScale
+			
+			surface.SetMaterial(abil_bg_mat)
+			surface.SetDrawColor(255, 255, 255, 255)
+			surface.DrawTexturedRect(abilityX, abilityY, abil_bg_width, abil_bg_height)
+			
+			local abil_bg_outline_width, abil_bg_outline_height = abil_bg_outline_mat:GetInt("$realwidth") * uiScale, abil_bg_outline_mat:GetInt("$realheight") * uiScale
+			
+			surface.SetMaterial(abil_bg_outline_mat)
+			surface.SetDrawColor(hud_color)
+			surface.DrawTexturedRect(abilityX, abilityY, abil_bg_outline_width, abil_bg_outline_height)
+			
+			local button_ability_width, button_ability_height = button_ability_mat:GetInt("$realwidth") * uiScale, button_ability_mat:GetInt("$realheight") * uiScale
+			
+			local mouse_ability_width, mouse_ability_height = mouse_ability_mat:GetInt("$realwidth") * uiScale, mouse_ability_mat:GetInt("$realheight") * uiScale
+
+			local ability_button_x = 0
+
+			if abilityData.keyboard then
+				ability_button_x = abilityX + (205 * uiScale)
+				
+				surface.SetMaterial(button_ability_mat)
+				surface.SetDrawColor(clr or Color(255,255,255,255))
+				surface.DrawTexturedRect(ability_button_x, abilityY + (abil_bg_height/2 - button_ability_height/2), button_ability_width, button_ability_height)
+				
+			else
+				ability_button_x = abilityX + (168 * uiScale)
+				
+				surface.SetMaterial(mouse_ability_mat)
+				surface.SetDrawColor(clr or Color(255,255,255,255))
+				surface.DrawTexturedRect(ability_button_x, abilityY + (abil_bg_height/2 - mouse_ability_height/2), mouse_ability_width, mouse_ability_height)
+				
 			end
 			
-			if abilityName == 'Mine' then
-				local x_add = 0
+			local translated_ability = language.GetPhrase("fazhunt.abilities." .. abilityName)
+			
+			if translated_ability == "fazhunt.abilities." .. abilityName then
+				translated_ability = abilityName
+			end
+			
+            surface.SetFont("fh_hud_ability_title")
+			local textWidth, textHeight = surface.GetTextSize(translated_ability)
+			
+			local maxTextWidth = (abilityData.keyboard and 150 or 140) * uiScale -- ширина, до которой обрезаем
+			local textX = abilityX + (18 * uiScale)
+			local textY = abilityY + (10 * uiScale)
+			
+			scrollOffsets[abilityName] = scrollOffsets[abilityName] or 0
+			scrollSpeeds[abilityName] = scrollSpeeds[abilityName] or 15
+			
+			if textWidth > maxTextWidth then
+				local offset = scrollOffsets[abilityName]
+				local speed = scrollSpeeds[abilityName]
+				offset = offset + FrameTime() * speed
+			
+				if offset > (textWidth - maxTextWidth + 10) then
+					scrollSpeeds[abilityName] = -speed
+				elseif offset < 0 then
+					scrollSpeeds[abilityName] = -speed
+				end
+			
+				scrollOffsets[abilityName] = offset
+			
+				render.SetScissorRect(textX, textY, textX + maxTextWidth, textY + textHeight, true)
+				draw.SimpleText(translated_ability, "fh_hud_ability_title", textX - scrollOffsets[abilityName], textY, Color(255, 255, 255, 255), TEXT_ALIGN_LEFT)
+				render.SetScissorRect(0, 0, 0, 0, false)
+			else
+				draw.SimpleText(translated_ability, "fh_hud_ability_title", textX, textY, Color(255, 255, 255, 255), TEXT_ALIGN_LEFT)
+			end
+			
+			draw.SimpleText(
+				abilityData.text,
+				"fh_hud_ability_button",
+				ability_button_x + (abilityData.keyboard and (button_ability_width/2) or (mouse_ability_width/2)),
+				abilityY + (abil_bg_outline_height / 2 - 20 * uiScale),
+				clr,
+				TEXT_ALIGN_CENTER
+			)
+			
+			local timer_width = (abilityData.keyboard and 172 or 122) * uiScale
+			
+			local timer_x = 13 * uiScale
+			local timer_y = 51 * uiScale
+			
+			local timeLeft = abilityData.timeleft
+			local maxTime = abilityData.maxTime
+			
+			local max_timer_width = timer_width - (6 * uiScale)
+			
+			if maxTime and timeLeft > 0 then
+				draw.RoundedBox(0, abilityX + timer_x, abilityY + timer_y, 2,8, Color(255,255,255))
+				
+				draw.RoundedBox(0, abilityX + timer_x + timer_width, abilityY + (51 * uiScale), 2,8, Color(255,255,255))
+				
+				draw.RoundedBox(0, abilityX + timer_x + (4 * uiScale), abilityY + timer_y + (2 * uiScale), max_timer_width * (timeLeft / maxTime), 4, Color(255,255,255))
+			end
+			
+            if (timeLeft > 0) then 
+				draw.SimpleText(tostring(math.ceil(timeLeft)) .. " s", "fh_hud_ability_time", abilityX + timer_x + max_timer_width/2, abilityY + (36 * uiScale), Color(255, 255, 255, 255), TEXT_ALIGN_CENTER)
+			end
+			
+			if abilityName == 'mine' then
+				local x_add = 6
 				if cupcakes > 0 then
 					for i = 1,cupcakes do
 						surface.SetMaterial(cake)
@@ -46,45 +194,54 @@ if currentKiller == "" or !currentKiller or !GetConVar("cl_drawhud"):GetBool() t
 				end
 			end
 			
-            abilityX = abilityX + 155
+            abilityX = abilityX + abil_bg_width + 24
         end
     end
 end
 
-timer.Create("UpdateAbilitiesTime", 0.1, 0, function()
+local function updateAnimHudHeader(name)
+	killerIconPath = "vgui/animatronics_hud/heads/"..name..".png"
+	killerIcon = Material( killerIconPath, "smooth" )
+end
+
+timer.Create("UpdateAbilitiesTime", 0.05, 0, function()
     for _, abilityData in pairs(currentAbilities) do
         if abilityData.timeleft > 0 then
-            abilityData.timeleft = abilityData.timeleft - 0.1
+            abilityData.timeleft = abilityData.timeleft - 0.05
         end
     end
 end)
 
-function assignAbilitiesByKiller(name)
-	if name != "plushtrap" then
-		addAbility('Highlight', 'R', 0, false)
+function assignAbilitiesByKiller(name) -- потом переделаю этот бред
+	if name == "plushtrap" or name == "springtrap" or name == "clown" then
+		addAbility('attack', 'ЛКМ', 0, false, false)
+	else
+		addAbility('kill', 'ЛКМ', 0, false, true)
 	end
 	
-	addAbility('Kill', 'ЛКМ', 0, true)
-	
 	if name == "sfreddy" then
-		addAbility('Submerge', 'ПКМ', 0, false)
-        abilityParentClrFunc('Submerge', function()
+		addAbility('submerge', 'ПКМ', 0)
+        abilityParentClrFunc('submerge', function()
             return isNotStuck()
         end)
 	elseif name == "chica" then
-		addAbility('Mine', 'ПКМ', 0, false)
+		addAbility('mine', 'ПКМ', 0)
 	elseif name == "endo" then
-		addAbility('Grab', 'ПКМ', 0, false)
+		addAbility('grab', 'ПКМ', 0)
 	elseif name == "freddy" then
-		addAbility('Stalk', 'ПКМ', 0, false)
+		addAbility('stalk', 'ПКМ', 0)
 	elseif name == "bonnie" then
-		addAbility('Yoursmine', 'ПКМ', 0, false)
+		addAbility('yoursmine', 'ПКМ', 0)
 	elseif name == "springtrap" then
-		addAbility('Summon', 'ПКМ', 0, false)
+		addAbility('summon', 'ПКМ', 0)
+	end
+	
+	if name != "plushtrap" then
+		addAbility('highlight', 'R', 0, true, false)
 	end
 end
 
-function addAbility(name, text, duration, hidden)
+function addAbility(name, text, duration, keyboard, hidden)
     if currentAbilities[name] then
         return
     end
@@ -92,6 +249,7 @@ function addAbility(name, text, duration, hidden)
     currentAbilities[name] = {
         text = text,
         timeleft = duration,
+        keyboard = keyboard or false,
         hidden = hidden or false
     }
 end
@@ -109,7 +267,7 @@ function isNotStuck()
 	if trace.Hit then
 		return Color(200, 32, 32, 200)
 	end
-	return Color(32, 32, 32, 200)
+	return Color(255, 255, 255, 255)
 end
 
 function abilityParentClrFunc(name, func)
@@ -118,13 +276,15 @@ end
 
 function setDuration(name, newDuration)
     if currentAbilities[name] then
+        currentAbilities[name].maxTime = newDuration
         currentAbilities[name].timeleft = newDuration
     end
 end
 net.Receive("ApplyKiller", function()
 	hook.Add("HUDPaint", "DrawKillerInterface", DrawKillerInterface)
     currentKiller = net.ReadString()
-	killerIcon = Material( "vgui/"..currentKiller.."_header.png" )
+    fh_hud_color = net.ReadColor()
+	updateAnimHudHeader(currentKiller)
 	assignAbilitiesByKiller(currentKiller)
 end)
 
@@ -137,14 +297,16 @@ end)
 net.Receive("RemoveKiller", function()
 	hook.Remove("HUDPaint", "DrawKillerInterface")
     currentKiller = ""
-	currentAbilities = {}
 	cupcakes = 0
+	table.Empty(currentAbilities)
+	table.Empty(scrollOffsets)
+	table.Empty(scrollSpeeds)
 end)
 
 net.Receive("fh_net_killer_change", function()
 	local str = net.ReadString()
     setDuration(str, net.ReadFloat())
-	if str == 'Mine' then
+	if str == 'addmine' then
 		cupcakes = cupcakes + 1
 	end
 	--[[
@@ -300,10 +462,10 @@ hook.Add("OnContextMenuOpen", "fh_contextmenu", function()
 	local playeredit_button = contextmenu_options:AddOption( language.GetPhrase("fazhunt.context.player_editor"), openPlayerEditor )
 	playeredit_button:SetIcon("icon16/user.png")
 	
-	local mutebutton = contextmenu_options:AddOption( language.GetPhrase("fazhunt.context.mute_spectators"), function() toggleConsoleCommand("proximity_hear_spectators") end )
-	mutebutton:SetIsCheckable( true )
-	mutebutton:SetChecked( !GetConVar("proximity_hear_spectators"):GetBool() )
-	contextmenu_options:Open()
+	local button = contextmenu_options:AddOption( language.GetPhrase("fazhunt.context.mute_spectators") )
+	button:SetIsCheckable( true )
+	button:SetChecked( !GetConVar("proximity_hear_spectators"):GetBool() )
+	button.OnChecked = function( checked ) toggleConsoleCommand("proximity_hear_spectators") end
 	
 	local panel = vgui.Create( "DPanel", contextmenu_options )
 	panel:SetSize( 55, 25 )
@@ -319,18 +481,25 @@ hook.Add("OnContextMenuOpen", "fh_contextmenu", function()
 	contextmenu_options:AddPanel(panel)
 	contextmenu_options:AddSpacer()
 	
-	local mutebutton = contextmenu_options:AddOption( language.GetPhrase("fazhunt.context.thirperson"), function() toggleConsoleCommand("fh_thirdperson") end )
-	--mutebutton:SetIcon( "icon16/camera.png" )
-	mutebutton:SetIsCheckable( true )
-	mutebutton:SetChecked( GetConVar("fh_thirdperson"):GetBool() )
-	contextmenu_options:Open()
+	local button = contextmenu_options:AddOption( language.GetPhrase("fazhunt.context.thirperson") )
+	--button:SetIcon( "icon16/camera.png" )
+	button:SetIsCheckable( true )
+	button:SetChecked( GetConVar("fh_thirdperson"):GetBool() )
+	button.OnChecked = function( checked ) toggleConsoleCommand("fh_thirdperson") end
 	
-	local mutebutton = contextmenu_options:AddOption( language.GetPhrase("fazhunt.context.halo_teammates"), function() toggleConsoleCommand("fh_halo_teammates") end )
-	--mutebutton:SetIcon( "icon16/camera.png" )
-	mutebutton:SetIsCheckable( true )
-	mutebutton:SetChecked( GetConVar("fh_halo_teammates"):GetBool() )
-	contextmenu_options:Open()
+	local button = contextmenu_options:AddOption( language.GetPhrase("fazhunt.context.halo_teammates") )
+	--button:SetIcon( "icon16/camera.png" )
+	button:SetIsCheckable( true )
+	button:SetChecked( GetConVar("fh_halo_teammates"):GetBool() )
+	button.OnChecked = function( checked ) toggleConsoleCommand("fh_halo_teammates") end
 	
+	local button = contextmenu_options:AddOption( language.GetPhrase("fazhunt.context.dynamic_camera") )
+	--button:SetIcon( "icon16/camera.png" )
+	button:SetIsCheckable( true )
+	button:SetChecked( GetConVar("fh_dynamic_firstperson"):GetBool() )
+	button.OnChecked = function( checked ) toggleConsoleCommand("fh_dynamic_firstperson") end
+	
+	contextmenu_options:Open()
 	contextmenu_options:SetPos(0, (ScrH() / 2))
 end)
 

@@ -37,14 +37,14 @@ if SERVER then
 			ent:EmitSound("slip_start.wav")
 			ent:SetVelocity(Vector(math.Rand(150, 250) * (math.random(2) == 1 and 1 or -1), math.Rand(150, 250) * (math.random(2) == 1 and 1 or -1), 200) + ent:GetUp() * 100)
 			local phys = self:GetPhysicsObject()
-			phys:ApplyForceCenter((-ent:GetVelocity() + -ent:GetForward()) * 25)
+			phys:ApplyForceCenter((-ent:GetVelocity() + -ent:GetForward()) * 50)
 			
 			timer.Simple( 0.1, function()
 				ent:SetNWBool("banana_slipped", true)
 			end)
 			if ent:IsPlayer() then
-				for i = 1, 45 do
-					timer.Simple(0 + i/1000, function()
+				for i = 1, 20 do
+					timer.Simple(0 + i/450, function()
 						ent:SetEyeAngles(ent:EyeAngles() + Angle(-1,0,0))
 					end) 
 				end

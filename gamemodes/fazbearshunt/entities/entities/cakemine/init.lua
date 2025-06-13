@@ -44,12 +44,13 @@ function ENT:OnRemove()
 end
 
 function ENT:CheckForPlayers()
+	local owner = self:GetOwner()
     local pos = self:GetPos()
     local radius = 200
 	local totalPlayers = {}
 
     for _, ply in pairs(ents.FindInSphere(pos, radius)) do
-        if ply:IsPlayer() and ply ~= self:GetOwner() and ply:Team() != 2701 and ply:Team() != TEAM_SPECTATOR and !table.HasValue(nearPlayers, ply) then
+        if ply:IsPlayer() and ply ~= owner and ply:Team() != 2701 and ply:Team() != TEAM_SPECTATOR and !table.HasValue(nearPlayers, ply) then
 			
 			local trace = util.TraceLine({
 				start = pos,
@@ -71,16 +72,16 @@ function ENT:CheckForPlayers()
 			
             ply:SetRunSpeed(ply:GetRunSpeed() * 0.5)
 			
-			if timer.Exists('C_deploycake'..self:GetOwner():EntIndex()) then
-				timer.Adjust("C_deploycake"..self:GetOwner():EntIndex(), 10)
+			if timer.Exists('C_deploycake'..owner:EntIndex()) then
+				timer.Adjust("C_deploycake"..owner:EntIndex(), 10)
 			else
-				timer.Create("C_deploycake"..self:GetOwner():EntIndex(), 10, 1, function() end)
+				timer.Create("C_deploycake"..owner:EntIndex(), 10, 1, function() end)
 			end
 			
 			net.Start("fh_net_killer_change")
-			net.WriteString("Mine")
+			net.WriteString("mine")
 			net.WriteFloat(10)
-			net.Send(ply)
+			net.Send(owner)
             
             timer.Simple(7, function()
                 if IsValid(ply) then

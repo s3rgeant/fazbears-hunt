@@ -53,7 +53,7 @@ function SWEP:PrimaryAttack()
 	local ply = self.Owner
 	local ent = pk_pills.getMappedEnt(ply)
 	
-	if !IsValid(ent) then return end
+	if !IsValid(ent) or ply.tasered then return end
 	
 	if ply:IsFrozen() or timer.Exists('Cl_cantKill'..ply:EntIndex()) then return end
 	
@@ -63,7 +63,7 @@ function SWEP:PrimaryAttack()
 		ent:PillGesture('hit', 2, 1, 0.1, 0.3)
 	
 		net.Start("fh_net_killer_change")
-		net.WriteString("Kill")
+		net.WriteString("attack")
 		net.WriteFloat(2)
 		net.Send(ply)
 		ply:EmitSound("hammer_ready.wav")

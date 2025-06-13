@@ -180,23 +180,23 @@ end
 local nextCheckTime = {}
 function keyPressCheck(ply, key)
 	if (!ply:Alive() or ply:Team() == TEAM_SPECTATOR) or ply:GetMoveType() == MOVETYPE_NOCLIP or ply:GetCollisionGroup() == COLLISION_GROUP_DEBRIS then return end
-    if key == IN_FORWARD or key == IN_BACK or key == IN_MOVELEFT or key == IN_MOVERIGHT or key == IN_DUCK then
+    if key == IN_FORWARD or key == IN_MOVELEFT or key == IN_MOVERIGHT or key == IN_DUCK then
 		local curTime = CurTime()
 		if !nextCheckTime[ply] or curTime >= nextCheckTime[ply] then
-			nextCheckTime[ply] = curTime + 0.5
-			
 			if IsPlayerStuck(ply) then
 				local safePos = FindSafePosition(ply)
 				if safePos then
 					ply:SetPos(safePos)
-					nextCheckTime[ply] = curTime + 2
+					nextCheckTime[ply] = curTime + 4
 				end
+			else
+				nextCheckTime[ply] = curTime + 2
 			end
 		end
     end
 end
 
-hook.Add("fh_startgame", "fh_startgame_unstuck", function(springtrapRound)
+hook.Add("fh_startgame", "fh_startgame_unstuck", function(roundType)
 	
 	hook.Add("KeyPress", "CheckStuckAndTeleport", function(ply, key)
 		keyPressCheck(ply,key)
@@ -206,7 +206,7 @@ hook.Add("fh_startgame", "fh_startgame_unstuck", function(springtrapRound)
 		timer.Remove("remove_unstuck_hook")
 	end
 	
-	timer.Create("remove_unstuck_hook", 60, 1, function()
+	timer.Create("remove_unstuck_hook", 20, 1, function()
 		hook.Remove("KeyPress", "CheckStuckAndTeleport")
 	end)
 end)
@@ -226,7 +226,7 @@ hook.Add("fh_defibrillator_spawn", "fh_startgame_unstuck", function()
 	end)
 end)
 
-hook.Add("fh_endo_release", "fh_endo_release_unstuck", function(springtrapRound)
+hook.Add("fh_endo_release", "fh_endo_release_unstuck", function()
 	
 	hook.Add("KeyPress", "CheckStuckAndTeleport", function(ply, key)
 		keyPressCheck(ply,key)
