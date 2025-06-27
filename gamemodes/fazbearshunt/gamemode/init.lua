@@ -1047,6 +1047,12 @@ hook.Add("Tick", "fh_tick", function()
 end)
 
 --[[
+concommand.Add( "dada3", function( ply, cmd, args )
+	for _, ply in ipairs( player.GetAll() ) do
+		ply:AddFlags( FL_ATCONTROLS )
+	end
+end)
+
 hook.Add("SetupMove", "BlockQSlideForTeam2701", function(ply, mv, cmd)
     if ply:Team() == 2701 and ply:GetSliding() then
         ply:SetSliding(false)

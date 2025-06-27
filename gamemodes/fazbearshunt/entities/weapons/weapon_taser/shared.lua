@@ -118,10 +118,10 @@ function SWEP:PrimaryAttack()
 						end
 					end)
 				else
-					ent:Lock()
+					ent:Freeze(true)
 					timer.Simple(5, function()
 						if IsValid(ent) then
-							ent:UnLock() 
+							ent:Freeze(false) 
 							ent.tasered = false
 						end
 					end)

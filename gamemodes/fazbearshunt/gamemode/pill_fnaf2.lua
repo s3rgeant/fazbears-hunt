@@ -167,9 +167,9 @@ pk_pills.register("pill_wfreddy2",{
 			end
 		
 			timer.Simple( 1.6, function()
-				ply:UnLock()
+				ply:Freeze( false )
 				if !IsValid(target) then return end
-				target:UnLock()
+				target:Freeze( false )
 				target:TakeDamage(target:Health() + target:Armor(), ply)
 			end)
 		end
@@ -591,15 +591,18 @@ pk_pills.register("pill_wbonnie2",{
 			if IsValid(wep) and wep:GetClass() == "v_bonnie" then
 				wep:PlayCustomAnimation("ACT_MELEE_ATTACK1", 1.6)
 			end
-		
-			timer.Simple( 1.5, function()
+			
+			timer.Simple(1.5, function()
 				if !IsValid(target) then return end
-				//target:ConCommand( "pp_mat_overlay overlays/fivenights_static/static2" )
-				
-				target:UnLock()
-				ply:UnLock()
+			
 				target:SetVelocity(ply:GetForward() * 600) -- чтоб он нахуй улетел
 				target:TakeDamage(target:Health() + target:Armor(), ply)
+			end)
+		
+			timer.Simple( 1.6, function()
+				ply:Freeze( false )
+				if !IsValid(target) then return end
+				target:Freeze( false )
 			end)
 		end
     },
@@ -846,9 +849,9 @@ pk_pills.register("pill_wchica2",{
 			net.Send(ply)
 		
 			timer.Simple( 1.6, function()
-				ply:UnLock()
+				ply:Freeze( false )
 				if !IsValid(target) then return end
-				target:UnLock()
+				target:Freeze( false )
 				target:TakeDamage(target:Health() + target:Armor(), ply)
 			end)
 		end
@@ -1062,9 +1065,9 @@ pk_pills.register("pill_wfoxy2",{
 			end
 			
 			timer.Simple( 1.6, function()
-				ply:UnLock()
+				ply:Freeze( false )
 				if !IsValid(target) then return end
-				target:UnLock()
+				target:Freeze( false )
 				target:TakeDamage(target:Health() + target:Armor(), ply)
 			end)
 		end
@@ -1540,6 +1543,7 @@ options=function() return {
 			jump="sjump",
 			glide="sglide",
 			scare="sscare",
+			stun="sstun",
 		},
 	},
 	moveSpeed={
@@ -1642,9 +1646,9 @@ options=function() return {
 			end
 		
 			timer.Simple( 1.6, function()
-				ply:UnLock()
+				ply:Freeze( false )
 				if !IsValid(target) then return end
-				target:UnLock()
+				target:Freeze( false )
 				target:TakeDamage(target:Health() + target:Armor(), ply)
 				playVoiceline('sfreddy', "kill", ply, 1)
 			end)
@@ -1936,9 +1940,9 @@ pk_pills.register("pill_endo02",{
 			end
 		
 			timer.Simple( 1.6, function()
-				ply:UnLock()
+				ply:Freeze( false )
 				if !IsValid(target) then return end
-				target:UnLock()
+				target:Freeze( false )
 				target:TakeDamage(target:Health() + target:Armor(), ply)
 			end)
 		end
@@ -2107,11 +2111,20 @@ function jumpscareEvent(ply, ent, target, dist)
 	target:DropToFloor()
 	ply:DropToFloor()
 	
-	target:Lock()
-	ply:Lock()
+	target:Freeze( true )
+	ply:Freeze( true )
 	
-	target:SetVelocity(Vector(0, 0, 0))
-	ply:SetVelocity(Vector(0, 0, 0))
+	local target_phys = target:GetPhysicsObject()
+	if IsValid(target_phys) then
+		target_phys:SetVelocityInstantaneous(Vector(0, 0, 0))
+	end
+	target:SetVelocity(-target:GetVelocity())
+	
+	local ply_phys = ply:GetPhysicsObject()
+	if IsValid(ply_phys) then
+		ply_phys:SetVelocityInstantaneous(Vector(0, 0, 0))
+	end
+	ply:SetVelocity(-ply:GetVelocity())
 	
 	util.ScreenShake(target:GetPos(), 5, 5, 2, 500)
 	
