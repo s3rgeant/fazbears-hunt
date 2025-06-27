@@ -1,3 +1,5 @@
+fh = fh or {}
+
 AddCSLuaFile( "cl_init.lua" )
 AddCSLuaFile( "shared.lua" )
 
@@ -16,6 +18,7 @@ AddCSLuaFile( "cl_optionmenu.lua" )
 AddCSLuaFile( "animsoundf2.lua" )
 
 include( "sv_admin.lua" )
+include( "sv_halo.lua" )
 include( "sv_spectate.lua" )
 include( "sv_nostuck.lua" )
 include( "sv_ragdolls.lua" )
@@ -27,6 +30,7 @@ include( "mount/proximity.lua" )
 AddCSLuaFile( "mount/proximity.lua" )
 
 include( "pill_fnaf2.lua" )
+include( "pill_fnaf3.lua" )
 
 util.AddNetworkString("KillerPicked")
 util.AddNetworkString("ApplyKiller")
@@ -66,8 +70,6 @@ util.AddNetworkString("fh_update_killer_selector")
 util.AddNetworkString("fh_share_notprefered")
 
 util.AddNetworkString("fh_selector_nomore")
-
-fh = fh or {}
 
 function fh.randomChoice(t)
     return t[math.random(#t)]
@@ -500,7 +502,7 @@ end
 function doGiftSpawning()
 	if timer.Exists('RandomGifts') then return end
 	local random_num1 = 110
-	local random_num2 = 165
+	local random_num2 = 160
 	timer.Create("RandomGifts", fh_random_time(random_num1, random_num2), 0, function()
 		fh_spawnGifts()
 		timer.Adjust("RandomGifts", fh_random_time(random_num1, random_num2), nil, nil)
@@ -1069,6 +1071,10 @@ end
 
 function fh.SetRoundType(int)
 	roundType = int
+end
+
+function fh.GetActiveUsedKiller(killer)
+	return usedKillers[killer]
 end
 
 function fh.GetRoundType()

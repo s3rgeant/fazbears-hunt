@@ -58,12 +58,7 @@ function SWEP:PrimaryAttack()
     if !IsValid(owner) then return end
 	local vm = owner:GetViewModel()
 	
-    self:SetNextPrimaryFire(CurTime() + 90)
-	timer.Create("taser" .. owner:EntIndex(), 90 / 100, 100, function()
-		if IsValid(self) then
-			self.Weapon:SetClip1( self.Weapon:Clip1() + 1 )
-		end
-	end)
+	local wait = 60
 	
 	vm:SendViewModelMatchingSequence( vm:LookupSequence( "fire" ) )
 	
@@ -78,7 +73,9 @@ function SWEP:PrimaryAttack()
 		endpos = endPos,
 		mins = self.MinHitbox,
 		maxs = self.MaxHitbox,
-		filter = owner
+		filter = function(ent)
+			return ent ~= owner and (ent:IsPlayer() and ent:Team() != owner:Team())
+		end
 	})
 	
 	debugoverlay.Box(tr.HitPos, self.MinHitbox, self.MaxHitbox, 3, Color(255, 0, 0, 200))
@@ -97,6 +94,8 @@ function SWEP:PrimaryAttack()
     local entities = ents.FindInSphere(hitPos, 100)
     for _, ent in ipairs(entities) do
         if ent:IsPlayer() and ent:Team() == 2701 and ent:Alive() and !ent.tasered and !ent.lobbyFreeze then
+		
+			wait = 90
 			
 			local puppet = pk_pills.getMappedEnt(ent)
 			local formtbl = puppet.formTable
@@ -161,6 +160,13 @@ function SWEP:PrimaryAttack()
             util.Effect("teslaHitBoxes", fx)
         end
     end
+	
+	self:SetNextPrimaryFire(CurTime() + wait)
+	timer.Create("taser" .. owner:EntIndex(), wait / 100, 100, function()
+		if IsValid(self) then
+			self.Weapon:SetClip1( self.Weapon:Clip1() + 1 )
+		end
+	end)
 end
 
 function SWEP:SecondaryAttack()

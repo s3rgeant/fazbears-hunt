@@ -150,6 +150,8 @@ net.Receive("fh_adv_sound_play", function()
 	local ply = LocalPlayer()
 	local snd = net.ReadString()
 	
+	if !IsValid(ply) then return end
+	
     if !playerSounds[snd] then
         local sound = CreateSound(ply, snd)
         sound:SetSoundLevel(0)

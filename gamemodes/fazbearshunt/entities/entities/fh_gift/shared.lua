@@ -77,201 +77,262 @@ if CLIENT then
 end
 
 local effectDesc = ''
+
+-- Позитивные эффекты
+local positiveEffects = {
+    {
+        name = "heal",
+        func = function(ply)
+            ply:SetHealth(ply:Health() + 35)
+            effectDesc = '+35 HP'
+        end
+    },
+    {
+        name = "armor",
+        func = function(ply)
+			ply:SetArmor(math.min(ply:Armor() + 50, 100))
+            effectDesc = '+50 Брони'
+        end
+    },
+    {
+        name = "invisibility",
+        func = function(ply)
+			if not IsValid(ply) then return end
+	
+			ply.invisible = true
+			ply:SetRenderMode(RENDERMODE_TRANSALPHA)
+			ply:SetCollisionGroup(COLLISION_GROUP_DEBRIS)
+			ply:SetColor(Color(255, 255, 255, 0))
+			ply:SetNoDraw(true)
+			ply:DrawShadow(false)
+			effectDesc = 'Ты стал невидимым на 30 секунд!'
+	
+			timer.Simple(30, function()
+				if IsValid(ply) then
+					ply:SetColor(Color(255, 255, 255, 255))
+					ply:SetNoDraw(false)
+					ply:DrawShadow(true)
+					ply.invisible = false
+	
+					local function IsStuck(ent)
+						if not IsValid(ent) then return false end
+				
+						local trace = util.TraceEntity({
+							start = ent:GetPos(),
+							endpos = ent:GetPos(),
+							filter = ent,
+							mask = MASK_SOLID
+						}, ent)
+				
+						return trace.Hit
+					end
+					
+					timer.Create("fh_gift_collision_reset" .. ply:EntIndex(), 0.5, 0, function()
+						if IsValid(ply) and !IsStuck(ply) then
+							ply:SetCollisionGroup(COLLISION_GROUP_PLAYER)
+						end
+				
+						if !IsValid(ply) or !IsStuck(ply) then
+							timer.Remove("fh_gift_collision_reset" .. ply:EntIndex())
+						end
+					end)
+					
+				end
+			end)
+        end
+    },
+    {
+        name = "gravity_gun",
+        func = function(ply)
+            ply:Give("weapon_physcannon")
+            effectDesc = '+ Гравити Ган'
+        end
+    },
+    {
+        name = "animatronics_visibility",
+        func = function(ply)
+            net.Start("fh_hl_animatronics")
+            net.Send(ply)
+            effectDesc = 'Теперь ты можешь видеть аниматроников через стены.'
+        end
+    },
+    {
+        name = "defibrilator",
+        func = function(ply)
+            ply:Give("weapon_defibrilator")
+            effectDesc = '+ Дефибрилятор'
+        end
+    },
+    {
+        name = "bananas",
+        func = function(ply)
+            ply:Give("weapon_banana")
+            ply:GiveAmmo(4, "ammo_banana", true)
+            effectDesc = '+ 5 бананов'
+        end
+    },
+    {
+        name = "speed_buff",
+        func = function(ply)
+            ply:SetWalkSpeed(ply:GetWalkSpeed() * 1.2)
+            ply:SetRunSpeed(ply:GetRunSpeed() * 1.2)
+            ply:SetCrouchedWalkSpeed(ply:GetCrouchedWalkSpeed() * 1.4)
+            effectDesc = 'Тебе выдано ускорение на 15 секунд!'
+			
+			local trail = util.SpriteTrail(ply, ply:LookupAttachment( "chest" ), Color(0, 169, 255, 255), true, 32, 0, 1, 1 / ( ( 32 + 0 ) * 0.5 ), "trails/physbeam")
+            
+            timer.Simple(15, function()
+                if IsValid(ply) then
+                    ply:SetWalkSpeed(ply:GetWalkSpeed() / 1.2)
+                    ply:SetRunSpeed(ply:GetRunSpeed() / 1.2)
+                    ply:SetCrouchedWalkSpeed(ply:GetCrouchedWalkSpeed() / 1.4)
+					if IsValid(trail) then
+						trail:Remove()
+					end
+                end
+            end)
+        end
+    },
+    {
+        name = "jump_buff",
+        func = function(ply)
+            ply:SetJumpPower(ply:GetJumpPower() * 2)
+            effectDesc = 'Теперь ты прыгаешь выше 25 секунд!'
+            
+            timer.Simple(25, function()
+                if IsValid(ply) then
+                    ply:SetJumpPower(math.max(ply:GetJumpPower() / 2, 200))
+                end
+            end)
+        end
+    }
+}
+
+-- Негативные эффекты
+local negativeEffects = {
+    {
+        name = "spawn_car",
+        func = function(ply)
+            local playerPos = ply:GetPos()
+            local playerHeight = ply:OBBMaxs().z - ply:OBBMins().z
+        
+            local car = ents.Create("prop_physics")
+            car:SetModel("models/props_vehicles/truck001a.mdl")
+        
+            local carMins, carMaxs = car:GetCollisionBounds()
+            local carHeight = carMaxs.z - carMins.z
+        
+            local startPos = playerPos + Vector(0, 0, playerHeight + (carHeight / 2) + 10)
+            local endPos = startPos + Vector(0, 0, 500)
+        
+            local tr = util.TraceHull({
+                start = startPos,
+                endpos = endPos,
+                filter = {ply, car},
+                mins = carMins,
+                maxs = carMaxs
+            })
+        
+            local spawnPos
+            if tr.Hit then
+                spawnPos = tr.HitPos
+            else
+                spawnPos = endPos
+            end
+        
+            car:SetPos(spawnPos)
+            car:Spawn()
+            car:Activate()
+			
+			local phys = car:GetPhysicsObject()
+			
+			if IsValid(phys) then
+				phys:SetVelocity(-car:GetUp() * 2000)
+			end
+        
+            timer.Simple(10, function()
+                if IsValid(car) then
+                    car:Remove()
+                end
+            end)
+            effectDesc = ''
+        end
+    },
+    {
+        name = "animatronics_alert",
+        func = function(ply)
+            net.Start("fh_hl_badkid")
+            net.WriteEntity(ply)
+            net.Broadcast()
+            effectDesc = 'Все аниматроники знают где ты.'
+            
+            table.insert(affectedPlayers, ply)
+        
+            if timer.Exists("RemoveAffectedPlayer" .. ply:SteamID64()) then
+                timer.Remove("RemoveAffectedPlayer" .. ply:SteamID64())
+            end
+        
+            timer.Create("RemoveAffectedPlayer" .. ply:SteamID64(), conVars.halo_time:GetFloat(), 1, function()
+                table.RemoveByValue(affectedPlayers, ply)
+            end)
+        end
+    },
+    {
+        name = "reduce_step",
+        func = function(ply)
+            ply:SetStepSize(0)
+            effectDesc = 'Теперь тебе сложнее подниматься по ступенькам.'
+        end
+    },
+    {
+        name = "strip_weapons",
+        func = function(ply)
+            ply:StripWeapons()
+            effectDesc = 'Больше у тебя нет оружия.'
+        end
+    },
+    {
+        name = "thinkfast",
+        func = function(ply)
+            net.Start('fh_net_thinkfast')
+            net.Send(ply)
+            effectDesc = ''
+        end
+    },
+    {
+        name = "fov_buff",
+        func = function(ply)
+            ply:SetFOV(30, 1)
+            ply:SetCanZoom(false)
+            ply:StopZooming()
+            effectDesc = 'Твоё поле зрения увеличено на 30 секунд.'
+            
+            timer.Simple(30, function()
+                if IsValid(ply) then
+                    ply:SetFOV(0, 1)
+                    ply:SetCanZoom(true)
+                end
+            end)
+        end
+    },
+    {
+        name = "sound_dsp",
+        func = function(ply)
+            ply:SetDSP(31, false)
+            effectDesc = 'Твой звук приглушен на 30 секунд.'
+            
+            timer.Simple(30, function()
+                if IsValid(ply) then
+                    ply:SetDSP(1, false)
+                end
+            end)
+        end
+    }
+}
+
 function ENT:ApplyEffect(player)
     local isOwner = self:GetOwner() == player
     local effects = {}
-    
-    -- Позитивные эффекты
-    local positiveEffects = {
-        {
-            name = "heal",
-            func = function(ply)
-                ply:SetHealth(ply:Health() + 35)
-                effectDesc = '+35 HP'
-            end
-        },
-        {
-            name = "gravity_gun",
-            func = function(ply)
-                ply:Give("weapon_physcannon")
-                effectDesc = '+ Гравити Ган'
-            end
-        },
-        {
-            name = "animatronics_visibility",
-            func = function(ply)
-                net.Start("fh_hl_animatronics")
-                net.Send(ply)
-                effectDesc = 'Теперь ты можешь видить аниматроников через стены.'
-            end
-        },
-        {
-            name = "defibrilator",
-            func = function(ply)
-                ply:Give("weapon_defibrilator")
-                effectDesc = '+ Дефибрилятор'
-            end
-        },
-        {
-            name = "bananas",
-            func = function(ply)
-                ply:Give("weapon_banana")
-                ply:GiveAmmo(4, "ammo_banana", true)
-                effectDesc = '+ 5 бананов'
-            end
-        },
-        {
-            name = "speed_buff",
-            func = function(ply)
-                ply:SetWalkSpeed(ply:GetWalkSpeed() * 1.2)
-                ply:SetRunSpeed(ply:GetRunSpeed() * 1.2)
-                ply:SetCrouchedWalkSpeed(ply:GetCrouchedWalkSpeed() * 1.4)
-                effectDesc = 'Тебе выдано ускорение на 15 секунд!'
-				
-				local trail = util.SpriteTrail(ply, ply:LookupAttachment( "chest" ), Color(0, 169, 255, 255), true, 32, 0, 1, 1 / ( ( 32 + 0 ) * 0.5 ), "trails/physbeam")
-                
-                timer.Simple(15, function()
-                    if IsValid(ply) then
-                        ply:SetWalkSpeed(ply:GetWalkSpeed() / 1.2)
-                        ply:SetRunSpeed(ply:GetRunSpeed() / 1.2)
-                        ply:SetCrouchedWalkSpeed(ply:GetCrouchedWalkSpeed() / 1.4)
-						if IsValid(trail) then
-							trail:Remove()
-						end
-                    end
-                end)
-            end
-        },
-        {
-            name = "jump_buff",
-            func = function(ply)
-                ply:SetJumpPower(ply:GetJumpPower() * 2)
-                effectDesc = 'Теперь ты прыгаешь выше 25 секунд!'
-                
-                timer.Simple(25, function()
-                    if IsValid(ply) then
-                        ply:SetJumpPower(math.max(ply:GetJumpPower() / 2, 200))
-                    end
-                end)
-            end
-        }
-    }
-    
-    -- Негативные эффекты
-    local negativeEffects = {
-        {
-            name = "spawn_car",
-            func = function(ply)
-                local playerPos = ply:GetPos()
-                local playerHeight = ply:OBBMaxs().z - ply:OBBMins().z
-            
-                local car = ents.Create("prop_physics")
-                car:SetModel("models/props_vehicles/truck001a.mdl")
-            
-                local carMins, carMaxs = car:GetCollisionBounds()
-                local carHeight = carMaxs.z - carMins.z
-            
-                local startPos = playerPos + Vector(0, 0, playerHeight + (carHeight / 2) + 10)
-                local endPos = startPos + Vector(0, 0, 500)
-            
-                local tr = util.TraceHull({
-                    start = startPos,
-                    endpos = endPos,
-                    filter = {ply, car},
-                    mins = carMins,
-                    maxs = carMaxs
-                })
-            
-                local spawnPos
-                if tr.Hit then
-                    spawnPos = tr.HitPos
-                else
-                    spawnPos = endPos
-                end
-            
-                car:SetPos(spawnPos)
-                car:Spawn()
-                car:Activate()
-            
-                timer.Simple(10, function()
-                    if IsValid(car) then
-                        car:Remove()
-                    end
-                end)
-                effectDesc = ''
-            end
-        },
-        {
-            name = "animatronics_alert",
-            func = function(ply)
-                net.Start("fh_hl_badkid")
-                net.WriteEntity(ply)
-                net.Broadcast()
-                effectDesc = 'Все аниматроники знают где ты.'
-                
-                table.insert(affectedPlayers, ply)
-            
-                if timer.Exists("RemoveAffectedPlayer" .. ply:SteamID64()) then
-                    timer.Remove("RemoveAffectedPlayer" .. ply:SteamID64())
-                end
-            
-                timer.Create("RemoveAffectedPlayer" .. ply:SteamID64(), conVars.halo_time:GetFloat(), 1, function()
-                    table.RemoveByValue(affectedPlayers, ply)
-                end)
-            end
-        },
-        {
-            name = "reduce_step",
-            func = function(ply)
-                ply:SetStepSize(0)
-                effectDesc = 'Теперь тебе сложнее подниматься по ступенькам.'
-            end
-        },
-        {
-            name = "strip_weapons",
-            func = function(ply)
-                ply:StripWeapons()
-                effectDesc = 'Больше у тебя нет оружия.'
-            end
-        },
-        {
-            name = "thinkfast",
-            func = function(ply)
-                net.Start('fh_net_thinkfast')
-                net.Send(ply)
-                effectDesc = ''
-            end
-        },
-        {
-            name = "fov_buff",
-            func = function(ply)
-                ply:SetFOV(30, 1)
-                ply:SetCanZoom(false)
-                ply:StopZooming()
-                effectDesc = 'Твоё поле зрения увеличено на 30 секунд.'
-                
-                timer.Simple(30, function()
-                    if IsValid(ply) then
-                        ply:SetFOV(0, 1)
-                        ply:SetCanZoom(true)
-                    end
-                end)
-            end
-        },
-        {
-            name = "sound_dsp",
-            func = function(ply)
-                ply:SetDSP(31, false)
-                effectDesc = 'Твой звук приглушен на 30 секунд.'
-                
-                timer.Simple(30, function()
-                    if IsValid(ply) then
-                        ply:SetDSP(1, false)
-                    end
-                end)
-            end
-        }
-    }
     
     local availablePositiveEffects = {}
     for _, effect in ipairs(positiveEffects) do
@@ -283,6 +344,18 @@ function ENT:ApplyEffect(player)
             if !player:HasWeapon("weapon_physcannon") then
                 table.insert(availablePositiveEffects, effect)
             end
+		elseif effect.name == "invisibility" then
+			if timer.Exists("EndGameTimer") and timer.TimeLeft("EndGameTimer") >= 120 then
+                table.insert(availablePositiveEffects, effect)
+			end
+		elseif effect.name == "armor" then
+			if player:Armor() < 100 then
+                table.insert(availablePositiveEffects, effect)
+			end
+		elseif effect.name == "jump_buff" then
+			if fh.GetActiveUsedKiller("pill_wfoxy2") or fh.GetActiveUsedKiller("pill_sfreddy2") then
+                table.insert(availablePositiveEffects, effect)
+			end
         else
             table.insert(availablePositiveEffects, effect)
         end

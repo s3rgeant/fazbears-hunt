@@ -16,6 +16,7 @@ include( "mount/proximity.lua" )
 
 include( "animsoundf2.lua" )
 include("pill_fnaf2.lua")
+include("pill_fnaf3.lua")
 
 hook.Add("HUDDrawTargetID", "HidePlayerNames", function()
 	return false

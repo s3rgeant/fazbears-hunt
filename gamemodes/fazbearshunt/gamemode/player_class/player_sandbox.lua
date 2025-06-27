@@ -41,11 +41,13 @@ function PLAYER:Loadout()
 
 	self.Player:GiveAmmo( 256,	"Pistol", 		true )
 	self.Player:GiveAmmo( 20,	"grenade", 		true )
+	
+	self.Player:Give( "weapon_crapvidcam" )
 
-	self.Player:Give( "weapon_crowbar" )
-	self.Player:Give( "weapon_empty_hands" )
 	self.Player:Give( "weapon_pistol" )
 	self.Player:Give( "weapon_frag" )
+	self.Player:Give( "weapon_crowbar" )
+	self.Player:Give( "weapon_empty_hands" )
 
 	self.Player:SwitchToDefaultWeapon()
 

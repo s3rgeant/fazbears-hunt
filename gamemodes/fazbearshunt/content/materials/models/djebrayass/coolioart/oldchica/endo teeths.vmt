@@ -1,6 +1,6 @@
 "VertexlitGeneric"
 {
-	"$basetexture" "models\djebrayass\CoolioArt\OldChica\teeth"
+	"$basetexture" "models\djebrayass\CoolioArt\shared\endo teeths"
 	"$bumpmap" "models\djebrayass\CoolioArt\OldChica\teethbump"
 	"$phongexponenttexture" "models\djebrayass\CoolioArt\OldChica\reflect"
 	

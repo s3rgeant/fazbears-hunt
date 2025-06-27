@@ -1,7 +1,7 @@
 "VertexlitGeneric"
 {
 	"$basetexture" "models\djebrayass\CoolioArt\OldBonnie\suit1"
-	"$bumpmap" "models\djebrayass\CoolioArt\OldBonnie\bump2"
+	"$bumpmap" "models\djebrayass\CoolioArt\shared\bump2"
 	
 	$surfaceprop metal
 

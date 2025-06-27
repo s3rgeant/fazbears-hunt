@@ -172,7 +172,7 @@ local function OpenAdminPanel()
     local sliderY = roundY
     for _, sld in ipairs(sliders) do
         local slider = vgui.Create("DNumSlider", RoundManagementPanel)
-        slider:SetPos(20, sliderY)
+        slider:SetPos(10, sliderY)
         slider:SetSize(390, 30)
         slider:SetText(sld.label)
 		slider:SetDark(true)
@@ -188,28 +188,40 @@ local function OpenAdminPanel()
             net.SendToServer()
         end
 		
-        sliderY = sliderY + 40
+        sliderY = sliderY + 25
     end
 
 	local button = vgui.Create("DButton", RoundManagementPanel)
-	button:SetPos(10, sliderY)
-	button:SetSize(200, 40)
-	button:SetText("Автоматическая настройка просвета")
-	button:SetDark(true)
-	function button:DoClick(bool)
-		net.Start("AdminAction")
-		net.WriteString('fh_auto_map_hl')
-		net.SendToServer()
-	end
-
-	local button = vgui.Create("DButton", RoundManagementPanel)
-	button:SetPos(235, sliderY)
-	button:SetSize(200, 40)
+	button:SetPos(10, sliderY + 10)
+	button:SetSize(150, 40)
 	button:SetText("Сохранить настройки")
 	button:SetDark(true)
 	function button:DoClick(bool)
 		net.Start("AdminAction")
 		net.WriteString('fh_auto_map_save')
+		net.SendToServer()
+	end
+
+	local button = vgui.Create("DCheckBoxLabel", RoundManagementPanel)
+	button:SetPos(170, sliderY + 25)
+	button:SetText("Автоматическая настройка просвета")
+	button:SetDark(true)
+	button:SetChecked(conVars.fh_automatic_highlight:GetBool())
+	function button:OnChange(bool)
+		net.Start("AdminAction")
+		net.WriteString('fh_automatic_highlight')
+		net.WriteBool(bool)
+		net.SendToServer()
+	end
+
+	local button = vgui.Create("DButton", RoundManagementPanel)
+	button:SetPos(10, sliderY + 60)
+	button:SetSize(150, 40)
+	button:SetText("Использовать \nнастройки карты")
+	button:SetDark(true)
+	function button:DoClick(bool)
+		net.Start("AdminAction")
+		net.WriteString('fh_auto_map_hl')
 		net.SendToServer()
 	end
 
@@ -252,10 +264,20 @@ local function OpenAdminPanel()
 
     local ExperimentalPanel = vgui.Create("DPanel")
     ExperimentalPanel:Dock(FILL)
+	
+	local events_y = 15
+	
+	local function get_events_y(num)
+		num = num or 0
+	
+		local to_return = events_y
+		events_y = events_y + 20 + num
+		
+		return to_return
+	end
 
 	local button = vgui.Create("DCheckBoxLabel", ExperimentalPanel)
-	button:SetPos(10, 15)
-	//button:SetSize(280, 30)
+	button:SetPos(10, get_events_y())
 	button:SetText("Урон по аниматроникам")
 	button:SetDark(true)
 	button:SetChecked(!conVars.fh_animatronic_immortal:GetBool())
@@ -267,7 +289,7 @@ local function OpenAdminPanel()
 	end
 
 	local button = vgui.Create("DCheckBoxLabel", ExperimentalPanel)
-	button:SetPos(10, 35)
+	button:SetPos(10, get_events_y())
 	button:SetText("Полёт Шедоу Фредди")
 	button:SetDark(true)
 	button:SetChecked(shadow_freddyability:GetBool())
@@ -279,7 +301,7 @@ local function OpenAdminPanel()
 	end
 
 	local button = vgui.Create("DCheckBoxLabel", ExperimentalPanel)
-	button:SetPos(10, 55)
+	button:SetPos(10, get_events_y())
 	button:SetText("Тихие аниматроники")
 	button:SetDark(true)
 	button:SetChecked(conVars.fh_less_steps:GetBool())
@@ -291,7 +313,7 @@ local function OpenAdminPanel()
 	end
 
 	local button = vgui.Create("DNumSlider", ExperimentalPanel)
-	button:SetPos(10, 75)
+	button:SetPos(10, get_events_y())
 	button:SetText("Максимум Кексов")
 	button:SetMin( 3 )	
 	button:SetMax( 10 )	
@@ -305,6 +327,18 @@ local function OpenAdminPanel()
 		net.Start("AdminAction")
 		net.WriteString('fh_max_cupcakes')
 		net.WriteFloat(value)
+		net.SendToServer()
+	end
+
+	local button = vgui.Create("DCheckBoxLabel", ExperimentalPanel)
+	button:SetPos(10, get_events_y())
+	button:SetText("Молчащий просвет")
+	button:SetDark(true)
+	button:SetChecked(conVars.fh_silent_highlight:GetBool())
+	function button:OnChange(bool)
+		net.Start("AdminAction")
+		net.WriteString('fh_silent_highlight')
+		net.WriteBool(bool)
 		net.SendToServer()
 	end
 	

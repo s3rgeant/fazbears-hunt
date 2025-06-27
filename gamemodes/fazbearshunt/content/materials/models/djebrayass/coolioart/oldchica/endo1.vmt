@@ -1,7 +1,7 @@
 "VertexlitGeneric"
 {
-	"$basetexture" "models\djebrayass\CoolioArt\Endo\endo1"
-	"$bumpmap" "models\djebrayass\CoolioArt\Endo\endobump"
+	"$basetexture" "models\djebrayass\CoolioArt\shared\endo1"
+	"$bumpmap" "models\djebrayass\CoolioArt\shared\endobump"
 	"$phongexponenttexture" "models\djebrayass\CoolioArt\Endo\reflect"
 	
 	$surfaceprop metal

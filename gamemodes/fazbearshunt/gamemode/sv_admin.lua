@@ -179,16 +179,8 @@ function EndLobbyTimer()
 	end
 end
 
-function SetHighlightDelay(value)
-	game.ConsoleCommand("halo_cooldown "..value.."\n")
-end
-
-function SetHighlightDuration(value)
-	game.ConsoleCommand("halo_time "..value.."\n")
-end
-
-function SetHighlightDistance(value)
-	game.ConsoleCommand("halo_radius "..value.."\n")
+function setConvarValue(n, value)
+	game.ConsoleCommand(n.." "..value.."\n")
 end
 
 net.Receive("AdminAction", function(len, ply)
@@ -247,17 +239,40 @@ net.Receive("AdminAction", function(len, ply)
 			EndRound()
 		elseif action == "set_highlight_delay" then
 			local value = net.ReadFloat()
-			SetHighlightDelay(math.floor(value))
+			setConvarValue("halo_cooldown", math.floor(value))
 		elseif action == "set_highlight_duration" then
 			local value = net.ReadFloat()
-			SetHighlightDuration(math.floor(value))
+			setConvarValue("halo_time", math.floor(value))
 		elseif action == "set_highlight_distance" then
 			local value = net.ReadFloat()
-			SetHighlightDistance(math.floor(value))
+			setConvarValue("halo_radius", math.floor(value))
 		elseif action == "end_post_round" then
 			EndPostRound()
 		elseif action == "end_lobby_timer" then
 			EndLobbyTimer()
+		elseif action == "fh_spawn_gifts" then
+			fh_spawnGifts()
+		elseif action == "fh_auto_map_hl" then
+			local mapInfo = fh.GetMapData()
+			
+			if !mapInfo then return end
+			
+			setConvarValue("halo_cooldown", mapInfo.halo_cooldown)
+			setConvarValue("halo_time", mapInfo.halo_time)
+			setConvarValue("halo_radius", mapInfo.halo_radius)
+			setConvarValue("fh_max_cupcakes", mapInfo.max_cupcakes)
+		elseif action == "fh_auto_map_save" then
+			AddOrUpdateMapData(
+			
+				game.GetMap(), 
+				{
+					halo_cooldown = GetConVar('halo_cooldown'):GetInt(),
+					halo_time = GetConVar('halo_time'):GetInt(),
+					halo_radius = GetConVar('halo_radius'):GetInt(),
+					max_cupcakes = GetConVar('fh_max_cupcakes'):GetInt()
+				}
+				
+			)
 		elseif action == "fh_gifts_spawning" then
 			local bool = net.ReadBool()
 			if !bool then
@@ -266,70 +281,55 @@ net.Receive("AdminAction", function(len, ply)
 				game.ConsoleCommand("fh_gifts_spawning 1\n")
 				doGiftSpawning()
 			end
-		elseif action == "fh_animatronic_immortal" or action == "fuppr_sfreddy_noclip" or action == "fh_less_steps" then
-			local bool = net.ReadBool() and 1 or 0
-			
-			game.ConsoleCommand(action .. " " .. bool .. "\n")
 		elseif action == "fh_max_cupcakes"  then
 			local num = net.ReadFloat()
 			
 			game.ConsoleCommand(action .. " " .. num .. "\n")
-		elseif action == "fh_spawn_gifts" then
-			fh_spawnGifts()
-		elseif action == "fh_auto_map_hl" then
-			local mapInfo = GetMapData()
+		else
+			local bool = net.ReadBool() and 1 or 0
 			
-			if !mapInfo then return end
-			
-			SetHighlightDelay(mapInfo.value1)
-			SetHighlightDuration(mapInfo.value2)
-			SetHighlightDistance(mapInfo.value3)
-		elseif action == "fh_auto_map_save" then
-			AddOrUpdateMapData(GetConVar('halo_cooldown'):GetInt(),
-			GetConVar('halo_time'):GetInt(),
-			GetConVar('halo_radius'):GetInt(),
-			game.GetMap())
+			game.ConsoleCommand(action .. " " .. bool .. "\n")
 		end
 	end
 end)
 
-local filePath = "fh_map_data.txt"
+hook.Add( "Initialize", "fh_init_autohighlight", function()
+	if SERVER and conVars.fh_automatic_highlight:GetBool() then
+		local mapInfo = fh.GetMapData()
+		
+		if !mapInfo then return end
+		
+		setConvarValue("halo_cooldown", mapInfo.halo_cooldown)
+		setConvarValue("halo_time", mapInfo.halo_time)
+		setConvarValue("halo_radius", mapInfo.halo_radius)
+		setConvarValue("fh_max_cupcakes", mapInfo.max_cupcakes)
+	end
+end)
 
-function GetMapData()
-    local mapName = game.GetMap()
+local filePath = "fh_map_data.json"
+
+function fh.GetMapData(map)
+    local mapName = map or game.GetMap()
 
     if not file.Exists(filePath, "DATA") then
         print("Файл " .. filePath .. " не найден.")
-		file.Write(filePath, "")
         return nil
     end
 
-    local data = file.Read(filePath, "DATA")
-    if not data then
-        print("Не удалось прочитать файл " .. filePath)
+    local jsonData = file.Read(filePath, "DATA")
+    if not jsonData or jsonData == "" then
+        print("Файл пуст или не удалось прочитать: " .. filePath)
         return nil
     end
 
-    local mapData = {}
-    for _, line in ipairs(string.Split(data, "\n")) do
-        local trimmedLine = string.Trim(line)
-        if trimmedLine ~= "" then
-            local parts = string.Split(trimmedLine, ",")
-            local map = string.Trim(parts[1])
-
-            if map == mapName then
-                mapData = {
-                    map = map,
-                    value1 = tonumber(string.Trim(parts[2])),
-                    value2 = tonumber(string.Trim(parts[3])),
-                    value3 = tonumber(string.Trim(parts[4]))
-                }
-                break
-            end
-        end
+    local allMapData = util.JSONToTable(jsonData)
+    if not allMapData or type(allMapData) ~= "table" then
+        print("Ошибка при разборе JSON.")
+        return nil
     end
 
-    if next(mapData) == nil then
+    local mapData = allMapData[mapName]
+    if not mapData then
         print("Данные для карты " .. mapName .. " не найдены.")
         return nil
     end
@@ -337,55 +337,48 @@ function GetMapData()
     return mapData
 end
 
-function AddOrUpdateMapData(value1, value2, value3, mapName)
+function fh.GetAllMapData()
     if not file.Exists(filePath, "DATA") then
-        file.Write(filePath, "")
+        print("Файл " .. filePath .. " не найден.")
+        return nil
     end
 
-    local data = file.Read(filePath, "DATA") or ""
-    local lines = string.Split(data, "\n")
-    local updated = false
-    local newLines = {}
+    local jsonData = file.Read(filePath, "DATA")
+    if not jsonData or jsonData == "" then
+        print("Файл пуст или не удалось прочитать: " .. filePath)
+        return nil
+    end
 
-    for _, line in ipairs(lines) do
-        local trimmedLine = string.Trim(line)
-        if trimmedLine ~= "" then
-            local parts = string.Split(trimmedLine, ",")
-            local existingMap = string.Trim(parts[1])
+    local allMapData = util.JSONToTable(jsonData)
+    if not allMapData or type(allMapData) ~= "table" then
+        print("Ошибка при разборе JSON.")
+        return nil
+    end
+	
+	return allMapData
+end
 
-            if existingMap == mapName then
-                table.insert(newLines, string.format("%s, %d, %d, %d", mapName, value1, value2, value3))
-                updated = true
-            else
-                table.insert(newLines, trimmedLine)
-            end
+function AddOrUpdateMapData(mapName, dataTable)
+    if not istable(dataTable) then
+        print("Ошибка: dataTable должен быть таблицей.")
+        return
+    end
+
+    mapName = mapName or game.GetMap()
+
+    local allMapData = {}
+
+    if file.Exists(filePath, "DATA") then
+        local jsonData = file.Read(filePath, "DATA")
+        if jsonData and jsonData ~= "" then
+            allMapData = util.JSONToTable(jsonData) or {}
         end
     end
 
-    if not updated then
-        table.insert(newLines, string.format("%s, %d, %d, %d", mapName, value1, value2, value3))
-    end
+    allMapData[mapName] = dataTable
 
-    file.Write(filePath, table.concat(newLines, "\n"))
-    print("Данные обновлены или добавлены для карты:", mapName)
+    local newJson = util.TableToJSON(allMapData, true)
+    file.Write(filePath, newJson)
+
+    print("Данные для карты '" .. mapName .. "' обновлены или добавлены.")
 end
-
-concommand.Add("fh_update_map_data", function(ply, cmd, args)
-    if not ply:IsAdmin() then return end
-
-    if #args < 3 then
-        print("Использование: update_map_data <value1> <value2> <value3> [mapName]")
-        return
-    end
-
-    local value1 = tonumber(args[1])
-    local value2 = tonumber(args[2])
-    local value3 = tonumber(args[3])
-    local mapName = args[4] and string.Trim(args[4]) or game.GetMap()
-
-    if not value1 or not value2 or not value3 then
-        return
-    end
-
-    AddOrUpdateMapData(value1, value2, value3, mapName)
-end)

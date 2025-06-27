@@ -1,7 +1,7 @@
 "UnlitGeneric"
 {
 	"$basetexture" "models\djebrayass\CoolioArt\OldFreddy\PhantomEye"
-	"$bumpmap" "models\djebrayass\CoolioArt\OldFreddy\flat"
+	"$bumpmap" "models\djebrayass\CoolioArt\shared\flat"
 	
 	$surfaceprop metal
 

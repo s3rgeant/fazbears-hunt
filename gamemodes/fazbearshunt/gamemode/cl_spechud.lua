@@ -31,13 +31,13 @@ local function DrawDeadHUD()
 end
 
 local pt_request_on = false
+	
+local wind_width = 980
 
 local function fh_draw_pt_request()
 	if !GetConVar("cl_drawhud"):GetBool() then return end
 	
 	pt_request_on = true
-	
-	local wind_width = 880
 
     local x = (ScrW() / 2) - (wind_width / 2)
     local y = 125

@@ -1,7 +1,7 @@
 "VertexlitGeneric"
 {
 	"$basetexture" "models\djebrayass\CoolioArt\OldFreddy\Withered Freddy mouth"
-	"$bumpmap" "models\djebrayass\CoolioArt\OldFreddy\bump"
+	"$bumpmap" "models\djebrayass\CoolioArt\shared\bump"
 	
 	$surfaceprop metal
 
