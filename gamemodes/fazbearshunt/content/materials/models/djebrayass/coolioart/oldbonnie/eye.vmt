@@ -1,7 +1,7 @@
 "VertexlitGeneric"
 {
 	"$basetexture" "models\djebrayass\CoolioArt\OldBonnie\eye"
-	"$bumpmap" "models\djebrayass\CoolioArt\OldBonnie\teethbump"
+	"$bumpmap" "models\djebrayass\CoolioArt\shared\teethbump"
 	"$phongexponenttexture" "models\djebrayass\CoolioArt\OldBonnie\reflect"
 	
 	$surfaceprop metal
