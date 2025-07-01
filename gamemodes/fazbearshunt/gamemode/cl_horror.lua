@@ -17,6 +17,10 @@ local function CheckPlayersAndPlaySound()
         if ply ~= localPlayer and IsValid(ply) and ply:Alive() and localPlayer:Alive() and localPlayer:Team() != TEAM_SPECTATOR 
 		and ply:GetMoveType() != MOVETYPE_NOCLIP then
             if pk_pills and pk_pills.getMappedEnt and pk_pills.getMappedEnt(ply) ~= nil then
+				local ent = pk_pills.getMappedEnt(ply)
+				
+				if ent.dontdraw or ent:GetMaterial() == "models/null" then return end
+				
                 local plyPos = ply:EyePos()
 				
 				if ply:IsSprinting() and ply:GetVelocity():LengthSqr() >= ply:GetRunSpeed() then

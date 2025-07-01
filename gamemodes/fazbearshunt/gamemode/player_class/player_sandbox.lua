@@ -25,7 +25,7 @@ PLAYER.TauntCam = TauntCamera()
 --
 PLAYER.SlowWalkSpeed		= 100
 PLAYER.WalkSpeed 			= 200
-PLAYER.RunSpeed				= 400
+PLAYER.RunSpeed				= 420
 
 --
 -- Set up the network table accessors

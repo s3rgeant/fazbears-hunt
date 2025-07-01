@@ -93,7 +93,7 @@ function getAllNonPreferables()
 	return tablo
 end
 
-local dontPrefer = {"pill_springtrap", "pill_plushtrap", "pill_wgfreddy2"}
+local dontPrefer = {"pill_springtrap", "pill_plushtrap"}
 
 -- по умолчанию нельзя выбирать этих аниматроников, пишем их в файлик, чтобы файликом можно было управлять
 if !file.Exists("fh_dontprefer.txt", "DATA") then
@@ -206,6 +206,23 @@ utf8.sub = function(str, startChar, endChar)
     end
 end
 
+hook.Add("ShouldCollide", "fh_collisions", function(ent1, ent2)
+    if ent1:GetCollisionGroup() == COLLISION_GROUP_WORLD 
+	or ent2:GetCollisionGroup() == COLLISION_GROUP_WORLD 
+	or ( ent1:GetCollisionGroup() == COLLISION_GROUP_DEBRIS and ent1:IsPlayer() 
+				and ent2:GetClass() != "prop_dynamic" 
+				and ent2:GetClass() != "func_train" )
+				and ent2:GetClass() != "func_tracktrain" -- s freddy & g freddy
+	or ( ent1:GetCollisionGroup() == COLLISION_GROUP_PASSABLE_DOOR and ent1:IsPlayer() and ent2:IsPlayer() )
+	or ( ent2:GetCollisionGroup() == COLLISION_GROUP_PASSABLE_DOOR and ent2:IsPlayer() and ent1:IsPlayer() )
+	or ent1:GetCollisionGroup() == COLLISION_GROUP_PLAYER_MOVEMENT and ent2:IsPlayer() and ent2:GetCollisionGroup() != ent1:GetCollisionGroup()
+	or ent2:GetCollisionGroup() == COLLISION_GROUP_PLAYER_MOVEMENT and ent1:IsPlayer() and ent1:GetCollisionGroup() != ent1:GetCollisionGroup()
+	then
+        return false
+    end
+    return true
+end)
+
 if CLIENT then
 	net.Receive("fh_change_notprefered", function()
 		local killer = net.ReadString()
@@ -231,4 +248,91 @@ if CLIENT then
 			createListAnimatronics()
 		end
 	end)
+end
+if SERVER then
+    util.AddNetworkString("SpawnClientClone")
+
+    concommand.Add("spawn_client_clone", function(ply)
+		if !ply:IsSuperAdmin() then return end
+        if not IsValid(ply) then return end
+        net.Start("SpawnClientClone")
+        net.Send(ply)
+    end)
+end
+
+if CLIENT then
+    local baseModel, clone, hookName, endTime
+
+    net.Receive("SpawnClientClone", function()
+		local ply = LocalPlayer()
+        if IsValid(baseModel) then
+            baseModel:Remove()
+        end
+        if IsValid(clone) then
+            clone:Remove()
+        end
+        if hookName then
+            hook.Remove("Think", hookName)
+        end
+
+        baseModel = ClientsideModel("models/humans/group01/male_mori_helper.mdl", RENDERGROUP_OPAQUE)
+        baseModel:SetPos(ply:GetPos() + Vector(100, 0, 0))
+        baseModel:SetAngles(Angle(0, 0, 0))
+        baseModel:ResetSequence("test01")
+        baseModel:SetCycle(0)
+		baseModel:SetNoDraw(true)
+        baseModel:SetPlaybackRate(1)
+        baseModel:Spawn()
+
+        local seqDur = baseModel:SequenceDuration()
+        local startTime = CurTime()
+        endTime = startTime + seqDur
+
+        clone = ClientsideModel(ply:GetModel(), RENDERGROUP_OPAQUE)
+        clone:SetPos(baseModel:GetPos())
+        clone:SetAngles(baseModel:GetAngles())
+        clone:SetParent(baseModel)
+        clone:AddEffects(EF_BONEMERGE)
+        clone:Spawn()
+
+        -- Имя хука уникальное, чтобы можно было удалить позже
+        hookName = "AnimateBaseModel_" .. baseModel:EntIndex()
+
+        hook.Add("Think", hookName, function()
+            if not IsValid(baseModel) or not IsValid(clone) then
+                hook.Remove("Think", hookName)
+                return
+            end
+
+            local elapsed = CurTime() - startTime
+            local cycle = (elapsed / seqDur) % 1
+            baseModel:SetCycle(cycle)
+
+            -- Камера на аттачмент "camera"
+            local attId = baseModel:LookupAttachment("camera")
+            if attId and attId > 0 then
+                local att = baseModel:GetAttachment(attId)
+                if att and att.Pos and att.Ang then
+                    -- Меняем камеру игрока на позицию аттачмента
+                    local view = {
+                        origin = att.Pos,
+                        angles = att.Ang,
+                        fov = 30,
+                        drawviewer = true,
+                    }
+                    hook.Add("CalcView", "CustomView_" .. baseModel:EntIndex(), function()
+                        return view
+                    end)
+                end
+            end
+
+            -- Если анимация закончилась — удаляем модели и снимаем камеру
+            if CurTime() >= endTime then
+                baseModel:Remove()
+                clone:Remove()
+                hook.Remove("Think", hookName)
+                hook.Remove("CalcView", "CustomView_" .. baseModel:EntIndex())
+            end
+        end)
+    end)
 end

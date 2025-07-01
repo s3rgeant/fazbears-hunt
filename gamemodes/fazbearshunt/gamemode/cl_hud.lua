@@ -213,6 +213,12 @@ timer.Create("UpdateAbilitiesTime", 0.05, 0, function()
 end)
 
 function assignAbilitiesByKiller(name) -- потом переделаю этот бред
+	if name == "gfreddy" then
+		addAbility('submerge', 'ПКМ', 0)
+		addAbility('choose_target', 'R', 0, true, false)
+		return
+	end
+
 	if name == "plushtrap" or name == "springtrap" or name == "clown" then
 		addAbility('attack', 'ЛКМ', 0, false, false)
 	else

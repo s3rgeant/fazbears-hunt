@@ -559,3 +559,21 @@ sound.Add({
 						 "vo/plushtrap_trip6.mp3",
 						 "vo/plushtrap_trip7.mp3"}
 })
+
+//gfreddy
+sound.Add({
+	name = 			"gfreddy.outworld_start",
+	channel = 		CHAN_VOICE2,
+	level = 		60,
+	volume = 		1.0,
+	sound = 			{"fnaf2/gfreddy/gfreddy_outworld.wav"}
+})
+sound.Add({
+	name = 			"gfreddy.laugh",
+	channel = 		CHAN_VOICE,
+	level = 		60,
+	volume = 		1.0,
+	sound = 			{"fnaf2/gfreddy/gfreddy_laugh1.mp3",
+						 "fnaf2/gfreddy/gfreddy_laugh2.mp3",
+						 "fnaf2/gfreddy/gfreddy_laugh3.mp3"}
+})

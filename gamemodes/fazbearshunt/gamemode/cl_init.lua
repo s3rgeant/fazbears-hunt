@@ -28,18 +28,6 @@ hook.Add("SetupMove", "CanMove", function(ply) -- иронично не рабо
 	end
 end)
 
-hook.Add("ShouldCollide", "CustomPlayerCollision", function(ent1, ent2)
-    if ent1:GetCollisionGroup() == COLLISION_GROUP_WORLD 
-	or ent2:GetCollisionGroup() == COLLISION_GROUP_WORLD 
-	or (ent1:GetCollisionGroup() == COLLISION_GROUP_DEBRIS and ent1:IsPlayer()) -- s freddy
-	or (ent1:GetCollisionGroup() == COLLISION_GROUP_PASSABLE_DOOR and ent1:IsPlayer() and ent2:IsPlayer())
-	or (ent2:GetCollisionGroup() == COLLISION_GROUP_PASSABLE_DOOR and ent2:IsPlayer() and ent1:IsPlayer())
-	then
-        return false
-    end
-    return true
-end)
-
 hook.Add( "PlayerBindPress", "fh_flash_nv", function( ply, bind, pressed )
 	if (ply:Team() == 2701 or ply:Team() == TEAM_SPECTATOR) and ( string.find( bind, "impulse 100" ) ) and pressed then
 		ToggleNightVision()

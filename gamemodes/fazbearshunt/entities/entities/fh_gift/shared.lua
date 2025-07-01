@@ -102,6 +102,8 @@ local positiveEffects = {
 			ply.invisible = true
 			ply:SetRenderMode(RENDERMODE_TRANSALPHA)
 			ply:SetCollisionGroup(COLLISION_GROUP_DEBRIS)
+			ply:SetCustomCollisionCheck(true)
+			ply:CollisionRulesChanged()
 			ply:SetColor(Color(255, 255, 255, 0))
 			ply:SetNoDraw(true)
 			ply:DrawShadow(false)
@@ -130,6 +132,8 @@ local positiveEffects = {
 					timer.Create("fh_gift_collision_reset" .. ply:EntIndex(), 0.5, 0, function()
 						if IsValid(ply) and !IsStuck(ply) then
 							ply:SetCollisionGroup(COLLISION_GROUP_PLAYER)
+							ply:SetCustomCollisionCheck(false)
+							ply:CollisionRulesChanged()
 						end
 				
 						if !IsValid(ply) or !IsStuck(ply) then

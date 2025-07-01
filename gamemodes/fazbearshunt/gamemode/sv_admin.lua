@@ -145,6 +145,8 @@ local function endgame_shared()
 	net.WriteBool(true)
 	net.Broadcast()
 	
+	timer.Remove("UnfrozeAnimatronics")
+	
 	for v,_ in pairs(animatronics) do
 		v.lobbyFreeze = nil
 		v:Freeze(false)

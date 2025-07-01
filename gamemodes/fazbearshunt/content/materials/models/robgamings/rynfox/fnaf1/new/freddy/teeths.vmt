@@ -1,0 +1,18 @@
+"VertexlitGeneric"
+{
+$basetexture "models/RobGamings/RynFox/FNAF1/New/Freddy/teeths"
+$bumpmap "models/RobGamings/RynFox/FNAF1/New/flat"
+$surfaceprop metal
+$phong "1"
+$phongexponent "1"
+$phongboost "0.1"
+$phongfresnelranges "[0.05 0.5 1]"
+$phongalbedotint "1"
+$halflambert "1"
+$nodecal "1"
+$ambientocclusion "0"
+$model "1"
+$diffuseexp "1.5"
+$normalmapalphaenvmapmask   "1"
+$nocull 1
+}

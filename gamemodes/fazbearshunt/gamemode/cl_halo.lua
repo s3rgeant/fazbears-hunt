@@ -155,6 +155,7 @@ net.Receive("fh_adv_sound_play", function()
     if !playerSounds[snd] then
         local sound = CreateSound(ply, snd)
         sound:SetSoundLevel(0)
+		sound:SetDSP(0)
         sound:Play()
 		
         playerSounds[snd] = sound
@@ -334,7 +335,7 @@ hook.Add("HUDPaint", "fh_cupcake_count_draw", function()
     end
 end)
 
-local texture = Material("vgui/target_orb.png", "noclamp smooth")
+local target_orb = Material("vgui/target_orb.png", "noclamp smooth")
 local maxDistance = 1650
 
 hook.Add("HUDPaint", "fh_draw_affected", function()
@@ -349,7 +350,9 @@ hook.Add("HUDPaint", "fh_draw_affected", function()
 	draw_orbs(affectedPlayers)
 end)
 
-function draw_orbs(tbl)
+function draw_orbs(tbl, material)
+	local material = material or target_orb
+
     local ply = LocalPlayer()
     if !IsValid(ply) or !ply:Alive() then return end
 	
@@ -372,7 +375,7 @@ function draw_orbs(tbl)
                 local clampedY = math.Clamp(screenPos.y, textureSize, screenH - textureSize)
                 
                 surface.SetDrawColor(255, 255, 255, alpha)
-                surface.SetMaterial(texture)
+                surface.SetMaterial(material)
                 surface.DrawTexturedRect(clampedX - textureSize, clampedY - textureSize, 64, 64)
             end
         end

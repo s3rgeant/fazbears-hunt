@@ -7,12 +7,15 @@ local muteSpecs = CreateConVar("proximity_hear_spectators", 1, { FCVAR_ARCHIVE,F
 
 if SERVER then
 
-	hook.Add( "PlayerCanHearPlayersVoice", "Maximum Range", function(listener, talker)
+	fh_cant_hear = {}
+	
+	hook.Add( "PlayerCanHearPlayersVoice", "fh_proximity_sv", function(listener, talker)
 		local canSpec = GetConVar("proximity_deadtalk"):GetInt()
 		local maxDistance = GetConVar("proximity_radius"):GetInt()
 		local proximityEnabled = GetConVar("proximity_enabled"):GetInt()
 		
-		if listener:Team() == TEAM_SPECTATOR and talker:Team() == TEAM_SPECTATOR and listener:GetInfoNum( "proximity_hear_spectators", 1 ) == 0 then
+		if (listener:Team() == TEAM_SPECTATOR and talker:Team() == TEAM_SPECTATOR and listener:GetInfoNum( "proximity_hear_spectators", 1 ) == 0)
+			or fh_cant_hear[listener] then
 			return false, false 
 		end
 		

@@ -25,10 +25,17 @@ function HighlightPlayers(ply, ent)
 		timer.Simple(conVars.halo_cooldown:GetFloat(), function()
 			table.RemoveByValue(haloUsers, ply)
 		end)
+		
+		local outworlded = getOutworldVictims()
 	
 		local affectedNicknames = {}
 		for _, player in ipairs(player:GetAll()) do
-			if player ~= ply and player:IsPlayer() and player:Health() > 0 and (player:Team() != TEAM_SPECTATOR and player:Team() != 2701) and player:IsValid() then
+			if player ~= ply and player:IsPlayer() 
+							and player:Health() > 0 
+							and (player:Team() != TEAM_SPECTATOR
+							and player:Team() != 2701) 
+							and player:IsValid()
+							and !outworlded[player] then
 				local distance = ply:GetPos():Distance(player:GetPos())
 				
 				if !conVars.fh_silent_highlight:GetBool() then
@@ -56,11 +63,11 @@ function HighlightPlayers(ply, ent)
 			end
 		end
 				
-		if table.Count(totalPlayers) > 0 then
+		if !table.IsEmpty(totalPlayers) then
 			net.Start("AddAffectedPlayers")
 			net.WriteTable(totalPlayers)
 			net.Send(ply)
-			if table.Count(team.GetPlayers(TEAM_SPECTATOR)) > 0 then
+			if !table.IsEmpty(team.GetPlayers(TEAM_SPECTATOR)) then
 				net.Start('NotifySpectators')
 				net.WriteTable(affectedNicknames)
 				net.WriteEntity(ply)
@@ -69,13 +76,13 @@ function HighlightPlayers(ply, ent)
 		end
 					
 		net.Start("ToggleHighlightSound") -- включаем чуваку звук что он дофига крутой со спермой под губой
-		net.WriteBool(table.Count(totalPlayers) > 0)
+		net.WriteBool(!table.IsEmpty(totalPlayers))
 		net.Send(ply)
 	end
 end
 
 hook.Add("SetupPlayerVisibility", "fh_halo_visibility", function(ply, viewent)
-	if table.Count(affectedPlayers) > 0 then
+	if !table.Empty(affectedPlayers) then
 		for _, player in ipairs(affectedPlayers) do
 			if IsValid(player) then
 				AddOriginToPVS(player:GetPos())

@@ -28,7 +28,7 @@ function ENT:Initialize()
     self:SetHealth(10)
 
     timer.Create("CheckPlayersTimer_" .. self:EntIndex(), 0.5, 0, function()
-        if not IsValid(self) then return end
+        if !IsValid(self) then return end
         self:CheckForPlayers()
     end)
 end
@@ -48,9 +48,11 @@ function ENT:CheckForPlayers()
     local pos = self:GetPos()
     local radius = 200
 	local totalPlayers = {}
+	
+	local outworlded = getOutworldVictims()
 
     for _, ply in pairs(ents.FindInSphere(pos, radius)) do
-        if ply:IsPlayer() and ply ~= owner and ply:Team() != 2701 and ply:Team() != TEAM_SPECTATOR and !table.HasValue(nearPlayers, ply) then
+        if ply:IsPlayer() and ply ~= owner and ply:Team() != 2701 and ply:Team() != TEAM_SPECTATOR and !table.HasValue(nearPlayers, ply) and !outworlded[ply] then
 			
 			local trace = util.TraceLine({
 				start = pos,

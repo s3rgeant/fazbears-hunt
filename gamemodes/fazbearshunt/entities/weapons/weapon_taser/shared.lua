@@ -34,8 +34,8 @@ SWEP.ViewModel	= "models/realistic_police/taser/c_taser.mdl"
 SWEP.ViewModelFOV = 60
 SWEP.WorldModel = "models/realistic_police/taser/w_taser.mdl"
 
-SWEP.MinHitbox = Vector(-24,-24,-12)
-SWEP.MaxHitbox = Vector(24,24,12)
+SWEP.MinHitbox = Vector(-20,-20,-12)
+SWEP.MaxHitbox = Vector(20,20,12)
 
 function SWEP:Initialize()
     self:SetHoldType("pistol")

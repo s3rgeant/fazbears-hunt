@@ -586,7 +586,7 @@ hook.Add("PlayerDisconnected", "fh_playerleft", function(ply)
 	survivors[ply] = nil
 	if animatronics[ply] then
 		animatronics[ply] = nil
-		if isGameOn then
+		if isGameOn and !roundEnding then
 			PrintMessage(HUD_PRINTTALK, "Аниматроник " .. ply:Nick() .. " вышел из игры.")
 		end
 	end
@@ -850,18 +850,6 @@ hook.Add( "PlayerShouldTakeDamage", "fh_shouldtakedamage", function( ply, attack
 		end
 	end
 end )
-
-hook.Add("ShouldCollide", "fh_collisions", function(ent1, ent2)
-    if ent1:GetCollisionGroup() == COLLISION_GROUP_WORLD 
-	or ent2:GetCollisionGroup() == COLLISION_GROUP_WORLD 
-	or ( ent1:GetCollisionGroup() == COLLISION_GROUP_DEBRIS and ent1:IsPlayer() ) -- s freddy
-	or ( ent1:GetCollisionGroup() == COLLISION_GROUP_PASSABLE_DOOR and ent1:IsPlayer() and ent2:IsPlayer() )
-	or ( ent2:GetCollisionGroup() == COLLISION_GROUP_PASSABLE_DOOR and ent2:IsPlayer() and ent1:IsPlayer() )
-	then
-        return false
-    end
-    return true
-end)
 
 hook.Add("PillApply", "fh_joinpill", function(ply, name)
 	animatronics[ply] = true

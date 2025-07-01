@@ -644,6 +644,8 @@ function ENT:Think()
 		and !ply.fh_target_player then
 		
 			self:SetColor(Color(255, 255, 255, 0))
+		elseif self.dontdraw then
+			self:SetNoDraw(true)
 			
         elseif (self:GetPillUser() ~= LocalPlayer()) then
 			self:SetNoDraw(false)
@@ -998,13 +1000,6 @@ end
 
 function ENT:SetSpeed(walk, run, duck, jump)
     local ply = self:GetPillUser()
-	
-    local speed = self.formTable.moveSpeed or {}
-	
-	speed.walk = walk
-	speed.run = run
-	speed.ducked = duck
-	self.formTable.jumpPower = jump
 	
     ply:SetWalkSpeed(walk)
     ply:SetRunSpeed(run)

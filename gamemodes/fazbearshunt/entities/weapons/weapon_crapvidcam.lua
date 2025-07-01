@@ -105,8 +105,8 @@ else
 		container = "webm",
 		video = "vp8",
 		audio = "vorbis",
-		quality = 22,
-		bitrate = 50,
+		quality = 24,
+		bitrate = 80,
 		fps = 24,
 		lockfps = false,
 		width = 480,
@@ -114,6 +114,7 @@ else
 	}
 
 	function VIDCAM_TOGGLE()
+		local myself = LocalPlayer()
 		VIDCAM_RECORDING = not VIDCAM_RECORDING
 		if VIDCAM_RECORDING then
 			VIDCAM_CONFIG.name = "vidcam-" .. util.DateStamp()
@@ -126,14 +127,14 @@ else
 			VIDCAM_WRITER:SetRecordSound(true)
 			hook.Add("PreDrawViewModels", "CrapVidCam", function()
 				VIDCAM_WRITER:AddFrame(FrameTime(), true)
-				LocalPlayer():SetDSP(38, true)
+				myself:SetDSP(38, true)
 			end)
 		else
 			hook.Remove("PreDrawViewModels", "CrapVidCam")
 			chat.AddText(Color(0, 255, 255), "Видео сохранено по пути: garrysmod/videos/" .. VIDCAM_CONFIG.name .. ".webm")
 			VIDCAM_WRITER:Finish()
 			VIDCAM_WRITER = nil -- memory leak! whoops
-			LocalPlayer():SetDSP(0, true)
+			myself:SetDSP(myself.outworld and 16 or 0, true)
 		end
 	end
 
@@ -196,11 +197,21 @@ function SWEP:Holster()
 	return true
 end
 
+function SWEP:OnRemove()
+	if CLIENT and (IsFirstTimePredicted() or game.SinglePlayer()) and LocalPlayer() == self:GetOwner() and VIDCAM_RECORDING then
+		VIDCAM_TOGGLE()
+	end
+
+	if game.SinglePlayer() then
+		self:CallOnClient("PrimaryAttack")
+	end
+end
+
 function SWEP:DrawWorldModel()
 	local ply = self:GetOwner()
 	local att = ply:GetAttachment(ply:LookupAttachment("anim_attachment_RH"))
 	
-	if IsValid(att) then 
+	if att then 
 		local ang = att.Ang
 		self:SetPos(att.Pos + ang:Up() * 10 + ang:Right() + ang:Forward() * 2)
 		self:SetAngles(ang)
