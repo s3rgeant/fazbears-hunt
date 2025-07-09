@@ -361,7 +361,7 @@ pk_pills.register("pill_springtrap",{
 			
 			if navmesh.GetNavAreaCount() == 0 then
 				if table.Count(spectators) > 0 then
-					ply:ChatPrint("Невозможно заспавнить плюштрапа, кидаем запрос наблюдателям.")
+					ply:SendLua( "LocalPlayer():ChatPrint( language.GetPhrase('fazhunt.springtrap.plushunable') )" )
 					
 					net.Start("fh_net_killer_change")
 					net.WriteString("summon")
@@ -394,7 +394,7 @@ pk_pills.register("pill_springtrap",{
 						end
 					end)
 				else
-					ply:ChatPrint("Невозможно заспавнить плюштрапа.")
+					ply:SendLua( "LocalPlayer():ChatPrint( language.GetPhrase('fazhunt.springtrap.plushspawn') )" )
 				end
 				return
 			end
@@ -441,7 +441,7 @@ pk_pills.register("pill_springtrap",{
 							
 				pt_request_springtrap_ply = nil
 				if IsValid(ply) then
-					ply:ChatPrint('Плюштрап сдох ебать')
+					ply:SendLua( "LocalPlayer():ChatPrint( language.GetPhrase('fazhunt.springtrap.plushdead') )" )
 				end
 			end)
 			
@@ -482,7 +482,7 @@ function kill_plushtrap(ply)
 	if IsValid(ply) then
 		ply:Kill()
 		ply:SetTeam(TEAM_SPECTATOR)
-		ply:ChatPrint('Ваше время за плюштрапа вышло.')
+		ply:SendLua( "LocalPlayer():ChatPrint( language.GetPhrase('fazhunt.springtrap.plushtime') )" )
 	
 		if IsValid(ply.DeathRagdoll) then
 			ply.DeathRagdoll:Remove()
@@ -505,7 +505,7 @@ function successRage(ply, ent, target)
 	spring_rage_movement[3], 
 	spring_rage_movement[4])
 	
-	ply:ChatPrint(target:Nick() .. " - стал твоим таргетом!")
+	  ply:SendLua( "LocalPlayer():ChatPrint(string.format(language.GetPhrase('fazhunt.springtrap.target'), " .. target:Nick() .. " ))" )
 	
 	table.insert(affectedPlayers, target)
 	
@@ -699,9 +699,9 @@ pk_pills.register("pill_plushtrap",{
 net.Receive("pt_request", function(len, ply)
 	if !IsValid(pt_request_springtrap_ply) then
 		if !IsValid(request_plushtrap) then
-			ply:ChatPrint("Произошла ошибка, ведь, походу, спрингтрапа не существует!")
+			ply:SendLua( "LocalPlayer():ChatPrint( language.GetPhrase('fazhunt.springtrap.plusherror') )" )
 		else
-			ply:ChatPrint("Походу, Спрингтрап уже выбрал игрока!")	
+			ply:SendLua( "LocalPlayer():ChatPrint( language.GetPhrase('fazhunt.springtrap.plushchoosed') )" )
 		end
 		return
 	end
@@ -759,7 +759,7 @@ net.Receive("pt_request_complete", function(len, springtrap)
 		timer.Create("pt_waiting" .. springtrap:EntIndex(), 60, 1, function()
 			kill_plushtrap(request_plushtrap)
 			pt_request_springtrap_ply = nil
-			springtrap:ChatPrint('Плюштрап сдох ебать')
+			springtrap:SendLua( "LocalPlayer():ChatPrint( language.GetPhrase('fazhunt.springtrap.plushdead') )" )
 		end)
 	end
 							

@@ -149,15 +149,22 @@ if currentKiller == "" or !currentKiller or !GetConVar("cl_drawhud"):GetBool() t
 			else
 				draw.SimpleText(translated_ability, "fh_hud_ability_title", textX, textY, Color(255, 255, 255, 255), TEXT_ALIGN_LEFT)
 			end
-			
-			draw.SimpleText(
-				abilityData.text,
-				"fh_hud_ability_button",
-				ability_button_x + (abilityData.keyboard and (button_ability_width/2) or (mouse_ability_width/2)),
-				abilityY + (abil_bg_outline_height / 2 - 20 * uiScale),
-				clr,
-				TEXT_ALIGN_CENTER
-			)
+			local translatable_key = abilityData.text
+            local key_phrase_translatable = "keys." .. string.lower( abilityData.text )
+            local translated = language.GetPhrase(key_phrase_translatable)
+            
+            if translated ~= key_phrase_translatable then
+                translatable_key = translated
+            end
+            
+            draw.SimpleText(
+                language.GetPhrase(translatable_key),
+                "fh_hud_ability_button",
+                ability_button_x + (abilityData.keyboard and (button_ability_width/2) or (mouse_ability_width/2)),
+                abilityY + (abil_bg_outline_height / 2 - 20 * uiScale),
+                clr,
+                TEXT_ALIGN_CENTER
+            )
 			
 			local timer_width = (abilityData.keyboard and 172 or 122) * uiScale
 			

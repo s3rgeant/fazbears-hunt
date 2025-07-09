@@ -457,8 +457,8 @@ function successStalk(ply, ent, target)
 		net.Send(target)
 		
 		net.Start('fh_net_display')
-		net.WriteString('БЕГИ')
-		net.WriteString('Ты недостаточно двигался, и теперь фредди знает где ты.')
+		net.WriteString('fazhunt.freddy.foundrun')
+		net.WriteString('fazhunt.freddy.found')
 		net.WriteFloat(6)
 		net.Send(target)
 	end

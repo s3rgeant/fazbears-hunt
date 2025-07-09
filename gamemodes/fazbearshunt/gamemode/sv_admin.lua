@@ -314,25 +314,25 @@ function fh.GetMapData(map)
     local mapName = map or game.GetMap()
 
     if not file.Exists(filePath, "DATA") then
-        print("Файл " .. filePath .. " не найден.")
+        print("File " .. filePath .. " not found")
         return nil
     end
 
     local jsonData = file.Read(filePath, "DATA")
     if not jsonData or jsonData == "" then
-        print("Файл пуст или не удалось прочитать: " .. filePath)
+        print("File is empty or couldn't read: " .. filePath)
         return nil
     end
 
     local allMapData = util.JSONToTable(jsonData)
     if not allMapData or type(allMapData) ~= "table" then
-        print("Ошибка при разборе JSON.")
+        print("Error when reading JSON.")
         return nil
     end
 
     local mapData = allMapData[mapName]
     if not mapData then
-        print("Данные для карты " .. mapName .. " не найдены.")
+        print("Data for map: " .. mapName .. " not found.")
         return nil
     end
 
@@ -341,19 +341,19 @@ end
 
 function fh.GetAllMapData()
     if not file.Exists(filePath, "DATA") then
-        print("Файл " .. filePath .. " не найден.")
+        print("File " .. filePath .. " not found.")
         return nil
     end
 
     local jsonData = file.Read(filePath, "DATA")
     if not jsonData or jsonData == "" then
-        print("Файл пуст или не удалось прочитать: " .. filePath)
+        print("File is empty or couldn't read: " .. filePath)
         return nil
     end
 
     local allMapData = util.JSONToTable(jsonData)
     if not allMapData or type(allMapData) ~= "table" then
-        print("Ошибка при разборе JSON.")
+        print("Error when reading JSON.")
         return nil
     end
 	
@@ -362,7 +362,7 @@ end
 
 function AddOrUpdateMapData(mapName, dataTable)
     if not istable(dataTable) then
-        print("Ошибка: dataTable должен быть таблицей.")
+        print("Error: dataTable need to be a Table.")
         return
     end
 
@@ -382,5 +382,5 @@ function AddOrUpdateMapData(mapName, dataTable)
     local newJson = util.TableToJSON(allMapData, true)
     file.Write(filePath, newJson)
 
-    print("Данные для карты '" .. mapName .. "' обновлены или добавлены.")
+    print("Data for map: '" .. mapName .. "' updated or added.")
 end

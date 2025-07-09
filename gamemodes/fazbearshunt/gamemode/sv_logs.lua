@@ -75,7 +75,7 @@ end
 
 concommand.Add("fh_save_logs", function(ply)
     if IsValid(ply) and not ply:IsAdmin() then
-        ply:ChatPrint("У вас нет прав для выполнения этой команды.")
+        ply:ChatPrint("You don't have permission to use that.")
         return
     end
 
@@ -85,9 +85,9 @@ concommand.Add("fh_save_logs", function(ply)
     file.Write(fileName, table.concat(eventLog, "\n"))
 
     if IsValid(ply) then
-        ply:ChatPrint("Лог событий сохранён в файл: " .. filePath)
+        ply:ChatPrint("Event log was saved in file: " .. filePath)
     else
-        print("Лог событий сохранён в файл: " .. filePath)
+        print("Event log was saved in file: " .. filePath)
     end
 end)
 
