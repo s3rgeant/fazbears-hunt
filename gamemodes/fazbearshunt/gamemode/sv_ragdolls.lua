@@ -88,3 +88,9 @@ function meta:CreateRagdoll()
 	
 	hook.Run("fh_createragdoll", self, ent)
 end
+
+hook.Add("RM_CanRagdoll", "fh_block_ragmod", function(ply)
+    if ply:Team() == 2701 or ply.jumpscared then
+        return false 
+    end
+end)

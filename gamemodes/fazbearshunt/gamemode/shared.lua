@@ -60,6 +60,55 @@ killerData = killerData or {
     ["pill_plushtrap"] = {name = "plushtrap", fullname = "fazhunt.animatronics.plushtrap", color = colors.Springtrap}
 }
 
+killerAbilities = killerAbilities or {
+    freddy = {
+        { name = 'kill', key = 'ЛКМ', duration = 0, keyboard = false, hidden = true },
+        { name = 'stalk', key = 'ПКМ', duration = 0 },
+        { name = 'highlight', key = 'R', duration = 0, keyboard = true, hidden = false }
+    },
+    bonnie = {
+        { name = 'kill', key = 'ЛКМ', duration = 0, keyboard = false, hidden = true },
+        { name = 'yoursmine', key = 'ПКМ', duration = 0 },
+        { name = 'highlight', key = 'R', duration = 0, keyboard = true, hidden = false }
+    },
+    chica = {
+        { name = 'kill', key = 'ЛКМ', duration = 0, keyboard = false, hidden = true },
+        { name = 'mine', key = 'ПКМ', duration = 0 },
+        { name = 'highlight', key = 'R', duration = 0, keyboard = true, hidden = false }
+    },
+    foxy = {
+        { name = 'kill', key = 'ЛКМ', duration = 0, keyboard = false, hidden = true },
+        { name = 'highlight', key = 'R', duration = 0, keyboard = true, hidden = false }
+    },
+    sfreddy = {
+        { name = 'kill', key = 'ЛКМ', duration = 0, keyboard = false, hidden = true },
+        { name = 'submerge', key = 'ПКМ', duration = 0, condition = function()
+            return isNotStuck()
+        end },
+        { name = 'highlight', key = 'R', duration = 0, keyboard = true, hidden = false }
+    },
+    endo = {
+        { name = 'kill', key = 'ЛКМ', duration = 0, keyboard = false, hidden = true },
+        { name = 'grab', key = 'ПКМ', duration = 0 },
+        { name = 'highlight', key = 'R', duration = 0, keyboard = true, hidden = false }
+    },
+    clown = {
+        { name = 'attack', key = 'ЛКМ', duration = 0, keyboard = false, hidden = false },
+        { name = 'highlight', key = 'R', duration = 0, keyboard = true, hidden = false }
+    },
+    plushtrap = {
+        { name = 'attack', key = 'ЛКМ', duration = 0, keyboard = false, hidden = false }
+    },
+    springtrap = {
+        { name = 'attack', key = 'ЛКМ', duration = 0, keyboard = false, hidden = false },
+        { name = 'summon', key = 'ПКМ', duration = 0 },
+        { name = 'highlight', key = 'R', duration = 0, keyboard = true, hidden = false }
+    },
+    gfreddy = {
+        { name = 'submerge', key = 'ПКМ', duration = 0 },
+        { name = 'choose_target', key = 'R', duration = 0, keyboard = true, hidden = false }
+    }
+}
 
 function getAllSolos()
 	local tablo = {}
@@ -143,9 +192,15 @@ function pill_makePreferable(anim, bool)
 	end
 end
 
-pill_makePreferable(table.GetKeys(killerData), true)
+if SERVER then
+	pill_makePreferable(table.GetKeys(killerData), true)
+end
 
 hook.Add("Initialize", "fh_dontprefer", function()
+	if CLIENT then return end
+	
+	print(file.Exists("fh_dontprefer.txt", "DATA"), "zzz")
+	
 	if file.Exists("fh_dontprefer.txt", "DATA") then
 		local data = file.Read("fh_dontprefer.txt", "DATA") or ""
 		
@@ -170,17 +225,6 @@ end
 function getAllKillers()
 	local tablo = table.Copy(killerData)
 	return tablo
-end
-
-function getTeam(team)
-	local teamname = 'Выжившие'
-	
-	if team == 2701 or string.find(team, 'animatronic') then
-		teamname = 'Аниматроники'
-	elseif team == TEAM_SPECTATOR or string.find(team, 'kill') then 
-		teamname = ' '
-	end
-	return teamname
 end
 
 function formatTime(secs)
@@ -216,7 +260,7 @@ hook.Add("ShouldCollide", "fh_collisions", function(ent1, ent2)
 	or ( ent1:GetCollisionGroup() == COLLISION_GROUP_PASSABLE_DOOR and ent1:IsPlayer() and ent2:IsPlayer() )
 	or ( ent2:GetCollisionGroup() == COLLISION_GROUP_PASSABLE_DOOR and ent2:IsPlayer() and ent1:IsPlayer() )
 	or ent1:GetCollisionGroup() == COLLISION_GROUP_PLAYER_MOVEMENT and ent2:IsPlayer() and ent2:GetCollisionGroup() != ent1:GetCollisionGroup()
-	or ent2:GetCollisionGroup() == COLLISION_GROUP_PLAYER_MOVEMENT and ent1:IsPlayer() and ent1:GetCollisionGroup() != ent1:GetCollisionGroup()
+	or ent2:GetCollisionGroup() == COLLISION_GROUP_PLAYER_MOVEMENT and ent1:IsPlayer() and ent1:GetCollisionGroup() != ent2:GetCollisionGroup()
 	then
         return false
     end

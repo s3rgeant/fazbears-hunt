@@ -135,9 +135,9 @@ if currentKiller == "" or !currentKiller or !GetConVar("cl_drawhud"):GetBool() t
 				local speed = scrollSpeeds[abilityName]
 				offset = offset + FrameTime() * speed
 			
-				if offset > (textWidth - maxTextWidth + 10) then
+				if offset >= (textWidth - maxTextWidth + 10) then
 					scrollSpeeds[abilityName] = -speed
-				elseif offset < 0 then
+				elseif offset <= 0 then
 					scrollSpeeds[abilityName] = -speed
 				end
 			
@@ -212,39 +212,22 @@ timer.Create("UpdateAbilitiesTime", 0.05, 0, function()
     end
 end)
 
-function assignAbilitiesByKiller(name) -- потом переделаю этот бред
-	if name == "gfreddy" then
-		addAbility('submerge', 'ПКМ', 0)
-		addAbility('choose_target', 'R', 0, true, false)
-		return
-	end
+function assignAbilitiesByKiller(name)
+    local abilities = killerAbilities[name]
+    if not abilities then return end
 
-	if name == "plushtrap" or name == "springtrap" or name == "clown" then
-		addAbility('attack', 'ЛКМ', 0, false, false)
-	else
-		addAbility('kill', 'ЛКМ', 0, false, true)
-	end
-	
-	if name == "sfreddy" then
-		addAbility('submerge', 'ПКМ', 0)
-        abilityParentClrFunc('submerge', function()
-            return isNotStuck()
-        end)
-	elseif name == "chica" then
-		addAbility('mine', 'ПКМ', 0)
-	elseif name == "endo" then
-		addAbility('grab', 'ПКМ', 0)
-	elseif name == "freddy" then
-		addAbility('stalk', 'ПКМ', 0)
-	elseif name == "bonnie" then
-		addAbility('yoursmine', 'ПКМ', 0)
-	elseif name == "springtrap" then
-		addAbility('summon', 'ПКМ', 0)
-	end
-	
-	if name != "plushtrap" then
-		addAbility('highlight', 'R', 0, true, false)
-	end
+    for _, ability in ipairs(abilities) do
+        addAbility(
+            ability.name,
+            ability.key,
+            ability.duration or 0,
+            ability.keyboard,
+            ability.hidden
+        )
+        if ability.condition then
+            abilityParentClrFunc(ability.name, ability.condition)
+        end
+    end
 end
 
 function addAbility(name, text, duration, keyboard, hidden)
@@ -420,7 +403,21 @@ end)
 net.Receive("fh_net_display", function()
     local text1 = net.ReadString()
     local text2 = net.ReadString()
+    local frmt = net.ReadFloat() or -1
     local duration = net.ReadFloat()
+	
+	if string.len(text1) > 0 then
+		text1 = language.GetPhrase(text1)
+	end
+	
+	if string.len(text2) > 0 then
+		text2 = language.GetPhrase(text2)
+	end
+	
+	if frmt > 0 then
+		text2 = string.format(tostring(text2), frmt)
+	end
+	
     fh_change_display(text1, text2, duration)
 end)
 
@@ -482,25 +479,21 @@ hook.Add("OnContextMenuOpen", "fh_contextmenu", function()
 	dlable:SetText( language.GetPhrase("fazhunt.context.animatronics_only") )
 	dlable:SetPos( 12, 0 )
 	dlable:SetTextColor( Color(0,0,0) )
-	--panel:SetBackgroundColor( Color( 255, 255, 255 ) )
 	
 	contextmenu_options:AddPanel(panel)
 	contextmenu_options:AddSpacer()
 	
 	local button = contextmenu_options:AddOption( language.GetPhrase("fazhunt.context.thirperson") )
-	--button:SetIcon( "icon16/camera.png" )
 	button:SetIsCheckable( true )
 	button:SetChecked( GetConVar("fh_thirdperson"):GetBool() )
 	button.OnChecked = function( checked ) toggleConsoleCommand("fh_thirdperson") end
 	
 	local button = contextmenu_options:AddOption( language.GetPhrase("fazhunt.context.halo_teammates") )
-	--button:SetIcon( "icon16/camera.png" )
 	button:SetIsCheckable( true )
 	button:SetChecked( GetConVar("fh_halo_teammates"):GetBool() )
 	button.OnChecked = function( checked ) toggleConsoleCommand("fh_halo_teammates") end
 	
 	local button = contextmenu_options:AddOption( language.GetPhrase("fazhunt.context.dynamic_camera") )
-	--button:SetIcon( "icon16/camera.png" )
 	button:SetIsCheckable( true )
 	button:SetChecked( GetConVar("fh_dynamic_firstperson"):GetBool() )
 	button.OnChecked = function( checked ) toggleConsoleCommand("fh_dynamic_firstperson") end

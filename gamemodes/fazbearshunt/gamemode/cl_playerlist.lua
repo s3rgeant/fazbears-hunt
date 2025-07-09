@@ -117,7 +117,7 @@ function GM:ScoreboardShow()
 			surface.DrawTexturedRect(16, 16, anim_scroll_wide, 32)
 			
 			draw.SimpleText(
-				"АНИМАТРОНИКИ",
+				string.upper( language.GetPhrase("fuppr.animatronics_team") ),
 				"timerFontSmall",
 				anim_scroll_wide / 2 + 16,
 				20,
@@ -137,7 +137,7 @@ function GM:ScoreboardShow()
 			surface.DrawTexturedRect(surv_scrollPanel.x + 16, 16, surv_scroll_wide, 32)
 			
 			draw.SimpleText(
-				"ВЫЖИВШИЕ",
+				string.upper( language.GetPhrase("fuppr.survivors_team") ),
 				"timerFontSmall",
 				surv_scrollPanel.x + surv_scroll_wide / 2 + 16,
 				20,
@@ -344,7 +344,7 @@ function UpdatePlayerList(teamIndex, scrollbar)
 			end
 		
 			local profileBtn = vgui.Create("DButton", frame)
-			profileBtn:SetText("Посмотреть профиль")
+			profileBtn:SetText(language.GetPhrase("fazhunt.playerlist.showprofile"))
 			profileBtn:SetSize(180, 30)
 			profileBtn:SetPos(10, 10)
 			profileBtn:SetColor(Color(0,0,0))
@@ -355,7 +355,7 @@ function UpdatePlayerList(teamIndex, scrollbar)
 			end
 		
 			local muteBtn = vgui.Create("DButton", frame)
-			muteBtn:SetText(ply:IsMuted() and "Размутить игрока" or "Замутить игрока")
+			muteBtn:SetText(ply:IsMuted() and language.GetPhrase("fazhunt.playerlist.unmute_player") or language.GetPhrase("fazhunt.playerlist.mute_player"))
 			muteBtn:SetSize(180, 30)
 			muteBtn:SetPos(10, 50)
 			muteBtn:SetColor(ply:IsMuted() and Color(255, 0, 0) or Color(0,0,0))
@@ -485,26 +485,3 @@ hook.Add( "InitPostEntity", "fh_get_boosters", function()
 		}
 	)
 end )
-
---[[
-concommand.Add("fh_1", function()
-    http.Fetch( "https://raw.githubusercontent.com/s3rgeant/fazbearshunt_docs/refs/heads/main/boosty",
-		
-		-- onSuccess function
-		function( body, length, headers, code )
-			for num in string.gmatch(body, "%d+") do
-				table.insert(boosters, num) -- добавляем число в массив
-			end
-		end,
-	
-		-- onFailure function
-		function( message )
-			-- We failed. =(
-		end,
-		{ 
-			["accept-encoding"] = "gzip, deflate",
-			["accept-language"] = "fr" 
-		}
-	)
-end)
---]]

@@ -1,22 +1,36 @@
 include( "shared.lua" )
 
 pcall(require,"pk_pills")
+--require ( "outline" )
 
 include( "cl_admin.lua" )
 include( "cl_halo.lua" )
-include( "cl_playerlist.lua" )
 include( "cl_hud.lua" )
+include( "cl_horror.lua" )
+include( "cl_playerlist.lua" )
 include( "cl_nightvision.lua" )
 include( "cl_spechud.lua" )
-include( "cl_horror.lua" )
+include( "cl_sound.lua" )
 include( "cl_timer.lua" )
 include( "cl_optionmenu.lua" )
 
 include( "mount/proximity.lua" )
 
 include( "animsoundf2.lua" )
+include( "voicelines.lua" )
 include("pill_fnaf2.lua")
 include("pill_fnaf3.lua")
+
+function getTeam(team)
+	local teamname = language.GetPhrase("fuppr.survivors_team")
+	
+	if team == 2701 or string.find(team, 'animatronic') then
+		teamname = language.GetPhrase("fuppr.animatronics_team")
+	elseif team == TEAM_SPECTATOR or string.find(team, 'kill') then 
+		teamname = ' '
+	end
+	return teamname
+end
 
 hook.Add("HUDDrawTargetID", "HidePlayerNames", function()
 	return false

@@ -1,4 +1,5 @@
 ﻿AddCSLuaFile()
+include( "animatronics/wgfreddy.lua" )
 
 if SERVER then
 	util.AddNetworkString("JumpscareLight")
@@ -7,6 +8,8 @@ if SERVER then
 	util.AddNetworkString("fh_net_killer_change")
 	
 	util.AddNetworkString("fh_adv_sound_play")
+	util.AddNetworkString("fh_ui_sound_play")
+	util.AddNetworkString("fh_pos_sound_play")
 	util.AddNetworkString("fh_ent_sound_play")
 	util.AddNetworkString("fh_sound_stop")
 	
@@ -26,8 +29,11 @@ if SERVER then
 	util.AddNetworkString("fh_wgfreddy_target_outworld_end")
 	
 	util.AddNetworkString("fh_wgfreddy_selecting_halo")
+	util.AddNetworkString("fh_wgfreddy_stop_selection_halo")
 	util.AddNetworkString("fh_wgfreddy_outworld_start")
 	util.AddNetworkString("fh_wgfreddy_outworld_stop")
+	
+	util.AddNetworkString("fh_net_wgfreddy_scarysound")
 	
 	util.AddNetworkString("fh_dontdraw_player")
 	util.AddNetworkString("fh_dontdraw_anim")
@@ -1431,7 +1437,6 @@ pk_pills.register("pill_sfreddy2",{
 		end
 	},
  
- 
 	noragdoll=true,
 	reload=function(ply,ent)
 		if ply.lobbyFreeze != nil and ply.lobbyFreeze then return end
@@ -1623,42 +1628,56 @@ pk_pills.register("pill_endo02",{
 })
 
 
-
-
-
 local function fh_can_see_player(observer, target, radius)
     if not IsValid(observer) or not IsValid(target) then return false end
-	
-	if radius then
-		local distance = observer:GetPos():Distance(target:GetPos())
-		if radius and distance > radius then
-			return false
-		end
-	end
-	
-    local traceData = {
-        start = observer:EyePos(),
-        endpos = target:EyePos(),
-        filter = function(ent)
-            return ent ~= observer
-        end,
-        mask = MASK_VISIBLE
-    }
 
-    local trace = util.TraceLine(traceData)
+    if radius then
+        local distance = observer:GetPos():Distance(target:GetPos())
+        if distance > radius then
+            return false
+        end
+    end
 
-    if trace.Fraction == 1 or trace.Entity == target then
-        local dirToTarget = (target:GetPos() - observer:GetPos()):GetNormalized()
-        local viewDot = observer:GetAimVector():Dot(dirToTarget)
-        return viewDot > 0.5
+    local function can_see_pos(pos)
+        local traceData = {
+            start = observer:EyePos(),
+            endpos = pos,
+            filter = function(ent)
+                return ent ~= observer
+            end,
+            mask = MASK_VISIBLE
+        }
+
+        local trace = util.TraceLine(traceData)
+        if trace.Fraction == 1 or (IsValid(trace.Entity) and trace.Entity:GetPos():Distance(pos) < 5) then
+            local dirToTarget = (pos - observer:GetPos()):GetNormalized()
+            local viewDot = observer:GetAimVector():Dot(dirToTarget)
+            return viewDot > 0.5
+        end
+
+        return false
+    end
+
+    if can_see_pos(target:EyePos()) then
+        return true
+    end
+
+    local mapped = pk_pills and pk_pills.getMappedEnt and pk_pills.getMappedEnt(target)
+    if IsValid(mapped) and mapped:GetBoneCount() > 0 then
+        for boneIndex = 0, mapped:GetBoneCount() - 1 do
+            local bonePos = mapped:GetBonePosition(boneIndex)
+            if bonePos and can_see_pos(bonePos) then
+                return true
+            end
+        end
     end
 
     return false
 end
 
-local wgfreddy_targets = {}
-local outworld_victims = {}
-local outworld_victims_count = {}
+wgfreddy_targets = {}
+outworld_victims = {}
+outworld_victims_count = {}
 
 function getOutworldVictims()
 	return outworld_victims
@@ -1746,6 +1765,9 @@ pk_pills.register("pill_wgfreddy2",{
 	
 	restore=function(ply,ent, formtable)
 		cancel_outworld(ply)
+		
+		net.Start("fh_wgfreddy_stop_selection_halo")
+		net.Send(ply)
 	end,
 	
 	attack={
@@ -1885,15 +1907,67 @@ pk_pills.register("pill_wgfreddy2",{
 			end
 		end
 		
+		ply:SetPushImmune(true)
+		ply:SetPushBlocked(true)
+		target:SetPushImmune(true)
+		target:SetPushBlocked(true)
+		
 		fh_cant_hear[target] = true
 		target:SetCollisionGroup(COLLISION_GROUP_PLAYER_MOVEMENT)
 		target:SetCustomCollisionCheck(true)
 		target:SetRunSpeed(240)
 		target:SetWalkSpeed(120)
+		target:SetJumpBoostMultiplier(0)
+		target:SetFOV(75)
+		
+		net.Start("fh_net_wgfreddy_scarysound")
+		net.WriteBool(true)
+		net.WritePlayer(ply)
+		net.Send(target)
 		
 		if target:HasWeapon("weapon_crapvidcam") then
 			target:StripWeapon("weapon_crapvidcam")
 		end
+		
+		local timer_name = "plushie_hint_" .. ply:EntIndex()
+		
+		timer.Create(timer_name, 20, 0, function()
+			if !IsValid(ply) or !IsValid(target) then
+				timer.Remove(timer_name)
+				return 
+			end
+		
+			local plushies = ents.FindByClass("fh_plushie")
+		
+			if #plushies == 0 then return end
+		
+			local allFar = true
+			local closestPlushie = nil
+			local closestDistance = math.huge
+		
+			for _, plushie in ipairs(plushies) do
+				if not IsValid(plushie) then continue end
+		
+				local dist = plushie:GetPos():Distance(target:GetPos())
+		
+				if dist <= 1400 then
+					allFar = false
+					break
+				end
+		
+				if dist < closestDistance then
+					closestDistance = dist
+					closestPlushie = plushie
+				end
+			end
+		
+			if allFar and IsValid(closestPlushie) then
+				net.Start("fh_pos_sound_play")
+				net.WriteString("fnaf2/gfreddy/plushie_hint.mp3")
+				net.WriteVector(closestPlushie:GetPos())
+				net.Send(target)
+			end
+		end)
 		
 		fh_spawnPlushies(target)
 		
@@ -1910,512 +1984,6 @@ pk_pills.register("pill_wgfreddy2",{
 		--ent:PillSound("jump",false)
 	end
 })
-
-function fh_spawnPlushies(ply)
-	if !IsValid(ply) then return end
-
-	local origin = ply:GetPos()
-	local minDistFromPlayer = 500
-	local maxDistFromPlayerStrict = 2500
-	local maxDistFromPlayerLoose = 2000
-	local minSpacing = 500
-	local plushCount = 3
-	local placed = 0
-	local usedPositions = {}
-	
-	local function isWithinStrictRange(pos)
-		local distSqr = origin:DistToSqr(pos)
-		return distSqr >= minDistFromPlayer^2 and distSqr <= maxDistFromPlayerStrict^2
-	end
-	
-	local function isFarFromOthers(pos)
-		for _, used in ipairs(usedPositions) do
-			if used:DistToSqr(pos) < minSpacing^2 then
-				return false
-			end
-		end
-		return true
-	end
-	
-	local function isLooseCandidate(pos)
-		return origin:DistToSqr(pos) <= maxDistFromPlayerLoose^2
-	end
-	
-	local function spawnPlushAt(pos)
-		local ent = ents.Create("fh_plushie")
-		if IsValid(ent) then
-			ent:Spawn()
-            ent:SetPos(pos)
-			ent.owner = ply
-			table.insert(usedPositions, pos)
-			placed = placed + 1
-		end
-	end
-	
-	local areas = navmesh.GetAllNavAreas()
-	if not areas or #areas == 0 then
-		print("[PlushieSpawner] Нет nav-областей.")
-		return
-	end
-	
-	table.Shuffle(areas)
-	
-	for _, area in ipairs(areas) do
-		if placed >= plushCount then break end
-		if area:HasAttributes(NAV_MESH_CROUCH) then continue end
-	
-		local pos = area:GetCenter()
-		if isWithinStrictRange(pos) and isFarFromOthers(pos) then
-			spawnPlushAt(pos)
-		end
-	end
-	
-	if placed < plushCount then
-		for _, area in ipairs(areas) do
-			if placed >= plushCount then break end
-			if area:HasAttributes(NAV_MESH_CROUCH) then continue end
-	
-			local pos = area:GetCenter()
-			if isLooseCandidate(pos) then
-				spawnPlushAt(pos)
-			end
-		end
-	end
-	
-	if placed < plushCount then
-		print("[fh_plushie] Не удалось заспавнить 3 плюшки. Заспавнено: " .. placed)
-	else
-		print("[fh_plushie] Успешно заспавнены 3 плюшки.")
-	end
-end
-
-hook.Add("KeyPress", "fh_plushie_use_check", function(ply, key)
-	if key ~= IN_USE then return end
-	if !IsValid(ply) or !outworld_victims[ply] then return end
-
-	local eyePos = ply:EyePos()
-	local viewDir = ply:GetAimVector()
-
-	for _, ent in ipairs(ents.FindByClass("fh_plushie")) do
-		if !IsValid(ent) then continue end
-
-		local toEnt = ent:GetPos() - eyePos
-		local distSqr = toEnt:LengthSqr()
-		if distSqr > (200 * 200) then continue end  -- исправлено на квадрат расстояния
-
-		local dirToEnt = toEnt:GetNormalized()
-		local dot = viewDir:Dot(dirToEnt)
-
-		if dot >= 0.9848 then -- примерно 10 градусов угол
-			ent:Remove()
-
-			outworld_victims_count[ply] = (outworld_victims_count[ply] or 0) + 1
-
-			if outworld_victims_count[ply] == 3 then
-				cancel_outworld(ply)
-			end
-
-			break
-		end
-	end
-end)
-
-local function cancel_outworld_target(ply)
-	if wgfreddy_targets[ply] then -- отменяем для жертвы
-		net.Start("fh_draw_player")
-		net.WritePlayer(wgfreddy_targets[ply])
-		net.Broadcast()
-		
-		local target = wgfreddy_targets[ply]
-		target:SetRunSpeed(420)
-		target:SetWalkSpeed(200)
-		target:SetCollisionGroup(COLLISION_GROUP_PLAYER)
-		target:SetDSP(0)
-		fh_cant_hear[target] = false
-		wgfreddy_targets[ply] = nil
-		
-		net.Start("fh_wgfreddy_target_outworld_end")
-		net.Send(target)
-		
-		net.Start('fh_adv_sound_play')
-		net.WriteString('fnaf2/gfreddy/outworld_escaped.wav')
-		net.Send(target)
-	end
-end
-
-function cancel_outworld(ply)
-	cancel_outworld_target(ply)
-	
-	killPlushies(ply)
-	
-	if outworld_victims[ply] then -- отменяем для ЗФ
-		for k,v in pairs( wgfreddy_targets ) do
-			if v == ply then
-				net.Start("fh_wgfreddy_outworld_stop")
-				net.Send(k)
-				
-				cancel_outworld_target(k)
-				
-				local ent = pk_pills.getMappedEnt(k)
-				
-				if IsValid(ent) then
-					if IsValid(ent) then
-						net.Start("fh_draw_anim")
-						net.WriteEntity(ent)
-						net.Broadcast()
-					end
-					if !ent.cloaked then
-						ent:SetSpeed(sfreddy_noclip_movement[1], sfreddy_noclip_movement[2], sfreddy_noclip_movement[3], sfreddy_noclip_movement[4])
-						k:DrawViewModel(false)
-								
-						ent:SetMaterial("models/null")
-						ent:DrawShadow(false)
-						
-						k:SetCollisionGroup(COLLISION_GROUP_DEBRIS )
-						k:SetCustomCollisionCheck(true)
-						k:CollisionRulesChanged()
-						
-						ent.cloaked=true
-						
-					end
-				end
-				
-				wgfreddy_targets[k] = nil
-			end
-		end
-	end
-end
-
-if SERVER then
-	hook.Add( "CanPlayerSuicide", "fh_pill2_suicide", function( ply )
-		if outworld_victims[ply] then
-			return false
-		end
-	end )
-end
-
-if CLIENT then
-	local mat_Grayscale = Material( "effects/shaders/merc_grayscale" )
-	
-	local outworld_ambient = nil
-	
-	net.Receive("fh_wgfreddy_target_outworld_start", function()
-		local myself = LocalPlayer()
-		local assasin = net.ReadPlayer()
-		
-		fh_cl_draw_plushies()
-		
-		myself:SetDSP(16)
-		
-		sound.PlayFile("sound/fnaf2/gfreddy/gfreddy_outworld.wav", "noplay", function(chan, errID, errStr)
-			if IsValid(chan) then
-				chan:SetPos(LocalPlayer():GetPos())
-				chan:Play()
-			end
-		end)
-		
-		sound.PlayFile("sound/fnaf2/gfreddy/gfreddy_outworld_ambient_loop.wav", "noplay noblock", function(chan, errID, errStr)
-			if IsValid(chan) then
-				outworld_ambient = chan
-				chan:SetVolume(1)
-				chan:SetPos(LocalPlayer():GetPos())
-				chan:EnableLooping(true)
-				chan:Play()
-			end
-		end)
-		
-		myself.outworld = true
-		myself:ScreenFade(SCREENFADE.IN, Color(0,0,0), 4, 0.5)
-		for _,ply in player.Iterator() do
-			ply:DrawShadow(false)
-			
-			if ply ~= assasin then
-				local ent = pk_pills.getMappedEnt(ply)
-				
-				if IsValid(ent) then
-					ent.dontdraw = true
-				end
-			end
-		end
-		hook.Add("PrePlayerDraw", "fh_outworld_pv", function(ply)
-			if ply ~= myself then
-				return true
-			end
-		end)
-        hook.Add("RenderScreenspaceEffects", "merc_grayscale_hook", function()
-            needsDepth = true
-            render.UpdateScreenEffectTexture()
-            mat_Grayscale:SetFloat("$c0_x", -0.8 )
-            mat_Grayscale:SetFloat("$c0_y", 0.7 )
-            render.SetMaterial(mat_Grayscale)
-            render.DrawScreenQuad()
-            needsDepth = false
-        end)
-        hook.Add("NeedsDepthPass", "merc_grayscale_depth", function()
-            DOFModeHack(true)
-            return true
-        end)
-		hook.Add("SetupWorldFog", "WhiteFogEffect", function()
-			render.FogMode(MATERIAL_FOG_LINEAR)
-			render.FogStart(0)
-			render.FogEnd(1500)
-			render.FogMaxDensity(1)
-			render.FogColor(150, 150, 150) -- Белый цвет
-			return true
-		end)
-		hook.Add("SetupSkyboxFog", "WhiteFogEffectSkybox", function(scale)
-			render.FogMode(MATERIAL_FOG_LINEAR)
-			render.FogStart(0)
-			render.FogEnd(1500 * scale)
-			render.FogMaxDensity(1)
-			render.FogColor(150, 150, 150)
-			return true
-		end)
-	end)
-	
-	net.Receive("fh_wgfreddy_target_outworld_end", function()
-		local myself = LocalPlayer()
-		local assasin = net.ReadPlayer()
-		
-		fh_cl_dontdraw_plushies()
-		
-		if IsValid(outworld_ambient) then
-			outworld_ambient:Stop()
-			outworld_ambient = nil
-		end
-		
-		myself.outworld = false
-		myself:ScreenFade(SCREENFADE.IN, Color(0,0,0), 2, 0.5)
-		for _,ply in player.Iterator() do
-			ply:SetNoDraw(false)
-			
-			local ent = pk_pills.getMappedEnt(ply)
-			
-			if IsValid(ent) then
-				ent.dontdraw = false
-			end
-		end
-		hook.Remove("PrePlayerDraw", "fh_outworld_pv")
-		hook.Remove("RenderScreenspaceEffects", "merc_grayscale_hook")
-		hook.Remove("NeedsDepthPass", "merc_grayscale_depth")
-		hook.Remove("SetupWorldFog", "WhiteFogEffect")
-		hook.Remove("SetupSkyboxFog", "WhiteFogEffectSkybox")
-	end)
-	
-	local function fh_wgfreddy_selecting_halo()
-		hook.Add("PreDrawHalos", "fh_wgfreddy_draw_halo", function()
-			local ply = LocalPlayer()
-			if not IsValid(ply) then return end
-		
-			local eyePos = ply:EyePos()
-			local aimDir = ply:GetAimVector()
-		
-			local closestPlayer = nil
-			local closestDist = math.huge
-			local maxDistToLine = 50
-			local maxRadius = 300
-		
-			for _, target in player.Iterator() do
-				if target == ply or !IsValid(target) or target:Team() == 2701 then continue end
-		
-				local targetPos = target:GetPos() + Vector(0, 0, 40)
-				local toTarget = targetPos - eyePos
-				local projLength = toTarget:Dot(aimDir)
-				local closestPoint = eyePos + aimDir * projLength
-		
-				local distToLine = targetPos:Distance(closestPoint)
-				local distToPlayer = ply:GetPos():Distance(target:GetPos())
-		
-				if distToLine <= maxDistToLine and distToPlayer <= maxRadius then
-					if distToLine < closestDist then
-						closestDist = distToLine
-						closestPlayer = target
-					end
-				end
-			end
-		
-			if IsValid(closestPlayer) then
-				halo.Add({closestPlayer}, Color(255, 200, 0), 2, 2, 1, true, true)
-				hook.Add("PostDrawTranslucentRenderables", "fh_draw_gfreddy_target_text", function()
-					if not IsValid(closestPlayer) then return end
-				
-					local pos = closestPlayer:GetPos() + Vector(0, 0, 85)
-					local ang = LocalPlayer():EyeAngles()
-					ang:RotateAroundAxis(ang:Up(), -90)
-					ang:RotateAroundAxis(ang:Forward(), 90)
-				
-					cam.Start3D2D(pos, ang, 0.1)
-						draw.SimpleText("Нажмите R чтобы выбрать жертву.", "timerFontBelow", 0, 0, Color(255, 200, 0), TEXT_ALIGN_CENTER, TEXT_ALIGN_CENTER)
-					cam.End3D2D()
-				end)
-			else
-				hook.Remove("PostDrawTranslucentRenderables", "fh_draw_gfreddy_target_text")
-			end
-		end)
-	end
-	
-	net.Receive("fh_wgfreddy_selecting_halo", fh_wgfreddy_selecting_halo)
-	
-	net.Receive("fh_wgfreddy_outworld_start", function()
-		local myself = LocalPlayer()
-		local target = net.ReadPlayer()
-		
-		fh_cl_draw_plushies()
-		
-		hook.Remove("PreDrawHalos", "fh_wgfreddy_draw_halo")
-		hook.Remove("PostDrawTranslucentRenderables", "fh_draw_gfreddy_target_text")
-		
-		myself:ScreenFade(SCREENFADE.IN, Color(0,0,0), 4, 0.5)
-        hook.Add("RenderScreenspaceEffects", "merc_grayscale_hook", function()
-            needsDepth = true
-            render.UpdateScreenEffectTexture()
-            mat_Grayscale:SetFloat("$c0_x", -0.8 )
-            mat_Grayscale:SetFloat("$c0_y", 0.7 )
-            render.SetMaterial(mat_Grayscale)
-            render.DrawScreenQuad()
-            needsDepth = false
-        end)
-        hook.Add("NeedsDepthPass", "merc_grayscale_depth", function()
-            DOFModeHack(true)
-            return true
-        end)
-		hook.Add( "PreDrawHalos", "fh_wgfreddy_halo", function()
-			halo.Add({target}, Color(255, 200, 0, 255), 0.5, 0.5, 1, true, true)
-		end)
-
-		local wgf_target_orb = Material("vgui/wgfreddy_target_orb.png", "noclamp smooth")
-		hook.Add("HUDPaint", "fh_draw_wgfreddy_target_orb", function()
-			cam.Start3D()
-				target:DrawModel()
-			cam.End3D()
-			
-			draw_orbs({target}, wgf_target_orb)
-		end)
-		for _,ply in player.Iterator() do
-			if ply ~= target and ply ~= LocalPlayer() then
-				ply:SetNoDraw(true)
-				
-				local ent = pk_pills.getMappedEnt(ply)
-				
-				if IsValid(ent) then
-					ent.dontdraw = true
-				end
-			end
-		end
-		hook.Add("PrePlayerDraw", "fh_gfreddy_outworld_pv", function(ply)
-			if ply ~= target then
-				return true
-			end
-		end)
-	end)
-	
-	net.Receive("fh_wgfreddy_outworld_stop", function()
-		local myself = LocalPlayer()
-		
-		hook.Remove("PreDrawHalos", "fh_wgfreddy_draw_halo")
-		hook.Remove("PostDrawTranslucentRenderables", "fh_draw_gfreddy_target_text")
-		
-		myself:ScreenFade(SCREENFADE.IN, Color(0,0,0), 1, 0.5)
-        hook.Remove("RenderScreenspaceEffects", "merc_grayscale_hook")
-        hook.Remove("NeedsDepthPass", "merc_grayscale_depth")
-		hook.Remove( "PreDrawHalos", "fh_wgfreddy_halo")
-		hook.Remove("HUDPaint", "fh_draw_wgfreddy_target_orb")
-		hook.Remove("PrePlayerDraw", "fh_gfreddy_outworld_pv")
-		
-		fh_cl_dontdraw_plushies()
-		
-		fh_wgfreddy_selecting_halo()
-	end)
-	
-	local outworlded_ppl = {}
-	
-	hook.Add("PrePlayerDraw", "fh_dontdraw_outworlded" , function(ply)
-		if outworlded_ppl[ply] then
-			return true
-		end
-	end)
-	hook.Add( "PlayerFootstep", "fh_nosteps_outworlded", function( ply, pos, foot, sound, volume, rf )
-		if outworlded_ppl[ply] then
-			return true
-		end
-	end)
-	
-	net.Receive("fh_dontdraw_player", function()
-		local dude = net.ReadPlayer()
-		
-		outworlded_ppl[dude] = true
-		
-		dude:SetNoDraw(true)
-	end)
-	
-	net.Receive("fh_dontdraw_anim", function()
-		local ent = net.ReadEntity()
-		
-		ent.dontdraw = true
-	end)
-	
-	net.Receive("fh_draw_player", function()
-		local dude = net.ReadPlayer()
-		
-		outworlded_ppl[dude] = false
-		
-		dude:SetNoDraw(false)
-	end)
-	
-	net.Receive("fh_draw_anim", function()
-		local ent = net.ReadEntity()
-		
-		ent.dontdraw = false
-	end)
-	
-
-	hook.Add( "PostCleanupMap", "fh_pill_wgfreddy_reset", function( name )
-        hook.Remove("RenderScreenspaceEffects", "merc_grayscale_hook")
-        hook.Remove("NeedsDepthPass", "merc_grayscale_depth")
-		hook.Remove( "PreDrawHalos", "fh_wgfreddy_halo")
-		hook.Remove("HUDPaint", "fh_draw_wgfreddy_target_orb")
-		hook.Remove("PrePlayerDraw", "fh_gfreddy_outworld_pv")
-		hook.Remove("PreDrawHalos", "fh_wgfreddy_draw_halo")
-		hook.Remove("PostDrawTranslucentRenderables", "fh_draw_gfreddy_target_text")
-		hook.Remove("PrePlayerDraw", "fh_outworld_pv")
-		hook.Remove("SetupWorldFog", "WhiteFogEffect")
-		hook.Remove("SetupSkyboxFog", "WhiteFogEffectSkybox")
-		
-		fh_cl_dontdraw_plushies()
-		
-		table.Empty(outworlded_ppl)
-	end)
-end
-
-function fh_get_wgfreddy_target(ply)
-	local eyePos = ply:EyePos()
-	local aimDir = ply:GetAimVector()
-	
-	local closestPlayer = nil
-	local closestDist = math.huge
-	local maxDistToLine = 50
-	local maxRadius = 300
-	
-	for _, target in ipairs(player.GetAll()) do
-		if target == ply or not IsValid(target) then continue end
-	
-		local targetPos = target:GetPos() + Vector(0, 0, 40)
-		local toTarget = targetPos - eyePos
-		local projLength = toTarget:Dot(aimDir)
-		local closestPoint = eyePos + aimDir * projLength
-	
-		local distToLine = targetPos:Distance(closestPoint)
-		local distToPlayer = ply:GetPos():Distance(target:GetPos())
-	
-		if distToLine <= maxDistToLine and distToPlayer <= maxRadius then
-			if distToLine < closestDist then
-				closestDist = distToLine
-				closestPlayer = target
-			end
-		end
-	end
-	return closestPlayer
-end
 
 
 
@@ -2629,6 +2197,8 @@ resource.AddFile("sound/throw_player.wav")
 function jumpscareEvent(ply, ent, target, dist)
 	if CLIENT then return end
 	if !IsValid(target) then return end
+	
+	hook.Run("FH_JumpscareEvent", ply, ent, target, dist)
 	
 	net.Start("JumpscareLight")
 	net.Send(target)
@@ -2961,7 +2531,7 @@ else
 		local line = net.ReadString()
 		local who = net.ReadPlayer()
 		
-		local ent = pk_pills.getMappedEnt(ply)
+		local ent = pk_pills.getMappedEnt(who)
 		
 		if IsValid(ent) and ent.dontdraw then return end
 		

@@ -99,7 +99,7 @@ net.Receive("st_request_get", function()
 	
 	if #menuData.options == 9 then return end
 	
-	sel_menu_add_title("Замените Плюштрапа игроком:")
+	sel_menu_add_title(language.GetPhrase("fazhunt.optionmenu.plushtrap") .. ":")
 	sel_menu_add_option(ply:Nick(), 
 	function()
 		return pt_request_complete(ply)

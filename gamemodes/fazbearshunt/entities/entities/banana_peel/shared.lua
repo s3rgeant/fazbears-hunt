@@ -37,7 +37,9 @@ if SERVER then
 			ent:EmitSound("slip_start.wav")
 			ent:SetVelocity(Vector(math.Rand(150, 250) * (math.random(2) == 1 and 1 or -1), math.Rand(150, 250) * (math.random(2) == 1 and 1 or -1), 200) + ent:GetUp() * 100)
 			local phys = self:GetPhysicsObject()
-			phys:ApplyForceCenter((-ent:GetVelocity() + -ent:GetForward()) * 50)
+			if IsValid(phys) then
+				phys:ApplyForceCenter((-ent:GetVelocity() + -ent:GetForward()) * 50)
+			end
 			
 			timer.Simple( 0.1, function()
 				ent:SetNWBool("banana_slipped", true)

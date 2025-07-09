@@ -13,7 +13,7 @@ local function DrawDeadHUD()
 		healthText = playerSpecName:Health() .. " HP"
 	else
 		displayName = playerSpecName:GetClass() -- Имя класса энтити
-		healthText = playerSpecName:Health() and (playerSpecName:Health() .. " HP") or "Нет данных"
+		healthText = playerSpecName:Health() and (playerSpecName:Health() .. " HP") or "???"
 	end
 
     local x = (ScrW() / 2) - (330 / 2)
@@ -25,14 +25,14 @@ local function DrawDeadHUD()
 	surface.SetMaterial(Material("vgui/spectator/window.png"))
 	surface.DrawTexturedRect(ScrW() / 2 - 200, ScrH() - (100 * 1.2), 400, 100)
 	
-    draw.SimpleText("НАБЛЮДЕНИЕ:", "timerFontUpper", ScrW() / 2, y + 29, Color(202, 125, 0), TEXT_ALIGN_CENTER, TEXT_ALIGN_CENTER)
+    draw.SimpleText(language.GetPhrase("fazhunt.spectating") .. ":", "timerFontUpper", ScrW() / 2, y + 29, Color(202, 125, 0), TEXT_ALIGN_CENTER, TEXT_ALIGN_CENTER)
 	draw.SimpleText(displayName, "timerFontUpper", ScrW() / 2, y + 61, Color(255, 255, 255), TEXT_ALIGN_CENTER, TEXT_ALIGN_CENTER)
 	draw.SimpleText(healthText, "timerFontSmall", ScrW() / 2, y + 91, Color(202, 125, 0), TEXT_ALIGN_CENTER, TEXT_ALIGN_CENTER)
 end
 
 local pt_request_on = false
 	
-local wind_width = 980
+local wind_width = 1000
 
 local function fh_draw_pt_request()
 	if !GetConVar("cl_drawhud"):GetBool() then return end
@@ -43,9 +43,9 @@ local function fh_draw_pt_request()
     local y = 125
 
     draw.RoundedBox(24, x, y, wind_width, 80, Color(0, 0, 0, 200))
-	draw.SimpleText("Спрингтрап вызвал Плюштрапа. Хотите запросить контроль над ним?", "timerFontUpper", ScrW() / 2, y + 20, Color(255, 255, 255), TEXT_ALIGN_CENTER, TEXT_ALIGN_CENTER)
-	draw.SimpleText("Да (F1)", "timerFontUpper", (ScrW() / 2) - 160, y + 55, Color(0, 255, 33), TEXT_ALIGN_CENTER, TEXT_ALIGN_CENTER)
-	draw.SimpleText("Нет (F2)", "timerFontUpper", (ScrW() / 2) + 160, y + 55, Color(255, 0, 0), TEXT_ALIGN_CENTER, TEXT_ALIGN_CENTER)
+	draw.SimpleText(language.GetPhrase("fazhunt.spectating.plushtrap_request"), "timerFontUpper", ScrW() / 2, y + 20, Color(255, 255, 255), TEXT_ALIGN_CENTER, TEXT_ALIGN_CENTER)
+	draw.SimpleText(language.GetPhrase("fazhunt.spectating.yes") .. " (F1)", "timerFontUpper", (ScrW() / 2) - 160, y + 55, Color(0, 255, 33), TEXT_ALIGN_CENTER, TEXT_ALIGN_CENTER)
+	draw.SimpleText(language.GetPhrase("fazhunt.spectating.no") .. " (F2)", "timerFontUpper", (ScrW() / 2) + 160, y + 55, Color(255, 0, 0), TEXT_ALIGN_CENTER, TEXT_ALIGN_CENTER)
 end
 
 net.Receive("DeadHUDEnable", function()

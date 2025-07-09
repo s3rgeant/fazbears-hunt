@@ -77,6 +77,7 @@ if CLIENT then
 end
 
 local effectDesc = ''
+local format_num = -1
 
 -- Позитивные эффекты
 local positiveEffects = {
@@ -84,14 +85,16 @@ local positiveEffects = {
         name = "heal",
         func = function(ply)
             ply:SetHealth(ply:Health() + 35)
-            effectDesc = '+35 HP'
+            effectDesc = 'fazhunt.gifts.heal'
+			format_num = 35
         end
     },
     {
         name = "armor",
         func = function(ply)
 			ply:SetArmor(math.min(ply:Armor() + 50, 100))
-            effectDesc = '+50 Брони'
+            effectDesc = 'fazhunt.gifts.armor'
+			format_num = 50
         end
     },
     {
@@ -107,7 +110,8 @@ local positiveEffects = {
 			ply:SetColor(Color(255, 255, 255, 0))
 			ply:SetNoDraw(true)
 			ply:DrawShadow(false)
-			effectDesc = 'Ты стал невидимым на 30 секунд!'
+			effectDesc = 'fazhunt.gifts.invisibility'
+			format_num = 30
 	
 			timer.Simple(30, function()
 				if IsValid(ply) then
@@ -149,7 +153,8 @@ local positiveEffects = {
         name = "gravity_gun",
         func = function(ply)
             ply:Give("weapon_physcannon")
-            effectDesc = '+ Гравити Ган'
+            effectDesc = 'fazhunt.gifts.gravity_gun'
+			format_num = -1
         end
     },
     {
@@ -157,14 +162,16 @@ local positiveEffects = {
         func = function(ply)
             net.Start("fh_hl_animatronics")
             net.Send(ply)
-            effectDesc = 'Теперь ты можешь видеть аниматроников через стены.'
+            effectDesc = 'fazhunt.gifts.animatronics_visibility'
+			format_num = -1
         end
     },
     {
         name = "defibrilator",
         func = function(ply)
             ply:Give("weapon_defibrilator")
-            effectDesc = '+ Дефибрилятор'
+            effectDesc = 'fazhunt.gifts.defibrilator'
+			format_num = -1
         end
     },
     {
@@ -172,7 +179,8 @@ local positiveEffects = {
         func = function(ply)
             ply:Give("weapon_banana")
             ply:GiveAmmo(4, "ammo_banana", true)
-            effectDesc = '+ 5 бананов'
+            effectDesc = 'fazhunt.gifts.bananas'
+			format_num = 5
         end
     },
     {
@@ -181,7 +189,8 @@ local positiveEffects = {
             ply:SetWalkSpeed(ply:GetWalkSpeed() * 1.2)
             ply:SetRunSpeed(ply:GetRunSpeed() * 1.2)
             ply:SetCrouchedWalkSpeed(ply:GetCrouchedWalkSpeed() * 1.4)
-            effectDesc = 'Тебе выдано ускорение на 15 секунд!'
+            effectDesc = 'fazhunt.gifts.speed_buff'
+			format_num = 15
 			
 			local trail = util.SpriteTrail(ply, ply:LookupAttachment( "chest" ), Color(0, 169, 255, 255), true, 32, 0, 1, 1 / ( ( 32 + 0 ) * 0.5 ), "trails/physbeam")
             
@@ -201,7 +210,8 @@ local positiveEffects = {
         name = "jump_buff",
         func = function(ply)
             ply:SetJumpPower(ply:GetJumpPower() * 2)
-            effectDesc = 'Теперь ты прыгаешь выше 25 секунд!'
+            effectDesc = 'fazhunt.gifts.jump_buff'
+			format_num = 25
             
             timer.Simple(25, function()
                 if IsValid(ply) then
@@ -260,6 +270,7 @@ local negativeEffects = {
                 end
             end)
             effectDesc = ''
+			format_num = -1
         end
     },
     {
@@ -268,7 +279,8 @@ local negativeEffects = {
             net.Start("fh_hl_badkid")
             net.WriteEntity(ply)
             net.Broadcast()
-            effectDesc = 'Все аниматроники знают где ты.'
+            effectDesc = 'fazhunt.gifts.animatronics_alert'
+			format_num = -1
             
             table.insert(affectedPlayers, ply)
         
@@ -285,14 +297,16 @@ local negativeEffects = {
         name = "reduce_step",
         func = function(ply)
             ply:SetStepSize(0)
-            effectDesc = 'Теперь тебе сложнее подниматься по ступенькам.'
+            effectDesc = 'fazhunt.gifts.reduce_step'
+			format_num = -1
         end
     },
     {
         name = "strip_weapons",
         func = function(ply)
             ply:StripWeapons()
-            effectDesc = 'Больше у тебя нет оружия.'
+            effectDesc = 'fazhunt.gifts.strip_weapons'
+			format_num = -1
         end
     },
     {
@@ -301,6 +315,7 @@ local negativeEffects = {
             net.Start('fh_net_thinkfast')
             net.Send(ply)
             effectDesc = ''
+			format_num = -1
         end
     },
     {
@@ -309,7 +324,8 @@ local negativeEffects = {
             ply:SetFOV(30, 1)
             ply:SetCanZoom(false)
             ply:StopZooming()
-            effectDesc = 'Твоё поле зрения увеличено на 30 секунд.'
+            effectDesc = 'fazhunt.gifts.fov_buff'
+			format_num = 30
             
             timer.Simple(30, function()
                 if IsValid(ply) then
@@ -323,7 +339,8 @@ local negativeEffects = {
         name = "sound_dsp",
         func = function(ply)
             ply:SetDSP(31, false)
-            effectDesc = 'Твой звук приглушен на 30 секунд.'
+            effectDesc = 'fazhunt.gifts.sound_dsp'
+			format_num = 30
             
             timer.Simple(30, function()
                 if IsValid(ply) then
@@ -397,16 +414,18 @@ function ENT:ApplyEffect(player)
         self:EmitSound("orch_hit_csharp_short.wav")
         
         net.Start('fh_net_display')
-        net.WriteString('Ты подобрал подарок!')
+        net.WriteString('fazhunt.gifts.positive')
         net.WriteString(effectDesc)
+		net.WriteFloat(format_num)
         net.WriteFloat(5)
         net.Send(player)
     else
         self:EmitSound("ahuitebe.mp3")
         
         net.Start('fh_net_display')
-        net.WriteString('Ты украл чужой подарок.')
+        net.WriteString('fazhunt.gifts.negative')
         net.WriteString(effectDesc)
+		net.WriteFloat(format_num)
         net.WriteFloat(5)
         net.Send(player)
     end

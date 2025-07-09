@@ -9,9 +9,6 @@ SWEP.AutoSwitchFrom = false
 
 resource.AddFile( "materials/weapons/empty_hands.vmt" )
 
-resource.AddFile( "models/weapons/rainchu/v_nothing.mdl" )
-resource.AddFile( "models/weapons/rainchu/w_nothing.mdl" )
-
 resource.AddFile( "materials/models/weapons/rainchu/empty_hands/invisible.vmt" )
 
 function SWEP:GetCapabilities()

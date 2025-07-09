@@ -29,7 +29,7 @@ function ENT:Initialize()
     local duckBy = self.formTable.duckBy or (self.formTable.hull and 0 or 36)
     ply:SetHull(-Vector(hull.x / 2, hull.y / 2, 0), Vector(hull.x / 2, hull.y / 2, hull.z))
     ply:SetHullDuck(-Vector(hull.x / 2, hull.y / 2, 0), Vector(hull.x / 2, hull.y / 2, hull.z - duckBy or 0))
-    ply:SetRenderMode(RENDERMODE_NONE)
+	ply:SetRenderMode(RENDERMODE_NONE)
     --Do this so weapon equips are not blocked
     pk_pills.mapEnt(ply, nil)
 

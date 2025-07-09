@@ -8,14 +8,16 @@ include( "shared.lua" )
 AddCSLuaFile( "cl_admin.lua" )
 AddCSLuaFile( "cl_halo.lua" )
 AddCSLuaFile( "cl_playerlist.lua" )
+AddCSLuaFile( "cl_horror.lua" )
 AddCSLuaFile( "cl_hud.lua" )
 AddCSLuaFile( "cl_nightvision.lua" )
 AddCSLuaFile( "cl_spechud.lua" )
-AddCSLuaFile( "cl_horror.lua" )
+AddCSLuaFile( "cl_sound.lua" )
 AddCSLuaFile( "cl_timer.lua" )
 AddCSLuaFile( "cl_optionmenu.lua" )
 
 AddCSLuaFile( "animsoundf2.lua" )
+AddCSLuaFile( "voicelines.lua" )
 
 include( "sv_admin.lua" )
 include( "sv_halo.lua" )
@@ -231,6 +233,8 @@ function setupPlayerVars(ply)
 	ply:UnLock()
 	ply:SetFOV(0)
 	ply:SetViewEntity(ply)
+	
+	ply:SetJumpBoostMultiplier(1)
 end
 
 function endGame(killerVictory)
@@ -252,6 +256,8 @@ function endGame(killerVictory)
 	end
 		
 	for k,v in pairs(lastKillers) do
+		if !IsValid(k) then continue end
+		
 		lastKillers[k] = v + 1
 		
 		if lastKillers[k] > 5 then
@@ -440,7 +446,7 @@ function startGame()
 	
 	if IsValid(random_taserer) then
 		random_taserer:Give("weapon_taser")
-		random_taserer:ChatPrint("Тебе выдан Шокер. Используй его только в безвыходных ситуациях.")
+		random_taserer:SendLua( "LocalPlayer():ChatPrint(language.GetPhrase('fazhunt.give_taser'))" )
 	end
 	
     net.Start("fh_start_game_timer")
@@ -575,6 +581,18 @@ hook.Add( "AllowPlayerPickup", "fh_allow_pickup", function( ply, ent )
     return ply:Team() != TEAM_SPECTATOR
 end )
 
+hook.Add("SetupMove", "fh_lock_position", function(ply, mv, cmd)
+	if (ply:Team() == 2701 or animatronics[ply]) and !roundActive and isGameOn then
+		mv:SetVelocity(vector_origin)
+		mv:SetOrigin(ply:GetPos())
+	end
+end)
+hook.Add("PlayerPostThink", "fh_zero_physics", function(ply)
+	if (ply:Team() == 2701 or animatronics[ply]) and not roundActive and isGameOn then
+		ply:SetVelocity(-ply:GetVelocity())
+	end
+end)
+
 hook.Add("FinishMove", "fh_canmove", function(ply)
 	if (ply:Team() == 2701 or animatronics[ply]) and !roundActive and isGameOn then
 		return true
@@ -582,7 +600,6 @@ hook.Add("FinishMove", "fh_canmove", function(ply)
 end)
 
 hook.Add("PlayerDisconnected", "fh_playerleft", function(ply)
-	lastKillers[ply] = nil
 	survivors[ply] = nil
 	if animatronics[ply] then
 		animatronics[ply] = nil
@@ -671,22 +688,6 @@ hook.Add("PlayerDeath", "fh_deaths", function( victim, inflictor, attacker )
 	if IsValid(victim:GetRagdollEntity()) then
 		victim:GetRagdollEntity():Remove()
 	end
-	
-	--[[
-    if IsValid(victim) and victim:IsPlayer() and IsValid(ent) and string.match(ent:GetModel(), "([^/]+)%.mdl$") == 'oldbonnie' then
-		local ragdoll = victim.DeathRagdoll
-        if IsValid(ragdoll) then
-            local forward = victim:GetAimVector()
-
-            local impulse = forward * 50000
-
-            local phys = ragdoll:GetPhysicsObject()
-            if IsValid(phys) then
-                phys:ApplyForceCenter(impulse)
-            end
-        end
-    end
-	]]--
 end)
 
 function fh_get_plytable_nicknames(tbl)
@@ -966,12 +967,12 @@ net.Receive("fh_initpostentity", function(len, ply)
 		
 		lobbyDuration = 30
 	end
-	if !ply:IsListenServerHost() then
+	--if !ply:IsListenServerHost() then
 	
 		net.Start("fh_share_notprefered")
 		net.WriteTable(getAllPreferables(true))
 		net.Send(ply)
-	end
+	--end
 end)
 
 hook.Add( "PlayerSay", "fh_chat_messages", function( ply, text, teamChat )
@@ -1081,6 +1082,7 @@ function fh.GetEarnedKillers(players)
 		local high = 0
 		
 		for k,v in pairs(lastKillers) do
+			if !IsValid(k) then continue end
 			if v >= high then
 				chosenLastKiller = k
 				high = v

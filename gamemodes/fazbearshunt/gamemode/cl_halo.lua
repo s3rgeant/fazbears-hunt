@@ -70,11 +70,27 @@ function toggleShadows(bool)
 	if bool then
 		for _, ply in ipairs( players ) do
             ply:DrawShadow(true)
+		
+			for _, wep in ipairs(dude:GetWeapons()) do
+				if IsValid(wep) then
+					wep:SetNoDraw(false)
+					wep:DrawShadow(true)
+					wep:SetRenderMode(RENDERMODE_NORMAL)
+				end
+			end
 		end
 	else
 		for _, ply in ipairs( players ) do
 			if ply ~= target and ply:Team() != 2701 then
 				ply:DrawShadow(false)
+		
+				for _, wep in ipairs(dude:GetWeapons()) do
+					if IsValid(wep) then
+						wep:SetNoDraw(true)
+						wep:DrawShadow(false)
+						wep:SetRenderMode(RENDERMODE_NONE)
+					end
+				end
 			end
 		end
 	end
@@ -86,11 +102,6 @@ end)
 
 net.Receive("fh_addaffected_springtrap", function()
 	addAffected(net.ReadEntity(), 90)
-end)
-
-net.Receive("fh_play_sound", function()
-	local sound = net.ReadString()
-	surface.PlaySound(sound)
 end)
 
 net.Receive("RemoveAffectedPlayer", function()
@@ -142,50 +153,6 @@ net.Receive("fh_hl_badkid", function ()
 		drawHighlightTimer(true)
 		surface.PlaySound(visionAffectedSound)
 	end
-end)
-
-local playerSounds = {}
-
-net.Receive("fh_adv_sound_play", function()
-	local ply = LocalPlayer()
-	local snd = net.ReadString()
-	
-	if !IsValid(ply) then return end
-	
-    if !playerSounds[snd] then
-        local sound = CreateSound(ply, snd)
-        sound:SetSoundLevel(0)
-		sound:SetDSP(0)
-        sound:Play()
-		
-        playerSounds[snd] = sound
-    else
-        playerSounds[snd]:Play()
-    end
-end)
-
-net.Receive("fh_ent_sound_play", function()
-	local ent = net.ReadPlayer()
-	local snd = net.ReadString()
-	
-	if !IsValid(ent) then return end
-	
-    if !playerSounds[snd] then
-        local sound = CreateSound(ent, snd)
-        sound:Play()
-		
-        playerSounds[snd] = sound
-    else
-        playerSounds[snd]:Play()
-    end
-end)
-
-net.Receive("fh_sound_stop", function()
-	local snd = net.ReadString()
-    if playerSounds[snd] then
-        playerSounds[snd]:Stop()
-        playerSounds[snd] = nil
-    end
 end)
 
 net.Receive("PlayHighlightSounds", function()

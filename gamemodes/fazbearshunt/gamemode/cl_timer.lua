@@ -13,7 +13,7 @@ local timerSetupEnd = 0
 local timerTotal = 0
 
 local timerMode = "lobby"
-local timerTitle = 'ОЖИДАНИЕ ИГРОКОВ'
+local timerTitle = language.GetPhrase("fazhunt.generic.waiting_player")
 
 local postlobbytimer_alpha = 255
 
@@ -103,7 +103,7 @@ function draw_killer_selector()
     end
     
     local titleLabel = vgui.Create("DLabel", selector)
-    titleLabel:SetText("ВЫБЕРИ АНИМАТРОНИКА")
+    titleLabel:SetText(language.GetPhrase("fazhunt.selector.select_animatronic"))
     titleLabel:SetFont("DermaLarge")
     titleLabel:SetTextColor(Color(255, 255, 255))
     titleLabel:SizeToContents()

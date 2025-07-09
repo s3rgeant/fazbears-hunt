@@ -1,5 +1,3 @@
--- vim: se sw=4 ts=4 :
-
 SWEP.Name					=  "Empty Hands"
 SWEP.HoldType				=  "normal"
 SWEP.Category				=  "Other"
@@ -7,15 +5,7 @@ SWEP.Category				=  "Other"
 SWEP.Spawnable				=  true
 SWEP.AdminSpawnable			=  true
 
--- Fixes console errors when no model is used (Gmod bug)
-SWEP.ViewModel				=  "models/weapons/rainchu/v_nothing.mdl"
-SWEP.WorldModel				=  "models/weapons/rainchu/w_nothing.mdl"
-
 SWEP.Primary.Automatic		=  true
-SWEP.Primary.Ammo			=  "none"
-
-SWEP.Secondary.Automatic	=  false
-SWEP.Secondary.Ammo			=  "none"
 
 function SWEP:CanPrimaryAttack()
 	return true
@@ -76,6 +66,7 @@ function SWEP:PrimaryAttack()
 			Entity = HitEnt,
 			Fraction = Tr.Fraction,
 		}
+		HitEnt.IsBeingDragged = true
 	end
 
 	if CLIENT or not IsValid(HitEnt) then return end
@@ -120,11 +111,31 @@ function SWEP:SetupDataTables( )
 end
 
 function SWEP:Think()
-	local ply = self.Owner
-	if self.Drag and (not ply:KeyDown(IN_ATTACK) or not IsValid(self.Drag.Entity)) then
-		self.Drag = nil
-	end
+    local ply = self.Owner
+    if self.Drag and (not ply:KeyDown(IN_ATTACK) or not IsValid(self.Drag.Entity)) then
+        if IsValid(self.Drag.Entity) then
+            self.Drag.Entity.IsBeingDragged = nil
+        end
+        self.Drag = nil
+    end
 end
+
+function SWEP:ShouldDrawViewModel()
+	return false
+end
+
+function SWEP:DrawWorldModel()
+end
+
+hook.Add("EntityTakeDamage", "prevent_empty_hands_prop_damage", function(ent, dmg)
+    local inflictor = dmg:GetInflictor()
+
+    if IsValid(inflictor) and inflictor.IsBeingDragged then
+        dmg:SetDamage(0)
+        dmg:ScaleDamage(0)
+        return true
+    end
+end)
 
 if CLIENT then
 	local x, y = ScrW() /2, ScrH() /2

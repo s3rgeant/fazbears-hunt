@@ -198,7 +198,7 @@ function SWEP:Holster()
 end
 
 function SWEP:OnRemove()
-	if CLIENT and (IsFirstTimePredicted() or game.SinglePlayer()) and LocalPlayer() == self:GetOwner() and VIDCAM_RECORDING then
+	if CLIENT and VIDCAM_RECORDING then
 		VIDCAM_TOGGLE()
 	end
 
