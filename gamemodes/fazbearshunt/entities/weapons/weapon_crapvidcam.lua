@@ -212,17 +212,23 @@ end
 
 function SWEP:DrawWorldModel()
 	local ply = self:GetOwner()
-	local att = ply:GetAttachment(ply:LookupAttachment("anim_attachment_RH"))
 	
+	if not IsValid(ply) or not ply:LookupAttachment("anim_attachment_RH") then
+		self:DrawModel()
+		return
+	end
+
+	local att = ply:GetAttachment(ply:LookupAttachment("anim_attachment_RH"))
 	if att then 
 		local ang = att.Ang
 		self:SetPos(att.Pos + ang:Up() * 10 + ang:Right() + ang:Forward() * 2)
 		self:SetAngles(ang)
 	end
-	
+
 	self:SetupBones()
 	self:DrawModel()
 end
+
 
 local camPos = Vector(16, 30, -6)
 

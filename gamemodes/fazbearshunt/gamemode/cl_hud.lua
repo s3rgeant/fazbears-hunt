@@ -149,6 +149,7 @@ if currentKiller == "" or !currentKiller or !GetConVar("cl_drawhud"):GetBool() t
 			else
 				draw.SimpleText(translated_ability, "fh_hud_ability_title", textX, textY, Color(255, 255, 255, 255), TEXT_ALIGN_LEFT)
 			end
+			
 			local translatable_key = abilityData.text
             local key_phrase_translatable = "keys." .. string.lower( abilityData.text )
             local translated = language.GetPhrase(key_phrase_translatable)

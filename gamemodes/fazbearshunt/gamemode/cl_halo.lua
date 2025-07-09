@@ -71,7 +71,7 @@ function toggleShadows(bool)
 		for _, ply in ipairs( players ) do
             ply:DrawShadow(true)
 		
-			for _, wep in ipairs(dude:GetWeapons()) do
+			for _, wep in ipairs(ply:GetWeapons()) do
 				if IsValid(wep) then
 					wep:SetNoDraw(false)
 					wep:DrawShadow(true)
@@ -84,7 +84,7 @@ function toggleShadows(bool)
 			if ply ~= target and ply:Team() != 2701 then
 				ply:DrawShadow(false)
 		
-				for _, wep in ipairs(dude:GetWeapons()) do
+				for _, wep in ipairs(ply:GetWeapons()) do
 					if IsValid(wep) then
 						wep:SetNoDraw(true)
 						wep:DrawShadow(false)
