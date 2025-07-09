@@ -10,10 +10,13 @@ sound.Add({
 })
 
 SWEP.PrintName = "Crappy Video Camera"
-SWEP.Instructions = [[
-<color=green>[ЛКМ]</color> Начать/закончить съёмку
 
-<color=#00ffff>Видео будут сохранены в папке garrysmod/videos в формате WEBM.</color>]]
+if CLIENT then
+SWEP.Instructions = [[
+<color=green>[]].. language.GetPhrase("keys.lmb") ..[[]</color> ]].. language.GetPhrase("crapvidcam.camstart") ..[[
+
+<color=#00ffff> ]].. language.GetPhrase("crapvidcam.camsave") ..[[ </color>]]
+end
 
 if CLIENT then
 	SWEP.WepSelectIcon = surface.GetTextureID("crapvidcam/vidcamicon")

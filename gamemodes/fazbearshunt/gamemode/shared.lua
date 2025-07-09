@@ -62,50 +62,50 @@ killerData = killerData or {
 
 killerAbilities = killerAbilities or {
     freddy = {
-        { name = 'kill', key = 'ЛКМ', duration = 0, keyboard = false, hidden = true },
-        { name = 'stalk', key = 'ПКМ', duration = 0 },
+        { name = 'kill', key = 'LMB', duration = 0, keyboard = false, hidden = true },
+        { name = 'stalk', key = 'RMB', duration = 0 },
         { name = 'highlight', key = 'R', duration = 0, keyboard = true, hidden = false }
     },
     bonnie = {
-        { name = 'kill', key = 'ЛКМ', duration = 0, keyboard = false, hidden = true },
-        { name = 'yoursmine', key = 'ПКМ', duration = 0 },
+        { name = 'kill', key = 'LMB', duration = 0, keyboard = false, hidden = true },
+        { name = 'yoursmine', key = 'RMB', duration = 0 },
         { name = 'highlight', key = 'R', duration = 0, keyboard = true, hidden = false }
     },
     chica = {
-        { name = 'kill', key = 'ЛКМ', duration = 0, keyboard = false, hidden = true },
-        { name = 'mine', key = 'ПКМ', duration = 0 },
+        { name = 'kill', key = 'LMB', duration = 0, keyboard = false, hidden = true },
+        { name = 'mine', key = 'RMB', duration = 0 },
         { name = 'highlight', key = 'R', duration = 0, keyboard = true, hidden = false }
     },
     foxy = {
-        { name = 'kill', key = 'ЛКМ', duration = 0, keyboard = false, hidden = true },
+        { name = 'kill', key = 'LMB', duration = 0, keyboard = false, hidden = true },
         { name = 'highlight', key = 'R', duration = 0, keyboard = true, hidden = false }
     },
     sfreddy = {
-        { name = 'kill', key = 'ЛКМ', duration = 0, keyboard = false, hidden = true },
-        { name = 'submerge', key = 'ПКМ', duration = 0, condition = function()
+        { name = 'kill', key = 'LMB', duration = 0, keyboard = false, hidden = true },
+        { name = 'submerge', key = 'RMB', duration = 0, condition = function()
             return isNotStuck()
         end },
         { name = 'highlight', key = 'R', duration = 0, keyboard = true, hidden = false }
     },
     endo = {
-        { name = 'kill', key = 'ЛКМ', duration = 0, keyboard = false, hidden = true },
-        { name = 'grab', key = 'ПКМ', duration = 0 },
+        { name = 'kill', key = 'LMB', duration = 0, keyboard = false, hidden = true },
+        { name = 'grab', key = 'RMB', duration = 0 },
         { name = 'highlight', key = 'R', duration = 0, keyboard = true, hidden = false }
     },
     clown = {
-        { name = 'attack', key = 'ЛКМ', duration = 0, keyboard = false, hidden = false },
+        { name = 'attack', key = 'LMB', duration = 0, keyboard = false, hidden = false },
         { name = 'highlight', key = 'R', duration = 0, keyboard = true, hidden = false }
     },
     plushtrap = {
-        { name = 'attack', key = 'ЛКМ', duration = 0, keyboard = false, hidden = false }
+        { name = 'attack', key = 'LMB', duration = 0, keyboard = false, hidden = false }
     },
     springtrap = {
-        { name = 'attack', key = 'ЛКМ', duration = 0, keyboard = false, hidden = false },
-        { name = 'summon', key = 'ПКМ', duration = 0 },
+        { name = 'attack', key = 'LMB', duration = 0, keyboard = false, hidden = false },
+        { name = 'summon', key = 'RMB', duration = 0 },
         { name = 'highlight', key = 'R', duration = 0, keyboard = true, hidden = false }
     },
     gfreddy = {
-        { name = 'submerge', key = 'ПКМ', duration = 0 },
+        { name = 'submerge', key = 'RMB', duration = 0 },
         { name = 'choose_target', key = 'R', duration = 0, keyboard = true, hidden = false }
     }
 }

@@ -604,7 +604,10 @@ hook.Add("PlayerDisconnected", "fh_playerleft", function(ply)
 	if animatronics[ply] then
 		animatronics[ply] = nil
 		if isGameOn and !roundEnding then
-			PrintMessage(HUD_PRINTTALK, "Аниматроник " .. ply:Nick() .. " вышел из игры.")
+			local imya = ply:Nick()
+			for _, player in player.Iterator() do
+				player:SendLua( "LocalPlayer():ChatPrint(string.format(language.GetPhrase('fazhunt.chat.animleave'), " .. imya .. " ))" )
+			end
 		end
 	end
 	alivePlayers[ply] = nil
