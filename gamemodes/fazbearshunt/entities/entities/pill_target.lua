@@ -32,7 +32,7 @@ end
 
 function ENT:Think() 
 	local owner = self:GetOwner()
-	local ent = pk_pills.getMappedEnt(owner)
+	local ent = pills.getMappedEnt(owner)
 
 	if IsValid(ent) then
 		if CLIENT then
@@ -49,7 +49,7 @@ function ENT:Think()
 
 			local angles = owner:EyeAngles()
 
-			if pk_pills.var_thirdperson:GetBool() then
+			if pills.var_thirdperson:GetBool() then
 				local dist
 				if ent.formTable.type=="phys"&&ent.formTable.camera&&ent.formTable.camera.distFromSize then
 					dist = ent:BoundingRadius()*5
@@ -108,7 +108,7 @@ end)
 
 function ENT:MoveCam()
 	local owner = self:GetOwner()
-	local ent = pk_pills.getMappedEnt(owner)
+	local ent = pills.getMappedEnt(owner)
 
 	if IsValid(ent) then
 		//if CLIENT then
@@ -121,7 +121,7 @@ function ENT:MoveCam()
 
 			local angles = owner:EyeAngles()
 
-			if pk_pills.var_thirdperson:GetBool() then
+			if pills.var_thirdperson:GetBool() then
 				local dist
 				if ent.formTable.type=="phys"&&ent.formTable.camera&&ent.formTable.camera.distFromSize then
 					dist = ent:BoundingRadius()*5

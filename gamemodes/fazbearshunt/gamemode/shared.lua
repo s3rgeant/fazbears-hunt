@@ -78,6 +78,7 @@ killerAbilities = killerAbilities or {
     },
     foxy = {
         { name = 'kill', key = 'LMB', duration = 0, keyboard = false, hidden = true },
+		{ name = 'charge', key = 'RMB', duration = 0, keyboard = false, tokens = 5 },
         { name = 'highlight', key = 'R', duration = 0, keyboard = true, hidden = false }
     },
     sfreddy = {
@@ -251,21 +252,52 @@ utf8.sub = function(str, startChar, endChar)
 end
 
 hook.Add("ShouldCollide", "fh_collisions", function(ent1, ent2)
-    if ent1:GetCollisionGroup() == COLLISION_GROUP_WORLD 
-	or ent2:GetCollisionGroup() == COLLISION_GROUP_WORLD 
-	or ( ent1:GetCollisionGroup() == COLLISION_GROUP_DEBRIS and ent1:IsPlayer() 
-				and ent2:GetClass() != "prop_dynamic" 
-				and ent2:GetClass() != "func_train" )
-				and ent2:GetClass() != "func_tracktrain" -- s freddy & g freddy
-	or ( ent1:GetCollisionGroup() == COLLISION_GROUP_PASSABLE_DOOR and ent1:IsPlayer() and ent2:IsPlayer() )
-	or ( ent2:GetCollisionGroup() == COLLISION_GROUP_PASSABLE_DOOR and ent2:IsPlayer() and ent1:IsPlayer() )
-	or ent1:GetCollisionGroup() == COLLISION_GROUP_PLAYER_MOVEMENT and ent2:IsPlayer() and ent2:GetCollisionGroup() != ent1:GetCollisionGroup()
-	or ent2:GetCollisionGroup() == COLLISION_GROUP_PLAYER_MOVEMENT and ent1:IsPlayer() and ent1:GetCollisionGroup() != ent2:GetCollisionGroup()
-	then
+    local cg1, cg2 = ent1:GetCollisionGroup(), ent2:GetCollisionGroup()
+    local class1, class2 = ent1:GetClass(), ent2:GetClass()
+    local isPlayer1, isPlayer2 = ent1:IsPlayer(), ent2:IsPlayer()
+
+	if class1 == "prop_ragdoll" and class2 == "prop_ragdoll" then
+		return false
+	end
+	
+	if class2 == "prop_ragdoll" and isPlayer1 then
+		return false
+	elseif class1 == "prop_ragdoll" and isPlayer2 then
+		return false
+	end
+
+    -- Отключаем столкновения с миром
+    if cg1 == COLLISION_GROUP_WORLD or cg2 == COLLISION_GROUP_WORLD then
         return false
     end
+
+    -- Shadow + Golden Freddy
+    if cg1 == COLLISION_GROUP_DEBRIS and isPlayer1 then
+        if class2 ~= "prop_dynamic" and class2 ~= "func_train" and class2 ~= "func_tracktrain" then
+            return false
+        end
+    elseif cg2 == COLLISION_GROUP_DEBRIS and isPlayer2 then
+        if class1 ~= "prop_dynamic" and class1 ~= "func_train" and class1 ~= "func_tracktrain" then
+            return false
+        end
+    end
+
+    -- Два игрока и один из них имеет PASSABLE_DOOR
+    if (cg1 == COLLISION_GROUP_PASSABLE_DOOR and isPlayer1 and isPlayer2)
+        or (cg2 == COLLISION_GROUP_PASSABLE_DOOR and isPlayer2 and isPlayer1) then
+        return false
+    end
+
+    -- Игроки с разными группами, один с PLAYER_MOVEMENT
+    if cg1 == COLLISION_GROUP_PLAYER_MOVEMENT and isPlayer2 and cg2 ~= cg1 then
+        return false
+    elseif cg2 == COLLISION_GROUP_PLAYER_MOVEMENT and isPlayer1 and cg1 ~= cg2 then
+        return false
+    end
+
     return true
 end)
+
 
 if CLIENT then
 	net.Receive("fh_change_notprefered", function()

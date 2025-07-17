@@ -80,16 +80,18 @@ end)
 -- #### ВЫБИРАЛКА АНИМАТРОНОВ!!!
 
 local animatronics = {}
+local selectable = false
 local selector
 local grid
+
 function draw_killer_selector()
     if not istable(animatronics) then return end
-    
-	if IsValid(fh_admin_panel) then 
+
+    if IsValid(fh_admin_panel) then 
         fh_admin_panel:Remove()
         gui.EnableScreenClicker(false)
-	end
-    
+    end
+
     selector = vgui.Create("DFrame")
     selector:SetTitle("")
     selector:SetDraggable(false)
@@ -97,11 +99,11 @@ function draw_killer_selector()
     selector:SetSize(600, 600)
     selector:Center()
     selector:MakePopup()
-    
+
     selector.Paint = function(self, w, h)
         draw.RoundedBox(24, 0, 0, w, h, Color(0, 0, 0, 240))
     end
-    
+
     local titleLabel = vgui.Create("DLabel", selector)
     titleLabel:SetText(language.GetPhrase("fazhunt.selector.select_animatronic"))
     titleLabel:SetFont("DermaLarge")
@@ -110,99 +112,105 @@ function draw_killer_selector()
     titleLabel:CenterHorizontal()
     titleLabel:SetPos(titleLabel:GetX(), 20)
 
-    local timeLeft = 30
-    
+    local duration = 30
+    local endTime = CurTime() + duration
+
     local timerLabel = vgui.Create("DLabel", selector)
     timerLabel:SetFont("DermaLarge")
     timerLabel:SetTextColor(Color(255, 200, 0))
     timerLabel:SetPos(0, 60)
-    timerLabel:SetText(string.format("– %d –", timeLeft))
     timerLabel:SizeToContents()
     timerLabel:CenterHorizontal()
-    
-    timer.Create("AnimatronicMenuTimer", 1, 30, function()
-        if not IsValid(timerLabel) or not IsValid(selector) then return end
-        
-        timeLeft = timeLeft - 1
+
+    selector.Think = function()
+        if not IsValid(timerLabel) then return end
+
+        local timeLeft = math.max(0, math.ceil(endTime - CurTime()))
         timerLabel:SetText(string.format("– %d –", timeLeft))
         timerLabel:SizeToContents()
         timerLabel:CenterHorizontal()
-        
-        if timeLeft <= 0 then
-            if IsValid(selector) then selector:Close() end
-            timer.Remove("AnimatronicMenuTimer")
-			
-			net.Start("fh_selector_nomore")
-			net.SendToServer()
-        end
-    end)
-    
-    local scroll = vgui.Create("DScrollPanel", selector)
-	scroll:SetPos(50, 100)
-	scroll:SetSize(500, 450) -- регулируй по нужной высоте
-	
-	grid = vgui.Create("DGrid", scroll)
-	grid:SetCols(3)
-	grid:SetColWide(150)
-	grid:SetRowHeight(150)
-	grid:Dock(TOP)
-	grid:DockMargin(0, 0, 0, 0)
-	
-	-- Важно: нужно обновить размер grid вручную после добавления всех элементов
-	local rowCount = math.ceil(#animatronics / 3)
-	grid:SetTall(rowCount * 150)
-	
-	for i, animName in ipairs(animatronics) do
-		local imagePath = "vgui/bars/" .. killerData[animName].name .. ".png"
-	
-		local box = vgui.Create("DImageButton")
-		box:SetSize(140, 140)
-		box.name = animName
-	
-		box.DoClick = function()
-			net.Start("fh_selected_killer")
-			net.WriteString(animName)
-			net.SendToServer()
-		end
-	
-		if file.Exists("materials/" .. imagePath, "GAME") then
-			box:SetImage(imagePath)
-		else
-			box.Paint = function(self, w, h)
-				draw.RoundedBox(4, 0, 0, w, h, Color(0, 0, 0))
-				draw.SimpleText(language.GetPhrase(killerData[animName].fullname), "timerFontSmall", w / 2, h / 2, color_white, TEXT_ALIGN_CENTER, TEXT_ALIGN_CENTER)
-			end
-		end
-	
-		grid:AddItem(box)
-	end
 
+        if timeLeft <= 0 and IsValid(selector) then
+            selector:Close()
+            selectable = false
+
+            net.Start("fh_selector_nomore")
+            net.SendToServer()
+        end
+    end
+
+    local scroll = vgui.Create("DScrollPanel", selector)
+    scroll:SetPos(50, 100)
+    scroll:SetSize(500, 450)
+
+    grid = vgui.Create("DGrid", scroll)
+    grid:SetCols(3)
+    grid:SetColWide(150)
+    grid:SetRowHeight(150)
+    grid:Dock(TOP)
+    grid:DockMargin(0, 0, 0, 0)
+
+    local rowCount = math.ceil(#animatronics / 3)
+    grid:SetTall(rowCount * 150)
+
+    for i, animName in ipairs(animatronics) do
+        local imagePath = "vgui/bars/" .. killerData[animName].name .. ".png"
+
+        local box = vgui.Create("DImageButton")
+        box:SetSize(140, 140)
+        box.name = animName
+
+        box.DoClick = function()
+            if not selectable then return end
+            net.Start("fh_selected_killer")
+            net.WriteString(animName)
+            net.SendToServer()
+        end
+
+        if file.Exists("materials/" .. imagePath, "GAME") then
+            box:SetImage(imagePath)
+        else
+            box.Paint = function(self, w, h)
+                draw.RoundedBox(4, 0, 0, w, h, Color(0, 0, 0))
+                draw.SimpleText(language.GetPhrase(killerData[animName].fullname), "timerFontSmall", w / 2, h / 2, color_white, TEXT_ALIGN_CENTER, TEXT_ALIGN_CENTER)
+            end
+        end
+
+        grid:AddItem(box)
+    end
 end
 
 net.Receive("fh_let_killers_choose", function()
     animatronics = net.ReadTable()
-	
     draw_killer_selector()
+
+    timer.Simple(1.5, function()
+        selectable = true
+    end)
 end)
 
 net.Receive("fh_update_killer_selector", function()
     local ply = net.ReadPlayer()
-	local killer = net.ReadString()
-	
-	if ply == LocalPlayer() then
-        if IsValid(selector) then selector:Close() end
-		return
-	end
-	if IsValid(selector) and IsValid(grid) then
-		for _,v in pairs(grid:GetItems()) do
-			if v.name == killer then
-				v:SetEnabled(false)
+    local killer = net.ReadString()
 
-				v:SetAlpha(100)
-			end
-		end
-	end
+    if ply == LocalPlayer() then
+        if IsValid(selector) then 
+            selector:Close() 
+            selectable = false
+        end
+        return
+    end
+
+    if IsValid(selector) and IsValid(grid) then
+        for _, v in pairs(grid:GetItems()) do
+            if v.name == killer then
+                v:SetEnabled(false)
+                v:SetAlpha(100)
+            end
+        end
+    end
 end)
+
 
 
 

@@ -1,7 +1,7 @@
 function getPlrs(ply)
 	local entities = {}
 
-	for _, v in ipairs(player.GetAll()) do
+	for _, v in player.Iterator() do
 		if v:Team() ~= TEAM_SPECTATOR and v:Alive() then
 			table.insert(entities, v)
 		end

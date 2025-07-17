@@ -1,7 +1,6 @@
 include( "shared.lua" )
 
-pcall(require,"pk_pills")
---require ( "outline" )
+pcall(require,"pills")
 
 include( "cl_admin.lua" )
 include( "cl_halo.lua" )
@@ -13,6 +12,8 @@ include( "cl_spechud.lua" )
 include( "cl_sound.lua" )
 include( "cl_timer.lua" )
 include( "cl_optionmenu.lua" )
+
+include( "terror_radius.lua" )
 
 include( "mount/proximity.lua" )
 
@@ -97,7 +98,7 @@ net.Receive("KillerPicked", function()
     local color = net.ReadColor()
     
     chat.AddText(
-        color, "(" .. num .. ") - ", playerName, " - ", language.GetPhrase("fuppr.round.became"), " ", language.GetPhrase(animatronicName)
+        Color(255, 15, 15), playerName, " ", Color(255,255,255), language.GetPhrase("fuppr.round.became"), " ", color, language.GetPhrase(animatronicName)
     )
 end)
 
@@ -170,6 +171,12 @@ net.Receive("fh_set_calcview_entity", function(len)
 	end)
 end)
 
+net.Receive("fh_animatronic_left_chatmessage", function()
+	local imya = net.ReadString()
+
+	LocalPlayer():ChatPrint(string.format(language.GetPhrase('fazhunt.chat.animleave'), imya ))
+end)
+
 local customViewPos = nil
 local customViewAng = nil
 
@@ -181,7 +188,7 @@ hook.Add("CalcView", "fh_animatronic_head_bop", function(ply, pos, angles, fov)
 	
     if !IsValid(ply) or !ply:Alive() or ply:GetMoveType() == MOVETYPE_NOCLIP or ply:GetCollisionGroup() == COLLISION_GROUP_DEBRIS or !dynamic_firstperson:GetBool() then return end
 	
-    local targetEnt = pk_pills.getMappedEnt(ply)
+    local targetEnt = pills.getMappedEnt(ply)
 
     if !IsValid(targetEnt) then return end
 
@@ -226,7 +233,7 @@ end)
 function GM:MouthMoveAnimation(ply)
     local weight = ply:IsSpeaking() and math.Clamp(ply:VoiceVolume() * 2, 0, 2) or 0
 
-    local pillEnt = pk_pills and pk_pills.getMappedEnt and pk_pills.getMappedEnt(ply)
+    local pillEnt = pills and pills.getMappedEnt and pills.getMappedEnt(ply)
 
 	if IsValid(pillEnt) then
         local jawBones = { "bip_jaw", "Jaw", "Jaw_Bn", "Jaw_jnt", "JawInner" }

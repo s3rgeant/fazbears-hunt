@@ -1,5 +1,6 @@
 ﻿AddCSLuaFile()
 include( "animatronics/wgfreddy.lua" )
+include( "animatronics/foxy.lua" )
 
 if SERVER then
 	util.AddNetworkString("JumpscareLight")
@@ -50,13 +51,13 @@ if SERVER then
 	util.PrecacheModel("models/speps/pill/endo02.mdl")
 end
 
-pcall(require,"pk_pills")
+pcall(require,"pills")
 
 local cupcakes = {} 
 
 shadow_freddyability = CreateConVar( "fuppr_sfreddy_noclip", "1", { FCVAR_NOTIFY, FCVAR_ARCHIVE, FCVAR_REPLICATED }, "Noclip." )
 
-pk_pills.packStart("FUPPR 2 WE","FUPPR 2 WE","icon/fnafur2we.png")
+pills.packStart("FUPPR 2 WE","FUPPR 2 WE","icon/fnafur2we.png")
 
 
 local stalker
@@ -70,7 +71,7 @@ end)
 local wfreddy_default_movement = {150, 490, 65, 250} -- обычное передвижение
 local wfreddy_stalk_movement = {150, 600, 70, 255} -- сталкер дохуя
 
-pk_pills.register("pill_wfreddy2",{
+pills.register("pill_wfreddy2",{
 	printName="Withered Freddy",
 	model="models/speps/pill/oldfreddy.mdl",
 	bodyGroups={0},
@@ -91,24 +92,25 @@ pk_pills.register("pill_wfreddy2",{
 		},
 	},
 	moveSpeed={
-		walk=wfreddy_default_movement[1],
-		run=wfreddy_default_movement[2],
-		ducked=wfreddy_default_movement[3],
+		walk=wfreddy_default_movement[1] * 0.2,
+		run=wfreddy_default_movement[2] * 0.2,
+		ducked=wfreddy_default_movement[3] * 0.2,
 	},
+	modelScale="0.2",
 	sounds={
 		gs="fnaf2/stareshort.wav",
 		loop_stare="fnaf2/with_s2_loop2.wav",
 		jump="jump.mp3",
 		land="land.mp3",
-		melee=pk_pills.helpers.makeList("fnaf2/xscream2.wav",2),
-		step=pk_pills.helpers.makeList("fnaf2/none.wav",1)
+		melee=pills.helpers.makeList("fnaf2/xscream2.wav",2),
+		step=pills.helpers.makeList("fnaf2/none.wav",1)
 	},
 	type="ply",
     camera = {
-        offset = Vector(0, 0, 90),
+        offset = Vector(0, 0, 2),
 		dist = 150
     },
-	hull=Vector(16,16,86),
+	hull=Vector(16 * 0.2,16 * 0.2,86 * 0.2),
 	duckBy=60,
 	
 	viewmodel={
@@ -185,7 +187,7 @@ pk_pills.register("pill_wfreddy2",{
 				wep:PlayCustomAnimation("ACT_MELEE_ATTACK1", 1.6)
 			end
 		
-			timer.Simple( 1.6, function()
+			timer.Create("FH_JumpscareKill_" .. ply:EntIndex(), 1.6, 1, function()
 				ply:Freeze( false )
 				if !IsValid(target) then return end
 				target:Freeze( false )
@@ -205,8 +207,14 @@ pk_pills.register("pill_wfreddy2",{
 			if !IsValid(target) or !ply:OnGround() then return end
 	
 			if timer.Exists("fh_stalking" .. ply:EntIndex()) or ply == stalker then return end
+			
+			local fh_stalking_timer = 'fh_stalking' .. ply:EntIndex()
 	
-			timer.Create('fh_stalking' .. ply:EntIndex(), 1, 0, function() end)
+			timer.Create(fh_stalking_timer, 1, 0, function()
+				if !IsValid(ent) or !IsValid(ply) then
+					timer.Remove(fh_stalking_timer)
+				end
+			end)
 	
 			local lastPosition = target:GetPos()
 			local movementTime = 0
@@ -225,18 +233,11 @@ pk_pills.register("pill_wfreddy2",{
 			if IsValid(wep) and wep:GetClass() == "v_freddy" then
 				wep:PlayCustomAnimation("ACT_VM_DEPLOY", 10)
 			end
-	
-			local recipients = {}
-			for _, v in player.Iterator() do
-				if v ~= ply then
-					table.insert(recipients, v)
-				end
-			end
 			
 			net.Start('fh_ent_sound_play')
 			net.WritePlayer(ply)
 			net.WriteString('freddy_stalking_others.wav')
-			net.Send(recipients)
+			net.SendOmit(ply)
 	
 			timer.Create("stalk_check" .. ent:EntIndex(), 1, 11, function()
 	
@@ -248,7 +249,6 @@ pk_pills.register("pill_wfreddy2",{
 				end
 	
 				if timer.RepsLeft("stalk_check" .. ent:EntIndex()) == 1 then
-					ent:PillAnim("idle")
 					timer.Remove("SmoothLookAt_" .. ply:EntIndex())
 					timer.Remove("stalk_check" .. ent:EntIndex())
 					ply:SetFOV(0, 1)
@@ -343,15 +343,6 @@ pk_pills.register("pill_wfreddy2",{
 		stalker = nil
 		stalkerEnt = nil
 		
-		formtable.anims.default.run = 'run'
-		
-		local speed = formtable.moveSpeed or {}
-		
-		speed.walk = wfreddy_default_movement[1]
-		speed.run = wfreddy_default_movement[2]
-		speed.ducked = wfreddy_default_movement[3]
-		formtable.jumpPower = wfreddy_default_movement[4]
-		
 		timer.Remove("fh_stalking"..ply:EntIndex())
 		
 		net.Start('fh_sound_stop')
@@ -416,8 +407,8 @@ function successStalk(ply, ent, target)
 		stalkerEnt = ent
 		stalkTarget = target
 		
-		ent:SetSpeed(wfreddy_stalk_movement[1], wfreddy_stalk_movement[2], wfreddy_stalk_movement[3], wfreddy_stalk_movement[4])
-		ent.formTable.anims.default.run = 'srun'
+		ent:SetSpeed(unpack(wfreddy_stalk_movement))
+		ent:ReplaceAnimation("run", "srun")
 		
 		table.insert(affectedPlayers, target)
 		
@@ -459,6 +450,7 @@ function successStalk(ply, ent, target)
 		net.Start('fh_net_display')
 		net.WriteString('fazhunt.freddy.foundrun')
 		net.WriteString('fazhunt.freddy.found')
+		net.WriteFloat(-1)
 		net.WriteFloat(6)
 		net.Send(target)
 	end
@@ -467,8 +459,8 @@ end
 function noMoreStalk(ply)
 	local ent = stalkerEnt
 	
-	ent:SetSpeed(wfreddy_default_movement[1], wfreddy_default_movement[2], wfreddy_default_movement[3], wfreddy_default_movement[4])
-	ent.formTable.anims.default.run = 'run'
+	ent:SetSpeed(unpack(wfreddy_default_movement))
+	ent:ReplaceAnimation("run", "run")
 	
 	local wep = ply:GetActiveWeapon()
 	if IsValid(wep) and wep:GetClass() == "v_freddy" then
@@ -497,7 +489,7 @@ end
 
 --bonnie
 
-pk_pills.register("pill_wbonnie2",{
+pills.register("pill_wbonnie2",{
 	printName="Withered Bonnie",
 	model="models/speps/pill/oldbonnie.mdl",
 	bodyGroups={math.random(1,1000) == 27 and 0 or 10},		-- рофлянка лицо бонни
@@ -528,10 +520,10 @@ pk_pills.register("pill_wbonnie2",{
 		gs="fnaf2/stareshort.wav",
 		loop_stare="fnaf2/with_s2_loop2.wav",
 		scream="fnaf2/bonniescream.wav",
-		melee=pk_pills.helpers.makeList("fnaf2/xscream2.wav",2),
+		melee=pills.helpers.makeList("fnaf2/xscream2.wav",2),
 		jump="jump.mp3",
 		land="land.mp3",
-		step=pk_pills.helpers.makeList("fnaf2/none.wav",1)
+		step=pills.helpers.makeList("fnaf2/none.wav",1)
 	},
 	type="ply",
     camera = {
@@ -618,7 +610,7 @@ pk_pills.register("pill_wbonnie2",{
 				target:TakeDamage(target:Health() + target:Armor(), ply)
 			end)
 		
-			timer.Simple( 1.6, function()
+			timer.Create("FH_JumpscareKill_" .. ply:EntIndex(), 1.6, 1, function()
 				ply:Freeze( false )
 				if !IsValid(target) then return end
 				target:Freeze( false )
@@ -765,7 +757,7 @@ end
 
 
 
-pk_pills.register("pill_wchica2",{
+pills.register("pill_wchica2",{
 	printName="Withered Chica",
 	model="models/speps/pill/oldchica.mdl",
 	anims={
@@ -794,9 +786,9 @@ pk_pills.register("pill_wchica2",{
 		loop_stare="fnaf2/with_s2_loop2.wav",
 		jump="jump.mp3",
 		land="land.mp3",
-		melee=pk_pills.helpers.makeList("fnaf2/xscream2.wav",2),
+		melee=pills.helpers.makeList("fnaf2/xscream2.wav",2),
 		deploy="chica_deploycake.wav",
-		step=pk_pills.helpers.makeList("fnaf2/none.wav",1)
+		step=pills.helpers.makeList("fnaf2/none.wav",1)
 	},
 	type="ply",
     camera = {
@@ -867,7 +859,7 @@ pk_pills.register("pill_wchica2",{
 			net.WriteFloat(1.6)
 			net.Send(ply)
 		
-			timer.Simple( 1.6, function()
+			timer.Create("FH_JumpscareKill_" .. ply:EntIndex(), 1.6, 1, function()
 				ply:Freeze( false )
 				if !IsValid(target) then return end
 				target:Freeze( false )
@@ -961,14 +953,19 @@ pk_pills.register("pill_wchica2",{
 
 --foxy
 
+local foxy_movement_speed = {150, 490, 70, 400}
 
+function FoxyMovementSpeed()
+	return foxy_movement_speed
+end
 
+local stunned_foxy_movement_speed = {80, 80, 70, 100}
 
+function StunnedFoxyMovementSpeed()
+	return stunned_foxy_movement_speed
+end
 
-
-
-
-pk_pills.register("pill_wfoxy2",{
+pills.register("pill_wfoxy2",{
 	printName="Withered Foxy",
 	model="models/speps/pill/oldfoxy.mdl",
 	bodyGroups={0},
@@ -990,11 +987,10 @@ pk_pills.register("pill_wfoxy2",{
 	},
 	moveSpeed={
 		walk=150,
-		run=527,
+		run=490,
 		ducked=70,
 	},
 	sounds={
-	//	teleport="legitfreddy/laugh_giggle_girl_1d.wav",
 		gs="fnaf2/xscream2.wav",
 		jump="jump.mp3",
 		regular_land="land.mp3",
@@ -1002,8 +998,8 @@ pk_pills.register("pill_wfoxy2",{
 		loop_stare="fnaf2/with_s2_loop2.wav",
 		scream="fnaf2/foxyflashed.wav",
 		taunt="foxy_laugh.wav",
-		melee=pk_pills.helpers.makeList("fnaf2/xscream2.wav",2),
-		step=pk_pills.helpers.makeList("fnaf2/none.wav",1)
+		melee=pills.helpers.makeList("fnaf2/xscream2.wav",2),
+		step=pills.helpers.makeList("fnaf2/none.wav",1)
 	},
 	type="ply",
     camera = {
@@ -1058,7 +1054,7 @@ pk_pills.register("pill_wfoxy2",{
 	attack={
 		mode="trigger",
 		func=function(ply,ent)
-			if ply.lobbyFreeze != nil and ply.lobbyFreeze then return end
+			if ply.lobbyFreeze != nil and ply.lobbyFreeze or ply.blightRushing then return end
 			
 			if IsValid(ply:GetEntityInUse()) then return end
 			
@@ -1083,7 +1079,7 @@ pk_pills.register("pill_wfoxy2",{
 				wep:PlayCustomAnimation("ACT_MELEE_ATTACK1", 1.5)
 			end
 			
-			timer.Simple( 1.6, function()
+			timer.Create("FH_JumpscareKill_" .. ply:EntIndex(), 1.6, 1, function()
 				ply:Freeze( false )
 				if !IsValid(target) then return end
 				target:Freeze( false )
@@ -1095,13 +1091,13 @@ pk_pills.register("pill_wfoxy2",{
 	attack2={
 		mode="trigger",
 		func = function(ply,ent)
-			ent:PillSound("taunt",false)
-			ent:PillAnim("cloak", true)
-			
+			foxyRush(ply, ent)
+			--[[
 			local wep = ply:GetActiveWeapon()
 			if IsValid(wep) and wep:GetClass() == "v_foxy" then
 				wep:PlayCustomAnimation("ACT_GMOD_TAUNT_LAUGH", 1.9)
 			end
+			]]--
 		end
 	},
 	
@@ -1169,7 +1165,7 @@ local sfreddy_cooldowns = {1.5, 7, 5}
 local sfreddy_default_movement = {100, 100, 65, 250} -- обычное передвижение
 local sfreddy_noclip_movement = {500, 600, 500, 250} -- это на случай если - fuppr_sfreddy_noclip 0
 
-pk_pills.register("pill_sfreddy2",{
+pills.register("pill_sfreddy2",{
 	printName="Shadow Freddy",
 	model="models/speps/pill/oldgoldenfreddy.mdl",
 
@@ -1204,8 +1200,8 @@ pk_pills.register("pill_sfreddy2",{
 		"fnaf2/garble2.wav",
 		"fnaf2/garble3.wav"},
 	//	scream="fnaf2/bonniescream.wav",
-		melee=pk_pills.helpers.makeList("fnaf2/sxscream.wav",2),
-		step=pk_pills.helpers.makeList("fnaf2/none.wav",1)
+		melee=pills.helpers.makeList("fnaf2/sxscream.wav",2),
+		step=pills.helpers.makeList("fnaf2/none.wav",1)
 	},
 	type="ply",
     camera = {
@@ -1291,7 +1287,7 @@ pk_pills.register("pill_sfreddy2",{
 				wep:PlayCustomAnimation("ACT_MELEE_ATTACK1", 1.6)
 			end
 		
-			timer.Simple( 1.6, function()
+			timer.Create("FH_JumpscareKill_" .. ply:EntIndex(), 1.6, 1, function()
 				ply:Freeze( false )
 				if !IsValid(target) then return end
 				target:Freeze( false )
@@ -1365,7 +1361,7 @@ pk_pills.register("pill_sfreddy2",{
 					ply:SetCustomCollisionCheck(true)
 					ply:SetCollisionGroup(COLLISION_GROUP_PLAYER)
 					
-					ent:SetSpeed(sfreddy_default_movement[1], sfreddy_default_movement[2], sfreddy_default_movement[3], sfreddy_default_movement[4])
+					ent:SetSpeed( unpack(sfreddy_default_movement) )
 					
 					timer.Create("Cloacking"..ply:EntIndex(), 0.2, 1, function()
 						if !IsValid(ent) then return end
@@ -1417,7 +1413,7 @@ pk_pills.register("pill_sfreddy2",{
 						if !IsValid(ent) then return end
 						
 						if shadow_freddyability:GetInt() == 0 then
-							ent:SetSpeed(sfreddy_noclip_movement[1], sfreddy_noclip_movement[2], sfreddy_noclip_movement[3], sfreddy_noclip_movement[4])
+							ent:SetSpeed( unpack(sfreddy_noclip_movement) )
 						end
 						if shadow_freddyability:GetInt() == 1 then
 							ply:SetMoveType( MOVETYPE_NOCLIP )
@@ -1458,7 +1454,7 @@ pk_pills.register("pill_sfreddy2",{
 
 --endo
 
-pk_pills.register("pill_endo02",{
+pills.register("pill_endo02",{
 	printName="Endo02",
 	model="models/speps/pill/endo02.mdl",
 	anims={
@@ -1489,8 +1485,8 @@ pk_pills.register("pill_endo02",{
 		jump="jump.mp3",
 		land="land.mp3",
 	//	scream="fnaf2/bonniescream.wav",
-		melee=pk_pills.helpers.makeList("fnaf2/xscream2.wav",2),
-		step=pk_pills.helpers.makeList("fnaf2/none.wav",1)
+		melee=pills.helpers.makeList("fnaf2/xscream2.wav",2),
+		step=pills.helpers.makeList("fnaf2/none.wav",1)
 	},
 	type="ply",
     camera = {
@@ -1570,7 +1566,7 @@ pk_pills.register("pill_endo02",{
 				wep:PlayCustomAnimation("ACT_MELEE_ATTACK1", 1.6)
 			end
 		
-			timer.Simple( 1.6, function()
+			timer.Create("FH_JumpscareKill_" .. ply:EntIndex(), 1.6, 1, function()
 				ply:Freeze( false )
 				if !IsValid(target) then return end
 				target:Freeze( false )
@@ -1662,7 +1658,7 @@ local function fh_can_see_player(observer, target, radius)
         return true
     end
 
-    local mapped = pk_pills and pk_pills.getMappedEnt and pk_pills.getMappedEnt(target)
+    local mapped = pills and pills.getMappedEnt and pills.getMappedEnt(target)
     if IsValid(mapped) and mapped:GetBoneCount() > 0 then
         for boneIndex = 0, mapped:GetBoneCount() - 1 do
             local bonePos = mapped:GetBonePosition(boneIndex)
@@ -1687,7 +1683,7 @@ local gfreddy_movement = {130, 130, 0, 0}
 
 --golden freddy
 
-pk_pills.register("pill_wgfreddy2",{
+pills.register("pill_wgfreddy2",{
 	printName="Withered Golden Freddy",
 	model="models/speps/pill/oldgoldenfreddy.mdl",
 	bodyGroups={0},
@@ -1712,8 +1708,8 @@ pk_pills.register("pill_wgfreddy2",{
 	//	teleport="legitfreddy/laugh_giggle_girl_1d.wav",
 		gs="fnaf2/wgfreddy_laugh.wav",
 		scream="fnaf2/bonniescream.wav",
-		melee=pk_pills.helpers.makeList("fnaf2/xscream2.wav",2),
-		step=pk_pills.helpers.makeList("fnaf2/none.wav",1)
+		melee=pills.helpers.makeList("fnaf2/xscream2.wav",2),
+		step=pills.helpers.makeList("fnaf2/none.wav",1)
 	},
 	type="ply",
     camera = {
@@ -1749,7 +1745,7 @@ pk_pills.register("pill_wgfreddy2",{
 	
 	startFunction=function(ply,ent)
 		ply:DrawViewModel(false)
-		ent:SetSpeed(sfreddy_noclip_movement[1], sfreddy_noclip_movement[2], sfreddy_noclip_movement[3], sfreddy_noclip_movement[4])
+		ent:SetSpeed( unpack(sfreddy_noclip_movement) )
 		ent:SetMaterial("models/null")
 		ent:DrawShadow(false)
 		
@@ -1826,7 +1822,7 @@ pk_pills.register("pill_wgfreddy2",{
 					EmitSound("gfreddy.laugh", ply:GetPos())
 				end
 				
-				ent:SetSpeed(sfreddy_noclip_movement[1], sfreddy_noclip_movement[2], sfreddy_noclip_movement[3], sfreddy_noclip_movement[4])
+				ent:SetSpeed( unpack(sfreddy_noclip_movement) )
 				ply:DrawViewModel(false)
 						
 				ent:SetMaterial("models/null")
@@ -1839,7 +1835,7 @@ pk_pills.register("pill_wgfreddy2",{
 				ent.cloaked=true
 				
 			else
-				if fh_can_see_player(wgfreddy_targets[ply], ply, 1500) then return end
+				if fh_can_see_player(wgfreddy_targets[ply], ply, 1600) then return end
 			
 				local trace = util.TraceHull({
 					start = ply:GetPos(),
@@ -1857,7 +1853,7 @@ pk_pills.register("pill_wgfreddy2",{
 				end
 				
 				ply:DrawViewModel(true)
-				ent:SetSpeed(gfreddy_movement[1], gfreddy_movement[2], gfreddy_movement[3], gfreddy_movement[4])
+				ent:SetSpeed( unpack(gfreddy_movement) )
 				
 				ent:SetMaterial()
 				ent:DrawShadow(true)
@@ -1881,103 +1877,8 @@ pk_pills.register("pill_wgfreddy2",{
 		local target = fh_get_wgfreddy_target(ply)
 		
 		if !IsValid(target) then return end
-			
-		net.Start("fh_play_sound")
-		net.WriteString('fnaf2/gfreddy/gfreddy_target.wav')
-		net.Send(ply)
 		
-		net.Start("fh_wgfreddy_outworld_start")
-		net.WritePlayer(target)
-		net.Send(ply)
-		
-		ply:ChatPrint(target:Nick() .. " - твоя цель.")
-		
-		table.insert(affectedPlayers, target)
-		
-		-- никто не видит их
-		for _, player in player.Iterator() do
-			if player ~= ply and player ~= target and player:Team() != TEAM_SPECTATOR and player:Alive() then
-				net.Start("fh_dontdraw_player")
-				net.WritePlayer(target)
-				net.Send(player)
-				
-				net.Start("fh_dontdraw_anim")
-				net.WriteEntity(ent)
-				net.Send(player)
-			end
-		end
-		
-		ply:SetPushImmune(true)
-		ply:SetPushBlocked(true)
-		target:SetPushImmune(true)
-		target:SetPushBlocked(true)
-		
-		fh_cant_hear[target] = true
-		target:SetCollisionGroup(COLLISION_GROUP_PLAYER_MOVEMENT)
-		target:SetCustomCollisionCheck(true)
-		target:SetRunSpeed(240)
-		target:SetWalkSpeed(120)
-		target:SetJumpBoostMultiplier(0)
-		target:SetFOV(75)
-		
-		net.Start("fh_net_wgfreddy_scarysound")
-		net.WriteBool(true)
-		net.WritePlayer(ply)
-		net.Send(target)
-		
-		if target:HasWeapon("weapon_crapvidcam") then
-			target:StripWeapon("weapon_crapvidcam")
-		end
-		
-		local timer_name = "plushie_hint_" .. ply:EntIndex()
-		
-		timer.Create(timer_name, 20, 0, function()
-			if !IsValid(ply) or !IsValid(target) then
-				timer.Remove(timer_name)
-				return 
-			end
-		
-			local plushies = ents.FindByClass("fh_plushie")
-		
-			if #plushies == 0 then return end
-		
-			local allFar = true
-			local closestPlushie = nil
-			local closestDistance = math.huge
-		
-			for _, plushie in ipairs(plushies) do
-				if not IsValid(plushie) then continue end
-		
-				local dist = plushie:GetPos():Distance(target:GetPos())
-		
-				if dist <= 1400 then
-					allFar = false
-					break
-				end
-		
-				if dist < closestDistance then
-					closestDistance = dist
-					closestPlushie = plushie
-				end
-			end
-		
-			if allFar and IsValid(closestPlushie) then
-				net.Start("fh_pos_sound_play")
-				net.WriteString("fnaf2/gfreddy/plushie_hint.mp3")
-				net.WriteVector(closestPlushie:GetPos())
-				net.Send(target)
-			end
-		end)
-		
-		fh_spawnPlushies(target)
-		
-		wgfreddy_targets[ply] = target
-		outworld_victims[target] = true
-		outworld_victims_count[target] = 0
-		
-		net.Start("fh_wgfreddy_target_outworld_start")
-		net.WritePlayer(ply)
-		net.Send(target)
+		start_outworld(ply, target)
 	end,
 
 	jump=function(ply,ent)
@@ -1989,7 +1890,7 @@ pk_pills.register("pill_wgfreddy2",{
 
 -- GFREDDY HEAD
 
-pk_pills.register("pill_wgfreddyhead2",{
+pills.register("pill_wgfreddyhead2",{
 	printName="Withered Golden Freddy Head",
 	model="models/speps/pill/oldgoldenfreddyhead.mdl",
 	bodyGroups={0},
@@ -2015,8 +1916,8 @@ pk_pills.register("pill_wgfreddyhead2",{
 		gs={"fnaf2/wgfreddy_glitchsound.wav",
 		"fnaf2/wgfreddy_glitchsound2.wav"},
 		scream="fnaf2/bonniescream.wav",
-		melee=pk_pills.helpers.makeList("fnaf2/xscream2.wav",2),
-		step=pk_pills.helpers.makeList("fnaf2/none.wav",1)
+		melee=pills.helpers.makeList("fnaf2/xscream2.wav",2),
+		step=pills.helpers.makeList("fnaf2/none.wav",1)
 	},
 	type="ply",
     camera = {
@@ -2204,6 +2105,7 @@ function jumpscareEvent(ply, ent, target, dist)
 	net.Send(target)
 	
 	target.jumpscared = true
+	ply.jumpscaring = target
 	
 	target:DropToFloor()
 	ply:DropToFloor()
@@ -2418,6 +2320,9 @@ if SERVER then
 	hook.Add( "PlayerDeath", "fh_pill_fnaf2_death_check", function( victim, inflictor, attacker )
 		if victim.jumpscared then
 			victim.jumpscared = nil
+			if IsValid(attacker) and attacker:IsPlayer() then
+				attacker.jumpscaring = nil
+			end
 		end
 		if victim == stalkTarget then
 			net.Start('fh_sound_stop')
@@ -2437,7 +2342,7 @@ if SERVER then
 		
 		if !table.IsEmpty(wgfreddy_targets) then
 			for k,v in pairs( wgfreddy_targets ) do
-				local ent = pk_pills.getMappedEnt(k)
+				local ent = pills.getMappedEnt(k)
 				
 				if IsValid(ent) then
 					net.Start("fh_draw_anim")
@@ -2455,7 +2360,7 @@ if SERVER then
 	hook.Add("PlayerSpawn", "fh_pill_gfreddy_spawn_check", function(ply)
 		if !table.IsEmpty(wgfreddy_targets) then
 			for k,v in pairs( wgfreddy_targets ) do
-				local ent = pk_pills.getMappedEnt(k)
+				local ent = pills.getMappedEnt(k)
 				
 				if IsValid(ent) then
 					net.Start("fh_dontdraw_anim")
@@ -2481,10 +2386,6 @@ if SERVER then
 		end
 		if outworld_victims[ply] then
 			cancel_outworld(ply)
-		end
-		
-		local ent = pk_pills.getMappedEnt(ply)
-		if IsValid(ent) and ent.formTable.name == "pill_wgfreddy2" then
 		end
 	end)
 	
@@ -2513,7 +2414,7 @@ if SERVER then
 	end)
 	
 	hook.Add("OnPlayerPhysicsDrop", "fh_endo_prop_drop", function(ply, ent, thrown)
-		local puppet = pk_pills.getMappedEnt(ply)
+		local puppet = pills.getMappedEnt(ply)
 		if !IsValid(puppet) then return end
 		name = puppet.formTable.name
 		
@@ -2531,7 +2432,7 @@ else
 		local line = net.ReadString()
 		local who = net.ReadPlayer()
 		
-		local ent = pk_pills.getMappedEnt(who)
+		local ent = pills.getMappedEnt(who)
 		
 		if IsValid(ent) and ent.dontdraw then return end
 		

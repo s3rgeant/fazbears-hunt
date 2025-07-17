@@ -4,7 +4,7 @@ AddCSLuaFile()
 
 -- Them hooks
 hook.Add("CalcView", "momo_calcview", function(ply, pos, ang, fov, nearZ, farZ)
-    local ent = pk_pills.getMappedEnt(LocalPlayer())
+    local ent = pills.getMappedEnt(LocalPlayer())
 
     if IsValid(ent) and ply:GetViewEntity() == ply then
         local startpos
@@ -15,7 +15,7 @@ hook.Add("CalcView", "momo_calcview", function(ply, pos, ang, fov, nearZ, farZ)
             startpos = pos
         end
 
-        if pk_pills.convars.cl_thirdperson:GetBool() then
+        if pills.convars.cl_thirdperson:GetBool() then
             local dist
 
             if ent.formTable.type == "phys" and ent.formTable.camera and ent.formTable.camera.distFromSize then

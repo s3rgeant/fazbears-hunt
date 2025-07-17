@@ -119,7 +119,7 @@ end)
 net.Receive("fh_hl_animatronics", function()
 	for _, ply in ipairs(team.GetPlayers(2701)) do
 		if !table.HasValue(animatronics, ply) then
-			table.insert(animatronics, pk_pills.getMappedEnt(ply))
+			table.insert(animatronics, pills.getMappedEnt(ply))
 		end
 	end
 	surface.PlaySound("human_gift_vision.wav")
@@ -132,7 +132,7 @@ net.Receive("fh_hl_teammates", function()
 	if LocalPlayer():Team() == 2701 then
 		for _, ply in ipairs(team.GetPlayers(2701)) do
 			if !table.HasValue(teammates, ply) and LocalPlayer() ~= ply then
-				table.insert(teammates, pk_pills.getMappedEnt(ply))
+				table.insert(teammates, pills.getMappedEnt(ply))
 			end
 		end
 	end
@@ -269,7 +269,7 @@ hook.Add( "PreDrawHalos", "HaloDo", function()
 		
 	end
 	
-	local ent = pk_pills.getMappedEnt(LocalPlayer())
+	local ent = pills.getMappedEnt(LocalPlayer())
 	
 	if ent and ent.formTable then
 		if ent.formTable.name == "pill_wchica2" then -- ДЛЯ ЧИКИ
@@ -279,7 +279,7 @@ hook.Add( "PreDrawHalos", "HaloDo", function()
 end)
 
 hook.Add("HUDPaint", "fh_cupcake_count_draw", function()
-	local ent = pk_pills.getMappedEnt(LocalPlayer())
+	local ent = pills.getMappedEnt(LocalPlayer())
 	if !ent then return end
 	if ent.formTable and ent.formTable.name != "pill_wchica2" then return end
     local cakemines = ents.FindByClass("cakemine")
@@ -385,7 +385,7 @@ net.Receive("fh_start_yoursmine_view", function()
 	
 	LocalPlayer():SetFOV(0, 0)
 	
-	local ent = pk_pills.getMappedEnt(LocalPlayer())
+	local ent = pills.getMappedEnt(LocalPlayer())
 	
 	if IsValid(ent) and !table.HasValue(animatronics, ent) then
 		table.insert(animatronics, ent)
@@ -448,7 +448,7 @@ net.Receive("fh_stop_yoursmine_view", function()
 	
 	LocalPlayer():DrawViewModel( true, 0 )
 	
-	local ent = pk_pills.getMappedEnt(LocalPlayer())
+	local ent = pills.getMappedEnt(LocalPlayer())
 	
 	if IsValid(ent) and table.HasValue(animatronics, ent) then
 		table.RemoveByValue(animatronics, ent)

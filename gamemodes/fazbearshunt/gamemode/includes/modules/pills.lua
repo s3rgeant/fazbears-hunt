@@ -1,6 +1,6 @@
 AddCSLuaFile()
 -- Module starts here...
-module("pk_pills", package.seeall)
+module("pills", package.seeall)
 -- Load files
 file.CreateDir("pill_config")
 local locked_perma = {}
@@ -90,7 +90,7 @@ function editPillTable(name, func, newfunc)
 end
 
 function getPillTable(typ)
-    return forms[typ]
+    return table.Copy(forms[typ])
 end
 
 function getFormCount()
@@ -144,29 +144,6 @@ if SERVER then
 		if IsValid(ply) and !ply:IsAdmin() then return end
         restore(ply, true)
     end)
-
-    concommand.Add("pk_pill_spawnent", function(ply, cmd, args, str)
-		if IsValid(ply) and !ply:IsAdmin() then return end
-        local tr = ply:GetEyeTrace()
-        local e = ents.Create("pill_worldent")
-        e:SetPos(tr.HitPos + tr.HitNormal * 5)
-        e:SetPillForm(args[1])
-        e:Spawn()
-    end)
-
-    concommand.Add("pk_pill_morphgun_select", function(ply, cmd, args, str)
-		if IsValid(ply) and !ply:IsAdmin() then return end
-        local pill = args[1]
-        local wep = ply:GetWeapon("pill_wep_morphgun")
-
-        if not IsValid(wep) then
-            wep = ply:Give("pill_wep_morphgun")
-        end
-
-        if not IsValid(wep) then return end
-        ply:SelectWeapon("pill_wep_morphgun")
-        wep:SetForm(pill)
-    end)
 end
 
 -- NW Strings
@@ -213,7 +190,7 @@ if SERVER then
         if CLIENT then return end
 		
 		local found = false
-		for _, plyr in ipairs(player.GetAll()) do
+		for _, plyr in player.Iterator() do
 			if plyr:Nick() == ply then
 				ply = plyr
 				found = true
@@ -258,37 +235,6 @@ if SERVER then
                 success = false
             end
 
-            if t.type == "phys" and t.userSpawn then
-                local tr
-
-                if IsValid(old) and old.formTable.type == "phys" then
-                    tr = util.QuickTrace(old:GetPos(), ply:EyeAngles():Forward() * 99999, old)
-                else
-                    tr = ply:GetEyeTrace()
-                end
-
-                if t.userSpawn.type == "ceiling" then
-                    if tr.HitNormal.z < -.8 and not tr.HitSky then
-                        overridePos = tr.HitPos + tr.HitNormal * (t.userSpawn.offset or 0)
-                    else
-                        success = false
-                        ply:ChatPrint("You need to be looking at a ceiling to use this pill.")
-                    end
-                elseif t.userSpawn.type == "wall" then
-                    if not tr.HitSky then
-                        overridePos = tr.HitPos + tr.HitNormal * (t.userSpawn.offset or 0)
-                        overrideAng = tr.HitNormal:Angle()
-
-                        if t.userSpawn.ang then
-                            overrideAng = overrideAng + t.userSpawn.ang
-                        end
-                    else
-                        success = false
-                        ply:ChatPrint("You need to be looking at a wall to use this pill.")
-                    end
-                end
-            end
-
             net.Start("pk_pill_morphsound")
             net.WriteBit(success)
             net.Send(ply)
@@ -317,14 +263,7 @@ if SERVER then
         local e
 
 		if t.type == "ply" then
-            e = ents.Create("pill_ent_costume")
-
-            if old and old.formTable.type == "phys" then
-                local angs = ply:EyeAngles()
-                ply:Spawn()
-                ply:SetEyeAngles(angs)
-                ply:SetPos(old:GetPos())
-            end
+            e = ents.Create("pill_costume")
         else
             ply:ChatPrint("WARNING: Attempted to use invalid pill type.")
 
@@ -571,7 +510,7 @@ if SERVER then
 --	end)
 else -- CLIENT HOOKS
     hook.Add("HUDPaint", "pk_pill_hud", function()
-        if pk_pills.convars.cl_hidehud:GetBool() then return end
+        if pills.convars.cl_hidehud:GetBool() then return end
         local ent = getMappedEnt(LocalPlayer())
 
         if IsValid(ent) and GetConVar("cl_drawhud"):GetBool() then

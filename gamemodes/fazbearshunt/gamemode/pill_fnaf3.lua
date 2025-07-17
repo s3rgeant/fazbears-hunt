@@ -21,9 +21,9 @@ if SERVER then
 	util.PrecacheModel("models/tetTris/FNaF/HW/Plushtrap.mdl")
 end
 
-pcall(require,"pk_pills")
+pcall(require,"pills")
 
-pk_pills.packStart("FH FNAF3", "FH FNAF3", "icon16/pill.png")
+pills.packStart("FH FNAF3", "FH FNAF3", "icon16/pill.png")
 
 hook.Add( "PostCleanupMap", "fh_pill_fnaf2_reset", function( name )
 	
@@ -44,7 +44,7 @@ end)
 
 -- CLOWN
 
-pk_pills.register("pill_clown",{
+pills.register("pill_clown",{
 	printName="Clown",
 	bodyGroups={0},
 	modelScale="1.2",
@@ -73,8 +73,8 @@ pk_pills.register("pill_clown",{
 		jump="jump.mp3",
 		land="land.mp3",
 		loop_dance="kloun_ebanat.wav",
-		melee=pk_pills.helpers.makeList("fnaf2/xscream2.wav",2),
-		step=pk_pills.helpers.makeList("fnaf2/none.wav",1)
+		melee=pills.helpers.makeList("fnaf2/xscream2.wav",2),
+		step=pills.helpers.makeList("fnaf2/none.wav",1)
 	},
 	type="ply",
     camera = {
@@ -196,7 +196,7 @@ local request_plushtrap = nil
 local spring_default_movement = {210, 500, 45, 250} -- обычное передвижение
 local spring_rage_movement = {210, 600, 70, 255} -- дохуя скромник
 
-pk_pills.register("pill_springtrap",{
+pills.register("pill_springtrap",{
 	printName="Springtrap",
 	bodyGroups={0},
 	modelScale="0.85",
@@ -229,7 +229,7 @@ pk_pills.register("pill_springtrap",{
 		jump="fnaf3/sprjump.mp3",
 		land="fnaf3/sprland.mp3",
 		loop_breathing="springtrap.breath",
-		step=pk_pills.helpers.makeList("fnaf2/none.wav",1)
+		step=pills.helpers.makeList("fnaf2/none.wav",1)
 	},
 	type="ply",
     camera = {
@@ -468,13 +468,6 @@ pk_pills.register("pill_springtrap",{
 	end,
 	
 	restore=function(ply,ent, formtable)
-	
-		local speed = formtable.moveSpeed or {}
-		
-		speed.walk = spring_default_movement[1]
-		speed.run = spring_default_movement[2]
-		speed.ducked = spring_default_movement[3]
-		formtable.jumpPower = spring_default_movement[4]
 	end
 })
 
@@ -559,7 +552,7 @@ end
 local pt_speed_normal = {450,200,190}
 local pt_speed_slowed = {410,150,0}
 
-pk_pills.register("pill_plushtrap",{
+pills.register("pill_plushtrap",{
 	printName="Plushtrap",
 	bodyGroups={0},
 	modelScale="1.24",
@@ -588,7 +581,7 @@ pk_pills.register("pill_plushtrap",{
 	sounds={
 		jump="fnaf3/sprjump.mp3",
 		land="fnaf3/sprland.mp3",
-		step=pk_pills.helpers.makeList("fnaf2/none.wav",1)
+		step=pills.helpers.makeList("fnaf2/none.wav",1)
 	},
 	type="ply",
     camera = {
@@ -645,13 +638,6 @@ pk_pills.register("pill_plushtrap",{
 	restore=function(ply,ent, formtable)
 		ply:SetCollisionGroup(COLLISION_GROUP_NONE)
 		ply:SetCustomCollisionCheck(false)
-	
-		local speed = formtable.moveSpeed or {}
-		
-		speed.walk = pt_speed_normal[1]
-		speed.run = pt_speed_normal[1]
-		speed.ducked = pt_speed_normal[2]
-		formtable.jumpPower = pt_speed_normal[3]
 	end,
 
 	noFallDamage=true,

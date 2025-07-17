@@ -14,8 +14,8 @@ function ENT:Initialize()
 	self.Active = false
     
 	if SERVER then
-		self:SetCollisionBounds( Vector( -8, -8, 0 ), Vector( 12, 8, 72 ) )
-		self:SetSolid(SOLID_NONE)
+		self:SetCollisionBounds( Vector( -8, -8, 0 ), Vector( 12, 8, 32 ) )
+		--self:SetSolid(SOLID_NONE)
 		self:SetCollisionGroup(COLLISION_GROUP_PASSABLE_DOOR)
 		self:SetHealth(100)
 		
@@ -26,7 +26,7 @@ function ENT:Initialize()
 	end
 	
 	self:PlaySequenceNoWait('summon')
-	//self:SetMaterial("null")
+	self:SetMaterial("null")
 	
 	timer.Simple(0.5, function()
 		if IsValid(self) then
@@ -92,7 +92,9 @@ function ENT:ChaseTarget(ply)
     path:Compute(self, ply:GetPos())
     if not path:IsValid() then return end
 
-    while path:IsValid() and IsValid(ply) do
+    local stuckTime = CurTime()
+    
+    while path:IsValid() and IsValid(ply) and self.Active do
         if path:GetAge() > 0.2 then
             path:Compute(self, ply:GetPos())
         end
@@ -104,8 +106,37 @@ function ENT:ChaseTarget(ply)
             return
         end
 
+        if CurTime() - stuckTime > 5 then
+            self:HandleStuck()
+            return
+        end
+
         coroutine.yield()
     end
+end
+
+function ENT:HandleStuck()
+    if not self.LastPos then self.LastPos = self:GetPos() end
+    if self.LastStuckCheck and CurTime() - self.LastStuckCheck < 2 or not self.Active then return end
+    self.LastStuckCheck = CurTime()
+
+    if self:GetPos():DistToSqr(self.LastPos) < 10 then
+        local navArea = navmesh.GetNearestNavArea(self:GetPos(), true, 100)
+        if IsValid(navArea) then
+            local newPos = navArea:GetRandomPoint()
+            if newPos then
+                self:SetPos(newPos)
+            end
+        else
+            self:SetPos(self:GetPos() + Vector(math.random(-100, 100), math.random(-100, 100), 10))
+        end
+
+        if self:IsOnGround() then
+            self.loco:Jump()
+        end
+    end
+
+    self.LastPos = self:GetPos()
 end
 
 function ENT:Think()
@@ -113,9 +144,11 @@ function ENT:Think()
 		if self.NextAttackTime and CurTime() >= self.NextAttackTime then
 			if !timer.Exists("pt_jump_delay".. self:EntIndex()) and self.Target and ((math.random(1,80) == 1 and self.Target:IsSprinting() and self:GetVelocity():LengthSqr() > 60) 
 			or (self.Target:GetPos().z > self:GetPos().z and self:GetPos():Distance(self.Target:GetPos()) < 250)) then
-				self.loco:Jump()
-				self.loco:SetAcceleration(50)
-				self.loco:SetDesiredSpeed(PT_BOOST_SPEED)
+				if self:IsOnGround() then
+					self.loco:Jump()
+					self.loco:SetAcceleration(50)
+					self.loco:SetDesiredSpeed(PT_BOOST_SPEED)
+				end
 				
 				timer.Create("pt_jump_delay".. self:EntIndex(), 2, 1, function() end)
 			end
@@ -139,9 +172,6 @@ function ENT:Think()
 		end
 	
 		self:CheckDoorBreak()
-		if self.Target then
-			--self:CheckStuck()
-		end
 		self:NextThink(CurTime())
 		return true
 	end
@@ -160,49 +190,6 @@ function ENT:CheckDoorBreak()
 			door:TakeDamage(100, self, self)
 		end
 	end
-end
-
-function ENT:CheckStuck()
-    if not self.LastPos then self.LastPos = self:GetPos() end
-    if self.LastStuckCheck and CurTime() - self.LastStuckCheck < 2 or !self.Active then return end
-    self.LastStuckCheck = CurTime()
-
-    if self:GetPos():DistToSqr(self.LastPos) < 5 then
-        local navArea = navmesh.GetNearestNavArea(self:GetPos(), true, 100)
-        
-        if IsValid(navArea) then
-            local newPos = navArea:GetRandomPoint()
-            if newPos then
-                self:SetPos(newPos)
-            end
-        else
-            local directions = {
-                Vector(50, 0, 0), Vector(-50, 0, 0), 
-                Vector(0, 50, 0), Vector(0, -50, 0), 
-                Vector(0, 0, 50), Vector(0, 0, -50)
-            }
-            
-            for _, dir in ipairs(directions) do
-                local traceData = {
-                    start = self:GetPos(),
-                    endpos = self:GetPos() + dir,
-                    filter = self
-                }
-                local trace = util.TraceLine(traceData)
-                
-                if trace.Hit then
-                    self:SetPos(trace.HitPos + Vector(0, 0, 5))
-                    break
-                end
-            end
-            
-            self:SetPos(self:GetPos() + Vector(math.random(-50, 50), math.random(-50, 50), 5))
-        end
-        
-        self.loco:Jump()
-    end
-    
-    self.LastPos = self:GetPos()
 end
 
 function ENT:OnLandOnGround( ent )

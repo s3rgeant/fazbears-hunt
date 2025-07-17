@@ -57,7 +57,7 @@ if CLIENT then
                 ang:RotateAroundAxis(ang:Right(), 90)
                 
                 cam.Start3D2D(self:GetPos() + Vector(0, 0, 65), Angle(0, ang.y, 90), 0.25)
-                draw.SimpleText("Подарок для " .. self:GetOwner():Nick(), "timerFontUpper", 0, 0, Color(255, 255, 255), TEXT_ALIGN_CENTER, TEXT_ALIGN_CENTER)
+                draw.SimpleText(string.format( language.GetPhrase("fazhunt.gifts.owner"), self:GetOwner():Nick() ), "timerFontUpper", 0, 0, Color(255, 255, 255), TEXT_ALIGN_CENTER, TEXT_ALIGN_CENTER)
                 cam.End3D2D()
             end
         end
@@ -83,22 +83,24 @@ local format_num = -1
 local positiveEffects = {
     {
         name = "heal",
+		desc = "fazhunt.gifts.heal",
+		num = 35,
         func = function(ply)
             ply:SetHealth(ply:Health() + 35)
-            effectDesc = 'fazhunt.gifts.heal'
-			format_num = 35
         end
     },
     {
         name = "armor",
+		desc = "fazhunt.gifts.armor",
+		num = 50,
         func = function(ply)
 			ply:SetArmor(math.min(ply:Armor() + 50, 100))
-            effectDesc = 'fazhunt.gifts.armor'
-			format_num = 50
         end
     },
     {
         name = "invisibility",
+		desc = "fazhunt.gifts.invisibility",
+		num = 30,
         func = function(ply)
 			if not IsValid(ply) then return end
 	
@@ -110,8 +112,6 @@ local positiveEffects = {
 			ply:SetColor(Color(255, 255, 255, 0))
 			ply:SetNoDraw(true)
 			ply:DrawShadow(false)
-			effectDesc = 'fazhunt.gifts.invisibility'
-			format_num = 30
 	
 			timer.Simple(30, function()
 				if IsValid(ply) then
@@ -151,23 +151,22 @@ local positiveEffects = {
     },
     {
         name = "gravity_gun",
+		desc = "fazhunt.gifts.gravity_gun",
         func = function(ply)
             ply:Give("weapon_physcannon")
-            effectDesc = 'fazhunt.gifts.gravity_gun'
-			format_num = -1
         end
     },
     {
         name = "animatronics_visibility",
+		desc = "fazhunt.gifts.animatronics_visibility",
         func = function(ply)
             net.Start("fh_hl_animatronics")
             net.Send(ply)
-            effectDesc = 'fazhunt.gifts.animatronics_visibility'
-			format_num = -1
         end
     },
     {
         name = "defibrilator",
+		desc = "fazhunt.gifts.defibrilator",
         func = function(ply)
             ply:Give("weapon_defibrilator")
             effectDesc = 'fazhunt.gifts.defibrilator'
@@ -176,21 +175,21 @@ local positiveEffects = {
     },
     {
         name = "bananas",
+		desc = "fazhunt.gifts.bananas",
+		num = 5,
         func = function(ply)
             ply:Give("weapon_banana")
             ply:GiveAmmo(4, "ammo_banana", true)
-            effectDesc = 'fazhunt.gifts.bananas'
-			format_num = 5
         end
     },
     {
         name = "speed_buff",
+		desc = "fazhunt.gifts.speed_buff",
+		num = 15,
         func = function(ply)
             ply:SetWalkSpeed(ply:GetWalkSpeed() * 1.2)
             ply:SetRunSpeed(ply:GetRunSpeed() * 1.2)
             ply:SetCrouchedWalkSpeed(ply:GetCrouchedWalkSpeed() * 1.4)
-            effectDesc = 'fazhunt.gifts.speed_buff'
-			format_num = 15
 			
 			local trail = util.SpriteTrail(ply, ply:LookupAttachment( "chest" ), Color(0, 169, 255, 255), true, 32, 0, 1, 1 / ( ( 32 + 0 ) * 0.5 ), "trails/physbeam")
             
@@ -208,10 +207,10 @@ local positiveEffects = {
     },
     {
         name = "jump_buff",
+		desc = "fazhunt.gifts.jump_buff",
+		num = 25,
         func = function(ply)
             ply:SetJumpPower(ply:GetJumpPower() * 2)
-            effectDesc = 'fazhunt.gifts.jump_buff'
-			format_num = 25
             
             timer.Simple(25, function()
                 if IsValid(ply) then
@@ -226,6 +225,7 @@ local positiveEffects = {
 local negativeEffects = {
     {
         name = "spawn_car",
+		desc = "",
         func = function(ply)
             local playerPos = ply:GetPos()
             local playerHeight = ply:OBBMaxs().z - ply:OBBMins().z
@@ -269,18 +269,15 @@ local negativeEffects = {
                     car:Remove()
                 end
             end)
-            effectDesc = ''
-			format_num = -1
         end
     },
     {
         name = "animatronics_alert",
+		desc = "fazhunt.gifts.animatronics_alert",
         func = function(ply)
             net.Start("fh_hl_badkid")
             net.WriteEntity(ply)
             net.Broadcast()
-            effectDesc = 'fazhunt.gifts.animatronics_alert'
-			format_num = -1
             
             table.insert(affectedPlayers, ply)
         
@@ -295,37 +292,34 @@ local negativeEffects = {
     },
     {
         name = "reduce_step",
+		desc = "fazhunt.gifts.reduce_step",
         func = function(ply)
             ply:SetStepSize(0)
-            effectDesc = 'fazhunt.gifts.reduce_step'
-			format_num = -1
         end
     },
     {
         name = "strip_weapons",
+		desc = "fazhunt.gifts.strip_weapons",
         func = function(ply)
             ply:StripWeapons()
-            effectDesc = 'fazhunt.gifts.strip_weapons'
-			format_num = -1
         end
     },
     {
         name = "thinkfast",
+		desc = "",
         func = function(ply)
             net.Start('fh_net_thinkfast')
             net.Send(ply)
-            effectDesc = ''
-			format_num = -1
         end
     },
     {
         name = "fov_buff",
+		desc = "fazhunt.gifts.fov_buff",
+		num = 30,
         func = function(ply)
             ply:SetFOV(30, 1)
             ply:SetCanZoom(false)
             ply:StopZooming()
-            effectDesc = 'fazhunt.gifts.fov_buff'
-			format_num = 30
             
             timer.Simple(30, function()
                 if IsValid(ply) then
@@ -337,10 +331,10 @@ local negativeEffects = {
     },
     {
         name = "sound_dsp",
+		desc = "fazhunt.gifts.sound_dsp",
+		num = 30,
         func = function(ply)
             ply:SetDSP(31, false)
-            effectDesc = 'fazhunt.gifts.sound_dsp'
-			format_num = 30
             
             timer.Simple(30, function()
                 if IsValid(ply) then
@@ -415,8 +409,8 @@ function ENT:ApplyEffect(player)
         
         net.Start('fh_net_display')
         net.WriteString('fazhunt.gifts.positive')
-        net.WriteString(effectDesc)
-		net.WriteFloat(format_num)
+        net.WriteString(effect.desc or "")
+        net.WriteFloat(effect.num or -1)
         net.WriteFloat(5)
         net.Send(player)
     else
@@ -424,8 +418,8 @@ function ENT:ApplyEffect(player)
         
         net.Start('fh_net_display')
         net.WriteString('fazhunt.gifts.negative')
-        net.WriteString(effectDesc)
-		net.WriteFloat(format_num)
+        net.WriteString(effect.desc or "")
+        net.WriteFloat(effect.num or -1)
         net.WriteFloat(5)
         net.Send(player)
     end

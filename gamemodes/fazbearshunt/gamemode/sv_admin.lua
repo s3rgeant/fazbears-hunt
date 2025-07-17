@@ -29,7 +29,7 @@ function RevivePlayer(ply)
 		end
 	end
 	
-	if ply:Team() == 2701 or animatronics[ply] or IsValid(pk_pills.getMappedEnt(ply)) then
+	if ply:Team() == 2701 or animatronics[ply] or IsValid(pills.getMappedEnt(ply)) then
 		RunConsoleCommand("pk_pill_restore", ply:Nick())
 		animatronics[ply] = nil
 	end

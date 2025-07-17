@@ -9,7 +9,7 @@ local scrollSpeeds = {}
 
 local fh_ui_scale = CreateClientConVar('fh_ui_scale', 1, true, false, 'FH Ui Scale (Animatronics Hud Only)', 0, 2)
 	
-local uiScale = (1920 / ScrW()) * fh_ui_scale:GetFloat()
+local uiScale = fh_ui_scale:GetFloat() / (1920 / ScrW())
 
 --[[
 cvars.AddChangeCallback("fh_ui_scale", function(name, value_old, value_new)
@@ -26,6 +26,9 @@ local cake = Material( "vgui/cake.png", "smooth" )
 local circle_mat = Material( "vgui/animatronics_hud/circle.png", "smooth" )
 local circle_outline_mat = Material( "vgui/animatronics_hud/circle_outline.png", "smooth" )
 
+local tokens_bg_mat = Material( "vgui/animatronics_hud/abilities/tokens_bg.png", "smooth" )
+local tokens_bg_outline_mat = Material( "vgui/animatronics_hud/abilities/tokens_outline.png", "smooth" )
+
 local abil_bg_mat = Material( "vgui/animatronics_hud/abilities/bg.png", "smooth" )
 local abil_bg_outline_mat = Material( "vgui/animatronics_hud/abilities/bg_outline.png", "smooth" )
 
@@ -37,188 +40,196 @@ local button_ability_mat = Material( "vgui/animatronics_hud/abilities/button_abi
 local mouse_ability_mat = Material( "vgui/animatronics_hud/abilities/mouse_ability.png", "smooth" )
 
 function DrawKillerInterface()
-if currentKiller == "" or !currentKiller or !GetConVar("cl_drawhud"):GetBool() then return end
-	
-    local screenW, screenH = ScrW(), ScrH()
-	
+	if currentKiller == "" or not currentKiller or not GetConVar("cl_drawhud"):GetBool() then return end
+
+	local screenW, screenH = ScrW(), ScrH()
+
 	local size = 330 * uiScale
 	local avatar_y = 260 * uiScale
-	
-	local circle_width, circle_height = circle_mat:GetInt("$realwidth") * uiScale, circle_mat:GetInt("$realheight") * uiScale
-	
+
+	local circle_width, circle_height = (circle_mat:GetInt("$realwidth") or 100) * uiScale, (circle_mat:GetInt("$realheight") or 100) * uiScale
+
 	local circleX = 32 * uiScale
 	local circleY = screenH - avatar_y - (16 * uiScale)
-	
+
 	surface.SetMaterial(circle_mat)
 	surface.SetDrawColor(255, 255, 255, 255)
 	surface.DrawTexturedRect(circleX, circleY, circle_width, circle_height)
-	
+
 	local circle_outline_mat_width, circle_outline_mat_height = circle_outline_mat:GetInt("$realwidth") * uiScale, circle_outline_mat:GetInt("$realheight") * uiScale
-	
+
 	local hud_color = fh_hud_color or Color(255,255,255,255)
-	
+
 	surface.SetMaterial(circle_outline_mat)
 	surface.SetDrawColor(hud_color)
 	surface.DrawTexturedRect(32 * uiScale, screenH - avatar_y - (16 * uiScale), circle_outline_mat_width, circle_outline_mat_height)
 
 	if file.Exists("materials/" .. killerIconPath, "GAME") then
-		local mat_width, mat_height = killerIcon:GetInt("$realwidth") * uiScale, killerIcon:GetInt("$realheight") * uiScale
+		local mat_width, mat_height = (killerIcon:GetInt("$realwidth") or 100) * uiScale, (killerIcon:GetInt("$realheight") or 100) * uiScale
 		local avatarX = circleX + (circle_width - mat_width) / 2
 		local avatarY = circleY + circle_height - mat_height - (7 * uiScale)
-	
+
 		surface.SetMaterial(killerIcon)
 		surface.SetDrawColor(255, 255, 255, 255)
-		
 		surface.DrawTexturedRect(avatarX, avatarY, mat_width, mat_height)
 	end
 
-    local abilityX, abilityY = size, screenH - (100 * uiScale)
+	local abilityX, abilityY = size, screenH - (100 * uiScale)
 
-    for abilityName, abilityData in pairs(currentAbilities) do
-        if abilityData.timeleft > 0 or !abilityData.hidden then
-            local clr = abilityData.color
-            if type(clr) == "function" then
-                clr = clr()
-            end
-			local abil_bg_width, abil_bg_height = abil_bg_mat:GetInt("$realwidth") * uiScale, abil_bg_mat:GetInt("$realheight") * uiScale
-			
+	for abilityName, abilityData in pairs(currentAbilities) do
+		local maxTime = abilityData.maxTime
+		local timeLeft = abilityData.endTime and (abilityData.endTime - CurTime()) or 0
+		if timeLeft < 0 then timeLeft = 0 end
+
+		if timeLeft > 0 or not abilityData.hidden then
+			local clr = abilityData.color
+			if type(clr) == "function" then
+				clr = clr()
+			end
+
+			local abil_bg_width, abil_bg_height = (abil_bg_mat:GetInt("$realwidth") or 100) * uiScale, (abil_bg_mat:GetInt("$realheight") or 100) * uiScale
+
 			surface.SetMaterial(abil_bg_mat)
 			surface.SetDrawColor(255, 255, 255, 255)
 			surface.DrawTexturedRect(abilityX, abilityY, abil_bg_width, abil_bg_height)
-			
+
 			local abil_bg_outline_width, abil_bg_outline_height = abil_bg_outline_mat:GetInt("$realwidth") * uiScale, abil_bg_outline_mat:GetInt("$realheight") * uiScale
-			
+
 			surface.SetMaterial(abil_bg_outline_mat)
 			surface.SetDrawColor(hud_color)
 			surface.DrawTexturedRect(abilityX, abilityY, abil_bg_outline_width, abil_bg_outline_height)
-			
+
 			local button_ability_width, button_ability_height = button_ability_mat:GetInt("$realwidth") * uiScale, button_ability_mat:GetInt("$realheight") * uiScale
-			
 			local mouse_ability_width, mouse_ability_height = mouse_ability_mat:GetInt("$realwidth") * uiScale, mouse_ability_mat:GetInt("$realheight") * uiScale
 
 			local ability_button_x = 0
 
 			if abilityData.keyboard then
 				ability_button_x = abilityX + (205 * uiScale)
-				
 				surface.SetMaterial(button_ability_mat)
 				surface.SetDrawColor(clr or Color(255,255,255,255))
 				surface.DrawTexturedRect(ability_button_x, abilityY + (abil_bg_height/2 - button_ability_height/2), button_ability_width, button_ability_height)
-				
 			else
 				ability_button_x = abilityX + (168 * uiScale)
-				
 				surface.SetMaterial(mouse_ability_mat)
 				surface.SetDrawColor(clr or Color(255,255,255,255))
 				surface.DrawTexturedRect(ability_button_x, abilityY + (abil_bg_height/2 - mouse_ability_height/2), mouse_ability_width, mouse_ability_height)
-				
 			end
-			
+
 			local translated_ability = language.GetPhrase("fazhunt.abilities." .. abilityName)
-			
 			if translated_ability == "fazhunt.abilities." .. abilityName then
 				translated_ability = abilityName
 			end
-			
-            surface.SetFont("fh_hud_ability_title")
+
+			surface.SetFont("fh_hud_ability_title")
 			local textWidth, textHeight = surface.GetTextSize(translated_ability)
-			
-			local maxTextWidth = (abilityData.keyboard and 150 or 140) * uiScale -- ширина, до которой обрезаем
+			local maxTextWidth = (abilityData.keyboard and 170 or 140) * uiScale
 			local textX = abilityX + (18 * uiScale)
 			local textY = abilityY + (10 * uiScale)
-			
+
 			scrollOffsets[abilityName] = scrollOffsets[abilityName] or 0
 			scrollSpeeds[abilityName] = scrollSpeeds[abilityName] or 15
-			
+
 			if textWidth > maxTextWidth then
 				local offset = scrollOffsets[abilityName]
 				local speed = scrollSpeeds[abilityName]
 				offset = offset + FrameTime() * speed
-			
-				if offset >= (textWidth - maxTextWidth + 10) then
-					scrollSpeeds[abilityName] = -speed
-				elseif offset <= 0 then
+
+				if offset >= (textWidth - maxTextWidth + 10) or offset <= 0 then
 					scrollSpeeds[abilityName] = -speed
 				end
-			
+
 				scrollOffsets[abilityName] = offset
-			
+
 				render.SetScissorRect(textX, textY, textX + maxTextWidth, textY + textHeight, true)
 				draw.SimpleText(translated_ability, "fh_hud_ability_title", textX - scrollOffsets[abilityName], textY, Color(255, 255, 255, 255), TEXT_ALIGN_LEFT)
 				render.SetScissorRect(0, 0, 0, 0, false)
 			else
 				draw.SimpleText(translated_ability, "fh_hud_ability_title", textX, textY, Color(255, 255, 255, 255), TEXT_ALIGN_LEFT)
 			end
-			
+
 			local translatable_key = abilityData.text
-            local key_phrase_translatable = "keys." .. string.lower( abilityData.text )
-            local translated = language.GetPhrase(key_phrase_translatable)
-            
-            if translated ~= key_phrase_translatable then
-                translatable_key = translated
-            end
-            
-            draw.SimpleText(
-                language.GetPhrase(translatable_key),
-                "fh_hud_ability_button",
-                ability_button_x + (abilityData.keyboard and (button_ability_width/2) or (mouse_ability_width/2)),
-                abilityY + (abil_bg_outline_height / 2 - 20 * uiScale),
-                clr,
-                TEXT_ALIGN_CENTER
-            )
-			
+			local key_phrase_translatable = "keys." .. string.lower(abilityData.text)
+			local translated = language.GetPhrase(key_phrase_translatable)
+
+			if translated ~= key_phrase_translatable then
+				translatable_key = translated
+			end
+
+			draw.SimpleText(
+				language.GetPhrase(translatable_key),
+				"fh_hud_ability_button",
+				ability_button_x + (abilityData.keyboard and (button_ability_width/2) or (mouse_ability_width/2)),
+				abilityY + (abil_bg_outline_height / 2 - 20 * uiScale),
+				clr,
+				TEXT_ALIGN_CENTER
+			)
+
 			local timer_width = (abilityData.keyboard and 172 or 122) * uiScale
-			
 			local timer_x = 13 * uiScale
 			local timer_y = 51 * uiScale
-			
-			local timeLeft = abilityData.timeleft
-			local maxTime = abilityData.maxTime
-			
 			local max_timer_width = timer_width - (6 * uiScale)
-			
+
 			if maxTime and timeLeft > 0 then
-				draw.RoundedBox(0, abilityX + timer_x, abilityY + timer_y, 2,8, Color(255,255,255))
-				
-				draw.RoundedBox(0, abilityX + timer_x + timer_width, abilityY + (51 * uiScale), 2,8, Color(255,255,255))
-				
+				draw.RoundedBox(0, abilityX + timer_x, abilityY + timer_y, 2, 8, Color(255,255,255))
+				draw.RoundedBox(0, abilityX + timer_x + timer_width, abilityY + timer_y, 2, 8, Color(255,255,255))
 				draw.RoundedBox(0, abilityX + timer_x + (4 * uiScale), abilityY + timer_y + (2 * uiScale), max_timer_width * (timeLeft / maxTime), 4, Color(255,255,255))
 			end
-			
-            if (timeLeft > 0) then 
+
+			if timeLeft > 0 then
 				draw.SimpleText(tostring(math.ceil(timeLeft)) .. " s", "fh_hud_ability_time", abilityX + timer_x + max_timer_width/2, abilityY + (36 * uiScale), Color(255, 255, 255, 255), TEXT_ALIGN_CENTER)
 			end
-			
-			if abilityName == 'mine' then
+
+			if abilityData.tokens >= 0 then
+				local tokens_bg_width, tokens_bg_height = (tokens_bg_mat:GetInt("$realwidth") or 100) * uiScale, (tokens_bg_mat:GetInt("$realheight") or 100) * uiScale
+
+				surface.SetMaterial(tokens_bg_mat)
+				surface.SetDrawColor(255, 255, 255, 255)
+				surface.DrawTexturedRect(abilityX, abilityY - 20, tokens_bg_width, tokens_bg_height)
+
+				local tokens_bg_outline_width, tokens_bg_outline_height = (tokens_bg_outline_mat:GetInt("$realwidth") or 100) * uiScale, (tokens_bg_outline_mat:GetInt("$realheight") or 100) * uiScale
+
+				surface.SetMaterial(tokens_bg_outline_mat)
+				surface.SetDrawColor(hud_color)
+				surface.DrawTexturedRect(abilityX, abilityY - 20, tokens_bg_outline_width, tokens_bg_outline_height)
+
+				local token_bar_height = 6
+				local gap_from_sides = 8
+				local spacing = 6
+				local token_count = abilityData.tokens
+				local max_tokens = abilityData.maxtokens or token_count
+				local available_width = tokens_bg_width - (gap_from_sides * 2)
+				local total_spacing = spacing * (max_tokens - 1)
+				local token_width = (available_width - total_spacing) / max_tokens
+
+				for i = 0, token_count - 1 do
+					local x = abilityX + gap_from_sides + i * (token_width + spacing)
+					local y = (abilityY - 20) + (tokens_bg_outline_height / 2) - (token_bar_height / 2)
+					draw.RoundedBox(0, x, y, token_width, token_bar_height, Color(255, 255, 255))
+				end
+			end
+
+			if abilityName == "mine" then
 				local x_add = 6
 				if cupcakes > 0 then
-					for i = 1,cupcakes do
+					for i = 1, cupcakes do
 						surface.SetMaterial(cake)
 						surface.SetDrawColor(255, 255, 255, 255)
-				
 						surface.DrawTexturedRect(abilityX + x_add, abilityY - 56, 43 * 0.8, 64 * 0.8)
 						x_add = x_add + 40
 					end
 				end
 			end
-			
-            abilityX = abilityX + abil_bg_width + 24
-        end
-    end
+
+			abilityX = abilityX + abil_bg_width + 24
+		end
+	end
 end
 
 local function updateAnimHudHeader(name)
 	killerIconPath = "vgui/animatronics_hud/heads/"..name..".png"
 	killerIcon = Material( killerIconPath, "smooth" )
 end
-
-timer.Create("UpdateAbilitiesTime", 0.05, 0, function()
-    for _, abilityData in pairs(currentAbilities) do
-        if abilityData.timeleft > 0 then
-            abilityData.timeleft = abilityData.timeleft - 0.05
-        end
-    end
-end)
 
 function assignAbilitiesByKiller(name)
     local abilities = killerAbilities[name]
@@ -230,7 +241,8 @@ function assignAbilitiesByKiller(name)
             ability.key,
             ability.duration or 0,
             ability.keyboard,
-            ability.hidden
+            ability.tokens or -1,
+            ability.hidden or false
         )
         if ability.condition then
             abilityParentClrFunc(ability.name, ability.condition)
@@ -238,7 +250,7 @@ function assignAbilitiesByKiller(name)
     end
 end
 
-function addAbility(name, text, duration, keyboard, hidden)
+function addAbility(name, text, duration, keyboard, tokens, hidden)
     if currentAbilities[name] then
         return
     end
@@ -247,6 +259,8 @@ function addAbility(name, text, duration, keyboard, hidden)
         text = text,
         timeleft = duration,
         keyboard = keyboard or false,
+		tokens = tokens or -1,
+		maxtokens = tokens or -1,
         hidden = hidden or false
     }
 end
@@ -274,9 +288,16 @@ end
 function setDuration(name, newDuration)
     if currentAbilities[name] then
         currentAbilities[name].maxTime = newDuration
-        currentAbilities[name].timeleft = newDuration
+        currentAbilities[name].endTime = CurTime() + newDuration
     end
 end
+
+function setTokens(name, tkns)
+    if currentAbilities[name] then
+        currentAbilities[name].tokens = tkns
+    end
+end
+
 net.Receive("ApplyKiller", function()
 	hook.Add("HUDPaint", "DrawKillerInterface", DrawKillerInterface)
     currentKiller = net.ReadString()
@@ -326,9 +347,10 @@ net.Receive("fh_net_killer_change", function()
 	]]
 end)
 
-
-
-
+net.Receive("fh_net_killer_change_tokens", function()
+	local str = net.ReadString()
+	setTokens(str, net.ReadInt(9))
+end)
 
 -- текст смешной сверху
 surface.CreateFont("BigTextFont", {

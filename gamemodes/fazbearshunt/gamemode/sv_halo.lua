@@ -82,7 +82,7 @@ function HighlightPlayers(ply, ent)
 end
 
 hook.Add("SetupPlayerVisibility", "fh_halo_visibility", function(ply, viewent)
-	if !table.Empty(affectedPlayers) then
+	if !table.IsEmpty(affectedPlayers) then
 		for _, player in ipairs(affectedPlayers) do
 			if IsValid(player) then
 				AddOriginToPVS(player:GetPos())
@@ -111,12 +111,5 @@ hook.Add( "PlayerDisconnected", "fh_pill_fnaf2_disconnect", function( ply )
 		net.Start("RemoveAffectedPlayer")
 		net.WriteEntity(ply)
 		net.Broadcast()
-	end
-end)
-
-net.Receive("AddServerAffectedPlayers", function(len, ply)
-	local players = net.ReadTable()
-	for _, player in ipairs(players) do
-		table.insert(affectedNicknames, player)
 	end
 end)

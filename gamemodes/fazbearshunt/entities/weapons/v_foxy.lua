@@ -30,7 +30,21 @@ SWEP.Secondary.ClipSize = -1
 SWEP.Secondary.DefaultClip = -1
 SWEP.Secondary.Ammo = "none"
 
+SWEP.HitDelay = 1	-- через сколько удар будет произвёден насильно после замаха, если ты долго держишь лкм
+
+SWEP.IsCharging = false -- переменная для отслеживания удержания ЛКМ
+SWEP.ChargeStartTime = 0 -- время начала удержания ЛКМ
+
+SWEP.HitSize = {
+	Min = Vector( -24, -24, -16 ),
+	Max = Vector( 24, 24, 16 )
+}
+
 local LAND_ANIM_DELAY = 0.2
+
+function SWEP:SetupDataTables()
+	self:NetworkVar( "Float", 0, "NextMeleeAttack" )
+end
 
 function SWEP:Deploy()
 	self.CurAnim = "deploy"
@@ -42,14 +56,148 @@ function SWEP:Holster()
 end
 
 function SWEP:PrimaryAttack()
-    return true
+	local ply = self.Owner
+	local ent = pills.getMappedEnt(ply)
+	
+	if !ply.isBlightRushing then return end
+	
+	if !IsValid(ent) then return end
+	
+	if self.IsCharging or ply.tasered then return end
+	
+	if ply:IsFrozen() or timer.Exists('FOXY_cantKill'..ply:EntIndex()) then return end
+	
+	self:PlayCustomAnimation("ACT_SPECIAL_ATTACK1", 2)
+	
+    self.IsCharging = true
+    self.ChargeStartTime = CurTime()
+	
+	self:SetNextMeleeAttack( CurTime() + self.HitDelay )
 end
 
 function SWEP:SecondaryAttack()
     return true
 end
 
+function SWEP:DealDamage()
+	local ply = self.Owner
+	local ent = pills.getMappedEnt(ply)
+	
+	if !IsValid(ent) then return end
+	
+	self:PlayCustomAnimation("ACT_SPECIAL_ATTACK2", 0.6)
+	
+	timer.Create('FOXY_cantKill'..ply:EntIndex(), 2, 1, function() end)
+	
+	if SERVER then
+	
+		timer.Simple(0.15, function()
+			if !IsValid(ent) then return end
+			--ent:PillStopGesture('swing')
+		end)
+	
+		--ent:PillGesture('attack', 2, 1, 0.1, 0.3)
+		
+		net.Start("fh_net_killer_change")
+		net.WriteString("kill")
+		net.WriteFloat(2)
+		net.Send(ply)
+	
+	end
+		
+	ply:LagCompensation(true)
+
+	local tr = util.TraceLine( {
+		start = ply:GetShootPos(),
+		endpos = ply:GetShootPos() + ply:GetAimVector() * 110,
+		filter = ply,
+		mask = MASK_SHOT_HULL
+	} )
+
+	if ( !IsValid( tr.Entity ) ) then
+		tr = util.TraceHull( {
+			start = ply:GetShootPos(),
+			endpos = ply:GetShootPos() + ply:GetAimVector() * 110,
+			filter = ply,
+			mins = self.HitSize.Min,
+			maxs = self.HitSize.Max,
+			mask = MASK_SHOT_HULL
+		} )
+		debugoverlay.Box(tr.HitPos, self.HitSize.Min, self.HitSize.Max, 5, Color(255, 0, 0))
+	end
+	debugoverlay.Line(ply:EyePos(), tr.HitPos, 5, Color(255, 0, 0), true)
+	
+	local target = tr.Entity
+	
+	if !IsValid(target) then 
+		ply:LagCompensation(false)
+		return 
+	end
+	
+	if target:IsPlayer() and target:Team() ~= ply:Team() then
+	
+		local edata = EffectData()
+		edata:SetOrigin(tr.HitPos)
+        edata:SetEntity(target)
+		util.Effect("BloodImpact", edata)
+		
+	end
+	
+	if CLIENT then return end
+	
+    local class = target:GetClass()
+    if class == "func_breakable" or class == "func_breakable_surf" then
+        target:Fire("Shatter", "0", 0)
+    end
+	
+	if target:GetMoveType() == MOVETYPE_VPHYSICS then
+		local phys = target:GetPhysicsObject()
+		if IsValid(phys) then
+			local dir = ply:GetAimVector()
+			phys:ApplyForceCenter(dir * 10000)
+		end
+	end
+	
+	if class != "cakemine" then
+		local dmginfo = DamageInfo()
+		dmginfo:SetAttacker( ply )
+		dmginfo:SetInflictor( self )
+		dmginfo:SetDamage( 50 )
+	
+		SuppressHostEvents( NULL )
+		target:TakeDamageInfo( dmginfo )
+		SuppressHostEvents( ply )
+	end
+	
+	ply:LagCompensation(false)
+	
+	if target:IsNPC() then
+		target:TakeDamage(99999, ply)
+		return 
+	end
+	
+	if (target:IsPlayer() and target:Team() != ply:Team()) or target:IsNPC() then
+		ply:EmitSound("fnaf3/spr_punch_hit.wav")
+	end
+end
+
 function SWEP:Think()
+	local curtime = CurTime()
+	
+	if self.IsCharging and not self.Owner:KeyDown(IN_ATTACK) then
+        self.IsCharging = false
+        self:SetNextMeleeAttack(0)
+        self:DealDamage()
+        return
+    end
+
+	local meleetime = self:GetNextMeleeAttack()
+	if ( meleetime > 0 and curtime > meleetime ) then
+        self.IsCharging = false
+		self:DealDamage()
+		self:SetNextMeleeAttack( 0 )
+	end
+	
     if SERVER then
         local ply = self.Owner
         local speed = ply:GetAbsVelocity():Length()
@@ -79,7 +227,7 @@ function SWEP:Think()
         self.PreviousOnGround = onGround
 
         if (onGround and ply:WaterLevel() <= 1) and walkSpeed > 10 then
-            if speed >= runSpeed * 0.9 then
+            if speed >= runSpeed * 0.9 and walkSpeed != runSpeed then
                 if self.CurAnim ~= 'run' then
                     self.Weapon:SendWeaponAnim(ACT_VM_SPRINT_IDLE)
                     self.CurAnim = 'run'
@@ -112,6 +260,8 @@ function SWEP:PlayCustomAnimation(anim, hold)
     local animMap = {
         ["ACT_MELEE_ATTACK1"] = ACT_MELEE_ATTACK1,
         ["ACT_GMOD_TAUNT_LAUGH"] = ACT_GMOD_TAUNT_LAUGH,
+        ["ACT_SPECIAL_ATTACK1"] = ACT_SPECIAL_ATTACK1,
+        ["ACT_SPECIAL_ATTACK2"] = ACT_SPECIAL_ATTACK2,
     }
     
     local act = animMap[anim]

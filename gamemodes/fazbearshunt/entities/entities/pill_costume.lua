@@ -13,7 +13,7 @@ end
 
 function ENT:Initialize()
 	self.usedLayers = {}
-    self.formTable = pk_pills.getPillTable(self:GetPillForm())
+    self.formTable = pills.getPillTable(self:GetPillForm())
     local ply = self:GetPillUser()
 
     if not self.formTable or !IsValid(ply) then
@@ -31,7 +31,7 @@ function ENT:Initialize()
     ply:SetHullDuck(-Vector(hull.x / 2, hull.y / 2, 0), Vector(hull.x / 2, hull.y / 2, hull.z - duckBy or 0))
 	ply:SetRenderMode(RENDERMODE_NONE)
     --Do this so weapon equips are not blocked
-    pk_pills.mapEnt(ply, nil)
+    pills.mapEnt(ply, nil)
 
 	self:ResetAngle()
     if SERVER then
@@ -39,6 +39,7 @@ function ENT:Initialize()
         self:SetPos(ply:GetPos())
         self:SetParent(ply)
 		self:SetRenderMode(RENDERMODE_TRANSALPHA)
+		self:SetIK(true)
         //self:DrawShadow(false)
         ply:StripWeapons()
         ply:RemoveAllAmmo()
@@ -143,15 +144,6 @@ function ENT:Initialize()
             end
         end
 
-        --[[if self.formTable.seqInit then
-			self:PillAnim(self.formTable.seqInit,true)
-		end]]
-        --[[if self.formTable.bodyGroups then
-			for _,v in pairs(self.formTable.bodyGroups) do
-				self:SetBodygroup(v,1)
-			end
-		end]]
-        --self:SetPlaybackRate(1)
         local model = self.formTable.model
         local skin = self.formTable.skin
         local attachments = self.formTable.attachments
@@ -252,8 +244,7 @@ function ENT:Initialize()
         //self:SetPuppet(puppet)
     end
 
-    pk_pills.mapEnt(ply, self)
-    --self:SetPlaybackRate(1)
+    pills.mapEnt(ply, self)
 end
 
 function ENT:OnRemove()
@@ -267,7 +258,7 @@ function ENT:OnRemove()
 		end
     end
 
-    local newType = pk_pills.unmapEnt(self:GetPillUser(), self)
+    local newType = pills.unmapEnt(self:GetPillUser(), self)
 
     if newType ~= "ply" and IsValid(ply) then
         ply:ResetHull()
@@ -487,7 +478,6 @@ function ENT:Think()
                         puppet:SetPoseParameter("move_y", math.Clamp(-localvel.y / seq_vel, -.99, .99))
                         puppet:SetPoseParameter("move_scale", math.Clamp(localvel:Length() / seq_vel, -.99, .99))
                     end
-                    --print(puppet:GetPlaybackRate())
                 else
                     puppet:SetPoseParameter("move_x", 0)
                     puppet:SetPoseParameter("move_y", 0)
@@ -640,7 +630,7 @@ function ENT:Think()
 		and LocalPlayer():GetViewEntity() == LocalPlayer()
 		and LocalPlayer():GetObserverMode() == OBS_MODE_IN_EYE or ply == LocalPlayer() 
 		and ply:GetViewEntity() == ply
-		and !pk_pills.convars.cl_thirdperson:GetBool() 
+		and !pills.convars.cl_thirdperson:GetBool() 
 		and !ply.fh_target_player then
 		
 			self:SetColor(Color(255, 255, 255, 0))
@@ -1001,10 +991,23 @@ end
 function ENT:SetSpeed(walk, run, duck, jump)
     local ply = self:GetPillUser()
 	
+	local speed = self.formTable.moveSpeed
+	
+	speed.walk = walk
+	speed.run = run
+	speed.ducked = duck / (walk or 200)
+    self.formTable.jumpPower = jump
+	
     ply:SetWalkSpeed(walk)
     ply:SetRunSpeed(run)
     ply:SetCrouchedWalkSpeed(duck / (walk or 200))
 	ply:SetJumpPower(jump)
+end
+
+function ENT:ReplaceAnimation(old, new)
+	if self.formTable.anims.default ~= nil then
+		self.formTable.anims.default[old] = new
+	end
 end
 
 function ENT:ResetAngle()

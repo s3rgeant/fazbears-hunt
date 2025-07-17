@@ -31,6 +31,9 @@ include( "mount/push.lua" )
 include( "mount/proximity.lua" )
 AddCSLuaFile( "mount/proximity.lua" )
 
+include( "terror_radius.lua" )
+AddCSLuaFile( "terror_radius.lua" )
+
 include( "pill_fnaf2.lua" )
 include( "pill_fnaf3.lua" )
 
@@ -73,11 +76,13 @@ util.AddNetworkString("fh_share_notprefered")
 
 util.AddNetworkString("fh_selector_nomore")
 
+util.AddNetworkString("fh_animatronic_left_chatmessage")
+
 function fh.randomChoice(t)
     return t[math.random(#t)]
 end
 
-lastKillers = {}
+lastKillers = lastKillers or {}
 
 lobbyDuration = 120
 gameDuration = 600
@@ -168,6 +173,8 @@ function assignKillers()
 		roundActive = true
 		LogEvent(" ")
         LogEvent("(*АВТО*) - Все аниматроники разморожены, раунд начат.")
+		
+		hook.Run("fh_poststartgame", roundType, animatronics)
     end)
 	
 end
@@ -289,7 +296,7 @@ function endGame(killerVictory)
 				end)
 				
 				timer.Simple(1, function()
-					local ent = pk_pills.getMappedEnt(springtrap_ply)
+					local ent = pills.getMappedEnt(springtrap_ply)
 					
 					springtrap_ply:SetPos(win_location:GetPos())
 					springtrap_ply:SetEyeAngles(win_location:GetAngles())
@@ -374,6 +381,10 @@ function GM:fh_prestartgame()
 
 end
 
+function GM:fh_poststartgame()
+
+end
+
 function startGame()
 	RunConsoleCommand("proximity_enabled", 1)
 	
@@ -436,6 +447,8 @@ function startGame()
 			roundActive = true
 			LogEvent(" ")
 			LogEvent("(*АВТО*) - Спрингтрап разморожен, раунд начат.")
+		
+			hook.Run("fh_poststartgame", roundType, animatronics)
 		end)
 	end
 	
@@ -604,10 +617,9 @@ hook.Add("PlayerDisconnected", "fh_playerleft", function(ply)
 	if animatronics[ply] then
 		animatronics[ply] = nil
 		if isGameOn and !roundEnding then
-			local imya = ply:Nick()
-			for _, player in player.Iterator() do
-				player:SendLua( "LocalPlayer():ChatPrint(string.format(language.GetPhrase('fazhunt.chat.animleave'), " .. imya .. " ))" )
-			end
+			net.Start("fh_animatronic_left_chatmessage")
+			net.WriteString(ply:Nick())
+			net.Broadcast()
 		end
 	end
 	alivePlayers[ply] = nil
@@ -686,7 +698,7 @@ hook.Add("PlayerDeath", "fh_deaths", function( victim, inflictor, attacker )
 		net.Send(victim)
 	end
 	
-    local ent = pk_pills.getMappedEnt(attacker)
+    local ent = pills.getMappedEnt(attacker)
 	
 	if IsValid(victim:GetRagdollEntity()) then
 		victim:GetRagdollEntity():Remove()

@@ -48,7 +48,7 @@ end
 
 function SWEP:PrimaryAttack()
 	local ply = self.Owner
-	local ent = pk_pills.getMappedEnt(ply)
+	local ent = pills.getMappedEnt(ply)
 	
 	if !IsValid(ent) then return end
 	
@@ -69,7 +69,7 @@ end
 
 function SWEP:DealDamage()
 	local ply = self.Owner
-	local ent = pk_pills.getMappedEnt(ply)
+	local ent = pills.getMappedEnt(ply)
 	
 	if !IsValid(ent) then return end
 	
@@ -120,7 +120,7 @@ function SWEP:DealDamage()
 		return 
 	end
 	
-	if target:IsPlayer() then
+	if target:IsPlayer() and target:Team() ~= ply:Team() then
 	
 		local edata = EffectData()
 		edata:SetOrigin(tr.HitPos)

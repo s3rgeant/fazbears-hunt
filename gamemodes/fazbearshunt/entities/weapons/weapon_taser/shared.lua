@@ -97,9 +97,13 @@ function SWEP:PrimaryAttack()
 		
 			wait = 90
 			
-			local puppet = pk_pills.getMappedEnt(ent)
-			local formtbl = puppet.formTable
-			local movespeed = formtbl.moveSpeed
+			local puppet = pills.getMappedEnt(ent)
+			if IsValid(puppet) then
+				local formtbl = puppet.formTable
+				local movespeed = formtbl.moveSpeed
+			end
+			
+			if !formtbl or !movespeed then continue end
 			
 			if SERVER then
 				ent.tasered = true
@@ -125,6 +129,17 @@ function SWEP:PrimaryAttack()
 							ent.tasered = false
 						end
 					end)
+					
+					if ent.jumpscaring then
+						local poorguy = ent.jumpscaring
+						
+						poorguy:Freeze(false)
+						poorguy.jumpscared = nil
+						
+						ent.jumpscaring = nil
+					end
+					
+					timer.Remove("FH_JumpscareKill_" .. ent:EntIndex())
 				end
 	
 				net.Start("StunEffect_Shake")

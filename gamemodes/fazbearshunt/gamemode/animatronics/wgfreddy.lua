@@ -4,10 +4,10 @@ function fh_spawnPlushies(ply)
 	if !IsValid(ply) then return end
 
 	local origin = ply:GetPos()
-	local minDistFromPlayer = 500
+	local minDistFromPlayer = 800
 	local maxDistFromPlayerStrict = 2500
 	local maxDistFromPlayerLoose = 2000
-	local minSpacing = 1000
+	local minSpacing = 2000
 	local plushCount = 4
 	local placed = 0
 	local usedPositions = {}
@@ -90,7 +90,7 @@ hook.Add("KeyPress", "fh_plushie_use_check", function(ply, key)
 
 		local toEnt = ent:GetPos() - eyePos
 		local distSqr = toEnt:LengthSqr()
-		if distSqr > (200 * 200) then continue end  -- исправлено на квадрат расстояния
+		if distSqr > (200 * 200) then continue end
 
 		local dirToEnt = toEnt:GetNormalized()
 		local dot = viewDir:Dot(dirToEnt)
@@ -134,7 +134,20 @@ end
 if CLIENT then
 	local mat_Grayscale = Material( "effects/shaders/merc_grayscale" )
 	
-	local outworld_ambient = nil
+	local outworld_ambient = outworld_ambient or nil
+	
+	local outworlded_ppl = {}
+	
+	hook.Add("PrePlayerDraw", "fh_dontdraw_outworlded" , function(ply)
+		if outworlded_ppl[ply] then
+			return true
+		end
+	end)
+	hook.Add( "PlayerFootstep", "fh_nosteps_outworlded", function( ply, pos, foot, sound, volume, rf )
+		if outworlded_ppl[ply] then
+			return true
+		end
+	end)
 	
 	net.Receive("fh_wgfreddy_target_outworld_start", function()
 		local myself = LocalPlayer()
@@ -167,6 +180,8 @@ if CLIENT then
 			ply:SetNoDraw(true)
 			ply:DrawShadow(false)
 			
+			outworlded_ppl[ply] = true
+			
 			for _, wep in ipairs(ply:GetWeapons()) do
 				if IsValid(wep) then
 					wep:SetNoDraw(true)
@@ -176,7 +191,7 @@ if CLIENT then
 			end
 			
 			if ply ~= assasin then
-				local ent = pk_pills.getMappedEnt(ply)
+				local ent = pills.getMappedEnt(ply)
 				
 				if IsValid(ent) then
 					ent.dontdraw = true
@@ -221,7 +236,6 @@ if CLIENT then
 	
 	net.Receive("fh_wgfreddy_target_outworld_end", function()
 		local myself = LocalPlayer()
-		local assasin = net.ReadPlayer()
 		
 		fh_cl_dontdraw_plushies()
 		
@@ -236,6 +250,8 @@ if CLIENT then
 			ply:SetNoDraw(false)
             ply:DrawShadow(true)
 			
+			outworlded_ppl[ply] = false
+			
             for _, wep in ipairs(ply:GetWeapons()) do
                 if IsValid(wep) then
                     wep:SetNoDraw(false)
@@ -244,7 +260,7 @@ if CLIENT then
                 end
             end
 			
-			local ent = pk_pills.getMappedEnt(ply)
+			local ent = pills.getMappedEnt(ply)
 			
 			if IsValid(ent) then
 				ent.dontdraw = false
@@ -301,7 +317,7 @@ if CLIENT then
 					ang:RotateAroundAxis(ang:Forward(), 90)
 				
 					cam.Start3D2D(pos, ang, 0.1)
-						draw.SimpleText("Нажмите R чтобы выбрать жертву.", "timerFontBelow", 0, 0, Color(255, 200, 0), TEXT_ALIGN_CENTER, TEXT_ALIGN_CENTER)
+						draw.SimpleText(language.GetPhrase("fazhunt.wgfreddy.press_r"), "timerFontBelow", 0, 0, Color(255, 200, 0), TEXT_ALIGN_CENTER, TEXT_ALIGN_CENTER)
 					cam.End3D2D()
 				end)
 			else
@@ -356,6 +372,8 @@ if CLIENT then
 			if ply ~= target and ply ~= LocalPlayer() then
 				ply:SetNoDraw(true)
 				ply:DrawShadow(false)
+		
+				outworlded_ppl[ply] = true
 				
 				for _, wep in ipairs(ply:GetWeapons()) do
 					if IsValid(wep) then
@@ -365,7 +383,7 @@ if CLIENT then
 					end
 				end
 				
-				local ent = pk_pills.getMappedEnt(ply)
+				local ent = pills.getMappedEnt(ply)
 				
 				if IsValid(ent) then
 					ent.dontdraw = true
@@ -395,6 +413,8 @@ if CLIENT then
 		for _,ply in player.Iterator() do
 			ply:SetNoDraw(false)
             ply:DrawShadow(true)
+		
+			outworlded_ppl[ply] = false
 			
             for _, wep in ipairs(ply:GetWeapons()) do
                 if IsValid(wep) then
@@ -404,7 +424,7 @@ if CLIENT then
                 end
             end
 			
-			local ent = pk_pills.getMappedEnt(ply)
+			local ent = pills.getMappedEnt(ply)
 			
 			if IsValid(ent) then
 				ent.dontdraw = false
@@ -412,19 +432,6 @@ if CLIENT then
 		end
 		
 		fh_cl_dontdraw_plushies()
-	end)
-	
-	local outworlded_ppl = {}
-	
-	hook.Add("PrePlayerDraw", "fh_dontdraw_outworlded" , function(ply)
-		if outworlded_ppl[ply] then
-			return true
-		end
-	end)
-	hook.Add( "PlayerFootstep", "fh_nosteps_outworlded", function( ply, pos, foot, sound, volume, rf )
-		if outworlded_ppl[ply] then
-			return true
-		end
 	end)
 	
 	net.Receive("fh_dontdraw_player", function()
@@ -502,7 +509,7 @@ function fh_get_wgfreddy_target(ply)
 	local maxDistToLine = 50
 	local maxRadius = 300
 	
-	for _, target in ipairs(player.GetAll()) do
+	for _, target in player.Iterator() do
 		if target == ply or not IsValid(target) or !target:Alive() or target:Team() != TEAM_UNASSIGNED or target == stalkTarget then continue end
 	
 		local targetPos = target:GetPos() + Vector(0, 0, 40)
@@ -534,6 +541,8 @@ local function cancel_outworld_target(ply)
 	ply:SetRunSpeed(420)
 	ply:SetWalkSpeed(200)
 	ply:SetCollisionGroup(COLLISION_GROUP_PLAYER)
+	ply:SetCustomCollisionCheck(true)
+	ply:CollisionRulesChanged()
 	ply:SetDSP(0)
 	ply:SetFOV(0)
 	fh_cant_hear[ply] = false
@@ -556,7 +565,7 @@ local function cancel_outworld_wgfreddy(ply)
 	net.Start("fh_wgfreddy_outworld_stop")
 	net.Send(ply)
 
-	local ent = pk_pills.getMappedEnt(ply)
+	local ent = pills.getMappedEnt(ply)
 	if !IsValid(ent) or !ply:Alive() then return end
 		
 	net.Start("fh_wgfreddy_selecting_halo")
@@ -582,6 +591,105 @@ local function cancel_outworld_wgfreddy(ply)
 
 		ent.cloaked = true
 	end
+end
+
+function start_outworld(ply, target)
+	net.Start("fh_play_sound")
+	net.WriteString('fnaf2/gfreddy/gfreddy_target.wav')
+	net.Send(ply)
+	
+	net.Start("fh_wgfreddy_outworld_start")
+	net.WritePlayer(target)
+	net.Send(ply)
+	
+	ply:ChatPrint(target:Nick() .. " - твоя цель.")
+	
+	table.insert(affectedPlayers, target)
+	
+	-- никто не видит их
+	for _, player in player.Iterator() do
+		if player ~= ply and player ~= target and player:Team() != TEAM_SPECTATOR and player:Alive() then
+			net.Start("fh_dontdraw_player")
+			net.WritePlayer(target)
+			net.Send(player)
+			
+			net.Start("fh_dontdraw_anim")
+			net.WriteEntity(ent)
+			net.Send(player)
+		end
+	end
+	
+	ply:SetPushImmune(true)
+	ply:SetPushBlocked(true)
+	target:SetPushImmune(true)
+	target:SetPushBlocked(true)
+	
+	fh_cant_hear[target] = true
+	target:SetCollisionGroup(COLLISION_GROUP_PLAYER_MOVEMENT)
+	target:SetCustomCollisionCheck(true)
+	target:SetRunSpeed(240)
+	target:SetWalkSpeed(120)
+	target:SetJumpBoostMultiplier(0)
+	target:SetFOV(75)
+	
+	net.Start("fh_net_wgfreddy_scarysound")
+	net.WriteBool(true)
+	net.WritePlayer(ply)
+	net.Send(target)
+	
+	if target:HasWeapon("weapon_crapvidcam") then
+		target:StripWeapon("weapon_crapvidcam")
+	end
+	
+	local timer_name = "plushie_hint_" .. ply:EntIndex()
+	
+	timer.Create(timer_name, 20, 0, function()
+		if !IsValid(ply) or !IsValid(target) then
+			timer.Remove(timer_name)
+			return 
+		end
+	
+		local plushies = ents.FindByClass("fh_plushie")
+	
+		if #plushies == 0 then return end
+	
+		local allFar = true
+		local closestPlushie = nil
+		local closestDistance = math.huge
+	
+		for _, plushie in ipairs(plushies) do
+			if not IsValid(plushie) then continue end
+	
+			local dist = plushie:GetPos():Distance(target:GetPos())
+	
+			if dist <= 1400 then
+				allFar = false
+				break
+			end
+	
+			if dist < closestDistance then
+				closestDistance = dist
+				closestPlushie = plushie
+			end
+		end
+	
+		if allFar and IsValid(closestPlushie) then
+			net.Start("fh_pos_sound_play")
+			net.WriteString("fnaf2/gfreddy/plushie_hint.mp3")
+			net.WriteVector(closestPlushie:GetPos())
+			net.Send(target)
+		end
+	end)
+	
+	fh_spawnPlushies(target)
+	
+	wgfreddy_targets[ply] = target
+	outworld_victims[target] = true
+	outworld_victims_count[target] = 0
+	
+	net.Start("fh_wgfreddy_target_outworld_start")
+	net.WritePlayer(ply)
+	net.Send(target)
 end
 
 function cancel_outworld(ply)

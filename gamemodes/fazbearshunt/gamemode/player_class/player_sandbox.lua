@@ -106,15 +106,17 @@ function PLAYER:StartMove( move )
 
 end
 
-local player_meta = FindMetaTable("Player")
+local meta = FindMetaTable("Player")
 
-function player_meta:SetJumpBoostMultiplier(mult)
-	if not IsValid(self) then return end
-	self._JumpBoostMult = mult or 1
-end
+if meta then
 
-function player_meta:GetJumpBoostMultiplier()
-	return self._JumpBoostMult or 0
+	function meta:SetJumpBoostMultiplier(mult)
+		self:SetNWFloat("JumpBoostMult", mult or 1)
+	end
+	
+	function meta:GetJumpBoostMultiplier()
+		return self:GetNWFloat("JumpBoostMult", 0)
+	end
 end
 
 function PLAYER:FinishMove( move )

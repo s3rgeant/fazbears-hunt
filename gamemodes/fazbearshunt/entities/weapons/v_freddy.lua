@@ -10,7 +10,8 @@ if CLIENT then
 			wep.ViewModelFOV = tonumber(new_value) or 100
 		end
     end)
-
+	
+	killicon.Add( "v_freddy", "HUD/killicons/freddy", Color( 255, 80, 0, 255 ) )
 end
 
 SWEP.ViewModel = "models/speps/vm/oldfreddy.mdl"

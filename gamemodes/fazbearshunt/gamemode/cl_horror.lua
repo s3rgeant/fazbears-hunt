@@ -3,9 +3,9 @@ local soundCooldown = 10
 
 local function fh_default_check_scarysound()
     local localPlayer = LocalPlayer()
-	if !pk_pills then return end
+	if !pills then return end
 	
-    if !IsValid(localPlayer) or pk_pills.getMappedEnt(localPlayer) != nil then return end
+    if !IsValid(localPlayer) or pills.getMappedEnt(localPlayer) != nil then return end
 
     local eyePos = localPlayer:EyePos()
     local eyeAngles = localPlayer:EyeAngles()
@@ -16,8 +16,8 @@ local function fh_default_check_scarysound()
     for _, ply in player.Iterator() do
         if ply ~= localPlayer and IsValid(ply) and ply:Alive() and localPlayer:Alive() and localPlayer:Team() != TEAM_SPECTATOR 
 		and ply:GetMoveType() != MOVETYPE_NOCLIP then
-            if pk_pills and pk_pills.getMappedEnt and pk_pills.getMappedEnt(ply) ~= nil then
-				local ent = pk_pills.getMappedEnt(ply)
+            if pills and pills.getMappedEnt and pills.getMappedEnt(ply) ~= nil then
+				local ent = pills.getMappedEnt(ply)
 				
 				if ent.dontdraw or ent:GetMaterial() == "models/null" then return end
 				
@@ -84,9 +84,9 @@ end
 local targetPlayer
 local function fh_gfreddy_check_scarysound()
     local localPlayer = LocalPlayer()
-	if not pk_pills then return end
+	if not pills then return end
 	
-    if not IsValid(localPlayer) or pk_pills.getMappedEnt(localPlayer) ~= nil then return end
+    if not IsValid(localPlayer) or pills.getMappedEnt(localPlayer) ~= nil then return end
 	if not IsValid(targetPlayer) or targetPlayer == localPlayer then return end
 	if not targetPlayer:Alive() or targetPlayer:GetMoveType() == MOVETYPE_NOCLIP then return end
 	if localPlayer:Team() == TEAM_SPECTATOR or not localPlayer:Alive() then return end
@@ -96,8 +96,8 @@ local function fh_gfreddy_check_scarysound()
     local forward = eyeAngles:Forward()
     local viewRadius = 200
 
-	if pk_pills and pk_pills.getMappedEnt and pk_pills.getMappedEnt(targetPlayer) ~= nil then
-		local ent = pk_pills.getMappedEnt(targetPlayer)
+	if pills and pills.getMappedEnt and pills.getMappedEnt(targetPlayer) ~= nil then
+		local ent = pills.getMappedEnt(targetPlayer)
 		
 		if ent.dontdraw or ent:GetMaterial() == "models/null" then return end
 

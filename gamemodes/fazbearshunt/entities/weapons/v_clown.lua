@@ -51,7 +51,7 @@ end
 
 function SWEP:PrimaryAttack()
 	local ply = self.Owner
-	local ent = pk_pills.getMappedEnt(ply)
+	local ent = pills.getMappedEnt(ply)
 	
 	if !IsValid(ent) or ply.tasered then return end
 	
@@ -81,7 +81,7 @@ end
 function SWEP:DealDamage()
 	if CLIENT then return end
 	local ply = self.Owner
-	local ent = pk_pills.getMappedEnt(ply)
+	local ent = pills.getMappedEnt(ply)
 	
 	if !IsValid(ent) then return end
 		

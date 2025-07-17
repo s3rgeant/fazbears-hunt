@@ -59,9 +59,11 @@ end
 
 function SWEP:PrimaryAttack()
 	local ply = self.Owner
-	local ent = pk_pills.getMappedEnt(ply)
+	local ent = pills.getMappedEnt(ply)
 	
 	if !IsValid(ent) then return end
+	
+	print("YAZ")
 	
 	if self.IsCharging or ply.tasered then return end
 	
@@ -90,7 +92,7 @@ end
 
 function SWEP:DealDamage()
 	local ply = self.Owner
-	local ent = pk_pills.getMappedEnt(ply)
+	local ent = pills.getMappedEnt(ply)
 	
 	if !IsValid(ent) then return end
 	
@@ -115,11 +117,6 @@ function SWEP:DealDamage()
 	end
 		
 	ply:LagCompensation(true)
-	
-	local numLines = 6
-	local angleStep = 5
-	
-	local trace
 
 	local tr = util.TraceLine( {
 		start = ply:GetShootPos(),
@@ -148,7 +145,7 @@ function SWEP:DealDamage()
 		return 
 	end
 	
-	if target:IsPlayer() then
+	if target:IsPlayer() and target:Team() ~= ply:Team() then
 	
 		local edata = EffectData()
 		edata:SetOrigin(tr.HitPos)

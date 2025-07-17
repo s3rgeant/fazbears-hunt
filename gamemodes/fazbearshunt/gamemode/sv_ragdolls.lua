@@ -82,6 +82,7 @@ function meta:CreateRagdoll()
 	if self:IsOnFire() then ent:Ignite(math.Rand(6, 8), 0) end
 	
 	ent:SetCollisionGroup(COLLISION_GROUP_WEAPON)
+	ent:SetCustomCollisionCheck( true )
 
 	self:SpectateEntity(ent)
 	self:Spectate(OBS_MODE_CHASE)
