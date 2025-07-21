@@ -63,8 +63,6 @@ function SWEP:PrimaryAttack()
 	
 	if !IsValid(ent) then return end
 	
-	print("YAZ")
-	
 	if self.IsCharging or ply.tasered then return end
 	
 	if ply:IsFrozen() or timer.Exists('ST_cantKill'..ply:EntIndex()) then return end

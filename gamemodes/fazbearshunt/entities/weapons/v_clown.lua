@@ -147,11 +147,11 @@ function SWEP:DealDamage()
 	
 	for _, target in ipairs(targets) do
 		if target:IsNPC() then
-			target:TakeDamage(99999, ply)
+			target:TakeDamage(99999, ply, self)
 			return 
 		end
 		
-		target:TakeDamage(36, ply)
+		target:TakeDamage(36, ply, self)
 	
 		target:SetVelocity(ply:GetUp() * 249) -- чтоб он нахуй улетел
 	end

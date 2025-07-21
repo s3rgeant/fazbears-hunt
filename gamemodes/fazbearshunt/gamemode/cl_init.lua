@@ -106,8 +106,9 @@ net.Receive("AnimatronicsWin", function()
     local VIP = net.ReadString()
 			
 	chat:AddText(" ")
-	chat:AddText(Color( 228, 0, 70 ), "#### " .. language.GetPhrase("fazhunt.chat.animatronicwin") .. " ####")
-	chat:AddText(Color( 255, 225, 25 ), language.GetPhrase("fuppr.results_mvp"), " ", Color(255, 255, 255), '- ', VIP)
+	chat:AddText(Color( 228, 0, 70 ), language.GetPhrase("fazhunt.chat.animatronicwin") .. "!")
+	chat:AddText(" ")
+	chat:AddText(Color( 0, 225, 100 ), language.GetPhrase("fazhunt.stats.last_standing"), ": ", Color(255, 255, 255), '- ', VIP)
 	chat:AddText(" ")
 end)
 
@@ -115,9 +116,25 @@ net.Receive("SurvivorsWin", function()
 	local players = net.ReadTable()
 	
 	chat:AddText(" ")
-	chat:AddText(Color( 0, 182, 255 ), "#### " .. language.GetPhrase("fazhunt.chat.survivalswin") .. " ####")
-	chat:AddText(Color( 255, 225, 25 ), language.GetPhrase("fuppr.results_survivors"), " ", Color(255, 255, 255), '- ', table.concat(players, ", "))
+	chat:AddText(Color( 0, 182, 255 ), language.GetPhrase("fazhunt.chat.survivalswin") .. "!")
 	chat:AddText(" ")
+	chat:AddText(Color( 0, 225, 100 ), language.GetPhrase("fuppr.survivors_team"), ": ", Color(255, 255, 255), '- ', table.concat(players, ", "))
+	chat:AddText(" ")
+end)
+
+net.Receive("fh_top_stats", function()
+    local count = net.ReadUInt(8)
+
+    for i = 1, count do
+        local formatStr = language.GetPhrase("fazhunt.stats." .. net.ReadString())
+        local nick = net.ReadString()
+        local value = net.ReadUInt(32)
+
+        chat.AddText(
+            Color(255, 255, 0), nick,
+            color_white, " " .. string.format(formatStr, value)
+        )
+    end
 end)
 	
 net.Receive("JumpscareLight", function()
@@ -265,6 +282,23 @@ function GM:MouthMoveAnimation(ply)
 end
 
 local history = {}
+hook.Add("OnPlayerChat", "fh_chat_message", function(ply, text, team, dead)
+    if not IsValid(ply) then return end
+	
+	local clr = teamColors[ ply:Team() ] or Color(90, 90, 90)
+	
+	local team_txt = (team and ply:Team() ~= TEAM_SPECTATOR) and "[TEAM] " or ""
+
+    chat.AddText(
+        Color(0, 190, 0), team_txt,
+        clr, ply:Nick(),
+        Color(255, 255, 255), ": ",
+        Color(255, 255, 255), text
+    )
+
+    return true
+end)
+
 net.Receive("fh_chat_message", function()
 	local nick = net.ReadString()
 	local text = net.ReadString()

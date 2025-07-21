@@ -176,6 +176,10 @@ function SWEP:PrimaryAttack()
         end
     end
 	
+	if wait == 90 then
+		stats.Add(owner, "tasered", 1)
+	end
+	
 	self:SetNextPrimaryFire(CurTime() + wait)
 	timer.Create("taser" .. owner:EntIndex(), wait / 100, 100, function()
 		if IsValid(self) then

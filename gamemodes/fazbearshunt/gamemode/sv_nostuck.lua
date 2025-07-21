@@ -35,7 +35,7 @@ hook.Add("PlayerSelectSpawn", "PreventPlayerStuckSpawn", function(ply)
     while attempts < maxAttempts do
         local isOccupied = false
 
-        for _, otherPly in ipairs(player.GetAll()) do
+        for _, otherPly in player.Iterator() do
             if otherPly ~= ply and IsValid(otherPly) then
                 if otherPly:GetPos():Distance(spawnPos) < spawnOffset then
                     isOccupied = true

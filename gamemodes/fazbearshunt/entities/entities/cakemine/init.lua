@@ -73,6 +73,12 @@ function ENT:CheckForPlayers()
 			table.insert(totalPlayers, ply)
 			
             ply:SetRunSpeed(ply:GetRunSpeed() * 0.5)
+			ply._cupcakeAffected = true
+			stats.Add(ply, "got_slowed", 1)
+			
+			if IsValid(owner) then
+				stats.Add(owner, "slowed_using_cupcake", 1)
+			end
 			
 			if timer.Exists('C_deploycake'..owner:EntIndex()) then
 				timer.Adjust("C_deploycake"..owner:EntIndex(), 10)
@@ -88,6 +94,7 @@ function ENT:CheckForPlayers()
             timer.Simple(7, function()
                 if IsValid(ply) then
 					ply:SetRunSpeed(ply:GetRunSpeed() / 0.5)
+					ply._cupcakeAffected = false
                 end
             end)
 			

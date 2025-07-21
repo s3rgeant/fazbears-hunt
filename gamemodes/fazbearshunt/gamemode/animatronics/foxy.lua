@@ -13,7 +13,7 @@ if SERVER then
 	local MAX_RUSH_TOKENS = 5
 
 	function receiveTokensBack(ply)
-		timer.Create("receiving_tokens" .. ply:EntIndex(), 1, 5, function()
+		timer.Create("receiving_tokens" .. ply:EntIndex(), 4, 5, function()
 			if not IsValid(ply) then return end
 			if ply.blightRushTokens == MAX_RUSH_TOKENS then
 				timer.Remove("receiving_tokens" .. ply:EntIndex())
@@ -21,6 +21,9 @@ if SERVER then
 			end
 
 			ply.blightRushTokens = ply.blightRushTokens + 1
+			
+			ply:SendLua("surface.PlaySound('buttons/blip1.wav')")
+			
 			net.Start("fh_net_killer_change_tokens")
 			net.WriteString("charge")
 			net.WriteInt(ply.blightRushTokens, 9)
@@ -41,8 +44,10 @@ if SERVER then
 		ply:SetNWBool("Blight_BlockM1", true)
 		
 		timer.Simple(3, function()
-			if not IsValid(ply) then return end
-			ent:SetSpeed(unpack(FoxyMovementSpeed()))
+			if not IsValid(ply) then return end	
+			if IsValid(ent) then
+				ent:SetSpeed(unpack(FoxyMovementSpeed()))
+			end
 			ply:SetFOV(0, 0.5)
 			
 			ply:SetNWBool("Blight_BlockM1", false)
@@ -63,12 +68,12 @@ if SERVER then
 			net.Start("Blight_PlayLethalRushSound")
 			net.Send(ply)
 		end
+
+		if ply.blightRushTokens ~= MAX_RUSH_TOKENS and not ply.blightRushing then return end
 		
 		if ply.blightRushTokens < 4 then
 			ply:SetNWBool("Blight_BlockM1", false)
 		end
-
-		if ply.blightRushTokens ~= MAX_RUSH_TOKENS and not ply.blightRushing then return end
 
 		net.Start("fh_net_killer_change")
 		net.WriteString("charge")
@@ -201,6 +206,8 @@ hook.Add("Move", "BlightClientPredictionMove", function(ply, mv)
 			ply.blightBounceSpeed = 80
 					
 			ply.puppet:SetPlaybackRate(1)
+			
+			ply.puppet:PillGesture('chargestun', 1, 0.8, 0.1, 0.3)
 		
 			net.Start("Blight_PlayImpactSound")
 			net.Send(ply)
@@ -257,7 +264,7 @@ if CLIENT then
 	net.Receive("BlightRush_Start", function()
 		LocalPlayer().isBlightRushing = true
 		hook.Add("AdjustMouseSensitivity", "ReduceBlightMouseSensitivity", function()
-			return 1 / 5
+			return 1 / 6
 		end)
 	end)
 

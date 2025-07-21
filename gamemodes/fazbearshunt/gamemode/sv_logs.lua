@@ -5,7 +5,7 @@ local functions = include('discord_integration.lua')
 -- я ненавижу этот блок кода, он до крайности ужасен
 
 function GetHostPlayer()
-    for _, ply in ipairs(player.GetAll()) do
+    for _, ply in player.Iterator() do
         if ply:IsListenServerHost() then
             return ply:Nick()
         end

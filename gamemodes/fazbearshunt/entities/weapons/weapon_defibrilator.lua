@@ -150,6 +150,8 @@ function SWEP:Think()
 						survivors[ply] = true
 					end
 					
+					stats.Add(self.Owner, "revived", 1)
+					
 					LogEvent("☦️ Игрок **" .. self.Owner:Nick() .. "** возродил **" .. ply:Nick() .. "** дефибриллятором")
 
                     timer.Simple(1 / 100, function()

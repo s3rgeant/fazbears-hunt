@@ -42,6 +42,9 @@ if SERVER then
 	util.AddNetworkString("fh_draw_player")
 	util.AddNetworkString("fh_draw_anim")
 	
+	util.AddNetworkString("fh_stalker_freddy_halo_start")
+	util.AddNetworkString("fh_stalker_freddy_halo_stop")
+	
 	util.PrecacheModel("models/speps/pill/oldfreddy.mdl")
 	util.PrecacheModel("models/speps/pill/oldbonnie.mdl")
 	util.PrecacheModel("models/speps/pill/oldchica.mdl")
@@ -89,14 +92,14 @@ pills.register("pill_wfreddy2",{
 			land="land",
 			stalk="stalk",
 			stun="stun",
+			doorbreak="doorbreak",
 		},
 	},
 	moveSpeed={
-		walk=wfreddy_default_movement[1] * 0.2,
-		run=wfreddy_default_movement[2] * 0.2,
-		ducked=wfreddy_default_movement[3] * 0.2,
+		walk=wfreddy_default_movement[1],
+		run=wfreddy_default_movement[2],
+		ducked=wfreddy_default_movement[3],
 	},
-	modelScale="0.2",
 	sounds={
 		gs="fnaf2/stareshort.wav",
 		loop_stare="fnaf2/with_s2_loop2.wav",
@@ -107,16 +110,22 @@ pills.register("pill_wfreddy2",{
 	},
 	type="ply",
     camera = {
-        offset = Vector(0, 0, 2),
+        offset = Vector(0, 0, 90),
 		dist = 150
     },
-	hull=Vector(16 * 0.2,16 * 0.2,86 * 0.2),
+	hull=Vector(24,24,86),
 	duckBy=60,
 	
 	viewmodel={
 		weapon="v_freddy",
 		skin=0
 	},
+	
+	animEvent=function(ply,ent,event)
+		if util.GetAnimEventNameByID( event ) == "FREDDY_DOOR_BREAK" then
+			ply:EmitSound("physics/metal/metal_sheet_impact_hard8.wav")
+		end
+	end,
 
     jumpPower=250,
 	
@@ -287,6 +296,7 @@ pills.register("pill_wfreddy2",{
 	
 							if IsValid(target) then
 								target:SetDSP(1)
+								stats.Add(target, "evaded_blind_rage", 1)
 							end
 	
 							net.Start("fh_net_killer_change")
@@ -402,6 +412,8 @@ function successStalk(ply, ent, target)
 			wep.run_string = "ragerun"
 			wep.run_act = ACT_RUN_AIM
 		end
+		
+		ply:SendLua("wfreddy_stalker_door_halo_ON()")
 			
 		stalker = ply
 		stalkerEnt = ent
@@ -458,6 +470,8 @@ end
 
 function noMoreStalk(ply)
 	local ent = stalkerEnt
+		
+	ply:SendLua("wfreddy_stalker_door_halo_OFF()")
 	
 	ent:SetSpeed(unpack(wfreddy_default_movement))
 	ent:ReplaceAnimation("run", "run")
@@ -530,7 +544,7 @@ pills.register("pill_wbonnie2",{
         offset = Vector(0, 0, 90),
 		dist = 150
     },
-	hull=Vector(16,16,86),
+	hull=Vector(24,24,86),
 	duckBy=60,
 	
 	viewmodel={
@@ -706,6 +720,7 @@ pills.register("pill_wbonnie2",{
 		end
 		
 		if ply:WaterLevel() > 0 then return end
+		if !fh_get_nearest_props(ply:GetPos(), 50) then return end
 		
 		if ent.landTimes != nil then
 			ent.landTimes = 1 + ent.landTimes
@@ -734,7 +749,7 @@ pills.register("pill_wbonnie2",{
 
 function fh_random_yoursmine_target(ignore)
     local candidates = {}
-    for _, ply in ipairs(player.GetAll()) do
+    for _, ply in player.Iterator() do
         if IsValid(ply) and (ply:Alive() and ply:Team() != TEAM_SPECTATOR) and ply ~= ignore and ply:Team() != 2701 and !outworld_victims[ply] then
             table.insert(candidates, ply)
         end
@@ -795,7 +810,7 @@ pills.register("pill_wchica2",{
         offset = Vector(0, 0, 90),
 		dist = 150
     },
-	hull=Vector(16,16,86),
+	hull=Vector(24,24,86),
 	duckBy=60,
 	
     jumpPower=250,
@@ -913,6 +928,7 @@ pills.register("pill_wchica2",{
 		end
 		
 		if ply:WaterLevel() > 0 then return end
+		if !fh_get_nearest_props(ply:GetPos(), 50) then return end
 		
 		if ent.landTimes != nil then
 			ent.landTimes = 1 + ent.landTimes
@@ -983,6 +999,7 @@ pills.register("pill_wfoxy2",{
 			land="land",
 			scare="scare",
 			stun="stun",
+			chargestun="chargestun",
 		},
 	},
 	moveSpeed={
@@ -1006,7 +1023,7 @@ pills.register("pill_wfoxy2",{
         offset = Vector(0, 0, 90),
 		dist = 150
     },
-	hull=Vector(16,16,86),
+	hull=Vector(24,24,86),
 	duckBy=60,
 	
 	viewmodel={
@@ -1108,9 +1125,12 @@ pills.register("pill_wfoxy2",{
 			ent:PillSound("land_foxy",false)
 			return
 		end
-		ent:PillSound("regular_land",false)
+		if ply:WaterLevel() < 1 then
+			ent:PillSound("regular_land",false)
+		end
 		
 		if ply:WaterLevel() > 0 then return end
+		if !fh_get_nearest_props(ply:GetPos(), 50) then return end
 		
 		if ent.landTimes != nil then
 			ent.landTimes = 1 + ent.landTimes
@@ -1208,7 +1228,7 @@ pills.register("pill_sfreddy2",{
         offset = Vector(0, 0, 90),
 		dist = 150
     },
-	hull=Vector(16,16,86),
+	hull=Vector(24,24,86),
 	duckBy=60,
 	
 	viewmodel={
@@ -1493,7 +1513,7 @@ pills.register("pill_endo02",{
         offset = Vector(0, 0, 90),
 		dist = 150
     },
-	hull=Vector(16,16,86),
+	hull=Vector(24,24,86),
 	duckBy=60,
 	
 	viewmodel={
@@ -1595,6 +1615,7 @@ pills.register("pill_endo02",{
 		end
 		
 		if ply:WaterLevel() > 0 then return end
+		if !fh_get_nearest_props(ply:GetPos(), 50) then return end
 		
 		if ent.landTimes != nil then
 			ent.landTimes = 1 + ent.landTimes
@@ -1924,7 +1945,7 @@ pills.register("pill_wgfreddyhead2",{
         offset = Vector(0, 0, 90),
 		dist = 150
     },
-	hull=Vector(16,16,86),
+	hull=Vector(24,24,86),
 	duckBy=60,
 	
 	muteSteps = true,
@@ -2180,7 +2201,7 @@ end
 function takePlayer(ply, ent)
 	if ply:Team() == TEAM_SPECTATOR or ply:Health() == 0 then return end
 
-    local nearestPlayer = FindNearestPlayer(ply:EyePos(), 125, ply)
+    local nearestPlayer = FindNearestPlayer(ply:EyePos(), 125, ply, 90)
 
     if nearestPlayer and nearestPlayer:IsPlayer() and !nearestPlayer:IsFrozen() then
 		ply:EmitSound("grab_player.wav")
@@ -2301,6 +2322,84 @@ function endoRelease(ply)
 	
 	playersHoldingRightClick[ply] = nil
 	timer.Remove("UpdateCameraAndPosition" .. ply:UserID())
+end
+
+hook.Add("PlayerUse", "AccurateBlockedDoorUse", function(ply, ent)
+    if not IsValid(ent) then return end
+	
+	if ply._cantBreakDoors or ply:Crouching() or !ply:OnGround() then return end
+	
+	if ply ~= stalker then return end
+	
+	local puppet = pills.getMappedEnt(ply)
+	if !IsValid(puppet) then return end
+	
+	if puppet.formTable.name ~= "pill_wfreddy2" then return end
+
+    local class = ent:GetClass()
+    local isDoor = class == "func_door" or class == "func_door_rotating" or class == "prop_door_rotating"
+    if not isDoor then return end
+
+    if ent:HasSpawnFlags(8192) then return end
+	
+    local state = ent:GetInternalVariable("m_toggle_state")
+    if state ~= 1 then return end
+
+    local tr = ply:GetEyeTrace()
+    if tr.Entity ~= ent then return end
+    local hitNormal = tr.HitNormal
+	
+	puppet:PillAnim("doorbreak", true)
+	ply._cantBreakDoors = true
+
+    timer.Simple(1, function()
+        if IsValid(ent) then
+            ent:Fire("Open", "", 0)
+			
+			local effectData = EffectData()
+			effectData:SetOrigin(ent:GetPos())
+			effectData:SetNormal(hitNormal)
+			effectData:SetMagnitude(1)
+			effectData:SetScale(1)
+			effectData:SetRadius(3)
+			util.Effect("ManhackSparks", effectData, true, true)
+        end
+    end)
+
+    timer.Simple(9, function()
+        if IsValid(ent) then
+            ent:Fire("Close", "", 0)
+			ply._cantBreakDoors = false
+        end
+    end)
+
+    return false
+end)
+
+if CLIENT then
+	local function halo_breakable_doors()
+		local ply = LocalPlayer()
+		if not IsValid(ply) then return end
+
+		local ent = ply:GetUseEntity()
+		if not IsValid(ent) then return end
+
+		local class = ent:GetClass()
+		local isDoor = class == "func_door" or class == "func_door_rotating" or class == "prop_door_rotating"
+		if not isDoor then return end
+
+		if ent:HasSpawnFlags(8192) then return end
+
+		halo.Add({ent}, Color(255, 255, 255), 2, 2, 1, true, true)
+	end
+	
+	function wfreddy_stalker_door_halo_ON()
+		hook.Add("PreDrawHalos", "fh_highlight_breakdoor_stalker", halo_breakable_doors)
+	end
+	
+	function wfreddy_stalker_door_halo_OFF()
+		hook.Remove("PreDrawHalos", "fh_highlight_breakdoor_stalker")
+	end
 end
 
 if SERVER then

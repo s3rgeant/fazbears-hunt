@@ -13,7 +13,6 @@
 	"$specularcolor" 			"[1 1 1]"
 	"$rimlightcolor" 			"[1 1 1]"
 
-	"$envmap" "models\cubemaps\fallout4cube_dithered_grey"
 	"$maskenvbymetalness" "0"
 
 	"$metalnessblendtofull"	"1"

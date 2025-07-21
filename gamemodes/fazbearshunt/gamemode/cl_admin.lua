@@ -12,21 +12,6 @@ local function OpenAdminPanel()
 		return
     end
 
-	--[[
-    if IsValid(fh_admin_panel) then
-		if fh_admin_panel:IsVisible() then 
-			fh_admin_panel:Hide()
-			gui.EnableScreenClicker(false)
-			return
-		else
-			createListPlayers()
-			fh_admin_panel:Show()
-			gui.EnableScreenClicker(true)
-			return
-		end
-    end
-	]]--
-
     fh_admin_panel = vgui.Create("DFrame")
     fh_admin_panel:SetSize(600, 500)
     fh_admin_panel:Center()
@@ -370,7 +355,7 @@ end
 function createListPlayers()
 	if !IsValid(fh_admin_panel) then return end
     PlayerList:Clear()
-    for _, v in pairs(player.GetAll()) do
+    for _, v in player.Iterator() do
         local team = getTeam(v:Team())
         local line = PlayerList:AddLine(v:Nick(), team)
         line.Player = v
