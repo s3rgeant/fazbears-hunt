@@ -845,6 +845,9 @@ hook.Add( "CanPlayerSuicide", "fh_suicide", function( ply )
 	if ply:Team() == 2701 or ply.jumpscared then
 		return false
 	end
+	if timer.TimeLeft( "EndGameTimer" ) > gameDuration then
+		return false
+	end
 end )
 
 hook.Add( "PlayerShouldTaunt", "fh_allow_taunt", function( ply )
@@ -1113,3 +1116,7 @@ function fh.GetEarnedKillers(players)
 	
 	return players
 end
+
+hook.Add( "GetFallDamage", "FH_FallDamage", function(ply, speed)
+	return math.min(speed / 35, 50)
+end )
