@@ -171,9 +171,9 @@ function DrawKillerInterface()
 			local max_timer_width = timer_width - (6 * uiScale)
 
 			if maxTime and timeLeft > 0 then
-				draw.RoundedBox(0, abilityX + timer_x, abilityY + timer_y, 2, 8, Color(255,255,255))
-				draw.RoundedBox(0, abilityX + timer_x + timer_width, abilityY + timer_y, 2, 8, Color(255,255,255))
-				draw.RoundedBox(0, abilityX + timer_x + (4 * uiScale), abilityY + timer_y + (2 * uiScale), max_timer_width * (timeLeft / maxTime), 4, Color(255,255,255))
+				draw.RoundedBox(0, abilityX + timer_x, abilityY + timer_y, 2 * uiScale, 8 * uiScale, Color(255,255,255))
+				draw.RoundedBox(0, abilityX + timer_x + timer_width, abilityY + timer_y, 2 * uiScale, 8 * uiScale, Color(255,255,255))
+				draw.RoundedBox(0, abilityX + timer_x + (4 * uiScale), abilityY + timer_y + (2 * uiScale), max_timer_width * (timeLeft / maxTime), 4 * uiScale, Color(255,255,255))
 			end
 
 			if timeLeft > 0 then
@@ -181,21 +181,23 @@ function DrawKillerInterface()
 			end
 
 			if abilityData.tokens >= 0 then
+				local y_20 = abilityY - 24 * uiScale
+			
 				local tokens_bg_width, tokens_bg_height = (tokens_bg_mat:GetInt("$realwidth") or 100) * uiScale, (tokens_bg_mat:GetInt("$realheight") or 100) * uiScale
 
 				surface.SetMaterial(tokens_bg_mat)
 				surface.SetDrawColor(255, 255, 255, 255)
-				surface.DrawTexturedRect(abilityX, abilityY - 20, tokens_bg_width, tokens_bg_height)
+				surface.DrawTexturedRect(abilityX, y_20, tokens_bg_width, tokens_bg_height)
 
 				local tokens_bg_outline_width, tokens_bg_outline_height = (tokens_bg_outline_mat:GetInt("$realwidth") or 100) * uiScale, (tokens_bg_outline_mat:GetInt("$realheight") or 100) * uiScale
 
 				surface.SetMaterial(tokens_bg_outline_mat)
 				surface.SetDrawColor(hud_color)
-				surface.DrawTexturedRect(abilityX, abilityY - 20, tokens_bg_outline_width, tokens_bg_outline_height)
+				surface.DrawTexturedRect(abilityX, y_20, tokens_bg_outline_width, tokens_bg_outline_height)
 
-				local token_bar_height = 6
-				local gap_from_sides = 8
-				local spacing = 6
+				local token_bar_height = 6 * uiScale
+				local gap_from_sides = 10 * uiScale
+				local spacing = 6 * uiScale
 				local token_count = abilityData.tokens
 				local max_tokens = abilityData.maxtokens or token_count
 				local available_width = tokens_bg_width - (gap_from_sides * 2)
@@ -204,7 +206,7 @@ function DrawKillerInterface()
 
 				for i = 0, token_count - 1 do
 					local x = abilityX + gap_from_sides + i * (token_width + spacing)
-					local y = (abilityY - 20) + (tokens_bg_outline_height / 2) - (token_bar_height / 2)
+					local y = y_20 + (tokens_bg_outline_height / 2) - (token_bar_height / 2)
 					draw.RoundedBox(0, x, y, token_width, token_bar_height, Color(255, 255, 255))
 				end
 			end

@@ -71,7 +71,7 @@ function ENT:FindNearestPlayer()
     local nearestPly
     local minDistSqr = math.huge
 
-    for _, ply in ipairs(player.GetAll()) do
+    for _, ply in player.Iterator() do
         if ply:Alive() and ply:Team() != TEAM_SPECTATOR and ply:Team() != 2701 then
             local distSqr = self:GetPos():DistToSqr(ply:GetPos())
             if distSqr < minDistSqr then
@@ -152,7 +152,7 @@ function ENT:Think()
 				
 				timer.Create("pt_jump_delay".. self:EntIndex(), 2, 1, function() end)
 			end
-			for _, ply in ipairs(player.GetAll()) do
+			for _, ply in player.Iterator() do
 				if ply:Alive() and ply:Team() != 2701 and self:GetPos():DistToSqr(ply:GetPos()) <= (75 * 75) then
 					local dmgInfo = DamageInfo()
 					dmgInfo:SetDamage(self.AttackDamage)

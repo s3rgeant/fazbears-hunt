@@ -146,18 +146,6 @@ function GM:ScoreboardShow()
 				TEXT_ALIGN_TOP
 			)
 		end
-	
-		--[[
-		draw.SimpleText(
-			language.GetPhrase("fuppr.scoreboard.players") .. " ( " .. #player.GetAll() .. " / " .. game.MaxPlayers() .. " )",
-			"bySergeantFont",
-			w / 2,
-			8,
-			color_white,
-			TEXT_ALIGN_CENTER,
-			TEXT_ALIGN_TOP
-		)
-		]]--
 	end
 
     scoreboardHeader = vgui.Create("DFrame")

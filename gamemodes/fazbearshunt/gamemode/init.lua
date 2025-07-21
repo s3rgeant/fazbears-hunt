@@ -25,6 +25,7 @@ include( "sv_spectate.lua" )
 include( "sv_nostuck.lua" )
 include( "sv_ragdolls.lua" )
 include( "sv_logs.lua" )
+include( "stats.lua" )
 
 include( "mount/push.lua" )
 
@@ -335,6 +336,8 @@ function endGame(killerVictory)
 		end
 	end
 	
+	hook.Run("fh_postendgame", killerVictory, animatronics)
+	
 	timer.Create("endGameWait", 10, 1, function() 
 		game.CleanUpMap( false )
 		
@@ -349,7 +352,7 @@ function endGame(killerVictory)
 		
 		table.Empty(usedKillers)
 		
-		for _, ply in pairs(player.GetAll()) do
+		for _, ply in player.Iterator() do
 			ply:SetTeam(TEAM_UNASSIGNED)
 			ply:Spawn()
 			setupPlayerVars(ply)
@@ -378,11 +381,12 @@ function postGameTimer()
 end
 
 function GM:fh_prestartgame()
-
 end
 
 function GM:fh_poststartgame()
+end
 
+function GM:fh_postendgame()
 end
 
 function startGame()
@@ -495,12 +499,13 @@ function registerNewRound()
 	table.Empty(alivePlayers)
 	table.Empty(survivors)
 	table.Empty(animatronics)
-    for _, ply in pairs(player.GetAll()) do
+    for _, ply in player.Iterator() do
         ply:Spawn()
 		survivors[ply] = true
     end
 	LogEvent(" ")
 	
+	restoreAnimatronics()
 	startGame()
 end
 
@@ -626,7 +631,7 @@ hook.Add("PlayerDisconnected", "fh_playerleft", function(ply)
 	
 	animatronicsLeft_check()
 	
-    if #player.GetAll() == 1 and isGameOn then
+    if player.GetCount() == 1 and isGameOn then
         resetGameTimer()
         if timer.Exists("GameStartTimer") then
             timer.Remove("GameStartTimer")
@@ -974,7 +979,7 @@ net.Receive("fh_initpostentity", function(len, ply)
 		net.WriteFloat(timeLeft)
 		net.Send(ply)
 	end
-	if #player.GetAll() >= 2 and not isGameOn and !timer.Exists("GameStartTimer") then
+	if player.GetCount() >= 2 and not isGameOn and !timer.Exists("GameStartTimer") then
 		postGameTimer()
 	
 		timer.Create("GameStartTimer", lobbyDuration, 1, function()
@@ -985,27 +990,11 @@ net.Receive("fh_initpostentity", function(len, ply)
 		
 		lobbyDuration = 30
 	end
-	--if !ply:IsListenServerHost() then
 	
-		net.Start("fh_share_notprefered")
-		net.WriteTable(getAllPreferables(true))
-		net.Send(ply)
-	--end
+	net.Start("fh_share_notprefered")
+	net.WriteTable(getAllPreferables(true))
+	net.Send(ply)
 end)
-
-hook.Add( "PlayerSay", "fh_chat_messages", function( ply, text, teamChat )
-	net.Start("fh_chat_message")
-	net.WriteString(ply:Nick())
-	net.WriteString(text)
-	net.WriteBool(ply:Team() == TEAM_SPECTATOR or !ply:Alive())
-	net.WriteColor(teamColors[ply:Team()])
-	
-	net.WriteBool(teamChat)
-	net.WriteFloat(ply:Team())
-	net.Broadcast()
-	
-	return ""
-end )
 
 local tm = nil
 hook.Add("Tick", "fh_tick", function()

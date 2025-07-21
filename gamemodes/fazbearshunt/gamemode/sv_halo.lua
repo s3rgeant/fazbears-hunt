@@ -29,7 +29,7 @@ function HighlightPlayers(ply, ent)
 		local outworlded = getOutworldVictims()
 	
 		local affectedNicknames = {}
-		for _, player in ipairs(player:GetAll()) do
+		for _, player in player.Iterator() do
 			if player ~= ply and player:IsPlayer() 
 							and player:Health() > 0 
 							and (player:Team() != TEAM_SPECTATOR
@@ -38,9 +38,11 @@ function HighlightPlayers(ply, ent)
 							and !outworlded[player] then
 				local distance = ply:GetPos():Distance(player:GetPos())
 				
+				local isAffected = distance <= conVars.halo_radius:GetInt()
+				
 				if !conVars.fh_silent_highlight:GetBool() then
 					net.Start("PlayHighlightSounds") -- всем остальным кидаем звук прикольный
-					net.WriteBool(distance <= conVars.halo_radius:GetInt())
+					net.WriteBool(isAffected)
 					net.WriteBool(ent.formTable.name == "pill_springtrap")
 					net.Send(player)
 				else
@@ -52,13 +54,17 @@ function HighlightPlayers(ply, ent)
 					player:ChatPrint("Просвет... Или нет?")
 				end
 				
-				if (distance <= conVars.halo_radius:GetInt()) then -- передаём чуваку кто подсвечивается в радиусе
+				if (isAffected) then -- передаём чуваку кто подсвечивается в радиусе
 					table.insert(affectedPlayers, player)
 					table.insert(totalPlayers, player)
 					table.insert(affectedNicknames, player:Nick())
 					timer.Simple(conVars.halo_time:GetFloat(), function()
 						table.RemoveByValue(affectedPlayers, player)
 					end)
+					
+					stats.Add(player, "got_highlighted", 1)
+				else
+					stats.Add(player, "evaded_highlight", 1)
 				end
 			end
 		end

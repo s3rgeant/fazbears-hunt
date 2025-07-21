@@ -16,5 +16,4 @@ $basetexturetransform "1"
 $nodecal "1"
 $model "1"
 $diffuseexp "1.5"
-$nocull 1
 }

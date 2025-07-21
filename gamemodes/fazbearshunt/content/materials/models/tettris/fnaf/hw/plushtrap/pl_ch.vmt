@@ -16,7 +16,6 @@ VertexlitGeneric
 	"$rimlightscale" 			"0"
 	"$ambientscale"			"0"
 
-	"$envmap" "models\cubemaps\fallout4cube_dithered_grey"
 	"$maskenvbymetalness" "0"
 
 	"$metalnessblendtofull"	"1"

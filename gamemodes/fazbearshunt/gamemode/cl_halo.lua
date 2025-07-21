@@ -66,9 +66,8 @@ function fh_add_affected_springtrap(ply)
 end
 
 function toggleShadows(bool)
-	local players = player.GetAll()
 	if bool then
-		for _, ply in ipairs( players ) do
+		for _, ply in player.Iterator() do
             ply:DrawShadow(true)
 		
 			for _, wep in ipairs(ply:GetWeapons()) do
@@ -80,7 +79,7 @@ function toggleShadows(bool)
 			end
 		end
 	else
-		for _, ply in ipairs( players ) do
+		for _, ply in player.Iterator() do
 			if ply ~= target and ply:Team() != 2701 then
 				ply:DrawShadow(false)
 		

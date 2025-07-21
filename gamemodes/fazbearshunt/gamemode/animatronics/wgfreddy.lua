@@ -107,6 +107,8 @@ hook.Add("KeyPress", "fh_plushie_use_check", function(ply, key)
 				net.WriteString("fnaf2/gfreddy/plushie_taken.wav")
 				net.Send(ply)
 				
+				PauseDamage(ply, 16)
+				
 				for k,v in pairs( wgfreddy_targets ) do
 					if ply == v then
 						net.Start("fh_ui_sound_play")
@@ -606,6 +608,8 @@ function start_outworld(ply, target)
 	
 	table.insert(affectedPlayers, target)
 	
+	StartDelayedDamage(target)
+	
 	-- никто не видит их
 	for _, player in player.Iterator() do
 		if player ~= ply and player ~= target and player:Team() != TEAM_SPECTATOR and player:Alive() then
@@ -696,12 +700,14 @@ function cancel_outworld(ply)
 	if wgfreddy_targets[ply] then
 		cancel_outworld_wgfreddy(ply)
 		cancel_outworld_target(wgfreddy_targets[ply])
+		StopDelayedDamage(ply)
 		killPlushies(wgfreddy_targets[ply])
 		return
 	end
 	
 	if outworld_victims[ply] then
 		cancel_outworld_target(ply)
+		StopDelayedDamage(ply)
 		killPlushies(ply)
 		
 		for wgfreddy, target in pairs(wgfreddy_targets) do
@@ -713,4 +719,57 @@ function cancel_outworld(ply)
 
 	outworld_victims[ply] = nil
 	wgfreddy_targets[ply] = nil
+end
+
+local DamageTimers = {}
+
+function StartDelayedDamage(ply)
+    if not IsValid(ply) or not ply:IsPlayer() then return end
+
+    local steamID = ply:SteamID()
+    
+    if DamageTimers[steamID] then return end
+
+    timer.Simple(30, function()
+        if not IsValid(ply) then return end
+
+        local timerName = "DamagePlayer_" .. steamID
+        DamageTimers[steamID] = timerName
+
+        timer.Create(timerName, 2, 0, function()
+            if not IsValid(ply) then
+                StopDelayedDamage(ply)
+                return
+            end
+
+            if ply._damagePausedUntil and CurTime() < ply._damagePausedUntil then
+                return
+            end
+
+            local dmg = DamageInfo()
+            dmg:SetDamage(1)
+            dmg:SetAttacker(game.GetWorld())
+            dmg:SetDamageType(DMG_GENERIC)
+            ply:TakeDamageInfo(dmg)
+        end)
+    end)
+end
+
+function PauseDamage(ply, duration)
+    if not IsValid(ply) or not ply:IsPlayer() then return end
+    ply._damagePausedUntil = CurTime() + duration
+end
+
+function StopDelayedDamage(ply)
+    if not IsValid(ply) or not ply:IsPlayer() then return end
+
+    local steamID = ply:SteamID()
+    local timerName = DamageTimers[steamID]
+
+    if timerName then
+        timer.Remove(timerName)
+        DamageTimers[steamID] = nil
+    end
+
+    ply._damagePausedUntil = nil
 end

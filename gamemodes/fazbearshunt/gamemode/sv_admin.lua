@@ -166,6 +166,9 @@ function EndPostRound()
 	if !roundEnding and isGameOn then
 		roundActive = true
 		endgame_shared()
+		
+		hook.Run("fh_poststartgame", roundType, animatronics)
+		
 		LogEvent(" ")
         LogEvent("(*АДМИН*) - Все аниматроники разморожены, раунд начат.")
 	end

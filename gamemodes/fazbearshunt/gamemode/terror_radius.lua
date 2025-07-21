@@ -3,29 +3,23 @@ if SERVER then
 	util.AddNetworkString("SetMusicVolume")
 	util.AddNetworkString("StopMusic")
 
-	local terrorRadiusFar = 2500 -- Убийца далеко
-	local terrorRadiusApproaching = 1400 -- Убийца приближается
-	local terrorRadiusClose = 800 -- Убийца близко
+	local terrorRadiusFar = 2500
+	local terrorRadiusApproaching = 1400
+	local terrorRadiusClose = 800
 
-	-- Угол зрения, чтобы определить, смотрит ли убийца на выжившего
 	local viewAngleThreshold = 50
 
-	-- Флаг для отслеживания состояния погони
 	local isChasing = {}
-	local chaseTimers = {} -- Хранение таймеров для каждого игрока
+	local chaseTimers = {}
 
-	local currentKiller = nil
-	local stealthKiller = false
+	local currentKillers = {}
+	local stealthKillers = {}
 
-	-- Таблица для отслеживания всех звуков у каждого игрока
 	local activeMusic = {}
-
-	-- Переменная для глобальной громкости
 	local globalVolumeMultiplier = 0.5
 
 	local currentTheme = "default"
 	local availableThemes = {}
-
 	local musicFiles = {}
 
 	local playerVolumeCVar = CreateConVar("tr_volume", "50", FCVAR_USERINFO, "Глобальная громкость музыки для игрока (0-100).")
@@ -74,19 +68,15 @@ if SERVER then
 		end
 	end
 
-	-- Функция для установки текущей темы
 	local function setCurrentTheme(themeName)
 		if table.HasValue(availableThemes, themeName) then
 			currentTheme = themeName
-
-			-- Обновляем пути к музыкальным файлам
 			musicFiles = {
 				killer_far = "music/chase/" .. currentTheme .. "/far.wav",
 				killer_approaching = "music/chase/" .. currentTheme .. "/approaching.wav",
 				killer_close = "music/chase/" .. currentTheme .. "/near.wav",
 				chase = "music/chase/" .. currentTheme .. "/chase.wav"
 			}
-
 			for _, ply in player.Iterator() do
 				if activeMusic[ply] then
 					for musicType, _ in pairs(activeMusic[ply]) do
@@ -106,7 +96,6 @@ if SERVER then
 	end
 
 	loadThemes()
-
 	if #availableThemes > 0 then
 		setCurrentTheme(availableThemes[1])
 	end
@@ -117,9 +106,7 @@ if SERVER then
 		else
 			volume = volume * getPlayerVolume(ply)
 		end
-
 		volume = volume * globalVolumeMultiplier
-
 		net.Start("SetMusicVolume")
 		net.WriteString(musicType)
 		net.WriteFloat(volume)
@@ -130,18 +117,15 @@ if SERVER then
 		if not activeMusic[ply] then
 			activeMusic[ply] = {}
 		end
-
 		for musicType, filePath in pairs(musicFiles) do
 			if not activeMusic[ply][musicType] then
 				net.Start("InitializeMusic")
 				net.WriteString(musicType)
 				net.WriteString(filePath)
 				net.Send(ply)
-
 				local initialVolume = 0
 				setMusicVolume(ply, musicType, initialVolume)
-
-				activeMusic[ply][musicType] = musicType -- Отмечаем, что трек инициализирован
+				activeMusic[ply][musicType] = musicType
 			end
 		end
 	end
@@ -149,7 +133,6 @@ if SERVER then
 	local function isKillerLookingAt(ply, killer)
 		local directionToPlayer = (ply:GetPos() - killer:GetPos()):GetNormalized()
 		local killerViewDirection = killer:GetAimVector()
-
 		local angleBetween = math.deg(math.acos(directionToPlayer:Dot(killerViewDirection)))
 		return angleBetween <= viewAngleThreshold and killer:Visible(ply)
 	end
@@ -157,39 +140,36 @@ if SERVER then
 	local function isPlayerMoving(ply)
 		return ply:GetVelocity():Length() > 5
 	end
+	
+	local function isStealthKiller(ply)
+		return table.HasValue(stealthKillers, ply)
+	end
 
 	local function isPlayerRunning(ply)
 		return ply:GetVelocity():Length() > ply:GetRunSpeed() * 0.9
 	end
 
-	-- Функция для обновления музыки в зависимости от расстояния
 	local function updateTerrorRadiusMusic(ply, killer, killerChasing)
 		local distance = ply:GetPos():Distance(killer:GetPos())
-
-		-- Инициализируем все треки, если они еще не запущены
 		if ply:Team() ~= TEAM_SPECTATOR then
 			initializeMusic(ply)
 		end
-
 		local killerInNoclip = (killer:GetMoveType() == MOVETYPE_NOCLIP)
-
 		if ply:Team() == TEAM_SPECTATOR then
-			-- Наблюдатели не слышат музыку
 			for musicType, _ in pairs(musicFiles) do
 				setMusicVolume(ply, musicType, 0)
 			end
 			return
-		end 
-
+		end
 		if ply == killer then
 			if killerChasing and not killerInNoclip then
-				setMusicVolume(ply, "chase", 1) -- Убийца слышит трек погони
+				if isStealthKiller(killer) and not isPlayerRunning(killer) then return end
+				setMusicVolume(ply, "chase", 1)
 			else
-				setMusicVolume(ply, "chase", 0) -- Отключаем трек погони
+				setMusicVolume(ply, "chase", 0)
 			end
 			return
 		end
-
 		if killerInNoclip and distance < terrorRadiusFar then
 			setMusicVolume(ply, "chase", 0)
 			setMusicVolume(ply, "killer_far", 1)
@@ -197,73 +177,58 @@ if SERVER then
 			setMusicVolume(ply, "killer_close", 0)
 			return
 		end
-
-		if isChasing[ply] then
+		if isChasing[ply] and isPlayerRunning(killer) then
 			setMusicVolume(ply, "chase", 1)
 			setMusicVolume(ply, "killer_far", 0)
 			setMusicVolume(ply, "killer_approaching", 0)
 			setMusicVolume(ply, "killer_close", 0)
 		else
 			local musicTracks = {"chase", "killer_far", "killer_approaching", "killer_close"}
-			
 			for _, track in ipairs(musicTracks) do
 				setMusicVolume(ply, track, 0)
 			end
-
 			if distance <= terrorRadiusFar and distance > terrorRadiusApproaching then
-				if stealthKiller and not isPlayerRunning(ply) then return end
+				if isStealthKiller(killer) and not isPlayerRunning(killer) then return end
 				setMusicVolume(ply, "killer_far", 1)
 			elseif distance <= terrorRadiusApproaching and distance > terrorRadiusClose then
-				if stealthKiller and not isPlayerRunning(ply) then return end
+				if isStealthKiller(killer) and not isPlayerRunning(killer) then return end
 				setMusicVolume(ply, "killer_approaching", 1)
 			elseif distance <= terrorRadiusClose then
-				if stealthKiller and not isPlayerRunning(ply) then return end
+				if isStealthKiller(killer) and not isPlayerRunning(killer) then return end
 				setMusicVolume(ply, "killer_close", 1)
 			end
 		end
 	end
 
-	-- Функция для определения ближайшего аниматроника
-	local function getNearestKiller(ply)
-		local nearestKiller = nil
-		local minDistance = math.huge
-
-		for _, killer in player.Iterator() do
-			if IsValid(killer) and killer:Team() == 2701 then
-				local distance = ply:GetPos():Distance(killer:GetPos())
-				if distance < minDistance then
-					nearestKiller = killer
-					minDistance = distance
-				end
-			end
-		end
-
-		return nearestKiller
-	end
-
-	-- Функция для обновления музыки с учетом нескольких аниматроников
 	local function updateTerrorRadiusMusicMulti(ply)
-		local nearestKiller = getNearestKiller(ply)
-		if not nearestKiller then
+		local killers = currentKillers
+		if #killers == 0 then
 			for musicType, _ in pairs(musicFiles) do
 				setMusicVolume(ply, musicType, 0)
 			end
 			return
 		end
-
-		checkChase(ply, nearestKiller)
-		updateTerrorRadiusMusic(ply, nearestKiller, isChasing[ply])
+		local nearestKiller = nil
+		local minDistance = math.huge
+		for _, killer in ipairs(killers) do
+			local dist = ply:GetPos():Distance(killer:GetPos())
+			if dist < minDistance then
+				minDistance = dist
+				nearestKiller = killer
+			end
+		end
+		if nearestKiller then
+			checkChase(ply, nearestKiller)
+			updateTerrorRadiusMusic(ply, nearestKiller, isChasing[ply])
+		end
 	end
 
-	-- Функция для обновления состояния погони
 	function checkChase(ply, killer)
 		local distance = ply:GetPos():Distance(killer:GetPos())
 		local killerMoving = isPlayerMoving(killer)
 		local playerMoving = isPlayerMoving(ply)
-
 		if distance < terrorRadiusClose and isKillerLookingAt(ply, killer) and killerMoving and playerMoving then
 			isChasing[ply] = true
-
 			if chaseTimers[ply] then
 				timer.Remove(chaseTimers[ply])
 				chaseTimers[ply] = nil
@@ -283,29 +248,24 @@ if SERVER then
 	end
 
 	hook.Add("Think", "UpdateTerrorRadiusForTeamsMulti", function()
-		if not currentKiller or not IsValid(currentKiller) then return end
-		
-		if currentKiller.lobbyFreeze or not shouldActivateTerrorRadius() then
-			return
-		end
-
+		if not shouldActivateTerrorRadius() then return end
 		for _, ply in player.Iterator() do
 			if ply:Team() ~= 2701 and ply:Team() ~= TEAM_SPECTATOR then
 				updateTerrorRadiusMusicMulti(ply)
 			end
 		end
-
-		-- Для текущего убийцы определяем, есть ли погоня
-		local killerChasing = false
-		for _, ply in player.Iterator() do
-			if ply ~= currentKiller and ply:Team() ~= 2701 and ply:Team() ~= TEAM_SPECTATOR then
-				if isChasing[ply] then
-					killerChasing = true
-					break
+		for _, killer in ipairs(currentKillers) do
+			local killerChasing = false
+			for _, ply in player.Iterator() do
+				if ply ~= killer and ply:Team() ~= 2701 and ply:Team() ~= TEAM_SPECTATOR then
+					if isChasing[ply] then
+						killerChasing = true
+						break
+					end
 				end
 			end
+			updateTerrorRadiusMusic(killer, killer, killerChasing)
 		end
-		updateTerrorRadiusMusic(currentKiller, currentKiller, killerChasing)
 	end)
 
 	local animatronicThemes = {
@@ -323,20 +283,40 @@ if SERVER then
 		if not IsValid(killer) then return end
 		local ent = pills.getMappedEnt(killer)
 		if not IsValid(ent) then return end
-
 		local modelName = ent.formTable.name
-
 		local theme = animatronicThemes[modelName] or "default"
+		if modelName == "pill_springtrap" then 
+			table.insert(stealthKillers, killer)
+		end
 		setCurrentTheme(theme)
 	end
-	
+
 	hook.Add("fh_poststartgame", "fh_setup_terror_radius", function(roundType, animatronics)
+		currentKillers = {}
+		stealthKillers = {}
 		if table.Count(animatronics) == 1 then
-			for ply,_ in pairs( animatronics ) do
+			for ply, _ in pairs(animatronics) do
 				setAnimatronicTheme(ply)
-				currentKiller = ply
+				table.insert(currentKillers, ply)
 			end
+		elseif table.Count(animatronics) > 1 then
+			for ply, _ in pairs(animatronics) do
+				table.insert(currentKillers, ply)
+			end
+			setCurrentTheme("default")
 		end
+	end)
+	
+	hook.Add("PlayerChangedTeam", "fh_terror_stop_changeteam", function( ply, oldTeam, newTeam )
+		if table.HasValue(currentKillers, ply) and newTeam ~= 2701 then
+			table.RemoveByValue(currentKillers, ply)
+			
+			updateTerrorRadiusMusic(ply, ply, false)
+		elseif !table.HasValue(currentKillers, ply) and newTeam == 2701 and roundActive and !roundEnding then
+			table.insert(currentKillers, ply)
+			
+			updateTerrorRadiusMusic(ply, ply, false)
+		end	
 	end)
 end
 

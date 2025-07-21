@@ -34,7 +34,7 @@ sound.Add({
 sound.Add({
 	name = 			"plushtrap.foot1",
 	channel = 		CHAN_BODY,
-	level = 		65,
+	level = 		60,
 	volume = 		1.0,
 	sound = 			{"fnaf3/plushtrap/ptrun1.wav"
 						,"fnaf3/plushtrap/ptrun2.wav"
@@ -44,7 +44,7 @@ sound.Add({
 sound.Add({
 	name = 			"plushtrap.crouch1",
 	channel = 		CHAN_BODY,
-	level = 		65,
+	level = 		60,
 	volume = 		1.0,
 	sound = 			{"fnaf3/plushtrap/ptcrawl1.wav"
 						,"fnaf3/plushtrap/ptcrawl2.wav"

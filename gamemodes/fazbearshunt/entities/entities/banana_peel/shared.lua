@@ -45,6 +45,7 @@ if SERVER then
 				ent:SetNWBool("banana_slipped", true)
 			end)
 			if ent:IsPlayer() then
+				stats.Add(ent, "slipped_on_banana", 1)
 				for i = 1, 20 do
 					timer.Simple(0 + i/450, function()
 						ent:SetEyeAngles(ent:EyeAngles() + Angle(-1,0,0))

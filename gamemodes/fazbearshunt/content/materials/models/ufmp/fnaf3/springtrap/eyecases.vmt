@@ -15,7 +15,6 @@ $nodecal "1"
 $model "1"
 $diffuseexp "1.5"
 $normalmapalphaenvmapmask   "1"
-$nocull 1
 $alpha "0.2"
 $translucent "1"
 }

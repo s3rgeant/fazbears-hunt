@@ -81,7 +81,7 @@ pills.register("pill_clown",{
         offset = Vector(0, 0, 90),
 		dist = 150
     },
-	hull=Vector(16,16,86),
+	hull=Vector(24,24,86),
 	duckBy=60,
 	
 	viewmodel={
@@ -236,7 +236,7 @@ pills.register("pill_springtrap",{
         offset = Vector(0, 0, 88),
 		dist = 150
     },
-	hull=Vector(16,16,86),
+	hull=Vector(24,24,86),
 	duckBy=60,
 	
 	viewmodel={
@@ -588,7 +588,7 @@ pills.register("pill_plushtrap",{
         offset = Vector(0, 0, 38),
 		dist = 60
     },
-	hull=Vector(16,16,48),
+	hull=Vector(24,24,48),
 	duckBy=16,
 
     jumpPower=pt_speed_normal[3],
