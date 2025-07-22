@@ -83,6 +83,7 @@ local animatronics = {}
 local selectable = false
 local selector
 local grid
+local animtooltip = nil
 
 function draw_killer_selector()
     if not istable(animatronics) then return end
@@ -160,6 +161,33 @@ function draw_killer_selector()
         box:SetSize(140, 140)
         box.name = animName
 
+		box.OnCursorEntered = function(self)
+			if IsValid(animtooltip) then animtooltip:Remove() end
+	
+				animtooltip = vgui.Create("DPanel")
+				animtooltip:SetSize(250, 40)
+				animtooltip:SetPaintedManually(false)
+				animtooltip:SetBackgroundColor(Color(0, 0, 0, 220))
+	
+				animtooltip.Paint = function(s, w, h)
+				draw.RoundedBox(4, 0, 0, w, h, Color(0, 0, 0, 220))
+				draw.SimpleText("text_template", "DermaDefault", 10, 10, color_white, TEXT_ALIGN_LEFT)
+			end
+	
+			hook.Add("Think", "UpdateAnimTooltipPos", function()
+				if not IsValid(animtooltip) then return end
+				local x, y = input.GetCursorPos()
+				animtooltip:SetPos(x + 10, y + 10)
+			end)
+	end
+
+	box.OnCursorExited = function(self)
+		if IsValid(animtooltip) then
+			animtooltip:Remove()
+		end
+		hook.Remove("Think", "UpdateAnimTooltipPos")
+	end
+
         box.DoClick = function()
             if not selectable then return end
             net.Start("fh_selected_killer")
@@ -195,7 +223,8 @@ net.Receive("fh_update_killer_selector", function()
 
     if ply == LocalPlayer() then
         if IsValid(selector) then 
-            selector:Close() 
+            selector:Close()
+			animtooltip:Remove()
             selectable = false
         end
         return
