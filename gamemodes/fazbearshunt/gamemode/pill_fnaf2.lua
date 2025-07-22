@@ -36,6 +36,8 @@ if SERVER then
 	
 	util.AddNetworkString("fh_net_wgfreddy_scarysound")
 	
+	util.AddNetworkString("cl_target_wgfreddy_scared")
+	
 	util.AddNetworkString("fh_dontdraw_player")
 	util.AddNetworkString("fh_dontdraw_anim")
 	

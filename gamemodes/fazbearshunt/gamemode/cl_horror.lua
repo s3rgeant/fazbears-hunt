@@ -110,7 +110,7 @@ local function fh_gfreddy_check_scarysound()
 			local toPlyNormalized = toPly:GetNormalized()
 			local dotProduct = forward:Dot(toPlyNormalized)
 			local angle = math.acos(dotProduct) * (180 / math.pi)
-			local fov = 60
+			local fov = 45
 
 			if angle <= fov then
 				local trace = util.TraceLine({
@@ -139,11 +139,28 @@ local function fh_gfreddy_check_scarysound()
 						end)
 						local newAng = (plyPos - eyePos):Angle()
 						localPlayer:SetEyeAngles(newAng)
+						
+                        hook.Add("StartCommand", "fh_lock_view", function(ply, cmd)
+                            if ply == localPlayer then
+                                cmd:SetViewAngles((targetPlayer:EyePos() - localPlayer:EyePos() ):Angle() )
+                            end
+                        end)
+						
 						hook.Add("InputMouseApply", "fh_scared_no_mouse", function(cmd, x, y, ang)
 							return true
 						end)
 						timer.Simple(0.5, function()
 							hook.Remove("InputMouseApply", "fh_scared_no_mouse")
+                            hook.Remove("StartCommand", "fh_lock_view")
+							
+							net.Start("cl_target_wgfreddy_scared")
+							net.SendToServer()
+						end)
+						
+						timer.Simple(5, function()
+							hook.Add("RenderScreenspaceEffects", "merc_videoglitch_hook", function()
+								render.DrawMercVideoGlitch(0.2)
+							end)
 						end)
 						lastSoundTime = currentTime
 					end

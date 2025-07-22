@@ -72,9 +72,9 @@ function fh_spawnPlushies(ply)
 	end
 	
 	if placed < plushCount then
-		print("[fh_plushie] Не удалось заспавнить 3 плюшки. Заспавнено: " .. placed)
+		print("[fh_plushie] Не удалось заспавнить "..plushCount.." плюшки. Заспавнено: " .. placed)
 	else
-		print("[fh_plushie] Успешно заспавнены 3 плюшки.")
+		print("[fh_plushie] Успешно заспавнены "..plushCount.." плюшки.")
 	end
 end
 
@@ -772,4 +772,12 @@ function StopDelayedDamage(ply)
     end
 
     ply._damagePausedUntil = nil
+end
+
+if SERVER then
+	net.Receive("cl_target_wgfreddy_scared", function( len, ply )
+		if outworld_victims[ply] then
+			print('ISPUGALSYA!!!')
+		end
+	end)
 end
