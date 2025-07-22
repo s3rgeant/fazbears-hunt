@@ -1,3 +1,4 @@
+highlight = highlight or {}
 
 util.AddNetworkString("PlayHighlightSounds")
 util.AddNetworkString("AddAffectedPlayers")
@@ -12,7 +13,7 @@ hook.Add( "PostCleanupMap", "fh_halo_reset", function( name )
 	table.Empty(haloUsers)
 end)
 
-function HighlightPlayers(ply, ent)
+function highlight.ByDistance(ply, ent)
 	local totalPlayers = {}
 	if !table.HasValue(haloUsers, ply) then -- чел не под кулдауном? разрешай
 		table.insert(haloUsers, ply)
@@ -40,24 +41,13 @@ function HighlightPlayers(ply, ent)
 				
 				local isAffected = distance <= conVars.halo_radius:GetInt()
 				
-				if !conVars.fh_silent_highlight:GetBool() then
-					net.Start("PlayHighlightSounds") -- всем остальным кидаем звук прикольный
-					net.WriteBool(isAffected)
-					net.WriteBool(ent.formTable.name == "pill_springtrap")
-					net.Send(player)
-				else
-					net.Start("PlayHighlightSounds") -- если silent govno, то чуваки знают, но не знают
-					net.WriteBool(false)
-					net.WriteBool(ent.formTable.name == "pill_springtrap")
-					net.Send(player)
-					
-					player:ChatPrint("Просвет... Или нет?")
-				end
-				
 				if (isAffected) then -- передаём чуваку кто подсвечивается в радиусе
 					table.insert(affectedPlayers, player)
 					table.insert(totalPlayers, player)
 					table.insert(affectedNicknames, player:Nick())
+				
+					highlight.Add(ply, player)
+					
 					timer.Simple(conVars.halo_time:GetFloat(), function()
 						table.RemoveByValue(affectedPlayers, player)
 					end)
@@ -66,24 +56,75 @@ function HighlightPlayers(ply, ent)
 				else
 					stats.Add(player, "evaded_highlight", 1)
 				end
+				
+				highlight.NotifyTarget(player, ent, isAffected)
 			end
 		end
 				
-		if !table.IsEmpty(totalPlayers) then
-			net.Start("AddAffectedPlayers")
-			net.WriteTable(totalPlayers)
-			net.Send(ply)
-			if !table.IsEmpty(team.GetPlayers(TEAM_SPECTATOR)) then
-				net.Start('NotifySpectators')
-				net.WriteTable(affectedNicknames)
-				net.WriteEntity(ply)
-				net.Broadcast()
-			end
+		if team.NumPlayers(TEAM_SPECTATOR) > 0 then
+			net.Start('NotifySpectators')
+			net.WriteTable(affectedNicknames)
+			net.WriteEntity(ply)
+			net.Send( team.GetPlayers(TEAM_SPECTATOR) )
 		end
 					
 		net.Start("ToggleHighlightSound") -- включаем чуваку звук что он дофига крутой со спермой под губой
 		net.WriteBool(!table.IsEmpty(totalPlayers))
 		net.Send(ply)
+	end
+end
+
+function highlight.Add(ply, players)
+	if istable(players) then
+		if !table.IsEmpty(players) then
+			net.Start("AddAffectedPlayers")
+			net.WriteTable(players)
+			net.Send(ply)
+		end
+	else
+		if players:IsValid() then
+			net.Start("AddAffectedPlayers")
+			net.WriteTable( {players} )
+			net.Send(ply)
+		end
+	end
+end
+
+local vision_sounds = {
+	["default"] = {affected = "vision_affected.wav", unaffected = "vision_unaffected.wav"}
+}
+
+function highlight.AddVisionSounds(name, snd_affected, snd_unaffected)
+	vision_sounds[name] = {affected = snd_affected, unaffected = snd_unaffected}
+end
+
+highlight.AddVisionSounds("pill_springtrap", "fnaf3/spr_vision_affected.wav", "fnaf3/spr_vision_unaffected.wav")
+
+function highlight.GetVisionSound(ent)
+	if IsValid(ent) then 
+		local name = ent.formTable.name
+		
+		if vision_sounds[name] then
+			return vision_sounds[name]
+		end
+	end
+	return vision_sounds["default"]
+end
+
+function highlight.NotifyTarget(target, ent, isAffected)
+	local sound_to_play = highlight.GetVisionSound(ent)
+	if !conVars.fh_silent_highlight:GetBool() then
+		net.Start("PlayHighlightSounds") -- всем остальным кидаем звук прикольный
+		net.WriteBool( isAffected )
+		net.WriteString( isAffected and sound_to_play.affected or sound_to_play.unaffected )
+		net.Send(target)
+	else
+		net.Start("PlayHighlightSounds") -- если silent govno, то чуваки знают, но не знают
+		net.WriteBool( false )
+		net.WriteString( highlight.GetVisionSound(ent).unaffected )
+		net.Send(target)
+		
+		target:ChatPrint("Просвет... Или нет?")
 	end
 end
 

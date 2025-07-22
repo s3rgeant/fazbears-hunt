@@ -40,6 +40,8 @@ SWEP.HitSize = {
 	Max = Vector( 24, 24, 16 )
 }
 
+SWEP.Sensitivity = 1
+
 local LAND_ANIM_DELAY = 0.2
 
 function SWEP:SetupDataTables()
@@ -51,6 +53,10 @@ function SWEP:Deploy()
     return true
 end
 
+function SWEP:AdjustMouseSensitivity()
+    return 1 / self.Sensitivity
+end
+
 function SWEP:Holster()
     return true
 end
@@ -58,8 +64,13 @@ end
 function SWEP:PrimaryAttack()
 	local ply = self.Owner
 	local ent = pills.getMappedEnt(ply)
+	local ct = CurTime()
 	
-	if !ply.isBlightRushing then return end
+	if !ply:GetNWBool("isBlightRushing") then return end
+	
+	ply.blightRushStart = ct + 1.5
+	
+	self.Sensitivity = 3
 	
 	if !IsValid(ent) then return end
 	
@@ -67,12 +78,14 @@ function SWEP:PrimaryAttack()
 	
 	if ply:IsFrozen() or timer.Exists('FOXY_cantKill'..ply:EntIndex()) then return end
 	
+	self:SetPlaybackRate(1)
+	
 	self:PlayCustomAnimation("ACT_SPECIAL_ATTACK1", 2)
 	
     self.IsCharging = true
-    self.ChargeStartTime = CurTime()
+    self.ChargeStartTime = ct
 	
-	self:SetNextMeleeAttack( CurTime() + self.HitDelay )
+	self:SetNextMeleeAttack( ct + self.HitDelay )
 end
 
 function SWEP:SecondaryAttack()
@@ -85,9 +98,13 @@ function SWEP:DealDamage()
 	
 	if !IsValid(ent) then return end
 	
+	self:SetPlaybackRate(1)
+	
 	self:PlayCustomAnimation("ACT_SPECIAL_ATTACK2", 0.6)
 	
 	timer.Create('FOXY_cantKill'..ply:EntIndex(), 2, 1, function() end)
+	
+	self.Sensitivity = 1
 	
 	if SERVER then
 	
@@ -102,7 +119,16 @@ function SWEP:DealDamage()
 		net.WriteString("kill")
 		net.WriteFloat(2)
 		net.Send(ply)
-	
+		
+		EndRush(ply)
+		
+		foxyStun(ply)
+
+		timer.Simple(5, function()
+			if IsValid(ply) then
+				receiveTokensBack(ply)
+			end
+		end)
 	end
 		
 	ply:LagCompensation(true)
@@ -207,7 +233,7 @@ function SWEP:Think()
         local crouchSpeed = ply:GetCrouchedWalkSpeed()
 		
         if self.HoldAnim > 0 and CurTime() < self.HoldAnim then
-            return
+			return self.BaseClass.Think and self.BaseClass.Think(self)
         end
         
         if (onGround and ply:WaterLevel() <= 1) and not self.PreviousOnGround then

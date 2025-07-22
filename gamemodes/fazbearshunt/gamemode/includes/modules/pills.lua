@@ -383,7 +383,9 @@ if SERVER then
         local ent = getMappedEnt(ply)
 
         if IsValid(ent) then
+			ply:LagCompensation( true )
             ent:DoKeyPress(ply, key)
+			ply:LagCompensation( false )
         end
     end)
 

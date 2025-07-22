@@ -66,11 +66,6 @@ pills.packStart("FUPPR 2 WE","FUPPR 2 WE","icon/fnafur2we.png")
 local stalker
 local stalkTarget
 
-hook.Add( "PostCleanupMap", "fh_pill_fnaf2_reset", function( name )
-	stalker = nil
-	stalkTarget = nil
-end)
-
 local wfreddy_default_movement = {150, 490, 65, 250} -- обычное передвижение
 local wfreddy_stalk_movement = {150, 600, 70, 255} -- сталкер дохуя
 
@@ -317,7 +312,7 @@ pills.register("pill_wfreddy2",{
 	reload=function(ply,ent)
 		if ply.lobbyFreeze != nil and ply.lobbyFreeze then return end
 		if ply ~= stalker then
-			HighlightPlayers(ply, ent)
+			highlight.ByDistance(ply, ent)
 		end
 	end,
 	
@@ -739,7 +734,7 @@ pills.register("pill_wbonnie2",{
 	noragdoll=true,
 	reload=function(ply,ent)
 		if ply.lobbyFreeze != nil and ply.lobbyFreeze then return end
-		HighlightPlayers(ply, ent)
+		highlight.ByDistance(ply, ent)
 	end,
 
 	jump=function(ply,ent)
@@ -947,7 +942,7 @@ pills.register("pill_wchica2",{
 	noragdoll=true,
 	reload=function(ply,ent)
 		if ply.lobbyFreeze != nil and ply.lobbyFreeze then return end
-		HighlightPlayers(ply, ent)
+		highlight.ByDistance(ply, ent)
 	end,
 	
 	jump=function(ply,ent)
@@ -1150,7 +1145,7 @@ pills.register("pill_wfoxy2",{
 	noragdoll=true,
 	reload=function(ply,ent)
 		if ply.lobbyFreeze != nil and ply.lobbyFreeze then return end
-		HighlightPlayers(ply, ent)
+		highlight.ByDistance(ply, ent)
 	end,
 	
 	jump=function(ply,ent)
@@ -1456,7 +1451,7 @@ pills.register("pill_sfreddy2",{
 	noragdoll=true,
 	reload=function(ply,ent)
 		if ply.lobbyFreeze != nil and ply.lobbyFreeze then return end
-		HighlightPlayers(ply, ent)
+		highlight.ByDistance(ply, ent)
 	end,
 	
 	jump=function(ply,ent)
@@ -1636,7 +1631,7 @@ pills.register("pill_endo02",{
 
 	reload=function(ply,ent)
 		if ply.lobbyFreeze != nil and ply.lobbyFreeze then return end
-		HighlightPlayers(ply, ent)
+		highlight.ByDistance(ply, ent)
 	end,
 	jump=function(ply,ent)
 		ent:PillSound("jump",false)
@@ -2198,12 +2193,27 @@ function jumpscareEvent(ply, ent, target, dist)
 	net.Broadcast()
 end
 
+local takenPlayers = {}
+
 function takePlayer(ply, ent)
 	if ply:Team() == TEAM_SPECTATOR or ply:Health() == 0 then return end
 
     local nearestPlayer = FindNearestPlayer(ply:EyePos(), 125, ply, 90)
+	
+	if !takenPlayers[ply] then
+		takenPlayers[ply] = {}
+	end
+	
+	local remember_taken = takenPlayers[ply]
 
-    if nearestPlayer and nearestPlayer:IsPlayer() and !nearestPlayer:IsFrozen() then
+    if IsValid(nearestPlayer) and !nearestPlayer:IsFrozen() then
+		if !table.HasValue(remember_taken, nearestPlayer) then
+			table.insert(remember_taken, nearestPlayer)
+			
+			takenPlayers[ply] = remember_taken
+			stats.Add(ply, "grabbed", 1)
+		end
+		
 		ply:EmitSound("grab_player.wav")
 		
 		if ent.formTable.name == "pill_endo02" then
@@ -2244,8 +2254,7 @@ function takePlayer(ply, ent)
 				local trace = util.TraceEntity(traceData, nearestPlayer)
 		
 				if trace.Hit then
-					-- Если игрок оказался внутри препятствия, уменьшаем расстояние
-					local safeDistance = trace.Fraction * 50  -- Безопасная дистанция, где нет коллизии
+					local safeDistance = trace.Fraction * 50
 					offset = (Vector(0, 0, vectorOffset)) + (ply:EyeAngles():Forward() * safeDistance)
 					newPos = ply:GetPos() + offset
 				end
@@ -2275,6 +2284,9 @@ function endoRelease(ply)
 		target:SetMoveType(MOVETYPE_WALK)
 		target:SetCollisionGroup(COLLISION_GROUP_PLAYER)
 		noClipBlockedPlayers[target] = nil
+		
+		target._GrabbedByEndoTime = CurTime()
+		target._LastEndo = ply
 	
 		local direction = (ply:EyeAngles():Forward() * 50):GetNormalized()
 		target:SetVelocity(direction * 600)
@@ -2423,6 +2435,10 @@ if SERVER then
 				attacker.jumpscaring = nil
 			end
 		end
+		if attacker == stalker then
+			stats.Add(attacker, "killed_using_blind_rage", 1)
+		end
+		
 		if victim == stalkTarget then
 			net.Start('fh_sound_stop')
 			net.WriteString('freddy_targeted_ambience.wav')
@@ -2565,3 +2581,10 @@ function chaseCheck(ply, name)
 		end
 	end
 end
+
+hook.Add( "PostCleanupMap", "fh_pill_fnaf2_reset", function( name )
+	stalker = nil
+	stalkTarget = nil
+	
+	table.Empty(takenPlayers)
+end)

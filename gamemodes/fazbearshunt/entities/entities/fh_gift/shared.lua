@@ -112,6 +112,14 @@ local positiveEffects = {
 			ply:SetColor(Color(255, 255, 255, 0))
 			ply:SetNoDraw(true)
 			ply:DrawShadow(false)
+		
+			for _, wep in ipairs(ply:GetWeapons()) do
+				if IsValid(wep) then
+					wep:SetNoDraw(true)
+					wep:DrawShadow(false)
+					wep:SetRenderMode(RENDERMODE_NONE)
+				end
+			end
 	
 			timer.Simple(30, function()
 				if IsValid(ply) then
@@ -119,6 +127,14 @@ local positiveEffects = {
 					ply:SetNoDraw(false)
 					ply:DrawShadow(true)
 					ply.invisible = false
+		
+					for _, wep in ipairs(ply:GetWeapons()) do
+						if IsValid(wep) then
+							wep:SetNoDraw(false)
+							wep:DrawShadow(true)
+							wep:SetRenderMode(RENDERMODE_NORMAL)
+						end
+					end
 	
 					local function IsStuck(ent)
 						if not IsValid(ent) then return false end

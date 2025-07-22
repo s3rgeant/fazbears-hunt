@@ -1,5 +1,3 @@
--- Оптимизированный Blight Rush с улучшенной синхронизацией через Move/StartCommand
-
 AddCSLuaFile()
 
 if SERVER then
@@ -84,6 +82,7 @@ if SERVER then
 		ply:SetFOV(100, 0.5)
 		ply.blightRushTokens = ply.blightRushTokens - 1
 		ply.isBlightRushing = true
+		ply:SetNWBool("isBlightRushing", true)
 		ply.blightRushStart = CurTime()
 		ply.blightRushAngle = ply:EyeAngles()
 		stopReceivingTokens(ply)
@@ -107,23 +106,37 @@ end
 local function BlightCheckCollision(ply)
 	local velocity = ply:GetVelocity()
 	velocity.z = 0
-	local moveDir = velocity:GetNormalized()
-	local startPos = ply:GetPos() + Vector(0, 0, ply:GetStepSize())
-	local endPos = (ply:EyePos() - Vector(0, 0, 32)) + moveDir * 30
 
-	local tr = util.TraceLine({
+	if velocity:LengthSqr() < 10 then return { Hit = false } end
+
+	local eyeDir = ply:EyeAngles():Forward()
+	eyeDir.z = 0
+	eyeDir:Normalize()
+
+	local speedDir = velocity:GetNormalized()
+	local dot = eyeDir:Dot(speedDir)
+
+	if dot < 0.5 then return { Hit = false } end
+
+	local startPos = ply:GetPos() + Vector(0, 0, ply:GetStepSize())
+	local traceDist = 30
+	local hullSize = 8
+
+	local tr = util.TraceHull({
 		start = startPos,
-		endpos = endPos,
+		endpos = startPos + eyeDir * traceDist,
+		mins = Vector(-hullSize, -hullSize, 0),
+		maxs = Vector(hullSize, hullSize, ply:OBBMaxs().z),
 		filter = ply
 	})
-	
-	tr.startPos = startPos
 
+	tr.startPos = startPos
 	return tr
 end
 
-local function EndRush(ply)
+function EndRush(ply)
 	ply.isBlightRushing = false
+	ply:SetNWBool("isBlightRushing", false)
 
 	if SERVER then
 		net.Start("BlightRush_End")
@@ -151,14 +164,14 @@ if SERVER then
 	end)
 end
 
-hook.Add("Move", "BlightClientPredictionMove", function(ply, mv)
+hook.Add("Move", "BlightPredictionMove", function(ply, mv)
 	if not ply.isBlightRushing then return end
 	if not ply:OnGround() then
 		EndRush(ply)
 		return
 	end
 
-	local rushDuration = 3
+	local rushDuration = 3.5
 	local speed = 900
 	if CurTime() - (ply.blightRushStart or 0) > rushDuration then
 		EndRush(ply)
@@ -190,6 +203,7 @@ hook.Add("Move", "BlightClientPredictionMove", function(ply, mv)
 		if tr.Hit and (not tr.Entity or not tr.Entity:IsPlayer() or tr.Entity:Team() == 2701) then
 					
 			ply.isBlightRushing = false
+			ply:SetNWBool("isBlightRushing", false)
 			ply.isBlightBouncing = true
 		
 			net.Start("fh_net_killer_change")
@@ -233,7 +247,7 @@ hook.Add("Move", "BlightClientPredictionMove", function(ply, mv)
 			end
 
 			ply.blightTimeoutTimer = "BlightTimeout_" .. ply:SteamID()
-			timer.Create(ply.blightTimeoutTimer, 1.5, 1, function()
+			timer.Create(ply.blightTimeoutTimer, 2, 1, function()
 				if not IsValid(ply) then return end
 				ply.blightTimeoutTimer = nil
 			
@@ -250,7 +264,7 @@ hook.Add("Move", "BlightClientPredictionMove", function(ply, mv)
 end)
 
 hook.Add("StartCommand", "BlightCancelJumpPress", function(ply, cmd)
-    if ply.isBlightRushing or ply.isBlightBouncing or ply.blightTimeoutTimer then
+    if ply:GetNWBool("isBlightRushing") or ply.isBlightBouncing or ply.blightTimeoutTimer then
 		cmd:ClearMovement()
 		cmd:RemoveKey(IN_JUMP)
 	end
@@ -262,15 +276,23 @@ end)
 
 if CLIENT then
 	net.Receive("BlightRush_Start", function()
-		LocalPlayer().isBlightRushing = true
-		hook.Add("AdjustMouseSensitivity", "ReduceBlightMouseSensitivity", function()
-			return 1 / 6
-		end)
+		local ply = LocalPlayer()
+		
+		local wep = ply:GetActiveWeapon()
+		
+		if IsValid(wep) and wep.Sensitivity then
+			wep.Sensitivity = 6
+		end
 	end)
 
 	net.Receive("BlightRush_End", function()
-		LocalPlayer().isBlightRushing = false
-		hook.Remove("AdjustMouseSensitivity", "ReduceBlightMouseSensitivity")
+		local ply = LocalPlayer()
+		
+		local wep = ply:GetActiveWeapon()
+		
+		if IsValid(wep) and wep.Sensitivity then
+			wep.Sensitivity = 1
+		end
 	end)
 
 	net.Receive("Blight_PlayImpactSound", function()
@@ -284,4 +306,57 @@ if CLIENT then
 	net.Receive("Blight_PlayLethalRushSound", function()
 		surface.PlaySound("blight/rushing_lethal.wav")
 	end)
+end
+
+local DamageTimers = {}
+
+function StartBleeding(ply)
+    if not IsValid(ply) or not ply:IsPlayer() then return end
+
+    local steamID = ply:SteamID()
+    
+    if DamageTimers[steamID] then return end
+
+    timer.Simple(30, function()
+        if not IsValid(ply) then return end
+
+        local timerName = "DamagePlayer_" .. steamID
+        DamageTimers[steamID] = timerName
+
+        timer.Create(timerName, 2, 0, function()
+            if not IsValid(ply) or !ply:Alive() or ply:Team() ~= TEAM_UNN then
+                StopDelayedDamage(ply)
+                return
+            end
+
+            if ply._damagePausedUntil and CurTime() < ply._damagePausedUntil then
+                return
+            end
+
+            local dmg = DamageInfo()
+            dmg:SetDamage(1)
+            dmg:SetAttacker(game.GetWorld())
+            dmg:SetDamageType(DMG_GENERIC)
+            ply:TakeDamageInfo(dmg)
+        end)
+    end)
+end
+
+function PauseBleeding(ply, duration)
+    if not IsValid(ply) or not ply:IsPlayer() then return end
+    ply._damagePausedUntil = CurTime() + duration
+end
+
+function StopBleeding(ply)
+    if not IsValid(ply) or not ply:IsPlayer() then return end
+
+    local steamID = ply:SteamID()
+    local timerName = DamageTimers[steamID]
+
+    if timerName then
+        timer.Remove(timerName)
+        DamageTimers[steamID] = nil
+    end
+
+    ply._damagePausedUntil = nil
 end

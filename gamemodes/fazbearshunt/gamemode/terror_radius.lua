@@ -150,6 +150,7 @@ if SERVER then
 	end
 
 	local function updateTerrorRadiusMusic(ply, killer, killerChasing)
+		if !IsValid(ply) or !IsValid(killer) then return end
 		local distance = ply:GetPos():Distance(killer:GetPos())
 		if ply:Team() ~= TEAM_SPECTATOR then
 			initializeMusic(ply)
@@ -276,7 +277,8 @@ if SERVER then
 		["pill_wchica2"] = "koreanon",
 		["pill_sfreddy2"] = "pyramid",
 		["pill_clown"] = "myers",
-		["pill_springtrap"] = "springtrap"
+		["pill_springtrap"] = "springtrap",
+		["pill_plushtrap"] = "springtrap"
 	}
 
 	local function setAnimatronicTheme(killer)
@@ -307,16 +309,50 @@ if SERVER then
 		end
 	end)
 	
-	hook.Add("PlayerChangedTeam", "fh_terror_stop_changeteam", function( ply, oldTeam, newTeam )
+	hook.Add("PlayerChangedTeam", "fh_terror_stop_changeteam", function(ply, oldTeam, newTeam)
 		if table.HasValue(currentKillers, ply) and newTeam ~= 2701 then
-			table.RemoveByValue(currentKillers, ply)
-			
-			updateTerrorRadiusMusic(ply, ply, false)
-		elseif !table.HasValue(currentKillers, ply) and newTeam == 2701 and roundActive and !roundEnding then
+			for i, killer in ipairs(currentKillers) do
+				if killer == ply then
+					table.remove(currentKillers, i)
+					break
+				end
+			end
+
+			for _, p in player.Iterator() do
+				if activeMusic[p] then
+					for musicType, _ in pairs(activeMusic[p]) do
+						net.Start("StopMusic")
+						net.WriteString(musicType)
+						net.Send(p)
+					end
+					activeMusic[p] = nil
+				end
+			end
+		end
+		if not table.HasValue(currentKillers, ply) and newTeam == 2701 and roundActive and !roundEnding then
 			table.insert(currentKillers, ply)
-			
-			updateTerrorRadiusMusic(ply, ply, false)
-		end	
+			setAnimatronicTheme(ply)
+		end
+	end)
+	
+	hook.Add("PlayerDeath", "StopTerrorMusicOnDeath", function(victim, inflictor, attacker)
+		if not IsValid(victim) then return end
+
+		if activeMusic[victim] then
+			for musicType, _ in pairs(activeMusic[victim]) do
+				net.Start("StopMusic")
+				net.WriteString(musicType)
+				net.Send(victim)
+			end
+			activeMusic[victim] = nil
+		end
+
+		isChasing[victim] = false
+
+		if chaseTimers[victim] then
+			timer.Remove(chaseTimers[victim])
+			chaseTimers[victim] = nil
+		end
 	end)
 end
 

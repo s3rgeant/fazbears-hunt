@@ -242,7 +242,7 @@ function setupPlayerVars(ply)
 	ply:SetFOV(0)
 	ply:SetViewEntity(ply)
 	
-	ply:SetJumpBoostMultiplier(1)
+	ply:SetJumpBoostMultiplier( GetScaledPlayerValue(7, 18, 0.5, 0.9) )
 end
 
 function endGame(killerVictory)
@@ -380,6 +380,17 @@ function postGameTimer()
     net.Broadcast()
 end
 
+local function getScaledJumpBoost()
+	local count = player.GetCount()
+	
+	if count < 8 then
+		return 0.4
+	elseif count < 18 then
+		return 0.6
+	end
+	return 0.8
+end
+
 function GM:fh_prestartgame()
 end
 
@@ -410,12 +421,9 @@ function startGame()
 	end
 	
 	if roundType == 0 then
-	
 		assignKillers()
 		roundType = 0
-		
 	else
-	
 		roundType = 1
 	
 		local players = player.GetAll()
@@ -464,6 +472,10 @@ function startGame()
 	if IsValid(random_taserer) then
 		random_taserer:Give("weapon_taser")
 		random_taserer:SendLua( "LocalPlayer():ChatPrint(language.GetPhrase('fazhunt.give_taser'))" )
+	end
+	
+	for _, ply in player.Iterator() do
+		ply:SetJumpBoostMultiplier( getScaledJumpBoost() )
 	end
 	
     net.Start("fh_start_game_timer")
@@ -850,7 +862,7 @@ hook.Add( "CanPlayerSuicide", "fh_suicide", function( ply )
 	if ply:Team() == 2701 or ply.jumpscared then
 		return false
 	end
-	if timer.TimeLeft( "EndGameTimer" ) > gameDuration then
+	if timer.Exists("EndGameTimer") and timer.TimeLeft( "EndGameTimer" ) > gameDuration then
 		return false
 	end
 end )

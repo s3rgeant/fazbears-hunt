@@ -299,6 +299,7 @@ net.Receive("ResetTimer", function()
     surface.PlaySound("ambient/levels/canals/windchime2.wav")
 end)
 
+--[[
 concommand.Add("AAA_fh", function()
 
     local timerDuration = 8
@@ -314,3 +315,4 @@ concommand.Add("AAA_fh", function()
 	timerTotal = timerDuration
     hook.Add("HUDPaint", "DrawGameTimer", DrawTimer)
 end)
+]]--

@@ -4,14 +4,6 @@ local highlightEnabled = false
 local visionSuccessSound = "vision_success.wav"
 local visionUnsuccessSound = "vision_unsuccess.wav"
 
--- звук для выживших
-local visionAffectedSound = "vision_affected.wav"
-local visionUnaffectedSound = "vision_unaffected.wav"
-
--- спрингтрап
-local spr_visionAffectedSound = "fnaf3/spr_vision_affected.wav"
-local spr_visionUnaffectedSound = "fnaf3/spr_vision_unaffected.wav"
-
 local affectedPlayers = {}
 local animatronics = {}
 local teammates = {}
@@ -100,7 +92,12 @@ net.Receive("fh_addaffected_stalk", function()
 end)
 
 net.Receive("fh_addaffected_springtrap", function()
-	addAffected(net.ReadEntity(), 90)
+	local player = net.ReadEntity()
+	addAffected(player, 90)
+	
+	if player:IsPlayer() then
+		LocalPlayer():ChatPrint(string.format(language.GetPhrase('fazhunt.springtrap.target'), player:Nick() ))
+	end
 end)
 
 net.Receive("RemoveAffectedPlayer", function()
@@ -150,18 +147,17 @@ net.Receive("fh_hl_badkid", function ()
 	
 	if LocalPlayer() == player then
 		drawHighlightTimer(true)
-		surface.PlaySound(visionAffectedSound)
+		surface.PlaySound("vision_affected.wav")
 	end
 end)
 
 net.Receive("PlayHighlightSounds", function()
     local isAffected = net.ReadBool()
-	local springtrap = net.ReadBool() or false
+	local sound = net.ReadString()
+	
+	surface.PlaySound(sound)
     if isAffected then
-		surface.PlaySound(springtrap and spr_visionAffectedSound or visionAffectedSound)
 		drawHighlightTimer(true)
-    else
-		surface.PlaySound(springtrap and spr_visionUnaffectedSound or visionUnaffectedSound)
     end
 end)
 

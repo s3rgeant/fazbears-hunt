@@ -19,9 +19,11 @@ stats.SetMin("evaded_highlight", 3)
 stats.SetMin("got_hit_by_plushtrap", 10)
 stats.SetMin("broke_cupcakes", 6)
 stats.SetMin("evaded_sfreddy_appearance", 5)
+
 stats.SetMin("jumped", 80)
 stats.SetMin("slipped_on_banana", 15)
 stats.SetMin("broke_props", 25)
+
 stats.SetMin("killed", 8)
 stats.SetMin("killed_using_props", 3)
 stats.SetMin("grabbed", 7)
@@ -32,6 +34,7 @@ stats.SetMin("slowed_using_cupcake", 7)
 stats.SetMin("killed_using_blind_rage", 5)
 stats.SetMin("killed_targets", 3)
 stats.SetMin("killed_using_steel_grip_by_falldamage", 2)
+
 stats.SetMin("broke_doors", 15)
 stats.SetMin("broke_cameras", 10)
 stats.SetMin("placed_cameras", 9)
@@ -154,6 +157,14 @@ hook.Add("EntityTakeDamage", "fh_stats_damage", function(target, dmginfo)
 				end
 			end
 		end
+		
+		if dmginfo:IsFallDamage() then
+			timer.Simple(0, function()
+				if !target:Alive() and target._LastEndo ~= nil and target._GrabbedByEndoTime > CurTime() - 10 then
+					stats.Add(target._LastEndo, "killed_using_steel_grip_by_falldamage", 1)
+				end
+			end)
+		end
 	end
 end)
 
@@ -182,7 +193,7 @@ local function dist(a, b)
     return (a - b):Length()
 end
 
-hook.Add("Think", "SuperRunTracker", function()
+hook.Add("Think", "fh_stats_run_tracker", function()
     local now = CurTime()
     if now - lastUpdate < 0.1 then return end
     lastUpdate = now

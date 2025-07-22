@@ -161,7 +161,7 @@ pills.register("pill_clown",{
 	noragdoll=true,
 	reload=function(ply,ent)
 		if ply.lobbyFreeze != nil and ply.lobbyFreeze then return end
-		HighlightPlayers(ply, ent)
+		highlight.ByDistance(ply, ent)
 	end,
 	
 	land=function(ply,ent)
@@ -257,27 +257,8 @@ pills.register("pill_springtrap",{
 	end,
 	startFunction=function(ply,ent)
 		ent:PillLoopSound('breathing', 0.6)
-	end,
-
-	noFallDamage=true,
-	hideHud = true,
-	
-	--[[
-	startFunction=function(ply,ent)
-	end,
-	--]]
-	
-	restore=function(ply,ent)
-		table.Empty(spring_rage)
-		spring_rage_total = 0
 		
-		timer.Remove("pt_kill_timer" .. ply:EntIndex())
-	end,
-	
-	moveMod=function(ply,ent,mv)
 		if IsValid(ent) then
-			if CLIENT then return end
-			
 			local timerName = "CheckConditions" .. ply:EntIndex()
 			if timer.Exists( timerName ) then return end
 	
@@ -300,7 +281,7 @@ pills.register("pill_springtrap",{
 				local eyeAngles = ply:EyeAngles()
 				
 				for _, target in ipairs( ents.FindInSphere( ply:GetPos(), 1800 ) ) do
-					if target ~= ply and target:IsPlayer() and target:Alive() and target:Team() != TEAM_SPECTATOR and target:Team() != 2701 then
+					if target ~= ply and target:IsPlayer() and target:Alive() and target:Team() ~= TEAM_SPECTATOR and target:Team() ~= 2701 then
 				
 						if target:Crouching() or target:GetVelocity():LengthSqr() < target:GetCrouchedWalkSpeed() then
 							return
@@ -321,6 +302,8 @@ pills.register("pill_springtrap",{
 							end
 							
 							spring_rage_total = spring_rage_total + add
+				
+							print(ply:Nick() .. " is playing Springtrap. His rage progress: ( " ..spring_rage_total .. " / 60 )")
 							
 							if spring_rage_total >= 60 then
 							
@@ -344,6 +327,16 @@ pills.register("pill_springtrap",{
 				end
 			end)
 		end
+	end,
+
+	noFallDamage=true,
+	hideHud = true,
+	
+	restore=function(ply,ent)
+		table.Empty(spring_rage)
+		spring_rage_total = 0
+		
+		timer.Remove("pt_kill_timer" .. ply:EntIndex())
 	end,
 	
 	attack2={
@@ -452,7 +445,7 @@ pills.register("pill_springtrap",{
 	noragdoll=true,
 	reload=function(ply,ent)
 		if ply.lobbyFreeze != nil and ply.lobbyFreeze then return end
-		HighlightPlayers(ply, ent)
+		highlight.ByDistance(ply, ent)
 	end,
 	
 	land=function(ply,ent)
@@ -497,8 +490,6 @@ function successRage(ply, ent, target)
 	spring_rage_movement[2], 
 	spring_rage_movement[3], 
 	spring_rage_movement[4])
-	
-	  ply:SendLua( "LocalPlayer():ChatPrint(string.format(language.GetPhrase('fazhunt.springtrap.target'), " .. target:Nick() .. " ))" )
 	
 	table.insert(affectedPlayers, target)
 	

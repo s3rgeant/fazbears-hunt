@@ -155,6 +155,8 @@ function DrawKillerInterface()
 			if translated ~= key_phrase_translatable then
 				translatable_key = translated
 			end
+			
+			--print( string.len(translatable_key) )
 
 			draw.SimpleText(
 				language.GetPhrase(translatable_key),
@@ -357,14 +359,18 @@ end)
 -- текст смешной сверху
 surface.CreateFont("BigTextFont", {
     font = "Arial",
-	outline = true,
+	shadow = true,
+	extended = true,
+	antialias = true,
     size = 48,
     weight = 700
 })
 
 surface.CreateFont("SmallTextFont", {
     font = "Arial",
-	outline = true,
+	shadow = true,
+	extended = true,
+	antialias = true,
     size = 32,
     weight = 500
 })
@@ -420,7 +426,7 @@ function fh_change_display(text1, text2, duration)
     isDisplaying = true
 end
 
---[[
+
 concommand.Add("fh_test_broadcast", function(ply, cmd, args)
 	if ply:IsAdmin() then
 		local text1 = args[1] or "Hello"
@@ -430,7 +436,6 @@ concommand.Add("fh_test_broadcast", function(ply, cmd, args)
 		fh_change_display(text1, text2, duration)
 	end
 end)
-]]--
 
 net.Receive("fh_net_display", function()
     local text1 = net.ReadString()

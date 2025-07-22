@@ -241,6 +241,19 @@ teamColors = {
 	[TEAM_UNASSIGNED] = Color(84, 163, 255)
 }
 
+function GetScaledPlayerValue(countMin, countMax, valueMin, valueMax)
+    local count = player.GetCount()
+
+    if count <= countMin then
+        return valueMin
+    elseif count >= countMax then
+        return valueMax
+    else
+        local ratio = (count - countMin) / (countMax - countMin)
+        return valueMin + ratio * (valueMax - valueMin)
+    end
+end
+
 utf8.sub = function(str, startChar, endChar)
     local startByte = utf8.offset(str, startChar)
     local endByte = utf8.offset(str, endChar + 1) and (utf8.offset(str, endChar + 1) - 1) or #str
@@ -250,6 +263,12 @@ utf8.sub = function(str, startChar, endChar)
         return ""
     end
 end
+
+hook.Add("PlayerFootstep", "fh_footsteps", function(ply, pos, foot, sound, volume, filter)
+	local foot_sound = foot == 1 and "NPC_CombineS.FootstepLeft" or "NPC_CombineS.FootstepRight"
+	ply:EmitSound(foot_sound)
+	return true
+end)
 
 hook.Add("ShouldCollide", "fh_collisions", function(ent1, ent2)
     local cg1, cg2 = ent1:GetCollisionGroup(), ent2:GetCollisionGroup()

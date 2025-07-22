@@ -176,7 +176,7 @@ function SWEP:PrimaryAttack()
         end
     end
 	
-	if wait == 90 then
+	if SERVER and wait == 90 then
 		stats.Add(owner, "tasered", 1)
 	end
 	
