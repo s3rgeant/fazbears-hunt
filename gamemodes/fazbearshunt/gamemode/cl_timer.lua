@@ -85,6 +85,9 @@ local selector
 local grid
 local animtooltip = nil
 
+local showAnimTooltip = false
+local animTooltipText = ""
+
 function draw_killer_selector()
     if not istable(animatronics) then return end
 
@@ -133,6 +136,7 @@ function draw_killer_selector()
 
         if timeLeft <= 0 and IsValid(selector) then
             selector:Close()
+			showAnimTooltip = false
             selectable = false
 
             net.Start("fh_selector_nomore")
@@ -160,33 +164,22 @@ function draw_killer_selector()
         local box = vgui.Create("DImageButton")
         box:SetSize(140, 140)
         box.name = animName
-
+		
 		box.OnCursorEntered = function(self)
-			if IsValid(animtooltip) then animtooltip:Remove() end
-	
-				animtooltip = vgui.Create("DPanel")
-				animtooltip:SetSize(250, 40)
-				animtooltip:SetPaintedManually(false)
-				animtooltip:SetBackgroundColor(Color(0, 0, 0, 220))
-	
-				animtooltip.Paint = function(s, w, h)
-				draw.RoundedBox(4, 0, 0, w, h, Color(0, 0, 0, 220))
-				draw.SimpleText("text_template", "DermaDefault", 10, 10, color_white, TEXT_ALIGN_LEFT)
-			end
-	
-			hook.Add("Think", "UpdateAnimTooltipPos", function()
-				if not IsValid(animtooltip) then return end
-				local x, y = input.GetCursorPos()
-				animtooltip:SetPos(x + 10, y + 10)
-			end)
-	end
+			local key = "fazhunt.animatronics.description." .. killerData[self.name].name
+			local localized = language.GetPhrase(key)
 
-	box.OnCursorExited = function(self)
-		if IsValid(animtooltip) then
-			animtooltip:Remove()
+			if localized == key then
+				showAnimTooltip = false
+			else
+				showAnimTooltip = true
+				animTooltipText = localized
+			end
 		end
-		hook.Remove("Think", "UpdateAnimTooltipPos")
-	end
+
+		box.OnCursorExited = function(self)
+			showAnimTooltip = false
+		end
 
         box.DoClick = function()
             if not selectable then return end
@@ -208,6 +201,43 @@ function draw_killer_selector()
     end
 end
 
+hook.Add("PostRenderVGUI", "DrawAnimTooltip", function()
+	if not showAnimTooltip then return end
+
+	local x, y = input.GetCursorPos()
+	local maxWidth = 300
+	local padding = 10
+
+	surface.SetFont("DermaDefault")
+
+	local lines = {}
+	for rawLine in string.gmatch(animTooltipText, "[^\n]+") do
+		local currentLine = ""
+		for word in string.gmatch(rawLine, "%S+") do
+			local testLine = currentLine == "" and word or currentLine .. " " .. word
+			local testWidth = surface.GetTextSize(testLine)
+
+			if testWidth > maxWidth - padding * 2 then
+				if currentLine ~= "" then table.insert(lines, currentLine) end
+				currentLine = word
+			else
+				currentLine = testLine
+			end
+		end
+		if currentLine ~= "" then table.insert(lines, currentLine) end
+	end
+
+	local tooltipWidth = maxWidth
+	local tooltipHeight = #lines * 18 + padding * 2
+
+	surface.SetDrawColor(0, 0, 0, 220)
+	surface.DrawRect(x + 10, y + 10, tooltipWidth, tooltipHeight)
+
+	for i, line in ipairs(lines) do
+		draw.SimpleText(line, "DermaDefault", x + 10 + padding, y + 10 + padding + (i - 1) * 18, color_white, TEXT_ALIGN_LEFT, TEXT_ALIGN_TOP)
+	end
+end)
+
 net.Receive("fh_let_killers_choose", function()
     animatronics = net.ReadTable()
     draw_killer_selector()
@@ -224,7 +254,7 @@ net.Receive("fh_update_killer_selector", function()
     if ply == LocalPlayer() then
         if IsValid(selector) then 
             selector:Close()
-			animtooltip:Remove()
+			showAnimTooltip = false
             selectable = false
         end
         return

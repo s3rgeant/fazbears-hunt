@@ -27,6 +27,8 @@ include( "sv_ragdolls.lua" )
 include( "sv_logs.lua" )
 include( "stats.lua" )
 
+include( "fh_tag.lua" )
+
 include( "mount/push.lua" )
 
 include( "mount/proximity.lua" )

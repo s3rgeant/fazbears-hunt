@@ -143,7 +143,7 @@ function getAllNonPreferables()
 	return tablo
 end
 
-local dontPrefer = {"pill_springtrap", "pill_plushtrap"}
+local dontPrefer = {"pill_springtrap", "pill_plushtrap", "pill_wgfreddy2"}
 
 -- по умолчанию нельзя выбирать этих аниматроников, пишем их в файлик, чтобы файликом можно было управлять
 if !file.Exists("fh_dontprefer.txt", "DATA") then
@@ -264,11 +264,26 @@ utf8.sub = function(str, startChar, endChar)
     end
 end
 
+--[[
 hook.Add("PlayerFootstep", "fh_footsteps", function(ply, pos, foot, sound, volume, filter)
 	local foot_sound = foot == 1 and "NPC_CombineS.FootstepLeft" or "NPC_CombineS.FootstepRight"
 	ply:EmitSound(foot_sound)
 	return true
 end)
+]]--
+
+hook.Add("SetupMove", "CustomNoClipSpeedControl", function(ply, mv, cmd)
+    if ply:GetMoveType() == MOVETYPE_NOCLIP then
+        if ply:GetMoveType() == MOVETYPE_OBSERVER then
+			mv:SetMaxSpeed( 60 )
+            mv:SetMaxClientSpeed( 60 )
+        else
+			mv:SetMaxSpeed( 20 )
+            mv:SetMaxClientSpeed( 20 )
+        end
+    end
+end)
+
 
 hook.Add("ShouldCollide", "fh_collisions", function(ent1, ent2)
     local cg1, cg2 = ent1:GetCollisionGroup(), ent2:GetCollisionGroup()

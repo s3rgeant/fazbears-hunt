@@ -37,6 +37,7 @@ if SERVER then
 	util.AddNetworkString("fh_net_wgfreddy_scarysound")
 	
 	util.AddNetworkString("cl_target_wgfreddy_scared")
+	util.AddNetworkString("wgfreddy_second_ambience")
 	
 	util.AddNetworkString("fh_dontdraw_player")
 	util.AddNetworkString("fh_dontdraw_anim")
@@ -355,6 +356,8 @@ pills.register("pill_wfreddy2",{
 		net.Start('fh_sound_stop')
 		net.WriteString('freddy_raged2_looped.wav')
 		net.Broadcast()
+		
+		ply:SendLua("wfreddy_stalker_door_halo_OFF()")
 	end
 })
 
@@ -1642,7 +1645,7 @@ pills.register("pill_endo02",{
 })
 
 
-local function fh_can_see_player(observer, target, radius)
+function fh_can_see_player(observer, target, radius)
     if not IsValid(observer) or not IsValid(target) then return false end
 
     if radius then
@@ -1792,6 +1795,8 @@ pills.register("pill_wgfreddy2",{
 			if !wgfreddy_targets[ply] then return end
 			
 			if IsValid(ply:GetEntityInUse()) then return end
+			
+			if !ply:GetNWBool("wgfreddy_enraged") then return end
 			
 			local target = FindNearestPlayer(ent:GetPos(), 130, ply, 90)
 			if !IsValid(target) or target ~= wgfreddy_targets[ply] then return end

@@ -303,7 +303,7 @@ local function OpenAdminPanel()
 	button:SetMax( 10 )	
 	button:SetDecimals( 0 )		
 	button:SetDark(true)
-	button:SetSize(220, 10)
+	button:SetSize(240, 10)
 	button:SetDefaultValue(3)
 	button:SetValue(conVars.fh_max_cupcakes:GetInt())
 	
@@ -327,11 +327,31 @@ local function OpenAdminPanel()
 	end
 	
 	local DLabel = vgui.Create( "DLabel", ExperimentalPanel )
-	DLabel:SetPos( 220, 1 )
+	DLabel:SetPos( 240, 1 )
 	DLabel:SetText( language.GetPhrase("fazhunt.adminpanel.experiments_description01") .. "\n\n" ..
 	language.GetPhrase("fazhunt.adminpanel.experiments_description02"))
 	DLabel:SetDark(true)
 	DLabel:SetSize(345, 200)
+
+	--[[
+	local button = vgui.Create("DNumSlider", ExperimentalPanel)
+	button:SetPos(10, get_events_y())
+	button:SetText(language.GetPhrase("fazhunt.adminpanel.sfreddy_noclip_speed"))
+	button:SetMin( 3 )	
+	button:SetMax( 10 )	
+	button:SetDecimals( 0 )		
+	button:SetDark(true)
+	button:SetSize(240, 10)
+	button:SetDefaultValue(3)
+	button:SetValue(conVars.fh_max_cupcakes:GetInt())
+	
+	button.OnValueChanged = function( self, value )
+		net.Start("AdminAction")
+		net.WriteString('fh_max_cupcakes')
+		net.WriteFloat(value)
+		net.SendToServer()
+	end
+	]]--
 
     PropertySheet:AddSheet(language.GetPhrase("fazhunt.adminpanel.experiments"), ExperimentalPanel, "icon16/chart_line.png")
 	

@@ -37,38 +37,39 @@ function RevivePlayer(ply)
 	alivePlayers[ply] = true
 end
 
-function highlightSelected(targets)
-	if !isGameOn or table.Count(survivors) == 0 or table.Count(animatronics) == 0 then return end
+function highlightSelected(targets, owner)
+	if !isGameOn or table.IsEmpty(survivors) or table.IsEmpty(animatronics) then return end
 	local affectedNicknames = {}
+	local affected = {}
 	
-	for _,v in ipairs(targets) do
+	for _,v in player.Iterator() do
 		if survivors[v] and !table.HasValue(affectedPlayers,v) then
-			net.Start("PlayHighlightSounds")
-			net.WriteBool(table.HasValue(targets, v))
-			net.Send(v)
-			table.insert(affectedNicknames, v:Nick())
+			local isAffected = table.HasValue(targets, v)
+			highlight.NotifyTarget(v, nil, isAffected )
 			
-			table.insert(affectedPlayers, v)
+			if isAffected then
+				table.insert(affectedNicknames, v:Nick())
+				table.insert(affectedPlayers, v)
+				table.insert(affected, v)
+			end
 		end
 	end
 	
-	if table.Count(affectedNicknames) == 0 then return end
+	if table.IsEmpty(affectedNicknames) then return end
 		
 	for ply, _ in pairs(animatronics) do
-		net.Start("AddAffectedPlayers")
-		net.WriteTable(targets)
-		net.Send(ply)
-		
 		net.Start("ToggleHighlightSound")
 		net.WriteBool(true)
 		net.Send(ply)
+		
+		highlight.Add(ply, affected)
 	end
 		
-	if table.Count(team.GetPlayers(TEAM_SPECTATOR)) > 0 then
+	if team.NumPlayers(TEAM_SPECTATOR) > 0 then
 		net.Start('NotifySpectators')
 		net.WriteTable(affectedNicknames)
-		net.WriteEntity(player.GetAll()[1])
-		net.Broadcast()
+		net.WriteEntity(owner or player.GetAll()[1])
+		net.Send( team.GetPlayers(TEAM_SPECTATOR) )
 	end
 	
     LogEvent("(*АДМИН*) Подсвечено "..table.Count(targets).." игроков.")
@@ -204,7 +205,7 @@ net.Receive("AdminAction", function(len, ply)
         end
 		
 		if action == "highlight" then
-			highlightSelected(targets)
+			highlightSelected(targets, ply)
 			return
 		end
 		

@@ -166,7 +166,7 @@ end
 
 hook.Add("Move", "BlightPredictionMove", function(ply, mv)
 	if not ply.isBlightRushing then return end
-	if not ply:OnGround() then
+	if not ply:OnGround() or ply:Crouching() then
 		EndRush(ply)
 		return
 	end

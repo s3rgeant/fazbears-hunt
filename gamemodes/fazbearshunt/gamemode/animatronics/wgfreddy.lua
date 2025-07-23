@@ -236,6 +236,23 @@ if CLIENT then
 		end)
 	end)
 	
+	net.Receive("wgfreddy_second_ambience", function()
+		if IsValid(outworld_ambient) then
+			outworld_ambient:Stop()
+			outworld_ambient = nil
+		end
+		
+		sound.PlayFile("sound/fnaf2/gfreddy/outworld_ambient_2.wav", "noplay noblock", function(chan, errID, errStr)
+			if IsValid(chan) then
+				outworld_ambient = chan
+				chan:SetVolume(1)
+				chan:SetPos(LocalPlayer():GetPos())
+				chan:EnableLooping(true)
+				chan:Play()
+			end
+		end)
+	end)
+	
 	net.Receive("fh_wgfreddy_target_outworld_end", function()
 		local myself = LocalPlayer()
 		
@@ -533,7 +550,9 @@ function fh_get_wgfreddy_target(ply)
 end
 
 local function cancel_outworld_target(ply)
-	outworld_victims[ply] = nil
+	if outworld_victims[ply] then
+		outworld_victims[ply] = nil
+	end
 
 	net.Start("fh_draw_player")
 	net.WritePlayer(ply)
@@ -688,13 +707,15 @@ function start_outworld(ply, target)
 	fh_spawnPlushies(target)
 	
 	wgfreddy_targets[ply] = target
-	outworld_victims[target] = true
+	outworld_victims[target] = ply
 	outworld_victims_count[target] = 0
 	
 	net.Start("fh_wgfreddy_target_outworld_start")
 	net.WritePlayer(ply)
 	net.Send(target)
 end
+
+local first_damage_received = {}
 
 function cancel_outworld(ply)
 	if wgfreddy_targets[ply] then
@@ -719,6 +740,7 @@ function cancel_outworld(ply)
 
 	outworld_victims[ply] = nil
 	wgfreddy_targets[ply] = nil
+	first_damage_received[ply] = nil
 end
 
 local DamageTimers = {}
@@ -775,9 +797,54 @@ function StopDelayedDamage(ply)
 end
 
 if SERVER then
+	local gfreddy_enraged_movement = {130, 560, 0, 0}
 	net.Receive("cl_target_wgfreddy_scared", function( len, ply )
 		if outworld_victims[ply] then
-			print('ISPUGALSYA!!!')
+			local wgfreddy = outworld_victims[ply]
+		
+            ply:TakeDamage( math.min(ply:Health() / 2, 20), wgfreddy, wgfreddy:GetActiveWeapon() )
+			
+			if !first_damage_received[ply] then
+				net.Start("wgfreddy_second_ambience")
+				net.Send(ply)
+			end
+			
+			first_damage_received[ply] = true
+			
+			local ent = pills.getMappedEnt(wgfreddy)
+			
+			if !IsValid(ent) then return end
+			
+			if ply:Health() < 30 then
+				PauseDamage(ply, 30 / math.max(ply:Health() - 5, 1))
+				
+				wgfreddy:SetNWBool("wgfreddy_enraged", true)
+				ent:SetSpeed(unpack(gfreddy_enraged_movement))
+				
+				return
+			end
+			
+			if not ent.cloaked then
+				if fh_can_see_player(wgfreddy_targets[wgfreddy], wgfreddy, 1500) then
+					wgfreddy_targets[wgfreddy]:ScreenFade(SCREENFADE.IN, Color(0,0,0), 1, 0.5)
+					
+					EmitSound("gfreddy.laugh", wgfreddy:GetPos())
+				end
+				
+				ent:SetSpeed(unpack(sfreddy_noclip_movement))
+				wgfreddy:DrawViewModel(false)
+
+				ent:SetMaterial("models/null")
+				ent:DrawShadow(false)
+
+				wgfreddy:SetCollisionGroup(COLLISION_GROUP_DEBRIS)
+				wgfreddy:SetCustomCollisionCheck(true)
+				wgfreddy:CollisionRulesChanged()
+
+				ent.cloaked = true
+			end
+			
+			PauseDamage(ply, 10)
 		end
 	end)
 end

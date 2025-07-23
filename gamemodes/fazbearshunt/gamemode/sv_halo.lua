@@ -42,15 +42,10 @@ function highlight.ByDistance(ply, ent)
 				local isAffected = distance <= conVars.halo_radius:GetInt()
 				
 				if (isAffected) then -- передаём чуваку кто подсвечивается в радиусе
-					table.insert(affectedPlayers, player)
 					table.insert(totalPlayers, player)
 					table.insert(affectedNicknames, player:Nick())
 				
 					highlight.Add(ply, player)
-					
-					timer.Simple(conVars.halo_time:GetFloat(), function()
-						table.RemoveByValue(affectedPlayers, player)
-					end)
 					
 					stats.Add(player, "got_highlighted", 1)
 				else
@@ -80,12 +75,24 @@ function highlight.Add(ply, players)
 			net.Start("AddAffectedPlayers")
 			net.WriteTable(players)
 			net.Send(ply)
+			
+			for _, v in ipairs(players) do
+				timer.Simple(conVars.halo_time:GetFloat(), function()
+					table.RemoveByValue(affectedPlayers, v)
+				end)
+			end
 		end
 	else
 		if players:IsValid() then
 			net.Start("AddAffectedPlayers")
 			net.WriteTable( {players} )
 			net.Send(ply)
+			
+			table.insert(affectedPlayers, { players })
+			
+			timer.Simple(conVars.halo_time:GetFloat(), function()
+				table.RemoveByValue(affectedPlayers, { players })
+			end)
 		end
 	end
 end
