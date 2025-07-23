@@ -2022,20 +2022,23 @@ function playVoiceline(character, line, who, when)
 	if ( timer.Exists( "fh_PlayVoiceLine" .. who:SteamID64()) or timer.Exists( "fh_DontVoiceLine" .. who:SteamID64() ) ) then return end
 	
 	timer.Create("fh_PlayVoiceLine" .. who:SteamID64(), when, 1, function()
-	
-		if line == "kill" and character != "sfreddy" then
-			if #team.GetPlayers(TEAM_UNASSIGNED) == 0 then
-				line = "lastkill"
-			end		
+		local ent = pills.getMappedEnt(who)
+		
+		if ent:IsValid() then
+			if line == "kill" and character != "sfreddy" then
+				if #team.GetPlayers(TEAM_UNASSIGNED) == 0 then
+					line = "lastkill"
+				end		
+			end
+			
+			net.Start("fh_play_voiceline")
+			net.WriteString(character)
+			net.WriteString(line)
+			net.WritePlayer(who)
+			net.Broadcast()
+			
+			timer.Create("fh_DontVoiceLine" .. who:SteamID64(), 5, 1, function() end)
 		end
-		
-		net.Start("fh_play_voiceline")
-		net.WriteString(character)
-		net.WriteString(line)
-		net.WritePlayer(who)
-		net.Broadcast()
-		
-		timer.Create("fh_DontVoiceLine" .. who:SteamID64(), 5, 1, function() end)
 	end)
 end
 
