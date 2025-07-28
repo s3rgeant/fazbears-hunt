@@ -169,6 +169,13 @@ if CLIENT then
 	
 	local outworlded_ppl = {}
 	
+	local PARTICLE_TEXTURE = "particles/smokinweed" -- Замени на свою
+	local RADIUS = 1200 -- Меньше радиус = плотнее вокруг игрока
+	local PARTICLE_INTERVAL = 0.03 -- Быстрее генерация = плотнее эффект
+	local PARTICLES_PER_TICK = 2 -- Больше частиц за один вызов
+
+	local nextParticleTime = 0
+	
 	hook.Add("PrePlayerDraw", "fh_dontdraw_outworlded" , function(ply)
 		if outworlded_ppl[ply] then
 			return true
@@ -263,6 +270,55 @@ if CLIENT then
 			render.FogColor(150, 150, 150)
 			return true
 		end)
+
+		hook.Add("Think", "GroundDustParticlesDense", function()
+			local ply = LocalPlayer()
+			if not IsValid(ply) or not ply:Alive() then return end
+			if CurTime() < nextParticleTime then return end
+
+			nextParticleTime = CurTime() + PARTICLE_INTERVAL
+
+			local emitter = ParticleEmitter(ply:GetPos(), false)
+			if not emitter then return end
+
+			for i = 1, PARTICLES_PER_TICK do
+				-- Генерация позиции в радиусе
+				local angle = math.Rand(0, 2 * math.pi)
+				local distance = math.Rand(50, RADIUS)
+				local offset = Vector(math.cos(angle), math.sin(angle), 0) * distance
+
+				-- Трассировка до пола
+				local traceData = {
+					start = ply:GetPos() + offset + Vector(0, 0, 100),
+					endpos = ply:GetPos() + offset - Vector(0, 0, 200),
+					mask = MASK_SOLID_BRUSHONLY
+				}
+				local tr = util.TraceLine(traceData)
+				if not tr.Hit then continue end
+
+				local pos = tr.HitPos + Vector(0, 0, 2)
+
+				local particle = emitter:Add(PARTICLE_TEXTURE, pos)
+				if particle then
+					local upVelocity = Vector(0, 0, math.Rand(10, 20))
+					local sideVelocity = ply:GetRight() * math.Rand(5, 10)
+
+					particle:SetVelocity(upVelocity + sideVelocity)
+					particle:SetLifeTime(0)
+					particle:SetDieTime(math.Rand(2, 3))
+					particle:SetStartAlpha(math.Rand(80, 120))
+					particle:SetEndAlpha(0)
+					particle:SetStartSize(math.Rand(1, 6)) -- немного меньше
+					particle:SetEndSize(math.Rand(6, 12))
+					particle:SetRoll(math.Rand(0, 360))
+					particle:SetRollDelta(math.Rand(-0.3, 0.3))
+					particle:SetColor(170, 170, 170)
+					particle:SetAirResistance(25)
+				end
+			end
+
+			emitter:Finish()
+		end)	
 	end)
 	
 	net.Receive("wgfreddy_second_ambience", function()
@@ -320,6 +376,7 @@ if CLIENT then
 		hook.Remove("SetupWorldFog", "WhiteFogEffect")
 		hook.Remove("SetupSkyboxFog", "WhiteFogEffectSkybox")
 		hook.Remove("RenderScreenspaceEffects", "merc_videoglitch_hook")
+		hook.Remove("Think", "GroundDustParticlesDense")
 	end)
 	
 	local function fh_wgfreddy_selecting_halo()
@@ -513,11 +570,13 @@ if CLIENT then
 		dude:SetNoDraw(false)
         dude:DrawShadow(true)
 		
-		for _, wep in ipairs(dude:GetWeapons()) do
-			if IsValid(wep) then
-				wep:SetNoDraw(false)
-				wep:DrawShadow(true)
-				wep:SetRenderMode(RENDERMODE_NORMAL)
+		if IsValid(dude) then
+			for _, wep in ipairs(dude:GetWeapons()) do
+				if IsValid(wep) then
+					wep:SetNoDraw(false)
+					wep:DrawShadow(true)
+					wep:SetRenderMode(RENDERMODE_NORMAL)
+				end
 			end
 		end
 	end)
