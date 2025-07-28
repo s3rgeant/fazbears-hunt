@@ -35,11 +35,20 @@ if SERVER then
 
 	function foxyStun(ply)
 		local ent = pills.getMappedEnt(ply)
+			
 		ply.blightRushing = false
+		ply:SetNWBool("Blight_BlockM1", true)
+		
+		if !IsValid(ent) then return end
+		
 		ent:SetSpeed(unpack(StunnedFoxyMovementSpeed()))
 		ply:SetFOV(60, 0.5)
 		
-		ply:SetNWBool("Blight_BlockM1", true)
+		local wep = ply:GetActiveWeapon()
+		if IsValid(wep) and wep:GetClass() == "v_foxy" then
+			wep.run_string = "run"
+			wep.run_act = ACT_VM_SPRINT_IDLE
+		end
 		
 		timer.Simple(3, function()
 			if not IsValid(ply) then return end	
@@ -61,16 +70,27 @@ if SERVER then
 			ply:SetNWBool("Blight_BlockM1", true)
 			net.Start("Blight_PlayFirstRushSound")
 			net.Send(ply)
+		
+			local wep = ply:GetActiveWeapon()
+			if IsValid(wep) and wep:GetClass() == "v_foxy" then
+				wep.run_string = "weakrun"
+				wep.run_act = ACT_MP_RUN_MELEE
+			end
 		elseif ply.blightRushTokens == 4 and ply.blightRushing then
-			ply:SetNWBool("Blight_BlockM1", false)
 			net.Start("Blight_PlayLethalRushSound")
 			net.Send(ply)
 		end
 
 		if ply.blightRushTokens ~= MAX_RUSH_TOKENS and not ply.blightRushing then return end
 		
-		if ply.blightRushTokens < 4 then
+		if ply.blightRushTokens <= 4 then
 			ply:SetNWBool("Blight_BlockM1", false)
+		
+			local wep = ply:GetActiveWeapon()
+			if IsValid(wep) and wep:GetClass() == "v_foxy" then
+				wep.run_string = "run"
+				wep.run_act = ACT_VM_SPRINT_IDLE
+			end
 		end
 
 		net.Start("fh_net_killer_change")
@@ -194,7 +214,7 @@ hook.Add("Move", "BlightPredictionMove", function(ply, mv)
 	ply.puppet:SetPlaybackRate(1.3)
 				
 	local wep = ply:GetViewModel(0)
-	if IsValid(wep) then
+	if IsValid(wep) and !wep.IsCharging then
 		wep:SetPlaybackRate(1.3)
 	end
 		
@@ -310,36 +330,45 @@ end
 
 local DamageTimers = {}
 
-function StartBleeding(ply)
+function StartBleeding(ply, dealer)
     if not IsValid(ply) or not ply:IsPlayer() then return end
 
     local steamID = ply:SteamID()
     
     if DamageTimers[steamID] then return end
 
-    timer.Simple(30, function()
-        if not IsValid(ply) then return end
+	if not IsValid(ply) then return end
 
-        local timerName = "DamagePlayer_" .. steamID
-        DamageTimers[steamID] = timerName
+	local timerName = "DamagePlayer_" .. steamID
+	DamageTimers[steamID] = timerName
 
-        timer.Create(timerName, 2, 0, function()
-            if not IsValid(ply) or !ply:Alive() or ply:Team() ~= TEAM_UNN then
-                StopDelayedDamage(ply)
-                return
-            end
+	timer.Create(timerName, 1, 0, function()
+		if not IsValid(ply) or !ply:Alive() or !ply:IsSurvivor() then
+			StopDelayedDamage(ply)
+			return
+		end
 
-            if ply._damagePausedUntil and CurTime() < ply._damagePausedUntil then
-                return
-            end
+		if ply._damagePausedUntil and CurTime() < ply._damagePausedUntil then
+			return
+		end
 
-            local dmg = DamageInfo()
-            dmg:SetDamage(1)
-            dmg:SetAttacker(game.GetWorld())
-            dmg:SetDamageType(DMG_GENERIC)
-            ply:TakeDamageInfo(dmg)
-        end)
-    end)
+		local dmg = DamageInfo()
+		dmg:SetDamage(2)
+		dmg:SetAttacker(IsValid(dealer) and dealer or game.GetWorld())
+		dmg:SetDamageType(DMG_GENERIC)
+		ply:TakeDamageInfo(dmg)
+		
+		local pos = ply:GetPos()
+        local tr = util.TraceLine({
+            start = pos + Vector(0, 0, 10),
+            endpos = pos - Vector(0, 0, 50),
+            filter = ply
+        })
+
+        if tr.Hit then
+            util.Decal("Blood", tr.HitPos + tr.HitNormal, tr.HitPos - tr.HitNormal)
+        end
+	end)
 end
 
 function PauseBleeding(ply, duration)

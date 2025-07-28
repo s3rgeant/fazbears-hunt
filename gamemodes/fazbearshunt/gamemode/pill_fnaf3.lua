@@ -81,7 +81,7 @@ pills.register("pill_clown",{
         offset = Vector(0, 0, 90),
 		dist = 150
     },
-	hull=Vector(24,24,86),
+	hull=Vector(32,32,86),
 	duckBy=60,
 	
 	viewmodel={
@@ -236,7 +236,7 @@ pills.register("pill_springtrap",{
         offset = Vector(0, 0, 88),
 		dist = 150
     },
-	hull=Vector(24,24,86),
+	hull=Vector(32,32,86),
 	duckBy=60,
 	
 	viewmodel={
@@ -281,7 +281,7 @@ pills.register("pill_springtrap",{
 				local eyeAngles = ply:EyeAngles()
 				
 				for _, target in ipairs( ents.FindInSphere( ply:GetPos(), 1800 ) ) do
-					if target ~= ply and target:IsPlayer() and target:Alive() and target:Team() ~= TEAM_SPECTATOR and target:Team() ~= 2701 then
+					if target ~= ply and target:IsPlayer() and target:IsSurvivor() then
 				
 						if target:Crouching() or target:GetVelocity():LengthSqr() < target:GetCrouchedWalkSpeed() then
 							return
@@ -311,7 +311,7 @@ pills.register("pill_springtrap",{
 								local loh
 								
 								for k,v in pairs(spring_rage) do
-									if IsValid(k) and v > val and k:Alive() and k:Team() != TEAM_SPECTATOR and k:Team() != 2701 then
+									if IsValid(k) and v > val and k:IsSurvivor() then
 										val = v
 										loh = k
 									end
@@ -416,6 +416,11 @@ pills.register("pill_springtrap",{
 			plushtrap:SetOwner(ply)
 			plushtrap:Spawn()
 			plushtrap:Activate()
+	
+			net.Start("fh_net_killer_change")
+			net.WriteString("plushtrap")
+			net.WriteFloat(60)
+			net.Send(ply)
 			
 			timer.Create("pt_kill_timer" .. ply:EntIndex(), 60, 1, function()
 				if IsValid(plushtrap) then
@@ -528,7 +533,7 @@ function noMoreRage(ply, ent)
 		net.WriteEntity(spring_rage_target)
 		net.Send(ply)
 		
-		if spring_rage_target:Alive() and spring_rage_target:Team() != TEAM_SPECTATOR then
+		if spring_rage_target:IsSurvivor() then
 			net.Start("fh_nodraw_hl_overlay")
 			net.Send(spring_rage_target)
 		end
@@ -719,6 +724,13 @@ net.Receive("pt_request_complete", function(len, springtrap)
 	
 	RunConsoleCommand("pk_pill_apply", ply:Nick(), "pill_plushtrap")
 	
+	if timer.Exists("pt_kill_timer" .. springtrap:EntIndex()) then
+		net.Start("fh_net_killer_change")
+		net.WriteString("lifetime")
+		net.WriteFloat( "pt_kill_timer" .. springtrap:EntIndex() )
+		net.Send(ply)
+	end
+	
 	if pt_lastpos != nil then
 		ply:SetPos(pt_lastpos)
 	end
@@ -797,7 +809,7 @@ if SERVER then
 		if !IsValid(request_plushtrap) then return end
 	
 		for _, ply in ipairs(player.GetAll()) do
-			if !IsValid(ply) or !ply:IsPlayer() or ply:Team() == TEAM_SPECTATOR or ply:Team() == 2701 or ply == request_plushtrap then continue end
+			if !IsValid(ply) or !ply:IsPlayer() or ply:IsSurvivor() or ply == request_plushtrap then continue end
 	
 			local curTime = CurTime()
 			if not nextPingTime[ply] or curTime >= nextPingTime[ply] then

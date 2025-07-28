@@ -79,10 +79,10 @@ end)
 
 -- #### ВЫБИРАЛКА АНИМАТРОНОВ!!!
 
-local animatronics = {}
-local selectable = false
-local selector
-local grid
+local animatronics = animatronics or {}
+local selectable = selectable or false
+local selector = selector or nil
+local grid = grid or nil
 local animtooltip = nil
 
 local showAnimTooltip = false
@@ -193,7 +193,7 @@ function draw_killer_selector()
         else
             box.Paint = function(self, w, h)
                 draw.RoundedBox(4, 0, 0, w, h, Color(0, 0, 0))
-                draw.SimpleText(language.GetPhrase(killerData[animName].fullname), "timerFontSmall", w / 2, h / 2, color_white, TEXT_ALIGN_CENTER, TEXT_ALIGN_CENTER)
+                draw.SimpleText(language.SafeGetPhrase(killerData[animName].fullname), "timerFontSmall", w / 2, h / 2, color_white, TEXT_ALIGN_CENTER, TEXT_ALIGN_CENTER)
             end
         end
 
@@ -210,33 +210,40 @@ hook.Add("PostRenderVGUI", "DrawAnimTooltip", function()
 
 	surface.SetFont("DermaDefault")
 
+	local rawLines = string.Explode("\n", animTooltipText, false)
 	local lines = {}
-	for rawLine in string.gmatch(animTooltipText, "[^\n]+") do
-		local currentLine = ""
-		for word in string.gmatch(rawLine, "%S+") do
-			local testLine = currentLine == "" and word or currentLine .. " " .. word
-			local testWidth = surface.GetTextSize(testLine)
 
-			if testWidth > maxWidth - padding * 2 then
-				if currentLine ~= "" then table.insert(lines, currentLine) end
-				currentLine = word
-			else
-				currentLine = testLine
+	for _, rawLine in ipairs(rawLines) do
+		if rawLine == "" then
+			table.insert(lines, "")
+		else
+			local currentLine = ""
+			for word in string.gmatch(rawLine, "%S+") do
+				local testLine = currentLine == "" and word or currentLine .. " " .. word
+				local testWidth = surface.GetTextSize(testLine)
+
+				if testWidth > maxWidth - padding * 2 then
+					if currentLine ~= "" then table.insert(lines, currentLine) end
+					currentLine = word
+				else
+					currentLine = testLine
+				end
 			end
+			if currentLine ~= "" then table.insert(lines, currentLine) end
 		end
-		if currentLine ~= "" then table.insert(lines, currentLine) end
 	end
 
 	local tooltipWidth = maxWidth
 	local tooltipHeight = #lines * 18 + padding * 2
 
-	surface.SetDrawColor(0, 0, 0, 220)
+	surface.SetDrawColor(0, 0, 0, 255)
 	surface.DrawRect(x + 10, y + 10, tooltipWidth, tooltipHeight)
 
 	for i, line in ipairs(lines) do
 		draw.SimpleText(line, "DermaDefault", x + 10 + padding, y + 10 + padding + (i - 1) * 18, color_white, TEXT_ALIGN_LEFT, TEXT_ALIGN_TOP)
 	end
 end)
+
 
 net.Receive("fh_let_killers_choose", function()
     animatronics = net.ReadTable()
@@ -277,7 +284,7 @@ end)
 -- #### ТАЙМЕР!!!
 net.Receive("fh_start_lobby_timer", function()
     local timerDuration = net.ReadFloat()
-    timerTitle = language.GetPhrase("fazhunt.generic.startup")
+    timerTitle = language.SafeGetPhrase("fazhunt.generic.startup")
 	local soundtoplay = net.ReadString()
     
     timerMode = "lobby"
@@ -317,7 +324,7 @@ net.Receive("fh_start_game_timer", function()
     local startupDuration = net.ReadFloat()
 	local soundtoplay = net.ReadString()
 	
-    timerTitle = language.GetPhrase("fazhunt.generic.round") .. ' ' .. net.ReadString()
+    timerTitle = language.SafeGetPhrase("fazhunt.generic.round") .. ' ' .. net.ReadString()
 	
 	timerTotal = timerDuration
     
@@ -358,20 +365,17 @@ net.Receive("ResetTimer", function()
     surface.PlaySound("ambient/levels/canals/windchime2.wav")
 end)
 
---[[
-concommand.Add("AAA_fh", function()
+function language.SafeGetPhrase(key)
+    return string.TrimRight(language.GetPhrase(key))
+end
 
-    local timerDuration = 8
-    timerTitle = language.GetPhrase("fazhunt.generic.startup")
+--[[
+concommand.Add("abcd", function()
+
+    a_1 = language.GetPhrase("spawnmenu.revert")
+	a_2 = "Revert"
     
-    timerMode = "lobby"
-	
-    postlobbytimer_alpha = 0
-	roundtimer_y_target = 64
-	roundtimer_alpha = 255
-	
-    timerEnd = CurTime() + timerDuration
-	timerTotal = timerDuration
-    hook.Add("HUDPaint", "DrawGameTimer", DrawTimer)
+    print(a_1, #a_1)
+    print(a_2, #a_2)
 end)
 ]]--

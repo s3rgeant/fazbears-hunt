@@ -1,5 +1,34 @@
 AddCSLuaFile()
 
+team.SetUp( 27, "Secret Animatronics", Color(255, 0, 0), true )
+
+hook.Add("fh_startgame", "spawn_wgfreddy", function(roundType)
+	if !navmesh.IsLoaded() or navmesh.GetNavAreaCount() < 5 then
+		return
+	end
+	
+	if math.random(1,7) == 1 or GetConVar( "developer" ):GetBool() then
+		if roundType == 0 then
+			local players = team.GetPlayers(TEAM_UNASSIGNED)
+			local count = table.Count(players)
+			
+			if count >= 8 or ( GetConVar( "developer" ):GetBool() and count > 1 ) then
+				players = fh.GetEarnedKillers(players)
+				
+				local chosenPlayer = fh.randomChoice(players)
+		
+				giveKillerSilent(chosenPlayer, "pill_wgfreddy2", true)
+			end
+		end
+	end
+end)
+
+hook.Add("PillApply", "gf_joinpill", function(ply, name)
+	if name == "pill_wgfreddy2" then
+		ply:SetTeam(27)
+	end
+end)
+
 function fh_spawnPlushies(ply)
 	if !IsValid(ply) then return end
 

@@ -32,9 +32,7 @@ function highlight.ByDistance(ply, ent)
 		local affectedNicknames = {}
 		for _, player in player.Iterator() do
 			if player ~= ply and player:IsPlayer() 
-							and player:Health() > 0 
-							and (player:Team() != TEAM_SPECTATOR
-							and player:Team() != 2701) 
+							and player:IsSurvivor()
 							and player:IsValid()
 							and !outworlded[player] then
 				local distance = ply:GetPos():Distance(player:GetPos())
@@ -77,6 +75,8 @@ function highlight.Add(ply, players)
 			net.Send(ply)
 			
 			for _, v in ipairs(players) do
+				table.insert(affectedPlayers, v)
+				
 				timer.Simple(conVars.halo_time:GetFloat(), function()
 					table.RemoveByValue(affectedPlayers, v)
 				end)
@@ -88,10 +88,10 @@ function highlight.Add(ply, players)
 			net.WriteTable( {players} )
 			net.Send(ply)
 			
-			table.insert(affectedPlayers, { players })
+			table.insert(affectedPlayers, players)
 			
 			timer.Simple(conVars.halo_time:GetFloat(), function()
-				table.RemoveByValue(affectedPlayers, { players })
+				table.RemoveByValue(affectedPlayers, players)
 			end)
 		end
 	end
@@ -138,9 +138,26 @@ end
 hook.Add("SetupPlayerVisibility", "fh_halo_visibility", function(ply, viewent)
 	if !table.IsEmpty(affectedPlayers) then
 		for _, player in ipairs(affectedPlayers) do
-			if IsValid(player) then
+			if IsValid(player) and ply:IsAnimatronic() then
 				AddOriginToPVS(player:GetPos())
 			end
+		end
+	end
+end)
+
+hook.Add("PlayerChangedTeam", "fh_halo_team", function(ply, oldteam, team)
+	if team != 2701 then
+		if table.HasValue(haloUsers, ply) then
+			table.RemoveByValue(haloUsers, ply)
+		end
+	end
+	
+	if table.HasValue(affectedPlayers, ply) then
+		if team == 2701 then
+			table.RemoveByValue(affectedPlayers, ply)
+			net.Start("RemoveAffectedPlayer")
+			net.WriteEntity(ply)
+			net.Broadcast()
 		end
 	end
 end)

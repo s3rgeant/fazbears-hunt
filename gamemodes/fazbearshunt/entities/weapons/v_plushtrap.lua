@@ -120,7 +120,7 @@ function SWEP:DealDamage()
 		return 
 	end
 	
-	if target:IsPlayer() and target:Team() ~= ply:Team() then
+	if target:IsPlayer() and target:IsSurvivor() then
 	
 		local edata = EffectData()
 		edata:SetOrigin(tr.HitPos)
@@ -162,7 +162,7 @@ function SWEP:DealDamage()
 		return 
 	end
 	
-	if (target:IsPlayer() and target:Team() != ply:Team()) or target:IsNPC() then
+	if (target:IsPlayer() and target:IsSurvivor()) or target:IsNPC() then
 		ply:EmitSound("fnaf3/spr_punch_hit.wav")
 	end
 	

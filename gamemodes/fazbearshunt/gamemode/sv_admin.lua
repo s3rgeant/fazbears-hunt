@@ -139,7 +139,7 @@ end
 
 local function endgame_shared()
 	net.Start('fh_sound_stop')
-	net.WriteString(fh.GetRoundType() == 0 and 'music/first_minute.wav' or 'music/freeze_timer_springtrap.wav')
+	net.WriteString( fh.GetRoundMusic( fh.GetRoundType() ) )
 	net.Broadcast()
 	
 	net.Start('fh_net_scarysound')
@@ -167,6 +167,17 @@ function EndPostRound()
 	if !roundEnding and isGameOn then
 		roundActive = true
 		endgame_shared()
+		
+		local vremya = fh.GetGameDuration()
+		
+		if fh.GetRoundType() < 2 then
+			net.Start("fh_timer_cutback")
+			net.WriteFloat(vremya)
+			net.WriteString("round/time_cutback.mp3")
+			net.Broadcast()
+			
+			timer.Adjust("EndGameTimer", vremya)
+		end
 		
 		hook.Run("fh_poststartgame", roundType, animatronics)
 		
@@ -236,7 +247,6 @@ net.Receive("AdminAction", function(len, ply)
 		net.WriteBool(string.match(action, "add"))
 		net.Broadcast()
     else
-		--local target = net.ReadEntity()
 		if action == "start_round" then
 			StartRound()
 		elseif action == "highlight_all" then
@@ -257,7 +267,7 @@ net.Receive("AdminAction", function(len, ply)
 		elseif action == "end_lobby_timer" then
 			EndLobbyTimer()
 		elseif action == "fh_spawn_gifts" then
-			fh_spawnGifts()
+			SpawnGifts()
 		elseif action == "fh_auto_map_hl" then
 			local mapInfo = fh.GetMapData()
 			

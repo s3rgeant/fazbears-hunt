@@ -55,6 +55,8 @@ if SERVER then
 	util.PrecacheModel("models/speps/pill/oldgoldenfreddy.mdl")
 	util.PrecacheModel("models/speps/pill/oldgoldenfreddyhead.mdl")
 	util.PrecacheModel("models/speps/pill/endo02.mdl")
+	
+	resource.AddFile( "materials/models/null.vmt" )
 end
 
 pcall(require,"pills")
@@ -111,7 +113,7 @@ pills.register("pill_wfreddy2",{
         offset = Vector(0, 0, 90),
 		dist = 150
     },
-	hull=Vector(24,24,86),
+	hull=Vector(32,32,86),
 	duckBy=60,
 	
 	viewmodel={
@@ -166,8 +168,6 @@ pills.register("pill_wfreddy2",{
 	attack={
 		mode="trigger",
 		func=function(ply,ent)
-			if ply.lobbyFreeze != nil and ply.lobbyFreeze then return end
-			
 			if IsValid(ply:GetEntityInUse()) then return end
 			
 			local target = FindNearestPlayer(ent:GetPos(), 130, ply, 90)
@@ -178,7 +178,7 @@ pills.register("pill_wfreddy2",{
 			playVoiceline('freddy', "kill", ply, 2)
 			ent:PillSound("melee",false)
 			if target:IsNPC() then
-				target:TakeDamage(target:Health() + target:Armor(), ply)
+				target:TakeDamage(target:Health(), ply)
 				return 
 			end
 			jumpscareEvent(ply, ent, target, 50)
@@ -206,8 +206,6 @@ pills.register("pill_wfreddy2",{
 	attack2 = {
 		mode = "trigger",
 		func = function(ply, ent)
-		
-			if ply.lobbyFreeze != nil and ply.lobbyFreeze then return end
 			
 			local target = fh_random_stalk_target(ply)
 	
@@ -313,7 +311,6 @@ pills.register("pill_wfreddy2",{
 
 	noragdoll=true,
 	reload=function(ply,ent)
-		if ply.lobbyFreeze != nil and ply.lobbyFreeze then return end
 		if ply ~= stalker then
 			highlight.ByDistance(ply, ent)
 		end
@@ -365,7 +362,7 @@ pills.register("pill_wfreddy2",{
 function fh_random_stalk_target(ignore)
     local candidates = {}
     for _, ply in player.Iterator() do
-        if IsValid(ply) and ply:Alive() and ply:Team() != TEAM_SPECTATOR and ply ~= ignore and ply:Team() != 2701 and !outworld_victims[ply] then
+        if IsValid(ply) and ply:Alive() and ply:IsSurvivor() and ply ~= ignore and !outworld_victims[ply] then
             local speed = ply:GetVelocity():Length()
             if speed < 70 then
                 table.insert(candidates, ply)
@@ -405,7 +402,7 @@ end
 
 local stalkerEnt
 function successStalk(ply, ent, target)
-	if IsValid(target) and target:Alive() and ply:Team() != TEAM_SPECTATOR then
+	if IsValid(target) and target:Alive() and target:IsSurvivor() then
 	
 		local wep = ply:GetActiveWeapon()
 		if IsValid(wep) and wep:GetClass() == "v_freddy" then
@@ -448,7 +445,7 @@ function successStalk(ply, ent, target)
 		net.Send(target)
 			
 		timer.Simple(2, function()
-			if target:Alive() and target:Team() != TEAM_SPECTATOR then
+			if target:IsSurvivor() then
 				net.Start("fh_adv_sound_play")
 				net.WriteString('freddy_targeted_ambience.wav')
 				net.Send(target)
@@ -544,7 +541,7 @@ pills.register("pill_wbonnie2",{
         offset = Vector(0, 0, 90),
 		dist = 150
     },
-	hull=Vector(24,24,86),
+	hull=Vector(32,32,86),
 	duckBy=60,
 	
 	viewmodel={
@@ -592,8 +589,6 @@ pills.register("pill_wbonnie2",{
 	attack={
 		mode="trigger",
 		func=function(ply,ent)
-			if ply.lobbyFreeze != nil and ply.lobbyFreeze then return end
-			
 			if IsValid(ply:GetEntityInUse()) then return end
 			
 			local target = FindNearestPlayer(ent:GetPos(), 130, ply, 90)
@@ -601,7 +596,7 @@ pills.register("pill_wbonnie2",{
 			playVoiceline('bonnie', "kill", ply, 2)
 			ent:PillSound("melee",false)
 			if target:IsNPC() then
-				target:TakeDamage(target:Health() + target:Armor(), ply)
+				target:TakeDamage(target:Health(), ply)
 				return 
 			end
 			jumpscareEvent(ply, ent, target, 52)
@@ -738,7 +733,6 @@ pills.register("pill_wbonnie2",{
 
 	noragdoll=true,
 	reload=function(ply,ent)
-		if ply.lobbyFreeze != nil and ply.lobbyFreeze then return end
 		highlight.ByDistance(ply, ent)
 	end,
 
@@ -750,7 +744,7 @@ pills.register("pill_wbonnie2",{
 function fh_random_yoursmine_target(ignore)
     local candidates = {}
     for _, ply in player.Iterator() do
-        if IsValid(ply) and (ply:Alive() and ply:Team() != TEAM_SPECTATOR) and ply ~= ignore and ply:Team() != 2701 and !outworld_victims[ply] then
+        if IsValid(ply) and ply:IsSurvivor() and ply ~= ignore and !outworld_victims[ply] then
             table.insert(candidates, ply)
         end
     end
@@ -810,7 +804,7 @@ pills.register("pill_wchica2",{
         offset = Vector(0, 0, 90),
 		dist = 150
     },
-	hull=Vector(24,24,86),
+	hull=Vector(32,32,86),
 	duckBy=60,
 	
     jumpPower=250,
@@ -854,8 +848,6 @@ pills.register("pill_wchica2",{
 	attack={
 		mode="trigger",
 		func=function(ply,ent)
-			if ply.lobbyFreeze != nil and ply.lobbyFreeze then return end
-			
 			if IsValid(ply:GetEntityInUse()) then return end
 			
 			local target = FindNearestPlayer(ent:GetPos(), 130, ply, 90)
@@ -863,7 +855,7 @@ pills.register("pill_wchica2",{
 			playVoiceline('chica', "kill", ply, 2)
 			ent:PillSound("melee",false)
 			if target:IsNPC() then
-				target:TakeDamage(target:Health() + target:Armor(), ply)
+				target:TakeDamage(target:Health(), ply)
 				return 
 			end
 			jumpscareEvent(ply, ent, target, 60)
@@ -886,7 +878,6 @@ pills.register("pill_wchica2",{
 	attack2={
 		mode="trigger",
 		func = function(ply,ent)
-			if ply.lobbyFreeze != nil and ply.lobbyFreeze then return end
 			if table.Count(cupcakes) < conVars.fh_max_cupcakes:GetInt() and not timer.Exists('C_deploycake'..ply:EntIndex()) then
 				timer.Create("C_deploycake"..ply:EntIndex(), 15, 1, function() end)
 				
@@ -946,7 +937,6 @@ pills.register("pill_wchica2",{
 	
 	noragdoll=true,
 	reload=function(ply,ent)
-		if ply.lobbyFreeze != nil and ply.lobbyFreeze then return end
 		highlight.ByDistance(ply, ent)
 	end,
 	
@@ -1000,6 +990,8 @@ pills.register("pill_wfoxy2",{
 			scare="scare",
 			stun="stun",
 			chargestun="chargestun",
+			swing="preattack",
+			attack="attack",
 		},
 	},
 	moveSpeed={
@@ -1023,7 +1015,7 @@ pills.register("pill_wfoxy2",{
         offset = Vector(0, 0, 90),
 		dist = 150
     },
-	hull=Vector(24,24,86),
+	hull=Vector(32,32,86),
 	duckBy=60,
 	
 	viewmodel={
@@ -1071,16 +1063,16 @@ pills.register("pill_wfoxy2",{
 	attack={
 		mode="trigger",
 		func=function(ply,ent)
-			if ply.lobbyFreeze != nil and ply.lobbyFreeze or ply.blightRushing then return end
-			
 			if IsValid(ply:GetEntityInUse()) then return end
+			
+			if ply.isBlightRushing then return end
 			
 			local target = FindNearestPlayer(ent:GetPos(), 130, ply, 90)
 			if !IsValid(target) then return end
 			playVoiceline('foxy', "kill", ply, 2)
 			ent:PillSound("melee",false)
 			if target:IsNPC() then
-				target:TakeDamage(target:Health() + target:Armor(), ply)
+				target:TakeDamage(target:Health(), ply)
 				return 
 			end
 			jumpscareEvent(ply, ent, target, 75)
@@ -1149,7 +1141,6 @@ pills.register("pill_wfoxy2",{
 		
 	noragdoll=true,
 	reload=function(ply,ent)
-		if ply.lobbyFreeze != nil and ply.lobbyFreeze then return end
 		highlight.ByDistance(ply, ent)
 	end,
 	
@@ -1228,7 +1219,7 @@ pills.register("pill_sfreddy2",{
         offset = Vector(0, 0, 90),
 		dist = 150
     },
-	hull=Vector(24,24,86),
+	hull=Vector(32,32,86),
 	duckBy=60,
 	
 	viewmodel={
@@ -1254,6 +1245,9 @@ pills.register("pill_sfreddy2",{
 
 	noFallDamage=true,
 	hideHud = true,
+	restore=function(ply,ent)
+		ply:SetPushBlocked(false)
+	end,
 	
 	moveMod=function(ply,ent)
 		if IsValid(ent) then
@@ -1282,7 +1276,6 @@ pills.register("pill_sfreddy2",{
 		mode="trigger",
 		func=function(ply,ent)
 			if ent.cloaked or timer.Exists("SF_cantKill"..ply:EntIndex()) then return end
-			if ply.lobbyFreeze then return end
 			
 			if IsValid(ply:GetEntityInUse()) then return end
 			
@@ -1291,7 +1284,7 @@ pills.register("pill_sfreddy2",{
 			
 			ent:PillSound("melee",false)
 			if target:IsNPC() then
-				target:TakeDamage(target:Health() + target:Armor(), ply)
+				target:TakeDamage(target:Health(), ply)
 				return 
 			end
 			jumpscareEvent(ply, ent, target, 52)
@@ -1348,7 +1341,7 @@ pills.register("pill_sfreddy2",{
 					end
 					
 					ply:DrawViewModel(true)
-					
+					ply:SetPushBlocked(false)
 					ply:EmitSound("sfreddyout.mp3")
 					
 					ent.cloaked=false
@@ -1401,6 +1394,7 @@ pills.register("pill_sfreddy2",{
 					timer.Create("SF_Cooldown"..ply:EntIndex(), sfreddy_cooldowns[2], 1, function() end)
 					
 					ply:EmitSound("sfreddyin.mp3")
+					ply:SetPushBlocked(true)
 			
 					local wep = ply:GetActiveWeapon()
 					if IsValid(wep) and wep:GetClass() == "v_freddy" then
@@ -1455,7 +1449,6 @@ pills.register("pill_sfreddy2",{
  
 	noragdoll=true,
 	reload=function(ply,ent)
-		if ply.lobbyFreeze != nil and ply.lobbyFreeze then return end
 		highlight.ByDistance(ply, ent)
 	end,
 	
@@ -1513,7 +1506,7 @@ pills.register("pill_endo02",{
         offset = Vector(0, 0, 90),
 		dist = 150
     },
-	hull=Vector(24,24,86),
+	hull=Vector(32,32,86),
 	duckBy=60,
 	
 	viewmodel={
@@ -1561,8 +1554,6 @@ pills.register("pill_endo02",{
 	attack={
 		mode="trigger",
 		func=function(ply,ent)
-			if ply.lobbyFreeze != nil and ply.lobbyFreeze then return end
-			
 			if IsValid(ply:GetEntityInUse()) then return end
 			
 			local target = FindNearestPlayer(ent:GetPos(), 130, ply, 90)
@@ -1570,7 +1561,7 @@ pills.register("pill_endo02",{
 			playVoiceline("endo", "kill", ply, 2)
 			ent:PillSound("melee",false)
 			if target:IsNPC() then
-				target:TakeDamage(target:Health() + target:Armor(), ply)
+				target:TakeDamage(target:Health(), ply)
 				return 
 			end
 			jumpscareEvent(ply, ent, target, 52)
@@ -1598,8 +1589,6 @@ pills.register("pill_endo02",{
 	attack2={
 		mode="trigger",
 		func = function(ply,ent)
-			if ply.lobbyFreeze != nil and ply.lobbyFreeze then return end
-			
 			if timer.Exists("grabCooldown"..ply:EntIndex()) then return end
 			takePlayer(ply,ent)
 			
@@ -1635,7 +1624,6 @@ pills.register("pill_endo02",{
 	noragdoll=true,
 
 	reload=function(ply,ent)
-		if ply.lobbyFreeze != nil and ply.lobbyFreeze then return end
 		highlight.ByDistance(ply, ent)
 	end,
 	jump=function(ply,ent)
@@ -1737,7 +1725,7 @@ pills.register("pill_wgfreddy2",{
         offset = Vector(0, 0, 90),
 		dist = 150
     },
-	hull=Vector(24,24,86),
+	hull=Vector(32,32,86),
 	duckBy=60,
 	
 	viewmodel={
@@ -1790,8 +1778,6 @@ pills.register("pill_wgfreddy2",{
 	attack={
 		mode="trigger",
 		func=function(ply,ent)
-			if ply.lobbyFreeze then return end
-			
 			if !wgfreddy_targets[ply] then return end
 			
 			if IsValid(ply:GetEntityInUse()) then return end
@@ -1803,7 +1789,7 @@ pills.register("pill_wgfreddy2",{
 			
 			ent:PillSound("melee",false)
 			if target:IsNPC() then
-				target:TakeDamage(target:Health() + target:Armor(), ply)
+				target:TakeDamage(target:Health(), ply)
 				return 
 			end
 			jumpscareEvent(ply, ent, target, 52)
@@ -1893,8 +1879,6 @@ pills.register("pill_wgfreddy2",{
 	
 	noragdoll=true,
 	reload=function(ply,ent)
-		if ply.lobbyFreeze != nil and ply.lobbyFreeze then return end
-		
 		if wgfreddy_targets[ply] then return end
 
 		local target = fh_get_wgfreddy_target(ply)
@@ -1947,7 +1931,7 @@ pills.register("pill_wgfreddyhead2",{
         offset = Vector(0, 0, 90),
 		dist = 150
     },
-	hull=Vector(24,24,86),
+	hull=Vector(32,32,86),
 	duckBy=60,
 	
 	muteSteps = true,
@@ -2024,7 +2008,7 @@ function playVoiceline(character, line, who, when)
 	timer.Create("fh_PlayVoiceLine" .. who:SteamID64(), when, 1, function()
 		local ent = pills.getMappedEnt(who)
 		
-		if ent:IsValid() then
+		if IsValid(ent) then
 			if line == "kill" and character != "sfreddy" then
 				if #team.GetPlayers(TEAM_UNASSIGNED) == 0 then
 					line = "lastkill"
@@ -2057,7 +2041,7 @@ function FindNearestPlayer(origin, radius, ignorePlayer, fov)
     end
 
     for _, ply in ipairs(candidates) do
-        if ply ~= ignorePlayer and ply:Health() > 0 and ((ply:IsPlayer() and (ply:Team() != TEAM_SPECTATOR and ply:Team() != 2701)) or ply:IsNPC()) then
+        if ply ~= ignorePlayer and ((ply:IsPlayer() and ply:IsSurvivor()) or ply:IsNPC()) then
             local distance = origin:Distance(ply:GetPos())
             local trace = util.TraceLine({
                 start = ignorePlayer:EyePos(),
@@ -2081,7 +2065,7 @@ function fh_get_nearest_players(origin, radius, ignorePlayer)
     local players = {}
 
     for _, ply in ipairs( ents.FindInSphere( origin, radius ) ) do
-        if ply ~= ignorePlayer and ply:Health() > 0 and ((ply:IsPlayer() and (ply:Team() != TEAM_SPECTATOR and ply:Team() != 2701)) or ply:IsNPC()) then
+        if ply ~= ignorePlayer and ((ply:IsPlayer() and ply:IsSurvivor()) or ply:IsNPC()) then
 			local trace = util.TraceLine({
 				start = origin,
 				endpos = ply:GetPos(),
@@ -2123,90 +2107,101 @@ resource.AddFile("sound/throw_player.wav")
 
 function jumpscareEvent(ply, ent, target, dist)
 	if CLIENT then return end
-	if !IsValid(target) then return end
-	
+	if not IsValid(target) then return end
+
+	local distance = dist or 50
+	local attackerPos = ply:GetPos()
+	local attackerForward = ply:GetForward()
+
+	local forwardPos = attackerPos + attackerForward * distance
+	local backwardPos = attackerPos - attackerForward * distance
+
+	local plyMins, plyMaxs = ply:OBBMins(), ply:OBBMaxs()
+	local targetMins, targetMaxs = target:OBBMins(), target:OBBMaxs()
+
+	local forwardTr = util.TraceHull({
+		start = forwardPos,
+		endpos = forwardPos,
+		mins = targetMins,
+		maxs = targetMaxs,
+		mask = MASK_PLAYERSOLID,
+		filter = { ply, target }
+	})
+
+	local backwardTr = util.TraceHull({
+		start = backwardPos,
+		endpos = backwardPos,
+		mins = targetMins,
+		maxs = targetMaxs,
+		mask = MASK_PLAYERSOLID,
+		filter = { ply, target }
+	})
+
+	local canTeleportForward = not forwardTr.Hit
+	local canTeleportBackward = not backwardTr.Hit
+
+	local teleportPlyPos = nil
+	local teleportTargetPos = nil
+
+	if canTeleportForward then
+		teleportPlyPos = attackerPos
+		teleportTargetPos = forwardPos
+	elseif canTeleportBackward then
+		teleportPlyPos = backwardPos
+		teleportTargetPos = backwardPos + attackerForward * distance
+	end
+
 	hook.Run("FH_JumpscareEvent", ply, ent, target, dist)
-	
+
 	net.Start("JumpscareLight")
 	net.Send(target)
-	
+
 	target.jumpscared = true
 	ply.jumpscaring = target
-	
+
 	target:DropToFloor()
 	ply:DropToFloor()
-	
-	target:Freeze( true )
-	ply:Freeze( true )
-	
+
+	target:Freeze(true)
+	ply:Freeze(true)
+
 	local target_phys = target:GetPhysicsObject()
 	if IsValid(target_phys) then
 		target_phys:SetVelocityInstantaneous(Vector(0, 0, 0))
 	end
 	target:SetVelocity(-target:GetVelocity())
-	
+
 	local ply_phys = ply:GetPhysicsObject()
 	if IsValid(ply_phys) then
 		ply_phys:SetVelocityInstantaneous(Vector(0, 0, 0))
 	end
 	ply:SetVelocity(-ply:GetVelocity())
-	
+
 	util.ScreenShake(target:GetPos(), 5, 5, 2, 500)
-	
-    local distance = dist or 50
 
-    local attackerPos = ply:GetPos()
-    local attackerForward = ply:GetForward()
+	-- Телепортация, только если есть безопасная позиция
+	if teleportPlyPos and teleportTargetPos then
+		ply:SetPos(teleportPlyPos)
+		target:SetPos(teleportTargetPos)
+	end
 
-    local targetPos = attackerPos + attackerForward * distance
+	-- Направляем взгляды
+	local directionToTarget = (ply:GetPos() - target:GetPos()):Angle()
+	target:SetEyeAngles(directionToTarget)
 
-    local tr = util.TraceHull({
-        start = targetPos,
-        endpos = targetPos,
-        mins = Vector(-16, -16, 0),
-        maxs = Vector(16, 16, 72),
-        mask = MASK_PLAYERSOLID,
-        filter = { ply, target }
-    })
+	local directionToAttacker = (target:GetPos() - ply:GetPos()):Angle()
+	ply:SetEyeAngles(directionToAttacker)
 
-    if tr.Hit then
-        local backDistance = distance
-        local backPos = attackerPos - attackerForward * backDistance
-
-        local backTr = util.TraceHull({
-            start = backPos,
-            endpos = backPos,
-            mins = Vector(-16, -16, 0),
-            maxs = Vector(16, 16, 72),
-            mask = MASK_PLAYERSOLID,
-            filter = { ply, target }
-        })
-
-        if not backTr.Hit then
-            ply:SetPos(backPos)
-            attackerPos = backPos
-			
-            targetPos = attackerPos + attackerForward * distance
-        end
-    end
-	
-	target:SetPos(targetPos)
-
-    local direction = (ply:GetPos() - target:GetPos()):Angle()
-    target:SetEyeAngles(direction)
-	
-    local direction = (target:GetPos() - ply:GetPos()):Angle()
-	ply:SetEyeAngles(direction)
-	
 	net.Start("SetKillerAngle")
 	net.WriteEntity(ent)
 	net.Broadcast()
 end
 
+
 local takenPlayers = {}
 
 function takePlayer(ply, ent)
-	if ply:Team() == TEAM_SPECTATOR or ply:Health() == 0 then return end
+	if !ply:IsSurvivor() then return end
 
     local nearestPlayer = FindNearestPlayer(ply:EyePos(), 125, ply, 90)
 	
@@ -2346,8 +2341,13 @@ function endoRelease(ply)
 	timer.Remove("UpdateCameraAndPosition" .. ply:UserID())
 end
 
+local doors = {}
 hook.Add("PlayerUse", "AccurateBlockedDoorUse", function(ply, ent)
-    if not IsValid(ent) then return end
+    local tr = ply:GetEyeTrace()
+	local ent = tr.Entity
+    if !IsValid(ent) then return end
+	
+    local hitNormal = tr.HitNormal
 	
 	if ply._cantBreakDoors or ply:Crouching() or !ply:OnGround() then return end
 	
@@ -2359,6 +2359,7 @@ hook.Add("PlayerUse", "AccurateBlockedDoorUse", function(ply, ent)
 	if puppet.formTable.name ~= "pill_wfreddy2" then return end
 
     local class = ent:GetClass()
+	
     local isDoor = class == "func_door" or class == "func_door_rotating" or class == "prop_door_rotating"
     if not isDoor then return end
 
@@ -2366,17 +2367,14 @@ hook.Add("PlayerUse", "AccurateBlockedDoorUse", function(ply, ent)
 	
     local state = ent:GetInternalVariable("m_toggle_state")
     if state ~= 1 then return end
-
-    local tr = ply:GetEyeTrace()
-    if tr.Entity ~= ent then return end
-    local hitNormal = tr.HitNormal
 	
 	puppet:PillAnim("doorbreak", true)
 	ply._cantBreakDoors = true
 
-    timer.Simple(1, function()
+    timer.Simple(1.1, function()
         if IsValid(ent) then
             ent:Fire("Open", "", 0)
+			doors[ent] = true
 			
 			local effectData = EffectData()
 			effectData:SetOrigin(ent:GetPos())
@@ -2390,13 +2388,32 @@ hook.Add("PlayerUse", "AccurateBlockedDoorUse", function(ply, ent)
 
     timer.Simple(9, function()
         if IsValid(ent) then
-            ent:Fire("Close", "", 0)
+			if doors[ent] then
+				ent:Fire("Close", "", 0)
+			end
+			doors[ent] = false
 			ply._cantBreakDoors = false
         end
     end)
 
     return false
 end)
+
+hook.Add( "AcceptInput", "fh_door_input", function( ent, name, activator, caller, data )
+	local class = ent:GetClass()
+	if class == "func_door" or class == "func_door_rotating" or class == "prop_door_rotating" then
+		if doors[ent] and activator:IsPlayer() then
+			if IsValid(caller) then
+				caller:EmitSound("buttons/button10.wav")
+			end
+			return true
+		end
+		
+		if doors[ent] and !activator:IsPlayer() and !caller:IsPlayer() and IsValid(activator) then
+			doors[ent] = false
+		end
+	end
+end )
 
 if CLIENT then
 	local function halo_breakable_doors()

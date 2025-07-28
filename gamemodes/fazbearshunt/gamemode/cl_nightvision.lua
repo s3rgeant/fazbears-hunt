@@ -34,7 +34,7 @@ function ToggleNightVision()
         if not LocalPlayer().HiddenFlashlight then
             local light = ProjectedTexture()
             light:SetTexture("effects/flashlight001_infected")
-            light:SetFarZ(1024)
+            light:SetFarZ(912)
             light:SetNearZ(1)
             light:SetFOV(75)
             light:SetBrightness(2)
@@ -55,14 +55,15 @@ function ToggleNightVision()
     end
 end
 
+hook.Add( "PlayerBindPress", "fh_flash_nv", function( ply, bind, pressed )
+	if (ply:Team() == 2701 or ply:Team() == TEAM_SPECTATOR or pills.getMappedEnt(ply)) and ( string.find( bind, "impulse 100" ) ) and pressed then
+		ToggleNightVision()
+		return true
+	end
+end )
+
 net.Receive("nv_off", function()
     if nightVisionEnabled then
-        ToggleNightVision()
-    end
-end)
-
-net.Receive("nv_on", function()
-    if not nightVisionEnabled then
         ToggleNightVision()
     end
 end)

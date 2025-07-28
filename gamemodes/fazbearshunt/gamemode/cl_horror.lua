@@ -19,7 +19,9 @@ local function fh_default_check_scarysound()
             if pills and pills.getMappedEnt and pills.getMappedEnt(ply) ~= nil then
 				local ent = pills.getMappedEnt(ply)
 				
-				if ent.dontdraw or ent:GetMaterial() == "models/null" then return end
+				if IsValid(ent) then
+					if ent.dontdraw or ent:GetMaterial() == "models/null" then return end
+				end
 				
                 local plyPos = ply:EyePos()
 				

@@ -141,7 +141,7 @@ hook.Add("PlayerDeath", "fh_stats_deaths", function( victim, inflictor, attacker
 	end
 end)
 
-hook.Add("EntityTakeDamage", "fh_stats_damage", function(target, dmginfo)
+hook.Add("PostEntityTakeDamage", "fh_stats_damage", function(target, dmginfo)
 	if target:IsPlayer() and target:Team() ~= 2701 then
 		stats.Add(target, "got_damaged", dmginfo:GetDamage())
 		
@@ -173,7 +173,7 @@ hook.Add("OnPlayerJump", "fh_stats_jumping", function(ply, vel)
 end)
 
 hook.Add( "PropBreak", "fh_stats_props", function( attacker, prop )
-	if IsValid( attacker ) then 
+	if IsValid( attacker ) and attacker:IsPlayer() then 
 		stats.Add(attacker, "broke_props", 1)
 	end
 end)

@@ -81,6 +81,7 @@ function SWEP:PrimaryAttack()
 		local forceMult = math.max(10, 500 - mass)
 
 		if ply:GetGroundEntity() == HitEnt then
+			hook.Run("OnPlayerPhysicsDrop", ply, self.Drag.Entity, false)
 			self.Drag = nil
 			return
 		end
@@ -115,6 +116,7 @@ function SWEP:Think()
     if self.Drag and (not ply:KeyDown(IN_ATTACK) or not IsValid(self.Drag.Entity)) then
         if IsValid(self.Drag.Entity) then
             self.Drag.Entity.IsBeingDragged = nil
+			hook.Run("OnPlayerPhysicsDrop", ply, self.Drag.Entity, false)
         end
         self.Drag = nil
     end

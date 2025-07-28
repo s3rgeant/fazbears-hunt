@@ -22,7 +22,7 @@ function LogEvent(eventText, discord)
     discord = discord or ""
 	if !eventText:match("^%s*$") then
 		local timestamp = os.date("%Y-%m-%d %H:%M:%S")
-		local gameTime = timer.Exists("EndGameTimer") and (gameDuration - (timer.TimeLeft("EndGameTimer") or 0)) or nil
+		local gameTime = timer.Exists("EndGameTimer") and (fh.GetGameDuration() - (timer.TimeLeft("EndGameTimer") or 0)) or nil
 		local logTime = gameTime and formatTime(gameTime) or "00:00"
 		
 		local message = "`[" .. logTime .. "]` - " .. eventText
@@ -38,7 +38,7 @@ function LogEmbedEvent(eventText, discord, embed)
     discord = discord or ""
 	if !eventText:match("^%s*$") then
 		local timestamp = os.date("%Y-%m-%d %H:%M:%S")
-		local gameTime = timer.Exists("EndGameTimer") and (gameDuration - (timer.TimeLeft("EndGameTimer") or 0)) or nil
+		local gameTime = timer.Exists("EndGameTimer") and (fh.GetGameDuration() - (timer.TimeLeft("EndGameTimer") or 0)) or nil
 		local logTime = gameTime and formatTime(gameTime) or "00:00"
 		local map = game.GetMap() or ""
 		

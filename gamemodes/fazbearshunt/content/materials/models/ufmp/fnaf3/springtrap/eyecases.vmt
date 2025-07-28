@@ -1,20 +1,13 @@
 "VertexlitGeneric"
 {
-$basetexture "models\ufmp\fnaf3\springtrap\eyecase"
+$basetexture "models\ufmp\fnaf3\springtrap\eyecase2"
+
+$halflambert 1
+$phong 1
+$phongboost ".5"
+$phongexponent 20
+$phongfresnelranges "[15 15 15]"
 
 $surfaceprop metal
-$phong "1"
-$phongexponent "50"
-$color2 "[1 1 1]"
-$phongboost ".335"
-$ambientocclusion "0"
-$phongfresnelranges "0.7"
-$halflambert "1"
-$phongalbedotint "1"
-$nodecal "1"
-$model "1"
-$diffuseexp "1.5"
-$normalmapalphaenvmapmask   "1"
-$alpha "0.2"
-$translucent "1"
+$vertexalpha 1
 }

@@ -91,7 +91,7 @@ function meta:CreateRagdoll()
 end
 
 hook.Add("RM_CanRagdoll", "fh_block_ragmod", function(ply)
-    if ply:Team() == 2701 or ply.jumpscared then
+    if ply:IsAnimatronic() or ply.jumpscared then
         return false 
     end
 end)

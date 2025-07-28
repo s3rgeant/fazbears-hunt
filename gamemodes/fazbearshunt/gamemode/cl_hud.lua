@@ -104,19 +104,38 @@ function DrawKillerInterface()
 
 			local ability_button_x = 0
 
-			if abilityData.keyboard then
-				ability_button_x = abilityX + (205 * uiScale)
-				surface.SetMaterial(button_ability_mat)
-				surface.SetDrawColor(clr or Color(255,255,255,255))
-				surface.DrawTexturedRect(ability_button_x, abilityY + (abil_bg_height/2 - button_ability_height/2), button_ability_width, button_ability_height)
-			else
-				ability_button_x = abilityX + (168 * uiScale)
-				surface.SetMaterial(mouse_ability_mat)
-				surface.SetDrawColor(clr or Color(255,255,255,255))
-				surface.DrawTexturedRect(ability_button_x, abilityY + (abil_bg_height/2 - mouse_ability_height/2), mouse_ability_width, mouse_ability_height)
+			if abilityData.text then
+				if abilityData.keyboard then
+					ability_button_x = abilityX + (205 * uiScale)
+					surface.SetMaterial(button_ability_mat)
+					surface.SetDrawColor(clr or Color(255,255,255,255))
+					surface.DrawTexturedRect(ability_button_x, abilityY + (abil_bg_height/2 - button_ability_height/2), button_ability_width, button_ability_height)
+				elseif abilityData.keyboard != nil then
+					ability_button_x = abilityX + (168 * uiScale)
+					surface.SetMaterial(mouse_ability_mat)
+					surface.SetDrawColor(clr or Color(255,255,255,255))
+					surface.DrawTexturedRect(ability_button_x, abilityY + (abil_bg_height/2 - mouse_ability_height/2), mouse_ability_width, mouse_ability_height)
+				end
+
+				local translatable_key = abilityData.text
+				local key_phrase_translatable = "keys." .. string.lower(abilityData.text)
+				local translated = language.SafeGetPhrase(key_phrase_translatable)
+
+				if translated ~= key_phrase_translatable then
+					translatable_key = translated
+				end
+
+				draw.SimpleText(
+					translatable_key,
+					"fh_hud_ability_button",
+					ability_button_x + (abilityData.keyboard and (button_ability_width/2) or (mouse_ability_width/2)),
+					abilityY + (abil_bg_outline_height / 2 - 20 * uiScale),
+					clr,
+					TEXT_ALIGN_CENTER
+				)
 			end
 
-			local translated_ability = language.GetPhrase("fazhunt.abilities." .. abilityName)
+			local translated_ability = language.SafeGetPhrase("fazhunt.abilities." .. abilityName)
 			if translated_ability == "fazhunt.abilities." .. abilityName then
 				translated_ability = abilityName
 			end
@@ -147,25 +166,6 @@ function DrawKillerInterface()
 			else
 				draw.SimpleText(translated_ability, "fh_hud_ability_title", textX, textY, Color(255, 255, 255, 255), TEXT_ALIGN_LEFT)
 			end
-
-			local translatable_key = abilityData.text
-			local key_phrase_translatable = "keys." .. string.lower(abilityData.text)
-			local translated = language.GetPhrase(key_phrase_translatable)
-
-			if translated ~= key_phrase_translatable then
-				translatable_key = translated
-			end
-			
-			--print( string.len(translatable_key) )
-
-			draw.SimpleText(
-				language.GetPhrase(translatable_key),
-				"fh_hud_ability_button",
-				ability_button_x + (abilityData.keyboard and (button_ability_width/2) or (mouse_ability_width/2)),
-				abilityY + (abil_bg_outline_height / 2 - 20 * uiScale),
-				clr,
-				TEXT_ALIGN_CENTER
-			)
 
 			local timer_width = (abilityData.keyboard and 172 or 122) * uiScale
 			local timer_x = 13 * uiScale
@@ -219,7 +219,7 @@ function DrawKillerInterface()
 					for i = 1, cupcakes do
 						surface.SetMaterial(cake)
 						surface.SetDrawColor(255, 255, 255, 255)
-						surface.DrawTexturedRect(abilityX + x_add, abilityY - 56, 43 * 0.8, 64 * 0.8)
+						surface.DrawTexturedRect(abilityX + (x_add * uiScale), abilityY - (56 * uiScale), (43 * 0.8)* uiScale, (64 * 0.8) * uiScale)
 						x_add = x_add + 40
 					end
 				end

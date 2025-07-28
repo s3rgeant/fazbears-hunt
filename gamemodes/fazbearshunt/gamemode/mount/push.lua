@@ -36,6 +36,8 @@ end
 hook.Add("KeyPress", "PushInteraction", function(ply, key)
 	if ply:IsPushBlocked() then return end
 
+	ply:LagCompensation(true)
+
 	if key == IN_USE and not push[ply:UserID()] then
 		local ent = ply:GetEyeTrace().Entity
 		if IsValid(ply) and IsValid(ent) then
@@ -57,4 +59,6 @@ hook.Add("KeyPress", "PushInteraction", function(ply, key)
 			end
 		end
 	end
+	
+	ply:LagCompensation(false)
 end)

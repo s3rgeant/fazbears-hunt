@@ -1,15 +1,94 @@
 fh_admin_panel = nil
-local PlayerList = nil
-local AnimatronicList = nil
+local PlayerList, AnimatronicList
 local lastSelectedTab = 1
+
+local function AddNetActionButton(parent, x, y, w, h, text, action, onClick)
+    local btn = vgui.Create("DButton", parent)
+    btn:SetPos(x, y)
+    btn:SetSize(w, h)
+    btn:SetText(text)
+    btn.DoClick = onClick or function()
+        net.Start("AdminAction")
+        net.WriteString(action)
+        net.SendToServer()
+    end
+    return btn
+end
+
+local function AddCheckbox(parent, x, y, text, convar, action, invert)
+    local checkbox = vgui.Create("DCheckBoxLabel", parent)
+    checkbox:SetPos(x, y)
+    checkbox:SetText(text)
+    checkbox:SetDark(true)
+    local val = convar:GetBool()
+    checkbox:SetChecked(invert and not val or val)
+    function checkbox:OnChange(b)
+        net.Start("AdminAction")
+        net.WriteString(action)
+        net.WriteBool(invert and not b or b)
+        net.SendToServer()
+    end
+    return checkbox
+end
+
+local function AddSlider(parent, x, y, label, min, max, default, decimals, action)
+    local slider = vgui.Create("DNumSlider", parent)
+    slider:SetPos(x, y)
+    slider:SetSize(390, 30)
+    slider:SetText(label)
+    slider:SetDark(true)
+    slider:SetMin(min)
+    slider:SetMax(max)
+    slider:SetDefaultValue(default)
+    slider:SetDecimals(decimals)
+    slider:SetValue(default)
+    slider.OnValueChanged = function(_, value)
+        net.Start("AdminAction")
+        net.WriteString(action)
+        net.WriteFloat(value)
+        net.SendToServer()
+    end
+    return slider
+end
+
+local function AddNumberWang(parent, x, y, label, min, max, default, decimals, action)
+	local numwang = vgui.Create("DNumberWang", parent)
+	numwang:SetPos(85, 25)
+	numwang:SetSize(45, 30)
+    numwang:SetDark(true)
+	numwang:SetMin(min)
+	numwang:SetMax(max)
+    numwang:SetValue(default)
+    numwang:SetDefaultValue(default)
+    numwang:SetDecimals(decimals)
+	
+    numwang.OnValueChanged = function(_, value)
+        net.Start("AdminAction")
+        net.WriteString(action)
+        net.WriteFloat(value)
+        net.SendToServer()
+    end
+    return numwang
+end
+
+local function GetSelectedPlayers()
+    local selectedLines = PlayerList:GetSelected()
+    local players = {}
+    for _, line in ipairs(selectedLines or {}) do
+        if IsValid(line.Player) then
+            table.insert(players, line.Player)
+        end
+    end
+    return players
+end
 
 local function OpenAdminPanel()
     local selectedAnimatron = nil
 
     if IsValid(fh_admin_panel) then
-		fh_admin_panel:Remove()
-		gui.EnableScreenClicker(false)
-		return
+        fh_admin_panel:Remove()
+        gui.EnableScreenClicker(false)
+        return
     end
 
     fh_admin_panel = vgui.Create("DFrame")
@@ -23,13 +102,14 @@ local function OpenAdminPanel()
         gui.EnableScreenClicker(false)
     end
 
-    local PropertySheet = vgui.Create("DPropertySheet", fh_admin_panel)
-    PropertySheet:Dock(FILL)
+    local sheet = vgui.Create("DPropertySheet", fh_admin_panel)
+    sheet:Dock(FILL)
 
-    local PlayerManagementPanel = vgui.Create("DPanel")
-    PlayerManagementPanel:Dock(FILL)
+    -- === Панель управления игроками === --
+    local panelPlayers = vgui.Create("DPanel")
+    panelPlayers:Dock(FILL)
 
-    PlayerList = vgui.Create("DListView", PlayerManagementPanel)
+    PlayerList = vgui.Create("DListView", panelPlayers)
     PlayerList:Dock(LEFT)
     PlayerList:SetWidth(200)
     PlayerList:AddColumn(language.GetPhrase("fazhunt.players"))
@@ -37,353 +117,173 @@ local function OpenAdminPanel()
     PlayerList:SetMultiSelect(true)
     createListPlayers()
 
-    AnimatronicList = vgui.Create("DListView", PlayerManagementPanel)
+    AnimatronicList = vgui.Create("DListView", panelPlayers)
     AnimatronicList:SetPos(210, 10)
     AnimatronicList:SetSize(180, 360)
     AnimatronicList:AddColumn(language.GetPhrase("fuppr.animatronics_team"))
     AnimatronicList:SetMultiSelect(false)
-    AnimatronicList.OnRowSelected = function(panel, rowIndex, row)
+    AnimatronicList.OnRowSelected = function(_, _, row)
         selectedAnimatron = row:GetValue(2)
     end
     createListAnimatronics()
 
-    local function GetSelectedByList(list)
-        local selectedLines = list:GetSelected()
-        local players = {}
-        if selectedLines and #selectedLines > 0 then
-            for _, line in pairs(selectedLines) do
-                if IsValid(line.Player) then
-                    table.insert(players, line.Player)
-                end
-            end
-            return players
-        else
-            return nil
-        end
-    end
-
     local actions = {
-        {text = language.GetPhrase("fuppr.adminpanel.give_killer"), action = "give_animatronic"},
-        {text = language.GetPhrase("fuppr.adminpanel.revive"), action = "resurrect"},
-        {text = language.GetPhrase("fuppr.adminpanel.kill"), action = "kill"},
-        {text = language.GetPhrase("fuppr.adminpanel.highlight"), action = "highlight"},
+        {text = "fuppr.adminpanel.give_killer", action = "give_animatronic"},
+        {text = "fuppr.adminpanel.revive", action = "resurrect"},
+        {text = "fuppr.adminpanel.kill", action = "kill"},
+        {text = "fuppr.adminpanel.highlight", action = "highlight"},
         {},
-        {text = language.GetPhrase("fuppr.adminpanel.addplayable"), action = "addplayable", superadmin = true},
-        {text = language.GetPhrase("fuppr.adminpanel.removeplayable"), action = "removeplayable", superadmin = true}
+        {text = "fuppr.adminpanel.addplayable", action = "addplayable", superadmin = true},
+        {text = "fuppr.adminpanel.removeplayable", action = "removeplayable", superadmin = true}
     }
 
-    local yPos = 10
-    for _, btn in ipairs(actions) do
-		if btn.superadmin and !LocalPlayer():IsSuperAdmin() then continue end
-	
-		if btn.text and btn.action then
-			local button = vgui.Create("DButton", PlayerManagementPanel)
-			button:SetPos(400, yPos)
-			button:SetSize(180, 30)
-			button:SetText(btn.text)
-			button.DoClick = function()
-				local targets = GetSelectedByList(PlayerList)
-				if targets and #targets > 0 and !string.match(btn.action, "playable") then
-					net.Start("AdminAction")
-					net.WriteString(btn.action)
-					net.WriteUInt(#targets, 8)
-					for _, target in pairs(targets) do
-						net.WriteEntity(target)
-						if (btn.action == "give_animatronic" and selectedAnimatron != nil) or btn.action == "resurrect" or btn.action == "kill" then
-							updatePlayer(target, btn.action)
-						end
-					end
-					if btn.action == "give_animatronic" then
-						if selectedAnimatron == nil then
-							chat.AddText(Color(255, 0, 0), language.GetPhrase("fuppr.adminpanel.error_give"))
-							net.WriteString(tostring(""))
-						else
-							net.WriteString(tostring(selectedAnimatron))
-						end
-					end
-					net.SendToServer()
-				elseif !string.match(btn.action, "playable") then
-					chat.AddText(Color(255, 0, 0), language.GetPhrase("fuppr.adminpanel.error"))
-				end
-				
-				if string.match(btn.action, "playable") then
-					net.Start("AdminAction")
-					net.WriteString(btn.action)
-					if selectedAnimatron == nil then
-						chat.AddText(Color(255, 0, 0), language.GetPhrase("fuppr.adminpanel.error_give"))
-						net.WriteString(tostring(""))
-					else
-						net.WriteString(tostring(selectedAnimatron))
-					end
-					net.SendToServer()
-				end
-			end
-		end
-        yPos = yPos + 40
+    local y = 10
+    for _, a in ipairs(actions) do
+        if a.text then
+            if a.superadmin and not LocalPlayer():IsSuperAdmin() then continue end
+
+            local phrase = language.GetPhrase(a.text)
+            AddNetActionButton(panelPlayers, 400, y, 180, 30, phrase, a.action, function()
+                if a.action:find("playable") then
+                    net.Start("AdminAction")
+                    net.WriteString(a.action)
+                    net.WriteString(selectedAnimatron or "")
+                    net.SendToServer()
+                    return
+                end
+
+                local players = GetSelectedPlayers()
+                if #players == 0 then
+                    chat.AddText(Color(255, 0, 0), language.GetPhrase("fuppr.adminpanel.error"))
+                    return
+                end
+
+                net.Start("AdminAction")
+                net.WriteString(a.action)
+                net.WriteUInt(#players, 8)
+                for _, ply in ipairs(players) do
+                    net.WriteEntity(ply)
+                    if a.action == "give_animatronic" or a.action == "resurrect" or a.action == "kill" then
+                        updatePlayer(ply, a.action)
+                    end
+                end
+                if a.action == "give_animatronic" then
+                    net.WriteString(selectedAnimatron or "")
+                end
+                net.SendToServer()
+            end)
+        end
+        y = y + 40
     end
 
-    PropertySheet:AddSheet(language.GetPhrase("fazhunt.adminpanel.players"), PlayerManagementPanel, "icon16/user.png")
+    sheet:AddSheet(language.GetPhrase("fazhunt.adminpanel.players"), panelPlayers, "icon16/user.png")
 
-    local RoundManagementPanel = vgui.Create("DPanel")
-    RoundManagementPanel:Dock(FILL)
+    -- === Панель раунда === --
+    local roundPanel = vgui.Create("DPanel")
+    roundPanel:Dock(FILL)
 
     local roundActions = {
-        {text = language.GetPhrase("fuppr.adminpanel.startgame"), action = "start_round"},
-        {text = language.GetPhrase("fuppr.adminpanel.endgame"), action = "end_round"},
-        {text = language.GetPhrase("fuppr.adminpanel.endroundstartup"), action = "end_post_round"},
-        {text = language.GetPhrase("fuppr.adminpanel.endlobbytimer"), action = "end_lobby_timer"}
+        {"startgame", "start_round"},
+        {"endgame", "end_round"},
+        {"endroundstartup", "end_post_round"},
+        {"endlobbytimer", "end_lobby_timer"}
     }
 
-    local roundY = 10
-    for _, btn in ipairs(roundActions) do
-        local button = vgui.Create("DButton", RoundManagementPanel)
-        button:SetPos(10, roundY)
-        button:SetSize(280, 30)
-        button:SetText(btn.text)
-        button.DoClick = function()
-            net.Start("AdminAction")
-            net.WriteString(btn.action)
-            net.SendToServer()
-        end
-        roundY = roundY + 40
+    local ry = 10
+    for _, a in ipairs(roundActions) do
+        AddNetActionButton(roundPanel, 10, ry, 280, 30, language.GetPhrase("fuppr.adminpanel." .. a[1]), a[2])
+        ry = ry + 40
     end
 
     local sliders = {
-        {label = language.GetPhrase("fuppr.highlight.cooldown"), action = "set_highlight_delay", min = 10, max = 240, default = GetConVar('halo_cooldown'):GetInt(), decimals = 0, callback = "halo_cooldown"},
-        {label = language.GetPhrase("fuppr.highlight.time"), action = "set_highlight_duration", min = 3, max = 30, default = GetConVar('halo_time'):GetInt(), decimals = 0, callback = "halo_time"},
-        {label = language.GetPhrase("fuppr.highlight.radius"), action = "set_highlight_distance", min = 100, max = 4000, default = GetConVar('halo_radius'):GetInt(), decimals = 0, callback = "halo_radius"}
+        {"highlight.cooldown", "set_highlight_delay", 10, 240, GetConVar("halo_cooldown"):GetInt()},
+        {"highlight.time", "set_highlight_duration", 3, 30, GetConVar("halo_time"):GetInt()},
+        {"highlight.radius", "set_highlight_distance", 100, 4000, GetConVar("halo_radius"):GetInt()}
     }
 
-    local sliderY = roundY
-    for _, sld in ipairs(sliders) do
-        local slider = vgui.Create("DNumSlider", RoundManagementPanel)
-        slider:SetPos(10, sliderY)
-        slider:SetSize(390, 30)
-        slider:SetText(sld.label)
-		slider:SetDark(true)
-        slider:SetMin(sld.min)
-        slider:SetMax(sld.max)
-		slider:SetDefaultValue(sld.default)
-		slider:SetValue(sld.default)
-        slider:SetDecimals(sld.decimals)
-        slider.OnValueChanged = function(self, value)
-            net.Start("AdminAction")
-            net.WriteString(sld.action)
-            net.WriteFloat(value)
-            net.SendToServer()
-        end
-		
-        sliderY = sliderY + 25
+    for _, s in ipairs(sliders) do
+        AddSlider(roundPanel, 10, ry, language.GetPhrase("fuppr." .. s[1]), s[3], s[4], s[5], 0, s[2])
+        ry = ry + 25
     end
 
-	local button = vgui.Create("DButton", RoundManagementPanel)
-	button:SetPos(10, sliderY + 10)
-	button:SetSize(150, 40)
-	button:SetText(language.GetPhrase("fazhunt.adminpanel.save_settings"))
-	button:SetDark(true)
-	function button:DoClick(bool)
-		net.Start("AdminAction")
-		net.WriteString('fh_auto_map_save')
-		net.SendToServer()
-	end
+    AddNetActionButton(roundPanel, 10, ry + 10, 150, 40, language.GetPhrase("fazhunt.adminpanel.save_settings"), "fh_auto_map_save")
+    AddCheckbox(roundPanel, 170, ry + 25, language.GetPhrase("fazhunt.adminpanel.auto_hl"), conVars.fh_automatic_highlight, "fh_automatic_highlight")
+    AddNetActionButton(roundPanel, 10, ry + 60, 150, 40, language.GetPhrase("fazhunt.adminpanel.use_map_settings"), "fh_auto_map_hl")
 
-	local button = vgui.Create("DCheckBoxLabel", RoundManagementPanel)
-	button:SetPos(170, sliderY + 25)
-	button:SetText(language.GetPhrase("fazhunt.adminpanel.auto_hl"))
-	button:SetDark(true)
-	button:SetChecked(conVars.fh_automatic_highlight:GetBool())
-	function button:OnChange(bool)
-		net.Start("AdminAction")
-		net.WriteString('fh_automatic_highlight')
-		net.WriteBool(bool)
-		net.SendToServer()
-	end
+    sheet:AddSheet(language.GetPhrase("fazhunt.adminpanel.round"), roundPanel, "icon16/joystick.png")
 
-	local button = vgui.Create("DButton", RoundManagementPanel)
-	button:SetPos(10, sliderY + 60)
-	button:SetSize(150, 40)
-	button:SetText(language.GetPhrase("fazhunt.adminpanel.use_map_settings"))
-	button:SetDark(true)
-	function button:DoClick(bool)
-		net.Start("AdminAction")
-		net.WriteString('fh_auto_map_hl')
-		net.SendToServer()
-	end
+    -- === Панель событий === --
+    local eventsPanel = vgui.Create("DPanel")
+    eventsPanel:Dock(FILL)
 
-    PropertySheet:AddSheet(language.GetPhrase("fazhunt.adminpanel.round"), RoundManagementPanel, "icon16/joystick.png")
+    AddCheckbox(eventsPanel, 10, 14, language.GetPhrase("fazhunt.adminpanel.gift_spawning"), conVars.fh_gifts_spawning, "fh_gifts_spawning")
+    AddNetActionButton(eventsPanel, 10, 40, 150, 40, language.GetPhrase("fazhunt.adminpanel.spawn_gifts"), "fh_spawn_gifts")
+
+    local lbl = vgui.Create("DLabel", eventsPanel)
+    lbl:SetPos(10, 84)
+    lbl:SetText(language.GetPhrase("fazhunt.adminpanel.gifts_description"))
+    lbl:SetDark(true)
+    lbl:SetSize(150, 100)
+
+    sheet:AddSheet(language.GetPhrase("fazhunt.adminpanel.events"), eventsPanel, "icon16/cog.png")
+
+    -- === Экспериментальная панель === --
+    local expPanel = vgui.Create("DPanel")
+    expPanel:Dock(FILL)
+
+    local ey = 15
+    local function step(n) ey = ey + n return ey - n end
+	local function justget(n) return ey + n end
+
+    AddCheckbox(expPanel, 10, step(20), language.GetPhrase("fazhunt.adminpanel.damage_animatronics"), conVars.fh_animatronic_immortal, "fh_animatronic_immortal", true)
+    AddCheckbox(expPanel, 10, step(20), language.GetPhrase("fazhunt.adminpanel.sfreddy_noclip"), shadow_freddyability, "fuppr_sfreddy_noclip")
+    AddCheckbox(expPanel, 10, step(15), language.GetPhrase("fazhunt.adminpanel.quiet_animatronics"), conVars.fh_less_steps, "fh_less_steps")
+    AddSlider(expPanel, 10, step(30), language.GetPhrase("fazhunt.adminpanel.max_cupcakes"), 3, 10, conVars.fh_max_cupcakes:GetInt(), 0, "fh_max_cupcakes")
+    AddCheckbox(expPanel, 10, step(20), language.GetPhrase("fazhunt.adminpanel.silent_highlight"), conVars.fh_silent_highlight, "fh_silent_highlight")
+    AddCheckbox(expPanel, 10, step(20), language.GetPhrase("fazhunt.adminpanel.fh_respawn_dead_animatronics"), conVars.fh_respawn_dead_animatronics, "fh_respawn_dead_animatronics", true)
+	--AddNumberWang(expPanel, 10, step(40), "Game Duration", fh.GetGameDuration(), 0, "set_game_duration")
 	
-    local fh_events_management = vgui.Create("DPanel")
-    fh_events_management:Dock(FILL)
+	local DCollapsible = vgui.Create( "DCollapsibleCategory", expPanel )
+	DCollapsible:SetLabel( "READ ME" )	
+	DCollapsible:SetPos( 10, justget(15) )
+	DCollapsible:SetSize( 400, 25 )
+	DCollapsible:SetExpanded( false )
 
-	local button = vgui.Create("DCheckBoxLabel", fh_events_management)
-	button:SetPos(10, 14)
-	button:SetText(language.GetPhrase("fazhunt.adminpanel.gift_spawning"))
-	button:SetDark(true)
-	button:SetChecked(conVars.fh_gifts_spawning:GetBool())
-	function button:OnChange(bool)
-		net.Start("AdminAction")
-		net.WriteString('fh_gifts_spawning')
-		net.WriteBool(bool)
-		net.SendToServer()
-	end
+    local lblExp = vgui.Create("DLabel", DCollapsible)
+    lblExp:SetPos(10, 1)
+    lblExp:SetSize(345, 200)
+    lblExp:SetDark(true)
+    lblExp:SetText(language.GetPhrase("fazhunt.adminpanel.experiments_description01") .. language.GetPhrase("fazhunt.adminpanel.experiments_description02"))
 
-	local button = vgui.Create("DButton", fh_events_management)
-	button:SetPos(10, 40)
-	button:SetSize(150, 40)
-	button:SetText(language.GetPhrase("fazhunt.adminpanel.spawn_gifts"))
-	button:SetDark(true)
-	function button:DoClick(bool)
-		net.Start("AdminAction")
-		net.WriteString('fh_spawn_gifts')
-		net.SendToServer()
-	end
-	
-	local DLabel = vgui.Create( "DLabel", fh_events_management )
-	DLabel:SetPos( 10, 84 )
-	DLabel:SetText( language.GetPhrase("fazhunt.adminpanel.gifts_description") )
-	DLabel:SetDark(true)
-	DLabel:SetSize(150, 100)
+    sheet:AddSheet(language.GetPhrase("fazhunt.adminpanel.experiments"), expPanel, "icon16/chart_line.png")
 
-    PropertySheet:AddSheet(language.GetPhrase("fazhunt.adminpanel.events"), fh_events_management, "icon16/cog.png")
-
-    local ExperimentalPanel = vgui.Create("DPanel")
-    ExperimentalPanel:Dock(FILL)
-	
-	local events_y = 15
-	
-	local function get_events_y(num)
-		num = num or 0
-	
-		local to_return = events_y
-		events_y = events_y + 20 + num
-		
-		return to_return
-	end
-
-	local button = vgui.Create("DCheckBoxLabel", ExperimentalPanel)
-	button:SetPos(10, get_events_y())
-	button:SetText(language.GetPhrase("fazhunt.adminpanel.damage_animatronics"))
-	button:SetDark(true)
-	button:SetChecked(!conVars.fh_animatronic_immortal:GetBool())
-	function button:OnChange(bool)
-		net.Start("AdminAction")
-		net.WriteString('fh_animatronic_immortal')
-		net.WriteBool(!bool)
-		net.SendToServer()
-	end
-
-	local button = vgui.Create("DCheckBoxLabel", ExperimentalPanel)
-	button:SetPos(10, get_events_y())
-	button:SetText(language.GetPhrase("fazhunt.adminpanel.sfreddy_noclip"))
-	button:SetDark(true)
-	button:SetChecked(shadow_freddyability:GetBool())
-	function button:OnChange(bool)
-		net.Start("AdminAction")
-		net.WriteString('fuppr_sfreddy_noclip')
-		net.WriteBool(bool)
-		net.SendToServer()
-	end
-
-	local button = vgui.Create("DCheckBoxLabel", ExperimentalPanel)
-	button:SetPos(10, get_events_y())
-	button:SetText(language.GetPhrase("fazhunt.adminpanel.quiet_animatronics"))
-	button:SetDark(true)
-	button:SetChecked(conVars.fh_less_steps:GetBool())
-	function button:OnChange(bool)
-		net.Start("AdminAction")
-		net.WriteString('fh_less_steps')
-		net.WriteBool(bool)
-		net.SendToServer()
-	end
-
-	local button = vgui.Create("DNumSlider", ExperimentalPanel)
-	button:SetPos(10, get_events_y())
-	button:SetText(language.GetPhrase("fazhunt.adminpanel.max_cupcakes"))
-	button:SetMin( 3 )	
-	button:SetMax( 10 )	
-	button:SetDecimals( 0 )		
-	button:SetDark(true)
-	button:SetSize(240, 10)
-	button:SetDefaultValue(3)
-	button:SetValue(conVars.fh_max_cupcakes:GetInt())
-	
-	button.OnValueChanged = function( self, value )
-		net.Start("AdminAction")
-		net.WriteString('fh_max_cupcakes')
-		net.WriteFloat(value)
-		net.SendToServer()
-	end
-
-	local button = vgui.Create("DCheckBoxLabel", ExperimentalPanel)
-	button:SetPos(10, get_events_y())
-	button:SetText(language.GetPhrase("fazhunt.adminpanel.silent_highlight"))
-	button:SetDark(true)
-	button:SetChecked(conVars.fh_silent_highlight:GetBool())
-	function button:OnChange(bool)
-		net.Start("AdminAction")
-		net.WriteString('fh_silent_highlight')
-		net.WriteBool(bool)
-		net.SendToServer()
-	end
-	
-	local DLabel = vgui.Create( "DLabel", ExperimentalPanel )
-	DLabel:SetPos( 240, 1 )
-	DLabel:SetText( language.GetPhrase("fazhunt.adminpanel.experiments_description01") .. "\n\n" ..
-	language.GetPhrase("fazhunt.adminpanel.experiments_description02"))
-	DLabel:SetDark(true)
-	DLabel:SetSize(345, 200)
-
-	--[[
-	local button = vgui.Create("DNumSlider", ExperimentalPanel)
-	button:SetPos(10, get_events_y())
-	button:SetText(language.GetPhrase("fazhunt.adminpanel.sfreddy_noclip_speed"))
-	button:SetMin( 3 )	
-	button:SetMax( 10 )	
-	button:SetDecimals( 0 )		
-	button:SetDark(true)
-	button:SetSize(240, 10)
-	button:SetDefaultValue(3)
-	button:SetValue(conVars.fh_max_cupcakes:GetInt())
-	
-	button.OnValueChanged = function( self, value )
-		net.Start("AdminAction")
-		net.WriteString('fh_max_cupcakes')
-		net.WriteFloat(value)
-		net.SendToServer()
-	end
-	]]--
-
-    PropertySheet:AddSheet(language.GetPhrase("fazhunt.adminpanel.experiments"), ExperimentalPanel, "icon16/chart_line.png")
-	
-    if IsValid(PropertySheet) then
-        PropertySheet:SetActiveTab(PropertySheet.Items[lastSelectedTab].Tab)
+    if IsValid(sheet) and sheet.Items[lastSelectedTab] then
+        sheet:SetActiveTab(sheet.Items[lastSelectedTab].Tab)
     end
 	
-    PropertySheet.OnActiveTabChanged = function(sheet, newTab)
+    sheet.OnActiveTabChanged = function(p, newTab)
 		timer.Simple(0, function()
-			for i, item in ipairs(PropertySheet.Items) do
-				if item.Tab == sheet:GetActiveTab() then
+			for i, item in ipairs(sheet.Items) do
+				if item.Tab == p:GetActiveTab() then
 					lastSelectedTab = i -- Сохраняем индекс текущей вкладки
 					break
 				end
 			end
 		end)
     end
-	
 end
 
 function createListPlayers()
-	if !IsValid(fh_admin_panel) then return end
+    if not IsValid(fh_admin_panel) then return end
     PlayerList:Clear()
     for _, v in player.Iterator() do
-        local team = getTeam(v:Team())
-        local line = PlayerList:AddLine(v:Nick(), team)
+        local line = PlayerList:AddLine(v:Nick(), getTeam(v:Team()))
         line.Player = v
     end
 end
 
 function updatePlayer(ply, team)
-    for _, line in pairs(PlayerList:GetLines()) do
+    for _, line in ipairs(PlayerList:GetLines()) do
         if line.Player == ply then
             line:SetValue(2, getTeam(team))
         end
@@ -393,49 +293,36 @@ end
 function createListAnimatronics()
     AnimatronicList:Clear()
     local killers = table.Copy(killerData)
-	
-	local prefered = {}
-		
-	for k,v in pairs(getAllPreferables(true)) do
-		table.insert(prefered, k)
-	end
+    local preferred = table.GetKeys(getAllPreferables(true))
 
     for k, v in pairs(killers) do
-		local line = AnimatronicList:AddLine(language.GetPhrase(v.fullname), k)
-		local doeshave = table.HasValue(prefered, k)
-		
-		function line:Paint(w, h)
-			if !line:IsLineSelected() then
-				draw.RoundedBox(0, 0, 0, w, h, doeshave and Color(0, 255, 0, 100) or Color(255, 0, 0, 100))
-			else
-				draw.RoundedBox(0, 0, 0, w, h, doeshave and Color(0, 125, 155, 200) or Color(255, 0, 155, 200))
-			end
-		end
+        local line = AnimatronicList:AddLine(language.GetPhrase(v.fullname), k)
+        local hasPref = table.HasValue(preferred, k)
+        function line:Paint(w, h)
+            local bg = self:IsLineSelected() and (hasPref and Color(0,125,155,200) or Color(255,0,155,200)) or (hasPref and Color(0,255,0,100) or Color(255,0,0,100))
+            draw.RoundedBox(0, 0, 0, w, h, bg)
+        end
     end
 end
 
+-- Команды
+
 concommand.Add("open_admin_panel", function()
-    if LocalPlayer():IsAdmin() then
-        OpenAdminPanel()
-    end
+    if LocalPlayer():IsAdmin() then OpenAdminPanel() end
 end)
 
 hook.Add("OnSpawnMenuOpen", "BindAdminPanel", function()
-    if not gui.IsConsoleVisible() and LocalPlayer():IsAdmin() then
-		OpenAdminPanel()
-    end
+    if not gui.IsConsoleVisible() and LocalPlayer():IsAdmin() then OpenAdminPanel() end
 end)
 
-gameevent.Listen( "player_connect" )
-hook.Add("player_connect", "fh_adminpanel_update_connect", function( data )
-	timer.Simple(1, function()
-		createListPlayers()
-	end)
+-- Автообновление списка
+
+gameevent.Listen("player_connect")
+hook.Add("player_connect", "fh_adminpanel_update_connect", function()
+    timer.Simple(1, createListPlayers)
 end)
 
-gameevent.Listen( "player_disconnect" )
-hook.Add( "player_disconnect", "fh_adminpanel_update_disconnect", function( data )
-	timer.Simple(1, function()
-		createListPlayers()
-	end)
-end )
+gameevent.Listen("player_disconnect")
+hook.Add("player_disconnect", "fh_adminpanel_update_disconnect", function()
+    timer.Simple(1, createListPlayers)
+end)

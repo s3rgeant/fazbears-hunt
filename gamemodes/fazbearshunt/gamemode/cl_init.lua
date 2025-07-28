@@ -13,7 +13,7 @@ include( "cl_sound.lua" )
 include( "cl_timer.lua" )
 include( "cl_optionmenu.lua" )
 
-include( "terror_radius.lua" )
+--include( "terror_radius.lua" )
 
 include( "mount/proximity.lua" )
 
@@ -25,7 +25,7 @@ include("pill_fnaf3.lua")
 function getTeam(team)
 	local teamname = language.GetPhrase("fuppr.survivors_team")
 	
-	if team == 2701 or string.find(team, 'animatronic') then
+	if team == 2701 or team == 27 or string.find(team, 'animatronic') then
 		teamname = language.GetPhrase("fuppr.animatronics_team")
 	elseif team == TEAM_SPECTATOR or string.find(team, 'kill') then 
 		teamname = ' '
@@ -42,13 +42,6 @@ hook.Add("SetupMove", "CanMove", function(ply) -- иронично не рабо
 		return true
 	end
 end)
-
-hook.Add( "PlayerBindPress", "fh_flash_nv", function( ply, bind, pressed )
-	if (ply:Team() == 2701 or ply:Team() == TEAM_SPECTATOR) and ( string.find( bind, "impulse 100" ) ) and pressed then
-		ToggleNightVision()
-		return true
-	end
-end )
 
 hook.Add("PlayerStartVoice", "HideVoicePanels", function(ply)
     local listener = LocalPlayer()

@@ -484,6 +484,10 @@ if SERVER then
 
             return
         end
+		local ent = pills.getMappedEnt(ply)
+		if IsValid(ent) then
+			ent:ResetSpeed(ply)
+		end
     end)
 	hook.Add( "PlayerUse", "pk_pill_block_use", function( ply, ent )
         local pup = getMappedEnt(ply)

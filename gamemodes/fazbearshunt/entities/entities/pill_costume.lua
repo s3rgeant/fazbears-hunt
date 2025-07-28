@@ -1,6 +1,6 @@
 AddCSLuaFile()
 ENT.Base = "base_anim"
-ENT.Type = "ai"
+ENT.Type = "anim"
 ENT.AutomaticFrameAdvance = true
 
 function ENT:SetupDataTables()
@@ -68,7 +68,6 @@ function ENT:Initialize()
             ply:Flashlight(false)
         end
 
-        ply:Freeze(false)
         ply:SetNotSolid(false)
         --ply:DrawWorldModel(false)
         local camOffset = self.formTable.camera and self.formTable.camera.offset or Vector(0, 0, 64)
@@ -282,6 +281,7 @@ function ENT:OnRemove()
                 local pos = ply:GetPos()
                 local vel = ply:GetVelocity()
                 local hp = ply:Health()
+				local wasCrouching = ply:Crouching()
                 ply:StripWeapons()
                 ply:StripAmmo()
                 ply:Spawn()
@@ -289,6 +289,12 @@ function ENT:OnRemove()
                 ply:SetPos(pos)
                 ply:SetVelocity(vel)
                 ply:SetHealth(hp)
+				if wasCrouching then
+					ply:ConCommand("+duck")
+					timer.Simple(0.1, function()
+						ply:ConCommand("-duck")
+					end)
+				end
             end
 
             if not newType then
@@ -333,12 +339,7 @@ function ENT:Think()
 			ply:SetSlowWalkSpeed(5)
             self.plyFrozen = true
         elseif not self.animFreeze and self.plyFrozen then
-            local speed = self.formTable.moveSpeed or {}
-            ply:SetWalkSpeed(speed.walk or 200)
-            ply:SetRunSpeed(speed.run or speed.walk or 500)
-			ply:SetJumpPower(self.formTable.jumpPower or 200)
-			ply:SetSlowWalkSpeed(speed.walk or 200)
-            self.plyFrozen = nil
+			self:ResetSpeed(ply)
         end
 		
 		if self.anim == 'jump' and ply:IsOnGround() then
@@ -1002,6 +1003,15 @@ function ENT:SetSpeed(walk, run, duck, jump)
     ply:SetRunSpeed(run)
     ply:SetCrouchedWalkSpeed(duck / (walk or 200))
 	ply:SetJumpPower(jump)
+end
+
+function ENT:ResetSpeed(ply)
+    local speed = self.formTable.moveSpeed or {}
+    ply:SetWalkSpeed(speed.walk or 200)
+    ply:SetRunSpeed(speed.run or speed.walk or 500)
+	ply:SetJumpPower(self.formTable.jumpPower or 200)
+	ply:SetSlowWalkSpeed(speed.walk or 200)
+    self.plyFrozen = nil
 end
 
 function ENT:ReplaceAnimation(old, new)

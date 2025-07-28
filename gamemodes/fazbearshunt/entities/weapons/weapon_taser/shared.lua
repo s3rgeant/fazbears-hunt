@@ -97,82 +97,7 @@ function SWEP:PrimaryAttack()
 		
 			wait = 90
 			
-			local puppet = pills.getMappedEnt(ent)
-			if IsValid(puppet) then
-				local formtbl = puppet.formTable
-				local movespeed = formtbl.moveSpeed
-			end
-			
-			if !formtbl or !movespeed then continue end
-			
-			if SERVER then
-				ent.tasered = true
-				ent:DropToFloor()
-				
-				if IsValid(puppet) and formtbl.name == "pill_springtrap" then
-					ent:SetWalkSpeed(60)
-					ent:SetRunSpeed(60)
-					ent:SetSlowWalkSpeed(60)
-					timer.Simple(5, function()
-						if IsValid(ent) then
-							ent:SetRunSpeed(movespeed.run)
-							ent:SetWalkSpeed(movespeed.walk)
-							ent:SetSlowWalkSpeed(movespeed.walk)
-							ent.tasered = false
-						end
-					end)
-				else
-					ent:Freeze(true)
-					timer.Simple(5, function()
-						if IsValid(ent) then
-							ent:Freeze(false) 
-							ent.tasered = false
-						end
-					end)
-					
-					if ent.jumpscaring then
-						local poorguy = ent.jumpscaring
-						
-						poorguy:Freeze(false)
-						poorguy.jumpscared = nil
-						
-						ent.jumpscaring = nil
-					end
-					
-					timer.Remove("FH_JumpscareKill_" .. ent:EntIndex())
-				end
-	
-				net.Start("StunEffect_Shake")
-				net.Send(ent)
-	
-				ent:ScreenFade(SCREENFADE.IN, Color(255, 255, 255, 128), 2, 2)
-				
-				if IsValid(puppet) then
-					if formtbl.name == "pill_springtrap" then
-						puppet:PillGesture('stun', 3, 1, 0, 0.3)
-					else
-						puppet:PillAnim("stun", true)
-						if table.HasValue(has_tasered_vl, formtbl.name) then
-							playVoiceline(killerData[formtbl.name].name, 'tasered', ent, 0.05)
-						end
-					end
-					if formtbl == "pill_endo02" then
-						endoRelease(ent)
-					end
-					puppet:EmitSound('weapons/tasergun/active_stun.mp3')
-				end
-			end
-			
-			if !IsValid(puppet) then
-				puppet = ent
-			end
-
-            local fx = EffectData()
-            fx:SetOrigin(ent:GetPos() + Vector(0, 0, 40))
-			fx:SetStart(ent:GetPos())
-			fx:SetMagnitude(10)
-            fx:SetEntity(puppet)
-            util.Effect("teslaHitBoxes", fx)
+			TaseAnimatronic(ent)
         end
     end
 	
@@ -195,3 +120,82 @@ net.Receive("StunEffect_Shake", function()
     local ply = LocalPlayer()
     util.ScreenShake(ply:GetPos(), 15, 5, 5, 500)
 end)
+
+function TaseAnimatronic(ent)
+	local puppet = pills.getMappedEnt(ent)
+	local formtbl = puppet.formTable
+	local movespeed = formtbl.moveSpeed
+	
+	if !formtbl or !movespeed then return end
+	
+	if SERVER then
+		ent.tasered = true
+		ent:DropToFloor()
+		
+		if IsValid(puppet) and formtbl.name == "pill_springtrap" then
+			ent:SetWalkSpeed(60)
+			ent:SetRunSpeed(60)
+			ent:SetSlowWalkSpeed(60)
+			timer.Simple(5, function()
+				if IsValid(ent) then
+					if IsValid(puppet) then
+						ent:SetRunSpeed(movespeed.run)
+						ent:SetWalkSpeed(movespeed.walk)
+						ent:SetSlowWalkSpeed(movespeed.walk)
+					end
+					ent.tasered = false
+				end
+			end)
+		else
+			ent:Freeze(true)
+			timer.Simple(5, function()
+				if IsValid(ent) then
+					ent:Freeze(false) 
+					ent.tasered = false
+				end
+			end)
+			
+			if ent.jumpscaring then
+				local poorguy = ent.jumpscaring
+				
+				poorguy:Freeze(false)
+				poorguy.jumpscared = nil
+				
+				ent.jumpscaring = nil
+			end
+			
+			timer.Remove("FH_JumpscareKill_" .. ent:EntIndex())
+		end
+	
+		net.Start("StunEffect_Shake")
+		net.Send(ent)
+	
+		ent:ScreenFade(SCREENFADE.IN, Color(255, 255, 255, 128), 2, 2)
+		
+		if IsValid(puppet) then
+			if formtbl.name == "pill_springtrap" then
+				puppet:PillGesture('stun', 3, 1, 0, 0.3)
+			else
+				puppet:PillAnim("stun", true)
+				if table.HasValue(has_tasered_vl, formtbl.name) then
+					playVoiceline(killerData[formtbl.name].name, 'tasered', ent, 0.05)
+				end
+			end
+			if formtbl == "pill_endo02" then
+				endoRelease(ent)
+			end
+			puppet:EmitSound('weapons/tasergun/active_stun.mp3')
+		end
+	end
+	
+	if !IsValid(puppet) then
+		puppet = ent
+	end
+	
+	local fx = EffectData()
+	fx:SetOrigin(ent:GetPos() + Vector(0, 0, 40))
+	fx:SetStart(ent:GetPos())
+	fx:SetMagnitude(10)
+	fx:SetEntity(puppet)
+	util.Effect("teslaHitBoxes", fx)
+end

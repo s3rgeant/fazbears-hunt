@@ -6,7 +6,7 @@ local visionUnsuccessSound = "vision_unsuccess.wav"
 
 local affectedPlayers = {}
 local animatronics = {}
-local teammates = {}
+local teammates = teammates or {}
 
 local fh_halo_teammates = CreateClientConVar('fh_halo_teammates', 1, true, false, 'Highlight Teammates? (Animatronics Only) Turn Off for Performance.', 0, 1)
 
@@ -41,7 +41,9 @@ net.Receive("AddAffectedPlayers", function()
     players = net.ReadTable()
 	
 	for _, targetPlayer in ipairs(players) do
-		addAffected(targetPlayer)
+		if IsValid(targetPlayer) then
+			addAffected(targetPlayer)
+		end
 	end
 end)
 
@@ -256,7 +258,7 @@ hook.Add( "PreDrawHalos", "HaloDo", function()
 	
 	if fh_halo_teammates:GetBool() then
 	
-		halo.Add(teammates, Color(0, 255, 0, 255), 0.5, 0.5, 1, true, true)
+		--halo.Add(teammates, Color(0, 255, 0, 255), 2, 2, 1, true, true)
 		
 		if LocalPlayer():Team() == 2701 then
 			halo.Add(ents.FindByClass("plushtrap"), Color(0, 255, 0, 255), 0.5, 0.5, 1, true, true)
@@ -273,6 +275,30 @@ hook.Add( "PreDrawHalos", "HaloDo", function()
 	end
 end)
 
+hook.Add("PreDrawHalos", "halo_teammates", function()
+    if not fh_halo_teammates:GetBool() then return end
+
+    local lp = LocalPlayer()
+    if not IsValid(lp) then return end
+
+    local visibleTeammates = {}
+
+    for _, ply in ipairs(teammates or {}) do
+        if not IsValid(ply) or ply == lp then continue end
+        if not ply:Alive() then continue end
+
+        local distSqr = lp:GetPos():DistToSqr(ply:GetPos())
+		
+        if distSqr < (600 * 600) then continue end
+
+        table.insert(visibleTeammates, ply)
+    end
+
+    if #visibleTeammates > 0 then
+        halo.Add(visibleTeammates, Color(0, 255, 0), 1, 1, 1, true, true)
+    end
+end)
+
 hook.Add("HUDPaint", "fh_cupcake_count_draw", function()
 	local ent = pills.getMappedEnt(LocalPlayer())
 	if !ent then return end
@@ -282,7 +308,7 @@ hook.Add("HUDPaint", "fh_cupcake_count_draw", function()
     for i, ent in ipairs(cakemines) do
         if not IsValid(ent) then continue end
 
-        local pos = ent:GetPos():ToScreen() -- Преобразуем координаты в экранные
+        local pos = ent:GetPos():ToScreen()
 
         if pos.visible then
             draw.SimpleTextOutlined(

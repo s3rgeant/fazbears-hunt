@@ -24,11 +24,12 @@ conVars = {
 	--[[
 		ADMIN PANEL: EXPERIMENTS
 	]]
-	fh_gifts_spawning = CreateConVar( "fh_gifts_spawning", 0, { FCVAR_ARCHIVE, FCVAR_REPLICATED}, "Toggle gifts spawning" ),
+	fh_gifts_spawning = CreateConVar( "fh_gifts_spawning", 1, { FCVAR_ARCHIVE, FCVAR_REPLICATED}, "Toggle gifts spawning" ),
 	fh_animatronic_immortal = CreateConVar( "fh_animatronic_immortal", 1, { FCVAR_ARCHIVE, FCVAR_REPLICATED}, "Toggle immortality for animatronic team" ),
 	fh_less_steps = CreateConVar( "fh_less_steps", 0, { FCVAR_ARCHIVE, FCVAR_REPLICATED}, "Toggle PVS adding for animatronics (makes footsteps silent when they're not rendered)" ),
 	fh_max_cupcakes = CreateConVar( "fh_max_cupcakes", 3, { FCVAR_ARCHIVE, FCVAR_REPLICATED}, "Maximum amount of cupcakes Chica can spawn." ),
 	fh_silent_highlight = CreateConVar( "fh_silent_highlight", 0, { FCVAR_ARCHIVE, FCVAR_REPLICATED}, "Makes highlights fully mute, and removes its overlay." ),
+	fh_respawn_dead_animatronics = CreateConVar( "fh_respawn_dead_animatronics", 1, { FCVAR_ARCHIVE, FCVAR_REPLICATED}, "Respawn animatronic if it died?" ),
 	
 	fh_discord_url_webhook = CreateConVar( "fh_discord_url_webhook", "none", {FCVAR_ARCHIVE, FCVAR_SERVER_CAN_EXECUTE}, "Discord Integration webhook." )
 	--fh_discord_url_avatar = CreateConVar( "fh_discord_url_avatar", "none", {FCVAR_ARCHIVE, FCVAR_SERVER_CAN_EXECUTE}, "Discord Integration avatar." )
@@ -60,7 +61,7 @@ killerData = killerData or {
     ["pill_plushtrap"] = {name = "plushtrap", fullname = "fazhunt.animatronics.plushtrap", color = colors.Springtrap}
 }
 
-killerAbilities = killerAbilities or {
+killerAbilities = {
     freddy = {
         { name = 'kill', key = 'LMB', duration = 0, keyboard = false, hidden = true },
         { name = 'stalk', key = 'RMB', duration = 0 },
@@ -98,12 +99,14 @@ killerAbilities = killerAbilities or {
         { name = 'highlight', key = 'R', duration = 0, keyboard = true, hidden = false }
     },
     plushtrap = {
-        { name = 'attack', key = 'LMB', duration = 0, keyboard = false, hidden = false }
+        { name = 'attack', key = 'LMB', duration = 0, keyboard = false, hidden = false },
+        { name = 'lifetime', duration = 0, hidden = true }
     },
     springtrap = {
         { name = 'attack', key = 'LMB', duration = 0, keyboard = false, hidden = false },
         { name = 'summon', key = 'RMB', duration = 0 },
-        { name = 'highlight', key = 'R', duration = 0, keyboard = true, hidden = false }
+        { name = 'highlight', key = 'R', duration = 0, keyboard = true, hidden = false },
+        { name = 'plushtrap', duration = 0, hidden = true }
     },
     gfreddy = {
         { name = 'submerge', key = 'RMB', duration = 0 },
@@ -237,6 +240,7 @@ end
 
 teamColors = {
 	[2701] = Color(255, 25, 25),
+	[27] = Color(255, 25, 25),
 	[TEAM_SPECTATOR] = Color(117, 117, 130),
 	[TEAM_UNASSIGNED] = Color(84, 163, 255)
 }
@@ -328,10 +332,20 @@ hook.Add("ShouldCollide", "fh_collisions", function(ent1, ent2)
     elseif cg2 == COLLISION_GROUP_PLAYER_MOVEMENT and isPlayer1 and cg1 ~= cg2 then
         return false
     end
-
-    return true
 end)
 
+local meta = FindMetaTable("Player")
+
+if meta then
+
+	function meta:IsSurvivor()
+		return self:Alive() and self:Team() == TEAM_UNASSIGNED and !IsValid(pills.getMappedEnt(self))
+	end
+	
+	function meta:IsAnimatronic()
+		return self:Team() == 2701 or IsValid(pills.getMappedEnt(self))
+	end
+end
 
 if CLIENT then
 	net.Receive("fh_change_notprefered", function()
@@ -359,6 +373,8 @@ if CLIENT then
 		end
 	end)
 end
+
+--[[
 if SERVER then
     util.AddNetworkString("SpawnClientClone")
 
@@ -446,3 +462,4 @@ if CLIENT then
         end)
     end)
 end
+]]--

@@ -78,9 +78,13 @@ function SWEP:PrimaryAttack()
 	
 	if ply:IsFrozen() or timer.Exists('FOXY_cantKill'..ply:EntIndex()) then return end
 	
-	self:SetPlaybackRate(1)
+	if SERVER then
+		--ent:PillGesture('swing', 2, 1, 0.1, 0.3)
+	end
 	
 	self:PlayCustomAnimation("ACT_SPECIAL_ATTACK1", 2)
+	
+	self:SetPlaybackRate(1)
 	
     self.IsCharging = true
     self.ChargeStartTime = ct
@@ -98,9 +102,9 @@ function SWEP:DealDamage()
 	
 	if !IsValid(ent) then return end
 	
-	self:SetPlaybackRate(1)
-	
 	self:PlayCustomAnimation("ACT_SPECIAL_ATTACK2", 0.6)
+	
+	self:SetPlaybackRate(1)
 	
 	timer.Create('FOXY_cantKill'..ply:EntIndex(), 2, 1, function() end)
 	
@@ -113,7 +117,7 @@ function SWEP:DealDamage()
 			--ent:PillStopGesture('swing')
 		end)
 	
-		--ent:PillGesture('attack', 2, 1, 0.1, 0.3)
+		ent:PillGesture('attack', 2, 1, 0.1, 0.7)
 		
 		net.Start("fh_net_killer_change")
 		net.WriteString("kill")
@@ -160,7 +164,7 @@ function SWEP:DealDamage()
 		return 
 	end
 	
-	if target:IsPlayer() and target:Team() ~= ply:Team() then
+	if target:IsPlayer() and target:IsSurvivor() then
 	
 		local edata = EffectData()
 		edata:SetOrigin(tr.HitPos)
@@ -188,7 +192,16 @@ function SWEP:DealDamage()
 		local dmginfo = DamageInfo()
 		dmginfo:SetAttacker( ply )
 		dmginfo:SetInflictor( self )
-		dmginfo:SetDamage( 50 )
+		dmginfo:SetDamage( 25 )
+		
+		if target:IsPlayer() then
+			StartBleeding(target, ply)
+			timer.Simple(5, function()
+				if IsValid(ply) then
+					StopBleeding(ply)
+				end
+			end)
+		end
 	
 		SuppressHostEvents( NULL )
 		target:TakeDamageInfo( dmginfo )
@@ -202,11 +215,13 @@ function SWEP:DealDamage()
 		return 
 	end
 	
-	if (target:IsPlayer() and target:Team() != ply:Team()) or target:IsNPC() then
+	if (target:IsPlayer() and target:IsSurvivor()) or target:IsNPC() then
 		ply:EmitSound("fnaf3/spr_punch_hit.wav")
 	end
 end
 
+SWEP.run_string = "run"
+SWEP.run_act = ACT_VM_SPRINT_IDLE
 function SWEP:Think()
 	local curtime = CurTime()
 	
@@ -216,6 +231,34 @@ function SWEP:Think()
         self:DealDamage()
         return
     end
+
+	if self.IsCharging then
+		local ply = self.Owner
+		local forward = ply:GetAimVector()
+		local startPos = ply:GetShootPos()
+		local endPos = startPos + forward * 60
+
+		local mins = Vector(-10, -10, -10)
+		local maxs = Vector(10, 10, 10)
+
+		local tr = util.TraceHull({
+			start = startPos,
+			endpos = endPos,
+			filter = ply,
+			mins = mins,
+			maxs = maxs,
+			mask = MASK_SHOT_HULL
+		})
+
+		local hitEnt = tr.Entity
+
+		if IsValid(hitEnt) and hitEnt:IsPlayer() and hitEnt:IsSurvivor() then
+			self.IsCharging = false
+			self:SetNextMeleeAttack(0)
+			self:DealDamage()
+			return
+		end
+	end
 
 	local meleetime = self:GetNextMeleeAttack()
 	if ( meleetime > 0 and curtime > meleetime ) then
@@ -254,9 +297,9 @@ function SWEP:Think()
 
         if (onGround and ply:WaterLevel() <= 1) and walkSpeed > 10 then
             if speed >= runSpeed * 0.9 and walkSpeed != runSpeed then
-                if self.CurAnim ~= 'run' then
-                    self.Weapon:SendWeaponAnim(ACT_VM_SPRINT_IDLE)
-                    self.CurAnim = 'run'
+                if self.CurAnim ~= self.run_string then
+                    self.Weapon:SendWeaponAnim(self.run_act)
+                    self.CurAnim = self.run_string
                 end
             elseif speed >= walkSpeed * 0.9 and speed > 5 or ply:Crouching() and speed >= crouchSpeed then
                 if self.CurAnim ~= 'walk' then
