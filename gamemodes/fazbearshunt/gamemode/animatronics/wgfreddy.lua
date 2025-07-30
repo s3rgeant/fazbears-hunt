@@ -169,10 +169,10 @@ if CLIENT then
 	
 	local outworlded_ppl = {}
 	
-	local PARTICLE_TEXTURE = "particles/smokinweed" -- Замени на свою
-	local RADIUS = 1200 -- Меньше радиус = плотнее вокруг игрока
-	local PARTICLE_INTERVAL = 0.03 -- Быстрее генерация = плотнее эффект
-	local PARTICLES_PER_TICK = 2 -- Больше частиц за один вызов
+	local PARTICLE_TEXTURE = "particles/smokinweed"
+	local RADIUS = 1200
+	local PARTICLE_INTERVAL = 0.03
+	local PARTICLES_PER_TICK = 2
 
 	local nextParticleTime = 0
 	
@@ -282,12 +282,10 @@ if CLIENT then
 			if not emitter then return end
 
 			for i = 1, PARTICLES_PER_TICK do
-				-- Генерация позиции в радиусе
 				local angle = math.Rand(0, 2 * math.pi)
 				local distance = math.Rand(50, RADIUS)
 				local offset = Vector(math.cos(angle), math.sin(angle), 0) * distance
 
-				-- Трассировка до пола
 				local traceData = {
 					start = ply:GetPos() + offset + Vector(0, 0, 100),
 					endpos = ply:GetPos() + offset - Vector(0, 0, 200),
@@ -308,7 +306,7 @@ if CLIENT then
 					particle:SetDieTime(math.Rand(2, 3))
 					particle:SetStartAlpha(math.Rand(80, 120))
 					particle:SetEndAlpha(0)
-					particle:SetStartSize(math.Rand(1, 6)) -- немного меньше
+					particle:SetStartSize(math.Rand(1, 6))
 					particle:SetEndSize(math.Rand(6, 12))
 					particle:SetRoll(math.Rand(0, 360))
 					particle:SetRollDelta(math.Rand(-0.3, 0.3))
@@ -638,10 +636,6 @@ function fh_get_wgfreddy_target(ply)
 end
 
 local function cancel_outworld_target(ply)
-	if outworld_victims[ply] then
-		outworld_victims[ply] = nil
-	end
-
 	net.Start("fh_draw_player")
 	net.WritePlayer(ply)
 	net.Broadcast()
@@ -665,6 +659,10 @@ local function cancel_outworld_target(ply)
 	net.Start("fh_adv_sound_play")
 	net.WriteString("fnaf2/gfreddy/outworld_escaped.wav")
 	net.Send(ply)
+	
+	if outworld_victims[ply] then
+		outworld_victims[ply] = nil
+	end
 end
 
 local sfreddy_noclip_movement = {500, 600, 500, 250}
@@ -807,10 +805,12 @@ local first_damage_received = {}
 
 function cancel_outworld(ply)
 	if wgfreddy_targets[ply] then
+		local target = wgfreddy_targets[ply]
+	
 		cancel_outworld_wgfreddy(ply)
-		cancel_outworld_target(wgfreddy_targets[ply])
-		StopDelayedDamage(ply)
-		killPlushies(wgfreddy_targets[ply])
+		cancel_outworld_target(target)
+		StopDelayedDamage(target)
+		killPlushies(target)
 		return
 	end
 	
@@ -841,13 +841,13 @@ function StartDelayedDamage(ply)
     if DamageTimers[steamID] then return end
 
     timer.Simple(30, function()
-        if not IsValid(ply) then return end
+        if not IsValid(ply) or !outworld_victims[ply] then return end
 
         local timerName = "DamagePlayer_" .. steamID
         DamageTimers[steamID] = timerName
 
         timer.Create(timerName, 2, 0, function()
-            if not IsValid(ply) then
+            if not IsValid(ply) or !outworld_victims[ply] then
                 StopDelayedDamage(ply)
                 return
             end

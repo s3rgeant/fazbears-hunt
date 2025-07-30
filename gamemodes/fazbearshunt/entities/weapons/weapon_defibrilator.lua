@@ -430,57 +430,12 @@ hook.Add( "PlayerLoadout", "Defibl_Revive", function( ply )
 	return true
 end)
 
-if SERVER then
-	hook.Add( "OnEntityCreated", "Defibl_Revive", function( ent )
-		if ent:IsNPC() then
-			timer.Simple(0, function() if IsValid(ent) then
-				if IsValid(ent:GetActiveWeapon()) then -- because this returns nothing if called when npc is dead
-					ent.DefiblReviveEntWep = ent:GetActiveWeapon():GetClass()
-				end
-			end
-			end)
-		end
-		
-		if ent:GetClass() == "prop_ragdoll" then
-			timer.Simple(0, function() if IsValid(ent) then
-				ent.DefiblReviveEnt = ent.EntityClass -- DrGBase
-				ent.DefiblReviveEntHP = 0 -- we can't get the Nextbot entity
-			end
-			end)
-		end
-	end)
-
-	hook.Add( "CreateEntityRagdoll", "Defibl_Revive", function( owner,ent )
-		if IsValid(ent) and IsValid(owner) and (owner:IsNPC() or (owner.Type == "nextbot" and !owner:GetClass():find("drg")) or (owner:IsPlayer() and !owner:Alive())) then
-			local hp = owner:GetMaxHealth()
-			local mdl = owner:GetModel()
-			local name = owner:GetName()
-			local wepclass = owner.DefiblReviveEntWep -- given to us by create hook
-			
-			if owner:IsPlayer() then
-				ent.DefiblReviveEnt = owner:EntIndex()
-			else
-				local npc = owner:GetClass()
-				ent.DefiblReviveEnt = npc -- VJ
-
-				timer.Simple(0, function() if IsValid(ent) then -- for Keep Corpses
-					ent.DefiblReviveEnt = npc
-					ent.DefiblReviveEntHP = hp
-					ent.DefiblReviveEntMDL = mdl
-					ent.DefiblReviveEntName = name
-					ent.DefiblReviveEntWep = wepclass
-				end
-				end)
-			end
-			ent.DefiblReviveEntHP = hp
-			ent.DefiblReviveEntMDL = mdl
-			ent.DefiblReviveEntName = name
-			ent.DefiblReviveEntWep = wepclass
-		end
-	end )
-else -- CLIENT
+if CLIENT then
     hook.Add("PreDrawHalos", "DefibrillatorHighlightCorpses", function()
-        local ply = LocalPlayer()
+		local lply = LocalPlayer()
+		local target = lply:GetObserverTarget()
+	
+        local ply = (IsValid(target) and target:IsPlayer()) and target or lply
         local wep = ply:GetActiveWeapon()
 
         if IsValid(wep) and wep:GetClass() == "weapon_defibrilator" then
@@ -497,14 +452,17 @@ else -- CLIENT
     end)
 
 	hook.Add("HUDPaint", "DefibDrawNames", function()
-		local ply = LocalPlayer()
-		local wep = ply:GetActiveWeapon()
+		local lply = LocalPlayer()
+		local target = lply:GetObserverTarget()
+	
+        local ply = (IsValid(target) and target:IsPlayer()) and target or lply
+        local wep = ply:GetActiveWeapon()
 	
 		if IsValid(wep) and wep:GetClass() == "weapon_defibrilator" then
 			for _, ent in pairs(ents.FindByClass("prop_ragdoll")) do
 				if ent:GetPos():Distance(ply:GetPos()) <= 377 then
 					local ownerName = IsValid(ent:GetOwner()) and ent:GetOwner():Nick() or "???"
-					local screenPos = ent:GetPos():ToScreen() -- Позиция для отображения
+					local screenPos = ent:GetPos():ToScreen()
 	
 					draw.SimpleText(ownerName, "timerFontBelow", screenPos.x, screenPos.y, Color(255, 255, 255), TEXT_ALIGN_CENTER, TEXT_ALIGN_CENTER)
 				end

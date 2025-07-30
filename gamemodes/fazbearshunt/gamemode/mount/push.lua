@@ -62,3 +62,8 @@ hook.Add("KeyPress", "PushInteraction", function(ply, key)
 	
 	ply:LagCompensation(false)
 end)
+
+hook.Add("PlayerDeath", "PushDeath", function(ply)
+	ply:SetPushBlocked(false)
+	ply:SetPushImmune(false)
+end)
