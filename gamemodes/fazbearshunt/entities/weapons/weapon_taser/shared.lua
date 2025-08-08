@@ -123,6 +123,9 @@ end)
 
 function TaseAnimatronic(ent)
 	local puppet = pills.getMappedEnt(ent)
+	
+	if !IsValid(puppet) then return end
+	
 	local formtbl = puppet.formTable
 	local movespeed = formtbl.moveSpeed
 	

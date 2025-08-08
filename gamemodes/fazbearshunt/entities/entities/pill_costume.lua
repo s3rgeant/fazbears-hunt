@@ -845,7 +845,7 @@ if SERVER then
 			//print('использа')
 			self:SetLayerSequence(id, seq)
 		end
-		self:SetLayerPlaybackRate(id, (rate or 1) / 2)
+		self:SetLayerPlaybackRate(id, (rate or 1))
 		self:SetLayerCycle(id, start or 0)
 		
 		self:SetLayerWeight(id, 1)

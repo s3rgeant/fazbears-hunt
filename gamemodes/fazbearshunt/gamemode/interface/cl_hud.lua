@@ -152,20 +152,28 @@ function DrawKillerInterface()
 			if textWidth > maxTextWidth then
 				local offset = scrollOffsets[abilityName]
 				local speed = scrollSpeeds[abilityName]
+				local maxOffset = textWidth - maxTextWidth + 10
+
 				offset = offset + FrameTime() * speed
 
-				if offset >= (textWidth - maxTextWidth + 10) or offset <= 0 then
-					scrollSpeeds[abilityName] = -speed
+				if offset > maxOffset then
+					offset = maxOffset
+					speed = -math.abs(speed)
+				elseif offset < 0 then
+					offset = 0
+					speed = math.abs(speed)
 				end
 
 				scrollOffsets[abilityName] = offset
+				scrollSpeeds[abilityName] = speed
 
 				render.SetScissorRect(textX, textY, textX + maxTextWidth, textY + textHeight, true)
-				draw.SimpleText(translated_ability, "fh_hud_ability_title", textX - scrollOffsets[abilityName], textY, Color(255, 255, 255, 255), TEXT_ALIGN_LEFT)
+				draw.SimpleText(translated_ability, "fh_hud_ability_title", textX - offset, textY, Color(255, 255, 255, 255), TEXT_ALIGN_LEFT)
 				render.SetScissorRect(0, 0, 0, 0, false)
 			else
 				draw.SimpleText(translated_ability, "fh_hud_ability_title", textX, textY, Color(255, 255, 255, 255), TEXT_ALIGN_LEFT)
 			end
+
 
 			local timer_width = (abilityData.keyboard and 172 or 122) * uiScale
 			local timer_x = 13 * uiScale

@@ -1,5 +1,14 @@
 AddCSLuaFile()
 
+util.PrecacheSound("fnaf2/gfreddy/plushie_hint.mp3")
+util.PrecacheSound("fnaf2/gfreddy/plushie_taken.wav")
+util.PrecacheSound("fnaf2/gfreddy/plushie_taken_alert.wav")
+util.PrecacheSound("fnaf2/gfreddy/gfreddy_target.wav")
+util.PrecacheSound("fnaf2/gfreddy/outworld_escaped.wav")
+util.PrecacheSound("fnaf2/gfreddy/outworld_enter.wav")
+util.PrecacheSound("fnaf2/gfreddy/outworld_ambient_loop.wav")
+util.PrecacheSound("fnaf2/gfreddy/outworld_ambient_2.wav")
+
 team.SetUp( 27, "Secret Animatronics", Color(255, 0, 0), true )
 
 hook.Add("fh_startgame", "spawn_wgfreddy", function(roundType)
@@ -12,7 +21,7 @@ hook.Add("fh_startgame", "spawn_wgfreddy", function(roundType)
 			local players = team.GetPlayers(TEAM_UNASSIGNED)
 			local count = table.Count(players)
 			
-			if count >= 8 or ( GetConVar( "developer" ):GetBool() and count > 1 ) then
+			if count >= 8 or ( GetConVar( "developer" ):GetBool() and count > 2 ) then
 				players = fh.GetEarnedKillers(players)
 				
 				local chosenPlayer = fh.randomChoice(players)
@@ -36,7 +45,7 @@ function fh_spawnPlushies(ply)
 	local minDistFromPlayer = 800
 	local maxDistFromPlayerStrict = 2500
 	local maxDistFromPlayerLoose = 2000
-	local minSpacing = 2000
+	local minSpacing = 1600
 	local plushCount = 4
 	local placed = 0
 	local usedPositions = {}
@@ -94,7 +103,7 @@ function fh_spawnPlushies(ply)
 			if area:HasAttributes(NAV_MESH_CROUCH) or area:HasAttributes(NAV_MESH_AVOID) or area:IsUnderwater() then continue end
 	
 			local pos = area:GetCenter()
-			if isLooseCandidate(pos) then
+			if isLooseCandidate(pos) and isFarFromOthers(pos) then
 				spawnPlushAt(pos)
 			end
 		end
@@ -104,6 +113,14 @@ function fh_spawnPlushies(ply)
 		print("[fh_plushie] Не удалось заспавнить "..plushCount.." плюшки. Заспавнено: " .. placed)
 	else
 		print("[fh_plushie] Успешно заспавнены "..plushCount.." плюшки.")
+	end
+end
+
+function killPlushies(ply)
+	for _, ent in ipairs( ents.FindByClass("fh_plushie") ) do
+		if ent.owner == ply then
+			ent:Remove()
+		end
 	end
 end
 
@@ -639,8 +656,12 @@ local function cancel_outworld_target(ply)
 	net.Start("fh_draw_player")
 	net.WritePlayer(ply)
 	net.Broadcast()
+	
+	net.Start("fh_net_scarysound")
+	net.WriteBool(true)
+	net.Send(ply)
 
-	ply:SetJumpBoostMultiplier(1)
+	ply:SetJumpBoostMultiplier(getScaledJumpBoost())
 	ply:SetRunSpeed(420)
 	ply:SetWalkSpeed(200)
 	ply:SetCollisionGroup(COLLISION_GROUP_PLAYER)
@@ -700,12 +721,12 @@ local function cancel_outworld_wgfreddy(ply)
 	end
 end
 
-function start_outworld(ply, target)
+function start_outworld(ply, ent, target)
 	net.Start("fh_play_sound")
 	net.WriteString('fnaf2/gfreddy/gfreddy_target.wav')
 	net.Send(ply)
 	
-	net.Start("fh_wgfreddy_outworld_start")
+	net.Start("fh_wgfreddy_outworld_start") -- для ЗФ
 	net.WritePlayer(target)
 	net.Send(ply)
 	
@@ -714,6 +735,8 @@ function start_outworld(ply, target)
 	table.insert(affectedPlayers, target)
 	
 	StartDelayedDamage(target)
+	
+	target:SetNWBool("can_be_gf_scared", true)
 	
 	-- никто не видит их
 	for _, player in player.Iterator() do
@@ -750,6 +773,8 @@ function start_outworld(ply, target)
 		target:StripWeapon("weapon_crapvidcam")
 	end
 	
+	fh_spawnPlushies(target)
+	
 	local timer_name = "plushie_hint_" .. ply:EntIndex()
 	
 	timer.Create(timer_name, 20, 0, function()
@@ -760,7 +785,10 @@ function start_outworld(ply, target)
 	
 		local plushies = ents.FindByClass("fh_plushie")
 	
-		if #plushies == 0 then return end
+		if #plushies == 0 then
+			timer.Remove(timer_name)
+			return
+		end
 	
 		local allFar = true
 		local closestPlushie = nil
@@ -790,8 +818,6 @@ function start_outworld(ply, target)
 		end
 	end)
 	
-	fh_spawnPlushies(target)
-	
 	wgfreddy_targets[ply] = target
 	outworld_victims[target] = ply
 	outworld_victims_count[target] = 0
@@ -811,13 +837,20 @@ function cancel_outworld(ply)
 		cancel_outworld_target(target)
 		StopDelayedDamage(target)
 		killPlushies(target)
+	
+		target:SetNWBool("can_be_gf_scared", false)
 		return
 	end
+		
+	net.Start('fh_sound_stop')
+	net.WriteString('fnaf2/gfreddy/gfreddy_enraged.wav')
+	net.Broadcast()
 	
 	if outworld_victims[ply] then
 		cancel_outworld_target(ply)
 		StopDelayedDamage(ply)
 		killPlushies(ply)
+		ply:SetNWBool("can_be_gf_scared", false)
 		
 		for wgfreddy, target in pairs(wgfreddy_targets) do
 			if target == ply then
@@ -908,6 +941,26 @@ if SERVER then
 				
 				wgfreddy:SetNWBool("wgfreddy_enraged", true)
 				ent:SetSpeed(unpack(gfreddy_enraged_movement))
+				ent:PillAnim("rage",true)
+				ply:SetNWBool("can_be_gf_scared", false)
+				
+				net.Start("fh_ui_sound_play")
+				net.WriteString('fnaf2/gfreddy/gfreddy_rage_start.wav')
+				net.Send({ply, wgfreddy})
+				
+				ply:SetJumpBoostMultiplier(getScaledJumpBoost())
+				ply:SetRunSpeed(420)
+				ply:SetWalkSpeed(200)
+				
+				timer.Simple(10, function()
+					if IsValid(ent) and IsValid(ply) then
+						
+						net.Start('fh_ent_sound_play')
+						net.WritePlayer(ply)
+						net.WriteString('fnaf2/gfreddy/gfreddy_enraged.wav')
+						net.Send({ply, wgfreddy})
+					end
+				end)
 				
 				return
 			end
@@ -918,6 +971,13 @@ if SERVER then
 					
 					EmitSound("gfreddy.laugh", wgfreddy:GetPos())
 				end
+				
+				cooldown.Set(wgfreddy, 'appear', 12)
+				
+				net.Start("fh_net_killer_change")
+				net.WriteString("submerge")
+				net.WriteFloat(12)
+				net.Send(wgfreddy)
 				
 				ent:SetSpeed(unpack(sfreddy_noclip_movement))
 				wgfreddy:DrawViewModel(false)

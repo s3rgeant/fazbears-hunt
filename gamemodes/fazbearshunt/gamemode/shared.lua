@@ -18,8 +18,9 @@ conVars = {
 	halo_time = CreateConVar( "halo_time", 10, { FCVAR_ARCHIVE, FCVAR_REPLICATED}, "Time for halo to dissolve." ),
 	halo_cooldown = CreateConVar( "halo_cooldown", 120, { FCVAR_ARCHIVE, FCVAR_REPLICATED}, "Cooldown for halo." ),
 	
-	fh_automatic_highlight = CreateConVar( "fh_automatic_highlight", 1, { FCVAR_ARCHIVE, FCVAR_REPLICATED}, "Cooldown for halo." ),
+	fh_automatic_highlight = CreateConVar( "fh_automatic_highlight", 1, { FCVAR_ARCHIVE, FCVAR_REPLICATED}, "Automatic highlight map settings." ),
 	
+	fh_round_duration = CreateConVar( "fh_round_duration", 10, { FCVAR_ARCHIVE, FCVAR_REPLICATED}, "Round duration in minutes." ),
 	
 	--[[
 		ADMIN PANEL: EXPERIMENTS
@@ -65,52 +66,52 @@ killerAbilities = {
     freddy = {
         { name = 'kill', key = 'LMB', duration = 0, keyboard = false, hidden = true },
         { name = 'stalk', key = 'RMB', duration = 0 },
-        { name = 'highlight', key = 'R', duration = 0, keyboard = true, hidden = false }
+        { name = 'highlight', key = 'R', duration = 0, keyboard = true }
     },
     bonnie = {
         { name = 'kill', key = 'LMB', duration = 0, keyboard = false, hidden = true },
         { name = 'yoursmine', key = 'RMB', duration = 0 },
-        { name = 'highlight', key = 'R', duration = 0, keyboard = true, hidden = false }
+        { name = 'highlight', key = 'R', duration = 0, keyboard = true }
     },
     chica = {
         { name = 'kill', key = 'LMB', duration = 0, keyboard = false, hidden = true },
         { name = 'mine', key = 'RMB', duration = 0 },
-        { name = 'highlight', key = 'R', duration = 0, keyboard = true, hidden = false }
+        { name = 'highlight', key = 'R', duration = 0, keyboard = true }
     },
     foxy = {
         { name = 'kill', key = 'LMB', duration = 0, keyboard = false, hidden = true },
 		{ name = 'charge', key = 'RMB', duration = 0, keyboard = false, tokens = 5 },
-        { name = 'highlight', key = 'R', duration = 0, keyboard = true, hidden = false }
+        { name = 'highlight', key = 'R', duration = 0, keyboard = true }
     },
     sfreddy = {
         { name = 'kill', key = 'LMB', duration = 0, keyboard = false, hidden = true },
         { name = 'submerge', key = 'RMB', duration = 0, condition = function()
             return isNotStuck()
         end },
-        { name = 'highlight', key = 'R', duration = 0, keyboard = true, hidden = false }
+        { name = 'highlight', key = 'R', duration = 0, keyboard = true }
     },
     endo = {
         { name = 'kill', key = 'LMB', duration = 0, keyboard = false, hidden = true },
         { name = 'grab', key = 'RMB', duration = 0 },
-        { name = 'highlight', key = 'R', duration = 0, keyboard = true, hidden = false }
+        { name = 'highlight', key = 'R', duration = 0, keyboard = true }
     },
     clown = {
-        { name = 'attack', key = 'LMB', duration = 0, keyboard = false, hidden = false },
-        { name = 'highlight', key = 'R', duration = 0, keyboard = true, hidden = false }
+        { name = 'attack', key = 'LMB', duration = 0, keyboard = false },
+        { name = 'highlight', key = 'R', duration = 0, keyboard = true }
     },
     plushtrap = {
-        { name = 'attack', key = 'LMB', duration = 0, keyboard = false, hidden = false },
+        { name = 'attack', key = 'LMB', duration = 0, keyboard = false },
         { name = 'lifetime', duration = 0, hidden = true }
     },
     springtrap = {
-        { name = 'attack', key = 'LMB', duration = 0, keyboard = false, hidden = false },
+        { name = 'attack', key = 'LMB', duration = 0, keyboard = false },
         { name = 'summon', key = 'RMB', duration = 0 },
-        { name = 'highlight', key = 'R', duration = 0, keyboard = true, hidden = false },
+        { name = 'highlight', key = 'R', duration = 0, keyboard = true },
         { name = 'plushtrap', duration = 0, hidden = true }
     },
     gfreddy = {
         { name = 'submerge', key = 'RMB', duration = 0 },
-        { name = 'choose_target', key = 'R', duration = 0, keyboard = true, hidden = false }
+        { name = 'choose_target', key = 'R', duration = 0, keyboard = true }
     }
 }
 
@@ -201,9 +202,8 @@ if SERVER then
 end
 
 hook.Add("Initialize", "fh_dontprefer", function()
+	hook.Remove("PlayerTick", "TickWidgets") -- вроде слегка оптимизирует игру. спиздил с zombie-survival
 	if CLIENT then return end
-	
-	print(file.Exists("fh_dontprefer.txt", "DATA"), "zzz")
 	
 	if file.Exists("fh_dontprefer.txt", "DATA") then
 		local data = file.Read("fh_dontprefer.txt", "DATA") or ""
@@ -374,8 +374,9 @@ if CLIENT then
 	end)
 end
 
---[[
+
 if SERVER then
+	--[[
     util.AddNetworkString("SpawnClientClone")
 
     concommand.Add("spawn_client_clone", function(ply)
@@ -384,8 +385,24 @@ if SERVER then
         net.Start("SpawnClientClone")
         net.Send(ply)
     end)
+	]]--
+
+    concommand.Add("spawn_mori", function(ply)
+		if !ply:IsSuperAdmin() then return end
+		if not IsValid(ply) then return end
+		
+        local a = ents.Create("mori_helper")
+		a:SetPos( ply:GetPos() )
+        a:Spawn()
+		
+        local b = ents.Create("mori_outfit")
+        b:SetParent(a)
+        b:SetModel( ply:GetModel() )
+        b:Spawn()
+    end)
 end
 
+--[[
 if CLIENT then
     local baseModel, clone, hookName, endTime
 
@@ -421,7 +438,6 @@ if CLIENT then
         clone:AddEffects(EF_BONEMERGE)
         clone:Spawn()
 
-        -- Имя хука уникальное, чтобы можно было удалить позже
         hookName = "AnimateBaseModel_" .. baseModel:EntIndex()
 
         hook.Add("Think", hookName, function()
@@ -434,12 +450,10 @@ if CLIENT then
             local cycle = (elapsed / seqDur) % 1
             baseModel:SetCycle(cycle)
 
-            -- Камера на аттачмент "camera"
             local attId = baseModel:LookupAttachment("camera")
             if attId and attId > 0 then
                 local att = baseModel:GetAttachment(attId)
                 if att and att.Pos and att.Ang then
-                    -- Меняем камеру игрока на позицию аттачмента
                     local view = {
                         origin = att.Pos,
                         angles = att.Ang,
@@ -452,7 +466,6 @@ if CLIENT then
                 end
             end
 
-            -- Если анимация закончилась — удаляем модели и снимаем камеру
             if CurTime() >= endTime then
                 baseModel:Remove()
                 clone:Remove()

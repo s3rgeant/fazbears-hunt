@@ -12,10 +12,11 @@ local function fh_default_check_scarysound()
     local forward = eyeAngles:Forward()
 
     local viewRadius = 125
+	
+	if !localPlayer:Alive() or localPlayer:Team() == TEAM_SPECTATOR then return end
 
     for _, ply in player.Iterator() do
-        if ply ~= localPlayer and IsValid(ply) and ply:Alive() and localPlayer:Alive() and localPlayer:Team() != TEAM_SPECTATOR 
-		and ply:GetMoveType() != MOVETYPE_NOCLIP then
+        if ply ~= localPlayer and IsValid(ply) and ply:Alive() and ply:GetMoveType() != MOVETYPE_NOCLIP then
             if pills and pills.getMappedEnt and pills.getMappedEnt(ply) ~= nil then
 				local ent = pills.getMappedEnt(ply)
 				
@@ -133,11 +134,17 @@ local function stopScareProgress()
 	end
 	progressSoundChannel = nil
 	progressStartTime = 0
+	
+	scareImmunityUntil = CurTime() + 0.2
+	
 	hook.Remove("CreateMove", "fh_gfreddy_magnet_view")
 end
 
+local soundCooldown = 10
 local function fh_gfreddy_check_scarysound()
 	local localPlayer = LocalPlayer()
+	
+	if !localPlayer:GetNWBool("can_be_gf_scared", false) then return end
 	if not pills or not IsValid(localPlayer) or pills.getMappedEnt(localPlayer) ~= nil then return end
 	if not IsValid(targetPlayer) or targetPlayer == localPlayer then return end
 	if not targetPlayer:Alive() or targetPlayer:GetMoveType() == MOVETYPE_NOCLIP then return end
@@ -156,17 +163,22 @@ local function fh_gfreddy_check_scarysound()
 		local distance = toPly:Length()
 		local toPlyNormalized = toPly:GetNormalized()
 		local dotProduct = forward:Dot(toPlyNormalized)
+		dotProduct = math.Clamp(dotProduct, -1, 1)
 		local angle = math.deg(math.acos(dotProduct))
 		local fov = 45
 
 		local trace = util.TraceLine({
 			start = eyePos,
 			endpos = plyPos,
-			filter = {localPlayer, targetPlayer},
-			mask = MASK_VISIBLE_AND_NPCS
+			filter = {localPlayer, targetPlayer, ent},
+			mask = MASK_VISIBLE
 		})
+		
+		print(not trace.Hit, angle <= fov)
 
 		local canSee = not trace.Hit and angle <= fov
+		
+		if CurTime() < scareImmunityUntil then return end
 
 		if distance <= 200 and canSee then
 			local currentTime = CurTime()
@@ -176,12 +188,12 @@ local function fh_gfreddy_check_scarysound()
 			if currentTime - lastSoundTime >= soundCooldown then
 				scaredNear(localPlayer, targetPlayer)
 				lastSoundTime = currentTime
+				
+				scareImmunityUntil = CurTime() + 4
 			end
 			stopScareProgress()
 			return
 		end
-		
-		if CurTime() < scareImmunityUntil then return end
 
 		if distance > 200 and distance < 1000 and canSee then
 			if not IsValid(progressSoundChannel) then
@@ -192,6 +204,13 @@ local function fh_gfreddy_check_scarysound()
 						chan:Play()
 						progressSoundChannel = chan
 						progressStartTime = CurTime()
+					end
+				end)
+				
+				sound.PlayFile("sound/fnaf2/gfreddy/scare_start.wav", "noplay", function(chan, errID, errStr)
+					if IsValid(chan) then
+						chan:SetPos(localPlayer:GetPos())
+						chan:Play()
 					end
 				end)
 
@@ -205,6 +224,8 @@ local function fh_gfreddy_check_scarysound()
 					local newAng = currentAngle + Angle(diff.p * magnetStrength, diff.y * magnetStrength, 0)
 					cmd:SetViewAngles(newAng)
 				end)
+	
+				scareImmunityUntil = CurTime() + 0.1
 			end
 
 			if IsValid(progressSoundChannel) and CurTime() - progressStartTime >= progressDuration then

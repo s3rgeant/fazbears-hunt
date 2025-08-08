@@ -76,6 +76,8 @@ if CLIENT then
     end
 end
 
+gifts = gifts or {}
+
 local effectDesc = ''
 local format_num = -1
 
@@ -100,69 +102,8 @@ local positiveEffects = {
     {
         name = "invisibility",
 		desc = "fazhunt.gifts.invisibility",
-		num = 30,
         func = function(ply)
-			if not IsValid(ply) then return end
-	
-			ply.invisible = true
-			ply:SetRenderMode(RENDERMODE_TRANSALPHA)
-			ply:SetCollisionGroup(COLLISION_GROUP_DEBRIS)
-			ply:SetCustomCollisionCheck(true)
-			ply:CollisionRulesChanged()
-			ply:SetColor(Color(255, 255, 255, 0))
-			ply:SetNoDraw(true)
-			ply:DrawShadow(false)
-		
-			for _, wep in ipairs(ply:GetWeapons()) do
-				if IsValid(wep) then
-					wep:SetNoDraw(true)
-					wep:DrawShadow(false)
-					wep:SetRenderMode(RENDERMODE_NONE)
-				end
-			end
-	
-			timer.Simple(30, function()
-				if IsValid(ply) then
-					ply:SetColor(Color(255, 255, 255, 255))
-					ply:SetNoDraw(false)
-					ply:DrawShadow(true)
-					ply.invisible = false
-		
-					for _, wep in ipairs(ply:GetWeapons()) do
-						if IsValid(wep) then
-							wep:SetNoDraw(false)
-							wep:DrawShadow(true)
-							wep:SetRenderMode(RENDERMODE_NORMAL)
-						end
-					end
-	
-					local function IsStuck(ent)
-						if not IsValid(ent) then return false end
-				
-						local trace = util.TraceEntity({
-							start = ent:GetPos(),
-							endpos = ent:GetPos(),
-							filter = ent,
-							mask = MASK_SOLID
-						}, ent)
-				
-						return trace.Hit
-					end
-					
-					timer.Create("fh_gift_collision_reset" .. ply:EntIndex(), 0.5, 0, function()
-						if IsValid(ply) and !IsStuck(ply) then
-							ply:SetCollisionGroup(COLLISION_GROUP_PLAYER)
-							ply:SetCustomCollisionCheck(false)
-							ply:CollisionRulesChanged()
-						end
-				
-						if !IsValid(ply) or !IsStuck(ply) then
-							timer.Remove("fh_gift_collision_reset" .. ply:EntIndex())
-						end
-					end)
-					
-				end
-			end)
+            ply:Give("weapon_mask")
         end
     },
     {
@@ -361,23 +302,60 @@ local negativeEffects = {
     }
 }
 
+if SERVER then
+	function gifts.AddPositiveEffect(name, desc, num, func, req)
+		table.insert(positiveEffects, {
+			name = name,
+			desc = desc or "",
+			num = num or -1,
+			func = func,
+			req = req or nil
+		})
+	end
+	
+	function gifts.AddNegativeEffect(name, desc, num, func)
+		table.insert(negativeEffects, {
+			name = name,
+			desc = desc or "",
+			num = num or -1,
+			func = func
+		})
+	end
+	
+	--[[
+	gifts.AddPositiveEffect('die', 			-- Имя: чисто по приколу
+							"ИДИ НАХУЙ", 	-- Описание: Можно вставить просто текст, а можно строчку перевода
+							-1, 			-- Если в описании используется %i а указанное слева число равно или больше 0, то игра попробует заменить %i в описании на эту цифру.
+	function(ply) 							-- Функция когда берём подарок
+		ply:Kill()
+	end,
+	function(ply) 							-- ОПЦИОНАЛЬНО: Условие выдачи подарка (Если у игрока есть монтировка, убиваем его нахуй) (Если мы, НАПРИМЕР, выдаём игроку монтировку, то в условии надо проверять что монтировки у игрока нету, чтобы не пытаться выдать игроку ещё одну монтировку)
+		return ply:HasWeapon("weapon_crowbar")
+	end)
+	]]--
+end
+
 function ENT:ApplyEffect(player)
     local isOwner = self:GetOwner() == player
     local effects = {}
     
     local availablePositiveEffects = {}
     for _, effect in ipairs(positiveEffects) do
-        if effect.name == "defibrilator" then
+		if effect.req and effect.req(player) then
+			table.insert(availablePositiveEffects, effect)
+		elseif effect.name == "defibrilator" then
             if !player:HasWeapon("weapon_defibrilator") then
                 table.insert(availablePositiveEffects, effect)
             end
         elseif effect.name == "gravity_gun" then
-            if !player:HasWeapon("weapon_physcannon") then
+            if !player:HasWeapon("weapon_physcannon") and #ents.FindByClass("prop_physics") > 100 then
                 table.insert(availablePositiveEffects, effect)
             end
 		elseif effect.name == "invisibility" then
-			if timer.Exists("EndGameTimer") and timer.TimeLeft("EndGameTimer") >= 120 then
-                table.insert(availablePositiveEffects, effect)
+			if !timer.Exists("EndGameTimer") or timer.Exists("EndGameTimer") and timer.TimeLeft("EndGameTimer") >= 120 then
+				if !player:HasWeapon("weapon_mask") then
+					table.insert(availablePositiveEffects, effect)
+				end
 			end
 		elseif effect.name == "armor" then
 			if player:Armor() < 100 then

@@ -284,37 +284,34 @@ if SERVER then
             old:Remove()
         end
 
-		timer.Simple(0.01, function()
-			e:SetPillForm(name)
-			e:SetPillUser(ply)
-			e.locked = locked
-			e.option = option
-			e:Spawn()
-			e:Activate()
-			
-			ply:SetTeam(TEAM_PILLS)
-			
-			hook.Run("PillApply", ply, name)
-	
-			--if mode=="user" then
-			if t.type == "phys" then
-				--ply:SetLocalVelocity(oldvel)
-				--else
-				local phys = e:GetPhysicsObject()
-	
-				if IsValid(phys) then
-					phys:SetVelocity(oldvel)
-				end
-			end
-	
-			--end
-			if t.type ~= "ply" then
-				ply:SetLocalVelocity(Vector(0, 0, 0))
-			end
-	
-			return e
+		e:SetPillForm(name)
+		e:SetPillUser(ply)
+		e.locked = locked
+		e.option = option
+		e:Spawn()
+		e:Activate()
 		
-		end)
+		ply:SetTeam(TEAM_PILLS)
+		
+		hook.Run("PillApply", ply, name)
+
+		--if mode=="user" then
+		if t.type == "phys" then
+			--ply:SetLocalVelocity(oldvel)
+			--else
+			local phys = e:GetPhysicsObject()
+
+			if IsValid(phys) then
+				phys:SetVelocity(oldvel)
+			end
+		end
+
+		--end
+		if t.type ~= "ply" then
+			ply:SetLocalVelocity(Vector(0, 0, 0))
+		end
+
+		return e
     end
 
     local driveModes = {}

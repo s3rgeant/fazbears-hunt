@@ -160,23 +160,37 @@ function SWEP:DealDamage()
     end
 	
 	if target:GetMoveType() == MOVETYPE_VPHYSICS then
-		local phys = target:GetPhysicsObject()
-		if IsValid(phys) then
-			local dir = ply:GetAimVector()
-			phys:ApplyForceCenter(dir * 10000)
+		local owner = target:GetOwner()
+		if !IsValid(owner) or IsValid(owner) and !owner:IsAnimatronic() then
+		
+			local phys = target:GetPhysicsObject()
+			if IsValid(phys) then
+				local dir = ply:GetAimVector()
+				phys:ApplyForceCenter(dir * 10000)
+			end
 		end
 	end
 	
-	if class != "cakemine" then
-		local dmginfo = DamageInfo()
-		dmginfo:SetAttacker( ply )
-		dmginfo:SetInflictor( self )
-		dmginfo:SetDamage( 60 )
+	local dmginfo = DamageInfo()
+	dmginfo:SetAttacker( ply )
+	dmginfo:SetInflictor( self )
+	dmginfo:SetDamage( 60 )
 	
-		SuppressHostEvents( NULL )
-		target:TakeDamageInfo( dmginfo )
-		SuppressHostEvents( ply )
-	end
+	SuppressHostEvents( NULL )
+	target:TakeDamageInfo( dmginfo )
+	SuppressHostEvents( ply )
+		
+	local effectData = EffectData()
+	effectData:SetOrigin(tr.HitPos)
+	effectData:SetStart(ply:GetShootPos())
+	effectData:SetEntity(tr.Entity or ply)
+	effectData:SetNormal(tr.HitNormal)
+	effectData:SetSurfaceProp(tr.SurfaceProps or 0)
+	effectData:SetDamageType(DMG_CLUB)
+	effectData:SetHitBox(tr.HitBox or 0)
+	effectData:SetScale(1)
+	
+	util.Effect("Impact_GMOD", effectData, true, true)
 	
 	ply:LagCompensation(false)
 	

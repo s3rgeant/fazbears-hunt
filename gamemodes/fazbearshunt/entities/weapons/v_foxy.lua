@@ -82,7 +82,7 @@ function SWEP:PrimaryAttack()
 		--ent:PillGesture('swing', 2, 1, 0.1, 0.3)
 	end
 	
-	self:PlayCustomAnimation("ACT_SPECIAL_ATTACK1", 2)
+	self:PlayCustomAnimation("ACT_SPECIAL_ATTACK2", 2)
 	
 	self:SetPlaybackRate(1)
 	
@@ -102,7 +102,7 @@ function SWEP:DealDamage()
 	
 	if !IsValid(ent) then return end
 	
-	self:PlayCustomAnimation("ACT_SPECIAL_ATTACK2", 0.6)
+	self:PlayCustomAnimation("ACT_SPECIAL_ATTACK1", 0.6)
 	
 	self:SetPlaybackRate(1)
 	
@@ -188,24 +188,22 @@ function SWEP:DealDamage()
 		end
 	end
 	
-	if class != "cakemine" then
-		local dmginfo = DamageInfo()
-		dmginfo:SetAttacker( ply )
-		dmginfo:SetInflictor( self )
-		dmginfo:SetDamage( 25 )
-		
-		if target:IsPlayer() then
-			StartBleeding(target, ply)
-			timer.Simple(5, function()
-				if IsValid(ply) then
-					StopBleeding(ply)
-				end
-			end)
-		end
+	local dmginfo = DamageInfo()
+	dmginfo:SetAttacker( ply )
+	dmginfo:SetInflictor( self )
+	dmginfo:SetDamage( 25 )
+
+	SuppressHostEvents( NULL )
+	target:TakeDamageInfo( dmginfo )
+	SuppressHostEvents( ply )
 	
-		SuppressHostEvents( NULL )
-		target:TakeDamageInfo( dmginfo )
-		SuppressHostEvents( ply )
+	if target:IsPlayer() then
+		StartBleeding(target, ply)
+		timer.Simple(5, function()
+			if IsValid(target) then
+				StopBleeding(target)
+			end
+		end)
 	end
 	
 	ply:LagCompensation(false)

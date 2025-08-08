@@ -3,14 +3,16 @@ local tagSetup = 24
 
 fh.RegisterRoundType("bonnie_tag", 2, function()
 	local players = player.GetAll()
-	local count = player.GetCount() / 2
-
 	table.Shuffle(players)
 
-	for k,v in ipairs( players ) do
-		giveKiller(v, "pill_wbonnie2", true)
-		count = count - 1
-		if count == 0 then break end
+	local halfCount = math.floor(#players / 2)
+
+	for i = 1, halfCount do
+		local ply = players[i]
+		if IsValid(ply) then
+			giveKiller(ply, "pill_wbonnie2", true)
+			ply:Spawn()
+		end
 	end
 		
 	for _, ply in player.Iterator() do
@@ -30,7 +32,7 @@ fh.RegisterRoundType("bonnie_tag", 2, function()
 	timer.Create("EndGameTimer", tagDuration + tagSetup, 1, function()
 		fh_tag_end()
 	end)
-end, 50, 8)
+end, 20, 8)
 
 hook.Add("fh_startgame", "tag_prevent_default_startgame", function(roundType)
 	if roundType == 2 then
@@ -41,6 +43,12 @@ end)
 hook.Add( "PlayerShouldTakeDamage", "fh_tagkill", function( ply, attacker )
 	if ply:IsSurvivor() and fh.GetRoundType() == 2 and attacker:IsPlayer() and attacker:IsAnimatronic() then
 		attacker:SetHealth(100)
+		
+		for k,v in pairs( ents.FindInSphere( attacker:GetPos(), 350 ) ) do
+			if v:IsPlayer() and v ~= attacker and v ~= ply then
+				TaseAnimatronic(v)
+			end
+		end
 		
 		giveKiller(ply, "pill_wbonnie2", true)
 		restoreAnimatronic(attacker)
@@ -59,7 +67,17 @@ hook.Add( "PlayerShouldTakeDamage", "fh_tagkill", function( ply, attacker )
 		end)
 		return false 
 	end
+	
+	if ply:IsAnimatronic() and attacker:IsPlayer() then
+		return false
+	end
 end )
+
+hook.Add("fh_should_animatronic_respawn", "fh_tag_dont_respawn_anims", function(target)
+	if fh.GetRoundType() == 2 then
+		return false
+	end
+end)
 
 hook.Add("SetupMove", "fh_tag_lock", function(ply, mv, cmd)
 	if ply.tagged then
@@ -120,6 +138,7 @@ function fh_tag_end()
 			
 			for k,_ in pairs( players ) do
 				giveKiller(k, "pill_wbonnie2", true)
+				k:Spawn()
 				count = count - 1
 				if count == 0 then break end
 			end

@@ -275,28 +275,56 @@ hook.Add( "PreDrawHalos", "HaloDo", function()
 	end
 end)
 
-hook.Add("PreDrawHalos", "halo_teammates", function()
-    if not fh_halo_teammates:GetBool() then return end
+local glowColor = Color(0, 255, 0)
+local outlineMaterial = Material("models/debug/debugwhite")
 
-    local lp = LocalPlayer()
-    if not IsValid(lp) then return end
+hook.Add("PostDrawOpaqueRenderables", "fh_draw_teammates", function( )
+    local ply = LocalPlayer()
+    if not IsValid(ply) then return end
+	
+	if !fh_halo_teammates:GetBool() then return end
 
-    local visibleTeammates = {}
-
-    for _, ply in ipairs(teammates or {}) do
-        if not IsValid(ply) or ply == lp then continue end
-        if not ply:Alive() then continue end
-
-        local distSqr = lp:GetPos():DistToSqr(ply:GetPos())
+    local eyePos = ply:EyePos()
+    local eyeDir = ply:EyeAngles():Forward()
+	
+    for _, ent in ipairs(teammates) do
+		if not IsValid(ent) or not ent.DrawModel then continue end
 		
-        if distSqr < (600 * 600) then continue end
+		local toScreen = ent:GetPos():ToScreen()
+		if toScreen.visible then
+			local trace = util.QuickTrace(eyePos, ent:WorldSpaceCenter() - eyePos, ply)
+			
+			if !trace.Hit or trace.Entity == ent then continue end
+			
+			local pos = ent:GetPos()
+			local ang = ent:GetAngles()
 
-        table.insert(visibleTeammates, ply)
-    end
+			local camForward = EyeAngles():Forward()
+			local backOffset = camForward * 30
 
-    if #visibleTeammates > 0 then
-        halo.Add(visibleTeammates, Color(0, 255, 0), 1, 1, 1, true, true)
-    end
+			cam.IgnoreZ(true)
+			render.SuppressEngineLighting(true)
+			render.SetColorModulation(glowColor.r / 255, glowColor.g / 255, glowColor.b / 255)
+			render.SetBlend(0.6)
+			render.MaterialOverride(outlineMaterial)
+
+			local mat = Matrix()
+			mat:Translate(pos + backOffset)
+			mat:Rotate(ang)
+
+			cam.PushModelMatrix(mat, true)
+				ent:SetLOD(8) -- мы делаем модельку обводки "уёбищной" чтобы она не жрала фпс
+				ent:DrawModel()
+			cam.PopModelMatrix()
+
+			render.MaterialOverride(nil)
+			render.SetColorModulation(1, 1, 1)
+			render.SetBlend(1)
+			render.SuppressEngineLighting(false)
+			ent:SetLOD(-1)
+			cam.IgnoreZ(false)
+		end
+	end
 end)
 
 hook.Add("HUDPaint", "fh_cupcake_count_draw", function()
@@ -346,12 +374,12 @@ function draw_orbs(tbl, material)
 	
     local screenW, screenH = ScrW(), ScrH()
     local halfW, halfH = screenW / 2, screenH / 2
-    local textureSize = 64 / 2 -- Половина размера текстуры
+    local textureSize = 64 / 2
     
     for _, target in ipairs(tbl) do
         if IsValid(target) and target:Alive() and target:Team() != TEAM_SPECTATOR then
             local min, max = target:GetCollisionBounds()
-            local targetPos = target:GetPos() + Vector(0, 0, (min.z + max.z) / 2) -- Размещение в центре хитбокса
+            local targetPos = target:GetPos() + Vector(0, 0, (min.z + max.z) / 2)
             local screenPos = targetPos:ToScreen()
             local dist = ply:GetPos():Distance(target:GetPos())
             

@@ -14,8 +14,6 @@ function GiveAnimatronic(ply, killer)
 end
 
 function RevivePlayer(ply)
-	ply:SetTeam(TEAM_UNASSIGNED)
-    ply:Spawn()
 	setupPlayerVars(ply)
 	ply.lobbyFreeze = false
 	
@@ -33,8 +31,8 @@ function RevivePlayer(ply)
 		RunConsoleCommand("pk_pill_restore", ply:Nick())
 		animatronics[ply] = nil
 	end
-	
-	alivePlayers[ply] = true
+	ply:SetTeam(TEAM_UNASSIGNED)
+    ply:Spawn()
 end
 
 function highlightSelected(targets, owner)
@@ -77,9 +75,6 @@ end
 
 function KillPlayer(ply)
 	if ply:Alive() then
-		if alivePlayers[ply] then
-			alivePlayers[ply] = nil
-		end
 		if animatronics[ply] then
 			animatronics[ply] = nil
 		end
@@ -101,8 +96,30 @@ end
 function StartRound()
 	if !isGameOn and roundEnding or postGameOn then
 		registerNewRound()
-        LogEvent("(*АДМИН*) - ⌛️ Таймер раунда начат. Количество игроков: "..table.Count(alivePlayers))
+        LogEvent("(*АДМИН*) - ⌛️ Таймер раунда начат. Количество игроков: "..player.GetCount())
 	end
+end
+
+if ULib then
+
+	local cl_cvar_pickup = "cl_pickupplayers"
+	
+	local function playerPickup( ply, ent )
+		local access, tag = ULib.ucl.query( ply, "ulx physgunplayer" )
+		if ent:GetClass() == "player" and access and not ent.NoNoclip and not ent.frozen and ply:GetInfoNum( cl_cvar_pickup, 1 ) == 1 then
+			-- Extra restrictions! UCL wasn't designed to handle this sort of thing so we're putting it in by hand...
+			local restrictions = {}
+			ULib.cmds.PlayerArg.processRestrictions( restrictions, ply, {}, tag and ULib.splitArgs( tag )[ 1 ] )
+			if restrictions.restrictedTargets == false or (restrictions.restrictedTargets and not table.HasValue( restrictions.restrictedTargets, ent )) then
+				return
+			end
+
+			ent:SetMoveType( MOVETYPE_NONE ) -- So they don't bounce
+			return true
+		end
+	end
+	hook.Add( "PhysgunPickup", "ulxPlayerPickup", playerPickup, HOOK_HIGH ) -- Allow admins to move players. Call before the prop protection hook.
+	
 end
 
 function HighlightAll()
@@ -142,10 +159,6 @@ local function endgame_shared()
 	net.WriteString( fh.GetRoundMusic( fh.GetRoundType() ) )
 	net.Broadcast()
 	
-	net.Start('fh_net_scarysound')
-	net.WriteBool(true)
-	net.Broadcast()
-	
 	timer.Remove("UnfrozeAnimatronics")
 	
 	for v,_ in pairs(animatronics) do
@@ -160,6 +173,10 @@ function EndRound()
 		endgame_shared()
 		LogEvent(" ")
         LogEvent("(*АДМИН*) - Раунд закончил *АДМИН*.")
+		
+		net.Start('fh_net_scarysound')
+		net.WriteBool(false)
+		net.Broadcast()
 	end
 end
 
@@ -167,6 +184,10 @@ function EndPostRound()
 	if !roundEnding and isGameOn then
 		roundActive = true
 		endgame_shared()
+	
+		net.Start('fh_net_scarysound')
+		net.WriteBool(true)
+		net.Broadcast()
 		
 		local vremya = fh.GetGameDuration()
 		
@@ -297,10 +318,10 @@ net.Receive("AdminAction", function(len, ply)
 				game.ConsoleCommand("fh_gifts_spawning 1\n")
 				doGiftSpawning()
 			end
-		elseif action == "fh_max_cupcakes"  then
+		elseif action == "fh_max_cupcakes" or action == "fh_round_duration" then
 			local num = net.ReadFloat()
 			
-			game.ConsoleCommand(action .. " " .. num .. "\n")
+			game.ConsoleCommand(action .. " " .. math.floor(num) .. "\n")
 		else
 			local bool = net.ReadBool() and 1 or 0
 			

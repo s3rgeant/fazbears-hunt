@@ -140,26 +140,20 @@ pills.register("pill_wfreddy2",{
 		return ent.active
 	end,
 	
-	moveMod=function(ply,ent,mv)
-		if IsValid(ent) then
-			if CLIENT then return end
-		
-			if timer.Exists( "CheckConditions"..ply:EntIndex()) or timer.Exists( "ChaseCheck"..ply:EntIndex()) then return end
-			
-			timer.Create("CheckConditions"..ply:EntIndex(), 2, 0, function()
-				if !IsValid(ent) then
-					if timer.Exists( "CheckConditions"..ply:EntIndex()) then
-						timer.Remove("CheckConditions"..ply:EntIndex())
-					end
-					if timer.Exists( "ChaseCheck"..ply:EntIndex()) then
-						timer.Remove("ChaseCheck"..ply:EntIndex())
-					end
-					return
+	startFunction=function(ply,ent)
+		timer.Create("CheckConditions"..ply:EntIndex(), 2, 0, function()
+			if !IsValid(ent) then
+				if timer.Exists( "CheckConditions"..ply:EntIndex()) then
+					timer.Remove("CheckConditions"..ply:EntIndex())
 				end
-				
-				chaseCheck(ply, 'freddy')
-			end)
-		end
+				if timer.Exists( "ChaseCheck"..ply:EntIndex()) then
+					timer.Remove("ChaseCheck"..ply:EntIndex())
+				end
+				return
+			end
+			
+			chaseCheck(ply, 'freddy')
+		end)
 	end,
 
 	noFallDamage=true,
@@ -169,37 +163,15 @@ pills.register("pill_wfreddy2",{
 		mode="trigger",
 		func=function(ply,ent)
 			if IsValid(ply:GetEntityInUse()) then return end
-			
 			local target = FindNearestPlayer(ent:GetPos(), 130, ply, 90)
-			if !IsValid(target) then return end
+			if !IsValid(target) then 
+				AnimatronicBreakProp(ply, ent)
+				return 
+			end
 			
 			if stalkTarget and target ~= stalkTarget then return end
 			
-			playVoiceline('freddy', "kill", ply, 2)
-			ent:PillSound("melee",false)
-			if target:IsNPC() then
-				target:TakeDamage(target:Health(), ply)
-				return 
-			end
-			jumpscareEvent(ply, ent, target, 50)
-			ent:PillAnim("scare",true)
-			
-			net.Start("fh_net_killer_change")
-			net.WriteString("kill")
-			net.WriteFloat(1.6)
-			net.Send(ply)
-			
-			local wep = ply:GetActiveWeapon()
-			if IsValid(wep) and wep:GetClass() == "v_freddy" then
-				wep:PlayCustomAnimation("ACT_MELEE_ATTACK1", 1.6)
-			end
-		
-			timer.Create("FH_JumpscareKill_" .. ply:EntIndex(), 1.6, 1, function()
-				ply:Freeze( false )
-				if !IsValid(target) then return end
-				target:Freeze( false )
-				target:TakeDamage(target:Health() + target:Armor(), ply)
-			end)
+			performJumpscare(ply, ent, target, 1.6, "freddy", 50, "v_freddy")
 		end
     },
 	
@@ -592,25 +564,12 @@ pills.register("pill_wbonnie2",{
 			if IsValid(ply:GetEntityInUse()) then return end
 			
 			local target = FindNearestPlayer(ent:GetPos(), 130, ply, 90)
-			if !IsValid(target) then return end
-			playVoiceline('bonnie', "kill", ply, 2)
-			ent:PillSound("melee",false)
-			if target:IsNPC() then
-				target:TakeDamage(target:Health(), ply)
+			if !IsValid(target) then 
+				AnimatronicBreakProp(ply, ent)
 				return 
 			end
-			jumpscareEvent(ply, ent, target, 52)
-			ent:PillAnim("scare",true)
 			
-			net.Start("fh_net_killer_change")
-			net.WriteString("kill")
-			net.WriteFloat(1.5)
-			net.Send(ply)
-			
-			local wep = ply:GetActiveWeapon()
-			if IsValid(wep) and wep:GetClass() == "v_bonnie" then
-				wep:PlayCustomAnimation("ACT_MELEE_ATTACK1", 1.6)
-			end
+			performJumpscare(ply, ent, target, 1.6, "bonnie", 52, "v_bonnie")
 			
 			timer.Simple(1.5, function()
 				if !IsValid(target) then return end
@@ -618,19 +577,15 @@ pills.register("pill_wbonnie2",{
 				target:SetVelocity(ply:GetForward() * 600) -- чтоб он нахуй улетел
 				target:TakeDamage(target:Health() + target:Armor(), ply)
 			end)
-		
-			timer.Create("FH_JumpscareKill_" .. ply:EntIndex(), 1.6, 1, function()
-				ply:Freeze( false )
-				if !IsValid(target) then return end
-				target:Freeze( false )
-			end)
 		end
     },
 	
 	attack2={
 		mode="trigger",
 		func = function(ply,ent)
-			if ply:IsFrozen() or timer.Exists('fh_yoursmine' .. ply:EntIndex()) or !ply:OnGround() then return end
+			if ply:IsFrozen() or !ply:OnGround() then return end
+			
+			if cooldown.Exists(ply, "yoursmine") then return end
 
 			local target = fh_random_yoursmine_target(ply)
 			
@@ -640,7 +595,7 @@ pills.register("pill_wbonnie2",{
 			
 			ent:PillAnim('ability', true)
 			
-			timer.Create('fh_yoursmine' .. ply:EntIndex(), 10, 1, function() end)
+			cooldown.Set(ply, "yoursmine", 10)
 			
 			local wep = ply:GetActiveWeapon()
 			if IsValid(wep) and wep:GetClass() == "v_bonnie" then
@@ -683,7 +638,7 @@ pills.register("pill_wbonnie2",{
 						table.RemoveByValue(affectedPlayers, target)
 					end
 					
-					timer.Adjust('fh_yoursmine'..ply:EntIndex(), 55, 1)
+					cooldown.Set(ply, "yoursmine", 55)
 					ply.fh_target_player = nil
 				end
 			end)
@@ -761,10 +716,6 @@ end
 
 
 --chica
-
-
-
-
 
 pills.register("pill_wchica2",{
 	printName="Withered Chica",
@@ -851,35 +802,21 @@ pills.register("pill_wchica2",{
 			if IsValid(ply:GetEntityInUse()) then return end
 			
 			local target = FindNearestPlayer(ent:GetPos(), 130, ply, 90)
-			if !IsValid(target) then return end
-			playVoiceline('chica', "kill", ply, 2)
-			ent:PillSound("melee",false)
-			if target:IsNPC() then
-				target:TakeDamage(target:Health(), ply)
+			
+			if !IsValid(target) then 
+				AnimatronicBreakProp(ply, ent)
 				return 
 			end
-			jumpscareEvent(ply, ent, target, 60)
-			ent:PillAnim("scare",true)
 			
-			net.Start("fh_net_killer_change")
-			net.WriteString("kill")
-			net.WriteFloat(1.6)
-			net.Send(ply)
-		
-			timer.Create("FH_JumpscareKill_" .. ply:EntIndex(), 1.6, 1, function()
-				ply:Freeze( false )
-				if !IsValid(target) then return end
-				target:Freeze( false )
-				target:TakeDamage(target:Health() + target:Armor(), ply)
-			end)
+			performJumpscare(ply, ent, target, 1.6, "chica", 50)
 		end
     },
 	
 	attack2={
 		mode="trigger",
 		func = function(ply,ent)
-			if table.Count(cupcakes) < conVars.fh_max_cupcakes:GetInt() and not timer.Exists('C_deploycake'..ply:EntIndex()) then
-				timer.Create("C_deploycake"..ply:EntIndex(), 15, 1, function() end)
+			if table.Count(cupcakes) < conVars.fh_max_cupcakes:GetInt() and !cooldown.Exists(ply, "deploycake") then
+				cooldown.Set(ply, "deploycake", 15)
 				
 				local playerPos = ply:GetPos()
 				local spawnPos = playerPos + ply:GetUp() * 10
@@ -1003,7 +940,7 @@ pills.register("pill_wfoxy2",{
 		gs="fnaf2/xscream2.wav",
 		jump="jump.mp3",
 		regular_land="land.mp3",
-		land_foxy="land_foxy.mp3",
+		land="land.mp3",
 		loop_stare="fnaf2/with_s2_loop2.wav",
 		scream="fnaf2/foxyflashed.wav",
 		taunt="foxy_laugh.wav",
@@ -1040,8 +977,6 @@ pills.register("pill_wfoxy2",{
 	
 	moveMod=function(ply,ent)
 		if IsValid(ent) then
-			if CLIENT then return end
-		
 			if timer.Exists( "CheckConditions"..ply:EntIndex()) or timer.Exists( "ChaseCheck"..ply:EntIndex()) then return end
 			
 			timer.Create("CheckConditions"..ply:EntIndex(), 2, 0, function()
@@ -1068,32 +1003,13 @@ pills.register("pill_wfoxy2",{
 			if ply.isBlightRushing then return end
 			
 			local target = FindNearestPlayer(ent:GetPos(), 130, ply, 90)
-			if !IsValid(target) then return end
-			playVoiceline('foxy', "kill", ply, 2)
-			ent:PillSound("melee",false)
-			if target:IsNPC() then
-				target:TakeDamage(target:Health(), ply)
+			
+			if !IsValid(target) then 
+				AnimatronicBreakProp(ply, ent)
 				return 
 			end
-			jumpscareEvent(ply, ent, target, 75)
-			ent:PillAnim("scare",true)
 			
-			net.Start("fh_net_killer_change")
-			net.WriteString("kill")
-			net.WriteFloat(1.6)
-			net.Send(ply)
-			
-			local wep = ply:GetActiveWeapon()
-			if IsValid(wep) and wep:GetClass() == "v_foxy" then
-				wep:PlayCustomAnimation("ACT_MELEE_ATTACK1", 1.5)
-			end
-			
-			timer.Create("FH_JumpscareKill_" .. ply:EntIndex(), 1.6, 1, function()
-				ply:Freeze( false )
-				if !IsValid(target) then return end
-				target:Freeze( false )
-				target:TakeDamage(target:Health() + target:Armor(), ply)
-			end)
+			performJumpscare(ply, ent, target, 1.6, "foxy", 75, "v_foxy")
 		end
     },
 	
@@ -1110,15 +1026,11 @@ pills.register("pill_wfoxy2",{
 		end
 	},
 	
-	land=function(ply,ent)
+	land=function(ply,ent, iw)
 		if ply.lobbyFreeze != nil and ply.lobbyFreeze then return end
 		if ply:WaterLevel() < 2 and ply:GetVelocity().z < -160 then
 			ent:PillAnim("land",true)
-			ent:PillSound("land_foxy",false)
 			return
-		end
-		if ply:WaterLevel() < 1 then
-			ent:PillSound("regular_land",false)
 		end
 		
 		if ply:WaterLevel() > 0 then return end
@@ -1138,7 +1050,6 @@ pills.register("pill_wfoxy2",{
 		end)
 	end,
 
-		
 	noragdoll=true,
 	reload=function(ply,ent)
 		highlight.ByDistance(ply, ent)
@@ -1275,38 +1186,14 @@ pills.register("pill_sfreddy2",{
 	attack={
 		mode="trigger",
 		func=function(ply,ent)
-			if ent.cloaked or timer.Exists("SF_cantKill"..ply:EntIndex()) then return end
+			if ent.cloaked or cooldown.Exists(ply, 'kill') then return end
 			
 			if IsValid(ply:GetEntityInUse()) then return end
 			
 			local target = FindNearestPlayer(ent:GetPos(), 130, ply, 90)
 			if !IsValid(target) then return end
 			
-			ent:PillSound("melee",false)
-			if target:IsNPC() then
-				target:TakeDamage(target:Health(), ply)
-				return 
-			end
-			jumpscareEvent(ply, ent, target, 52)
-			ent:PillAnim("scare",true)
-			
-			net.Start("fh_net_killer_change")
-			net.WriteString("kill")
-			net.WriteFloat(1.6)
-			net.Send(ply)
-			
-			local wep = ply:GetActiveWeapon()
-			if IsValid(wep) and wep:GetClass() == "v_freddy" then
-				wep:PlayCustomAnimation("ACT_MELEE_ATTACK1", 1.6)
-			end
-		
-			timer.Create("FH_JumpscareKill_" .. ply:EntIndex(), 1.6, 1, function()
-				ply:Freeze( false )
-				if !IsValid(target) then return end
-				target:Freeze( false )
-				target:TakeDamage(target:Health() + target:Armor(), ply)
-				playVoiceline('sfreddy', "kill", ply, 1)
-			end)
+			performJumpscare(ply, ent, target, 1.6, "sfreddy", 52, "v_freddy")
 		end
     },
 	 
@@ -1314,7 +1201,7 @@ pills.register("pill_sfreddy2",{
 		mode="trigger",
 		func = function(ply,ent)
 			
-			if timer.Exists('SF_Cloacking'..ply:EntIndex()) or (timer.Exists('SF_Cooldown'..ply:EntIndex())) then return end
+			if cooldown.Exists(ply, 'noclip') then return end
 
 			if !ply:KeyDown(IN_USE) then
 			
@@ -1349,12 +1236,11 @@ pills.register("pill_sfreddy2",{
 					ent:ToggleCloak()
 						
 					timer.Remove("ext")
-					timer.Create("SF_cantKill"..ply:EntIndex(), sfreddy_cooldowns[1], 1, function() end)
+					cooldown.Set(ply, "kill", sfreddy_cooldowns[1])
 					
-					timer.Create("SF_Cooldown"..ply:EntIndex(), sfreddy_cooldowns[3], 1, function() end)
+					cooldown.Set(ply, "noclip", sfreddy_cooldowns[3])
 					
 					if SERVER then
-			
 						net.Start("fh_net_killer_change")
 						net.WriteString("kill")
 						net.WriteFloat(sfreddy_cooldowns[1])
@@ -1364,7 +1250,6 @@ pills.register("pill_sfreddy2",{
 						net.WriteString("submerge")
 						net.WriteFloat(sfreddy_cooldowns[3])
 						net.Send(ply)
-						
 					end
 							
 					if shadow_freddyability:GetInt() == 1 then
@@ -1391,7 +1276,7 @@ pills.register("pill_sfreddy2",{
 				else
 					if !ply:OnGround() and ply:WaterLevel() == 0 then return end
 					if !IsValid(ent) then return end
-					timer.Create("SF_Cooldown"..ply:EntIndex(), sfreddy_cooldowns[2], 1, function() end)
+					cooldown.Set(ply, "noclip", sfreddy_cooldowns[2])
 					
 					ply:EmitSound("sfreddyin.mp3")
 					ply:SetPushBlocked(true)
@@ -1402,12 +1287,10 @@ pills.register("pill_sfreddy2",{
 					end
 			
 					if SERVER then
-					
 						net.Start("fh_net_killer_change")
 						net.WriteString("submerge")
 						net.WriteFloat(sfreddy_cooldowns[2])
 						net.Send(ply)
-						
 					end
 					
 					ent:PillAnim("cloak")
@@ -1439,11 +1322,8 @@ pills.register("pill_sfreddy2",{
 						ply:SetCollisionGroup(COLLISION_GROUP_DEBRIS )
 						ply:SetCustomCollisionCheck(true)
 					end)
-						
 				end
-			
 			end
-			
 		end
 	},
  
@@ -1453,12 +1333,10 @@ pills.register("pill_sfreddy2",{
 	end,
 	
 	jump=function(ply,ent)
-		if timer.Exists('SF_Cloacking'..ply:EntIndex()) or ent.cloaked then return end
+		if ent.cloaked then return end
 		ent:PillSound("jump",false)
 	end
 })
-
-
 
 
 
@@ -1557,42 +1435,21 @@ pills.register("pill_endo02",{
 			if IsValid(ply:GetEntityInUse()) then return end
 			
 			local target = FindNearestPlayer(ent:GetPos(), 130, ply, 90)
-			if !IsValid(target) then return end
-			playVoiceline("endo", "kill", ply, 2)
-			ent:PillSound("melee",false)
-			if target:IsNPC() then
-				target:TakeDamage(target:Health(), ply)
+			
+			if !IsValid(target) then 
+				AnimatronicBreakProp(ply, ent)
 				return 
 			end
-			jumpscareEvent(ply, ent, target, 52)
-			ent:PillAnim("scare",true)
 			
-			net.Start("fh_net_killer_change")
-			net.WriteString("kill")
-			net.WriteFloat(1.6)
-			net.Send(ply)
-			
-			local wep = ply:GetActiveWeapon()
-			if IsValid(wep) and wep:GetClass() == "v_endo" then
-				wep:PlayCustomAnimation("ACT_MELEE_ATTACK1", 1.6)
-			end
-		
-			timer.Create("FH_JumpscareKill_" .. ply:EntIndex(), 1.6, 1, function()
-				ply:Freeze( false )
-				if !IsValid(target) then return end
-				target:Freeze( false )
-				target:TakeDamage(target:Health() + target:Armor(), ply)
-			end)
+			performJumpscare(ply, ent, target, 1.6, "endo", 52, "v_endo")
 		end
     },
 	
 	attack2={
 		mode="trigger",
 		func = function(ply,ent)
-			if timer.Exists("grabCooldown"..ply:EntIndex()) then return end
+			if cooldown.Exists(ply, 'grab') then return end
 			takePlayer(ply,ent)
-			
-			//ent:PillGesture('hold')
 		end
 	},
 	
@@ -1705,6 +1562,7 @@ pills.register("pill_wgfreddy2",{
 			out="sdpecial",
 			inn="tonormal",
 			scare="sscare",
+			rage="rage",
 		},
 	},
 
@@ -1714,9 +1572,7 @@ pills.register("pill_wgfreddy2",{
 		ducked=0,
 	},
 	sounds={
-	//	teleport="legitfreddy/laugh_giggle_girl_1d.wav",
 		gs="fnaf2/wgfreddy_laugh.wav",
-		scream="fnaf2/bonniescream.wav",
 		melee=pills.helpers.makeList("fnaf2/xscream2.wav",2),
 		step=pills.helpers.makeList("fnaf2/none.wav",1)
 	},
@@ -1766,6 +1622,8 @@ pills.register("pill_wgfreddy2",{
 		
 		net.Start("fh_wgfreddy_selecting_halo")
 		net.Send(ply)
+		
+		ply:SetNWBool("wgfreddy_enraged", false)
 	end,
 	
 	restore=function(ply,ent, formtable)
@@ -1787,30 +1645,7 @@ pills.register("pill_wgfreddy2",{
 			local target = FindNearestPlayer(ent:GetPos(), 130, ply, 90)
 			if !IsValid(target) or target ~= wgfreddy_targets[ply] then return end
 			
-			ent:PillSound("melee",false)
-			if target:IsNPC() then
-				target:TakeDamage(target:Health(), ply)
-				return 
-			end
-			jumpscareEvent(ply, ent, target, 52)
-			ent:PillAnim("scare",true)
-			
-			net.Start("fh_net_killer_change")
-			net.WriteString("kill")
-			net.WriteFloat(1.6)
-			net.Send(ply)
-			
-			local wep = ply:GetActiveWeapon()
-			if IsValid(wep) and wep:GetClass() == "v_freddy" then
-				wep:PlayCustomAnimation("ACT_MELEE_ATTACK1", 1.6)
-			end
-		
-			timer.Simple( 1.5, function()
-				ply:Freeze( false )
-				if !IsValid(target) then return end
-				target:Freeze( false )
-				target:TakeDamage(target:Health() + target:Armor(), ply)
-			end)
+			performJumpscare(ply, ent, target, 1.6, "gfreddy", 52, "v_freddy")
 		end
     },
 
@@ -1819,11 +1654,18 @@ pills.register("pill_wgfreddy2",{
 		func = function(ply,ent)
 			if !ply:OnGround() then return end
 			
-			if !wgfreddy_targets[ply] then return end
+			if !wgfreddy_targets[ply] or cooldown.Exists(ply, 'appear') then return end
 			
 			if !ent.cloaked then
 				if !ply:OnGround() and ply:WaterLevel() == 0 then return end
 				if !IsValid(ent) then return end
+				
+				cooldown.Set(ply, 'appear', 10)
+				
+				net.Start("fh_net_killer_change")
+				net.WriteString("submerge")
+				net.WriteFloat(10)
+				net.Send(ply)
 				
 				if fh_can_see_player(wgfreddy_targets[ply], ply, 1500) then
 					wgfreddy_targets[ply]:ScreenFade(SCREENFADE.IN, Color(0,0,0), 1, 0.5)
@@ -1845,6 +1687,13 @@ pills.register("pill_wgfreddy2",{
 				
 			else
 				if fh_can_see_player(wgfreddy_targets[ply], ply, 1600) then return end
+				
+				cooldown.Set(ply, 'appear', 2)
+				
+				net.Start("fh_net_killer_change")
+				net.WriteString("submerge")
+				net.WriteFloat(2)
+				net.Send(ply)
 			
 				local trace = util.TraceHull({
 					start = ply:GetPos(),
@@ -1885,7 +1734,7 @@ pills.register("pill_wgfreddy2",{
 		
 		if !IsValid(target) then return end
 		
-		start_outworld(ply, target)
+		start_outworld(ply, ent, target)
 	end,
 
 	jump=function(ply,ent)
@@ -1909,7 +1758,6 @@ pills.register("pill_wgfreddyhead2",{
 			out="special",
 			inn="tohead",
 			run="run",
-			teleport="zombie_leap_mid",
 		},
 	},
 	modelScale="2.5",
@@ -1970,12 +1818,8 @@ pills.register("pill_wgfreddyhead2",{
 		end
 	},
 
-	
 	noragdoll=true,
-	reload=function(ply,ent)
-	end,
 	
-
 	flashlight=function(ply,ent)
 		if !ply:OnGround() then return end
 
@@ -2105,6 +1949,39 @@ local noClipBlockedPlayers = {}
 resource.AddFile("sound/grab_player.wav")
 resource.AddFile("sound/throw_player.wav")
 
+function performJumpscare(ply, ent, target, killDelay, voiceCharacter, jumpscareDistance, wepClass)
+	if not IsValid(target) then return end
+
+	playVoiceline(voiceCharacter, "kill", ply, 2)
+	ent:PillSound("melee", false)
+
+	if target:IsNPC() then
+		target:TakeDamage(target:Health(), ply)
+		return
+	end
+
+	jumpscareEvent(ply, ent, target, jumpscareDistance or 50)
+	ent:PillAnim("scare", true)
+
+	net.Start("fh_net_killer_change")
+	net.WriteString("kill")
+	net.WriteFloat(killDelay)
+	net.Send(ply)
+
+	local wep = ply:GetActiveWeapon()
+	if IsValid(wep) and wep:GetClass() == wepClass then
+		wep:PlayCustomAnimation("ACT_MELEE_ATTACK1", killDelay)
+	end
+
+	timer.Create("FH_JumpscareKill_" .. ply:EntIndex(), killDelay, 1, function()
+		if not IsValid(target) then return end
+		ply:Freeze(false)
+		target:Freeze(false)
+		target:TakeDamage(target:Health() + target:Armor(), ply)
+	end)
+end
+
+
 function jumpscareEvent(ply, ent, target, dist)
 	if CLIENT then return end
 	if not IsValid(target) then return end
@@ -2179,13 +2056,11 @@ function jumpscareEvent(ply, ent, target, dist)
 
 	util.ScreenShake(target:GetPos(), 5, 5, 2, 500)
 
-	-- Телепортация, только если есть безопасная позиция
 	if teleportPlyPos and teleportTargetPos then
 		ply:SetPos(teleportPlyPos)
 		target:SetPos(teleportTargetPos)
 	end
 
-	-- Направляем взгляды
 	local directionToTarget = (ply:GetPos() - target:GetPos()):Angle()
 	target:SetEyeAngles(directionToTarget)
 
@@ -2201,7 +2076,6 @@ end
 local takenPlayers = {}
 
 function takePlayer(ply, ent)
-	if !ply:IsSurvivor() then return end
 
     local nearestPlayer = FindNearestPlayer(ply:EyePos(), 125, ply, 90)
 	
@@ -2301,7 +2175,7 @@ function endoRelease(ply)
 		
 		hook.Run("fh_endo_release", ply, target)
 	
-		timer.Create("grabCooldown" .. ply:EntIndex(), 1, 1, function() end)
+		cooldown.Set(ply, 'grab', 1)
 	
 		net.Start("fh_net_killer_change")
 		net.WriteString("grab")
@@ -2541,14 +2415,6 @@ if SERVER then
 		end
 	end
 	
-	function killPlushies(ply)
-		for _, ent in ipairs( ents.FindByClass("fh_plushie") ) do
-			if ent.owner == ply then
-				ent:Remove()
-			end
-		end
-	end
-	
 	hook.Add("EntityRemoved", "RemoveKilledCupcake", function(ent)
 		if table.HasValue(cupcakes, ent:EntIndex()) then
 			table.RemoveByValue(cupcakes, ent:EntIndex())
@@ -2568,8 +2434,11 @@ if SERVER then
 	end)
 
 else
+	local fh_voicelines = CreateClientConVar("fh_voicelines", "1", true, true, "Should play any animatronic voicelines?", 0, 1)
 	
 	net.Receive("fh_play_voiceline", function()
+		if !fh_voicelines:GetBool() then return end
+		
 		local character = net.ReadString()
 		local line = net.ReadString()
 		local who = net.ReadPlayer()
@@ -2589,6 +2458,81 @@ hook.Add("PlayerNoClip", "BlockNoClipForHeldPlayer", function(ply, desiredState)
 		return false
 	end
 end)
+
+function AnimatronicBreakProp(ply, ent)
+	if ply._breakPropAsAnimTime and ply._breakPropAsAnimTime > CurTime() then
+		return
+	end
+
+	local tr = util.TraceLine( {
+		start = ply:GetShootPos(),
+		endpos = ply:GetShootPos() + ply:GetAimVector() * 150,
+		filter = ply,
+		mask = MASK_SHOT_HULL
+	} )
+	debugoverlay.Line(ply:EyePos(), tr.HitPos, 5, Color(255, 0, 0), true)
+	
+	local target = tr.Entity
+	
+	if !IsValid(target) then
+		return
+	end
+	
+	local fh_animatronic_break_prop = hook.Run("fh_animatronic_break_prop", ply, ent, target)
+	
+	if fh_animatronic_break_prop == false then
+		return
+	end
+	
+    local class = target:GetClass()
+    if class == "func_breakable" or class == "func_breakable_surf" then
+        target:Fire("Shatter", "0", 0)
+    end
+	
+	if target:GetMoveType() == MOVETYPE_VPHYSICS then
+		local owner = target:GetOwner()
+		if !IsValid(owner) or IsValid(owner) and !owner:IsAnimatronic() then
+		
+			local phys = target:GetPhysicsObject()
+			if IsValid(phys) then
+				local dir = ply:GetAimVector()
+				phys:ApplyForceCenter(dir * 10000)
+			end
+		end
+	end
+	
+	if !target:IsPlayer() then
+		local wep = ply:GetActiveWeapon()
+		
+		local dmginfo = DamageInfo()
+		dmginfo:SetAttacker( ply )
+		dmginfo:SetInflictor( IsValid(wep) and wep or ply )
+		dmginfo:SetDamage( 100 )
+	
+		SuppressHostEvents( NULL )
+		target:TakeDamageInfo( dmginfo )
+		SuppressHostEvents( ply )
+		if IsValid(wep) then
+			wep:PlayCustomAnimation("ACT_SPECIAL_ATTACK1", 0.8)
+		end
+		
+		ply._breakPropAsAnimTime = CurTime() + 0.5
+			
+		local effectData = EffectData()
+		effectData:SetOrigin(tr.HitPos)
+		effectData:SetStart(ply:GetShootPos())
+		effectData:SetEntity(tr.Entity or ply)
+		effectData:SetNormal(tr.HitNormal)
+		effectData:SetSurfaceProp(tr.SurfaceProps or 0)
+		effectData:SetDamageType(DMG_CLUB)
+		effectData:SetHitBox(tr.HitBox or 0)
+		effectData:SetScale(1)
+		
+		util.Effect("Impact_GMOD", effectData, true, true)
+	end
+	
+	hook.Run("fh_animatronic_post_break_prop", ply, ent, target)
+end
 
 function chaseCheck(ply, name)
 	if (ply:IsSprinting() or ply:GetWalkSpeed() == ply:GetRunSpeed()) and ply:GetVelocity():LengthSqr() > ply:GetRunSpeed() * 0.9 then

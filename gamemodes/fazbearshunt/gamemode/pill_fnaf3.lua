@@ -696,7 +696,7 @@ end)
 net.Receive("pt_request_complete", function(len, springtrap)
 	local ply = net.ReadPlayer()
 	
-	if IsValid(request_plushtrap) then return end
+	if IsValid(request_plushtrap) or !IsValid(pt_request_springtrap_ply) then return end
 	
 	if timer.Exists("pt_waiting" .. springtrap:EntIndex()) then
 		timer.Remove("pt_waiting" .. springtrap:EntIndex())
@@ -754,7 +754,7 @@ net.Receive("pt_request_complete", function(len, springtrap)
 							
 	spectators = team.GetPlayers(TEAM_SPECTATOR)
 	
-	if table.Count(spectators) > 0 then
+	if !table.IsEmpty(spectators) then
 		for _,v in ipairs( spectators ) do
 			net.Start("dead_pt_request_stop")
 			net.Send(v)

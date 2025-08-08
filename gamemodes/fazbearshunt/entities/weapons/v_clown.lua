@@ -107,15 +107,19 @@ function SWEP:DealDamage()
 		dmgInfo:SetInflictor(game.GetWorld())
 		dmgInfo:SetDamageType(DMG_SLASH)
 		
-		for k,v in ipairs(props) do
+		for k,prop in ipairs(props) do
 			SuppressHostEvents( NULL )
-			v:TakeDamageInfo(dmgInfo)
+			prop:TakeDamageInfo(dmgInfo)
 			SuppressHostEvents( ply )
-			local phys = v:GetPhysicsObject()
-			if IsValid(phys) then
-				local force = ply:GetAimVector() * 10000 + Vector(0,0,200) * 20
-		
-				phys:ApplyForceCenter(force)
+			local phys = prop:GetPhysicsObject()
+			
+			local owner = prop:GetOwner()
+			if !IsValid(owner) or IsValid(owner) and !owner:IsAnimatronic() then
+				if IsValid(phys) then
+					local force = ply:GetAimVector() * 10000 + Vector(0,0,200) * 20
+			
+					phys:ApplyForceCenter(force)
+				end
 			end
 		end
 	end

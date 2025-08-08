@@ -120,7 +120,7 @@ local function OpenAdminPanel()
     AnimatronicList = vgui.Create("DListView", panelPlayers)
     AnimatronicList:SetPos(210, 10)
     AnimatronicList:SetSize(180, 360)
-    AnimatronicList:AddColumn(language.GetPhrase("fuppr.animatronics_team"))
+    AnimatronicList:AddColumn(language.GetPhrase("fazhunt.animatronics_team"))
     AnimatronicList:SetMultiSelect(false)
     AnimatronicList.OnRowSelected = function(_, _, row)
         selectedAnimatron = row:GetValue(2)
@@ -128,13 +128,13 @@ local function OpenAdminPanel()
     createListAnimatronics()
 
     local actions = {
-        {text = "fuppr.adminpanel.give_killer", action = "give_animatronic"},
-        {text = "fuppr.adminpanel.revive", action = "resurrect"},
-        {text = "fuppr.adminpanel.kill", action = "kill"},
-        {text = "fuppr.adminpanel.highlight", action = "highlight"},
+        {text = "fazhunt.adminpanel.give_killer", action = "give_animatronic"},
+        {text = "fazhunt.adminpanel.revive", action = "resurrect"},
+        {text = "fazhunt.adminpanel.kill", action = "kill"},
+        {text = "fazhunt.adminpanel.highlight", action = "highlight"},
         {},
-        {text = "fuppr.adminpanel.addplayable", action = "addplayable", superadmin = true},
-        {text = "fuppr.adminpanel.removeplayable", action = "removeplayable", superadmin = true}
+        {text = "fazhunt.adminpanel.addplayable", action = "addplayable", superadmin = true},
+        {text = "fazhunt.adminpanel.removeplayable", action = "removeplayable", superadmin = true}
     }
 
     local y = 10
@@ -154,7 +154,7 @@ local function OpenAdminPanel()
 
                 local players = GetSelectedPlayers()
                 if #players == 0 then
-                    chat.AddText(Color(255, 0, 0), language.GetPhrase("fuppr.adminpanel.error"))
+                    chat.AddText(Color(255, 0, 0), language.GetPhrase("fazhunt.adminpanel.error"))
                     return
                 end
 
@@ -191,7 +191,7 @@ local function OpenAdminPanel()
 
     local ry = 10
     for _, a in ipairs(roundActions) do
-        AddNetActionButton(roundPanel, 10, ry, 280, 30, language.GetPhrase("fuppr.adminpanel." .. a[1]), a[2])
+        AddNetActionButton(roundPanel, 10, ry, 280, 30, language.GetPhrase("fazhunt.adminpanel." .. a[1]), a[2])
         ry = ry + 40
     end
 
@@ -202,7 +202,7 @@ local function OpenAdminPanel()
     }
 
     for _, s in ipairs(sliders) do
-        AddSlider(roundPanel, 10, ry, language.GetPhrase("fuppr." .. s[1]), s[3], s[4], s[5], 0, s[2])
+        AddSlider(roundPanel, 10, ry, language.GetPhrase("fazhunt." .. s[1]), s[3], s[4], s[5], 0, s[2])
         ry = ry + 25
     end
 
@@ -241,7 +241,7 @@ local function OpenAdminPanel()
     AddSlider(expPanel, 10, step(30), language.GetPhrase("fazhunt.adminpanel.max_cupcakes"), 3, 10, conVars.fh_max_cupcakes:GetInt(), 0, "fh_max_cupcakes")
     AddCheckbox(expPanel, 10, step(20), language.GetPhrase("fazhunt.adminpanel.silent_highlight"), conVars.fh_silent_highlight, "fh_silent_highlight")
     AddCheckbox(expPanel, 10, step(20), language.GetPhrase("fazhunt.adminpanel.fh_respawn_dead_animatronics"), conVars.fh_respawn_dead_animatronics, "fh_respawn_dead_animatronics", true)
-	--AddNumberWang(expPanel, 10, step(40), "Game Duration", fh.GetGameDuration(), 0, "set_game_duration")
+	AddSlider(expPanel, 10, step(40), "Game Duration (In minutes)", 1, 20, conVars.fh_round_duration:GetInt(), 0, "fh_round_duration")
 	
 	local DCollapsible = vgui.Create( "DCollapsibleCategory", expPanel )
 	DCollapsible:SetLabel( "READ ME" )	

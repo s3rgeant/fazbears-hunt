@@ -2,16 +2,17 @@ include( "shared.lua" )
 
 pcall(require,"pills")
 
-include( "cl_admin.lua" )
+include( "interface/cl_admin.lua" )
+include( "interface/cl_hud.lua" )
+include( "interface/cl_playerlist.lua" )
+include( "interface/cl_optionmenu.lua" )
+include( "interface/cl_spechud.lua" )
+include( "interface/cl_timer.lua" )
+
 include( "cl_halo.lua" )
-include( "cl_hud.lua" )
 include( "cl_horror.lua" )
-include( "cl_playerlist.lua" )
 include( "cl_nightvision.lua" )
-include( "cl_spechud.lua" )
 include( "cl_sound.lua" )
-include( "cl_timer.lua" )
-include( "cl_optionmenu.lua" )
 
 --include( "terror_radius.lua" )
 
@@ -274,16 +275,19 @@ function GM:MouthMoveAnimation(ply)
     end
 end
 
-local history = {}
 hook.Add("OnPlayerChat", "fh_chat_message", function(ply, text, team, dead)
     if not IsValid(ply) then return end
 	
 	local clr = teamColors[ ply:Team() ] or Color(90, 90, 90)
 	
-	local team_txt = (team and ply:Team() ~= TEAM_SPECTATOR) and "[TEAM] " or ""
+	local notDead = (team and ply:Team() ~= TEAM_SPECTATOR)
+	local dead = (team and ply:Team() == TEAM_SPECTATOR or !ply:Alive())
+	
+	local team_txt = notDead and "(TEAM) " or dead and "*DEAD* " or ""
+	local team_clr = notDead and Color(0, 190, 0) or dead and Color(255,0,0)
 
     chat.AddText(
-        Color(0, 190, 0), team_txt,
+        team_clr, team_txt,
         clr, ply:Nick(),
         Color(255, 255, 255), ": ",
         Color(255, 255, 255), text
@@ -291,51 +295,3 @@ hook.Add("OnPlayerChat", "fh_chat_message", function(ply, text, team, dead)
 
     return true
 end)
-
-net.Receive("fh_chat_message", function()
-	local nick = net.ReadString()
-	local text = net.ReadString()
-	local dead = net.ReadBool()
-	local color = net.ReadColor()
-	local bTeam = net.ReadBool()
-	local teamInt = net.ReadFloat()
-	
-	local localply = LocalPlayer()
-	
-	if nick == localply:Nick() then
-		table.insert(history, text)
-		current_pos = table.Count(history)
-	end
-
-	if !dead then
-		if !bTeam then
-			chat.AddText(color, nick, Color(255, 255, 255), ': ', text)
-		elseif localply:Team() == teamInt then
-			chat.AddText(Color(25, 160, 35), '(TEAM) ', color, nick, Color(255, 255, 255), ': ', text)
-		end
-	elseif localply:Team() == teamInt then
-		chat.AddText(Color(255,0,0), '*DEAD* ', color, nick, Color(255, 255, 255), ': ', text)
-	end
-end)
-
-local current_pos = 0
-
-hook.Remove("OnChatTab", "ULXPP.Autocomplete") -- в любом случае какая то хуета
-
-hook.Add( "FinishChat", "qolchat_finish", function()
-	current_pos = table.Count(history)
-end )
-
-hook.Add( "OnChatTab", "qolchat_tab", function( text )
-	if table.IsEmpty(history) then return end
-	
-	if current_pos <= 0 then
-		current_pos = table.Count(history)
-	end
-	
-	local ret = history[current_pos]
-	
-	current_pos = current_pos - 1
-	
-	return ret
-end )

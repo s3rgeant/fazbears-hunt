@@ -329,22 +329,24 @@ if CLIENT then
 end
 
 local DamageTimers = {}
+local DecalTimers = {}
 
 function StartBleeding(ply, dealer)
-    if not IsValid(ply) or not ply:IsPlayer() then return end
+    if not IsValid(ply) then return end
 
     local steamID = ply:SteamID()
     
     if DamageTimers[steamID] then return end
 
-	if not IsValid(ply) then return end
-
 	local timerName = "DamagePlayer_" .. steamID
 	DamageTimers[steamID] = timerName
 
+	local decaltimerName = "DecalPlayer_" .. steamID
+	DecalTimers[steamID] = decaltimerName
+
 	timer.Create(timerName, 1, 0, function()
 		if not IsValid(ply) or !ply:Alive() or !ply:IsSurvivor() then
-			StopDelayedDamage(ply)
+			StopBleeding(ply)
 			return
 		end
 
@@ -357,11 +359,18 @@ function StartBleeding(ply, dealer)
 		dmg:SetAttacker(IsValid(dealer) and dealer or game.GetWorld())
 		dmg:SetDamageType(DMG_GENERIC)
 		ply:TakeDamageInfo(dmg)
-		
+	end)
+
+	timer.Create(decaltimerName, 0.5, 0, function()
+		if not IsValid(ply) or !ply:Alive() or !ply:IsSurvivor() then
+			StopBleeding(ply)
+			return
+		end
+
 		local pos = ply:GetPos()
         local tr = util.TraceLine({
             start = pos + Vector(0, 0, 10),
-            endpos = pos - Vector(0, 0, 50),
+            endpos = pos - Vector(0, 0, 100),
             filter = ply
         })
 
@@ -381,10 +390,16 @@ function StopBleeding(ply)
 
     local steamID = ply:SteamID()
     local timerName = DamageTimers[steamID]
+    local decaltimerName = DecalTimers[steamID]
 
     if timerName then
         timer.Remove(timerName)
         DamageTimers[steamID] = nil
+    end
+
+    if decaltimerName then
+        timer.Remove(decaltimerName)
+        DecalTimers[steamID] = nil
     end
 
     ply._damagePausedUntil = nil

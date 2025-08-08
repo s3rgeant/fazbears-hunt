@@ -6,9 +6,8 @@ local function DrawDeadHUD()
 	local displayName
 	local healthText
 
-	-- Проверяем, является ли playerSpecName игроком или энтити
 	if playerSpecName:IsPlayer() then
-		if playerSpecName:Nick() == "" then return end -- Игнорируем пустой ник
+		if playerSpecName:Nick() == "" then return end
 		displayName = utf8.sub(playerSpecName:Nick(), 0, 23)
 		healthText = playerSpecName:Health() .. " HP"
 	else

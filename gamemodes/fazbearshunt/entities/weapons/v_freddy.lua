@@ -114,6 +114,7 @@ function SWEP:PlayCustomAnimation(anim, hold)
     
     local animMap = {
         ["ACT_MELEE_ATTACK1"] = ACT_MELEE_ATTACK1,
+        ["ACT_SPECIAL_ATTACK1"] = ACT_SPECIAL_ATTACK1,
         ["ACT_VM_DEPLOY"] = ACT_VM_DEPLOY,
         ["ACT_VM_DRAW"] = ACT_VM_DRAW,
         ["ACT_IDLE"] = ACT_IDLE,

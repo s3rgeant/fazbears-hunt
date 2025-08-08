@@ -15,17 +15,8 @@ end)
 
 function highlight.ByDistance(ply, ent)
 	local totalPlayers = {}
-	if !table.HasValue(haloUsers, ply) then -- чел не под кулдауном? разрешай
-		table.insert(haloUsers, ply)
-		
-		net.Start("fh_net_killer_change")
-		net.WriteString("highlight")
-		net.WriteFloat(conVars.halo_cooldown:GetFloat())
-		net.Send(ply)
-		
-		timer.Simple(conVars.halo_cooldown:GetFloat(), function()
-			table.RemoveByValue(haloUsers, ply)
-		end)
+	if !haloUsers[ply] or haloUsers[ply].hl_Time < CurTime() then -- чел не под кулдауном? разрешай
+		highlight.Cooldown(ply, conVars.halo_cooldown:GetFloat())
 		
 		local outworlded = getOutworldVictims()
 	
@@ -97,11 +88,31 @@ function highlight.Add(ply, players)
 	end
 end
 
+function highlight.Cooldown(ply, duration)
+	haloUsers[ply] = {hl_Time = CurTime() + duration}
+		
+	net.Start("fh_net_killer_change")
+	net.WriteString("highlight")
+	net.WriteFloat(duration)
+	net.Send(ply)
+end
+
+function highlight.GetCooldown(ply)
+	if !IsValid(ply) then return end
+	if !haloUsers[ply] or haloUsers[ply].hl_Time < CurTime() then return 0 end
+	
+	return haloUsers[ply].hl_Time - CurTime()
+end
+
 local vision_sounds = {
 	["default"] = {affected = "vision_affected.wav", unaffected = "vision_unaffected.wav"}
 }
+util.PrecacheSound( "vision_affected.wav" )
+util.PrecacheSound( "vision_unaffected.wav" )
 
 function highlight.AddVisionSounds(name, snd_affected, snd_unaffected)
+	util.PrecacheSound( snd_affected )
+	util.PrecacheSound( snd_unaffected )
 	vision_sounds[name] = {affected = snd_affected, unaffected = snd_unaffected}
 end
 
@@ -128,7 +139,7 @@ function highlight.NotifyTarget(target, ent, isAffected)
 	else
 		net.Start("PlayHighlightSounds") -- если silent govno, то чуваки знают, но не знают
 		net.WriteBool( false )
-		net.WriteString( highlight.GetVisionSound(ent).unaffected )
+		net.WriteString( sound_to_play.unaffected )
 		net.Send(target)
 		
 		target:ChatPrint("Просвет... Или нет?")
@@ -147,8 +158,8 @@ end)
 
 hook.Add("PlayerChangedTeam", "fh_halo_team", function(ply, oldteam, team)
 	if team != 2701 then
-		if table.HasValue(haloUsers, ply) then
-			table.RemoveByValue(haloUsers, ply)
+		if haloUsers[ply] then
+			haloUsers[ply] = nil
 		end
 	end
 	
@@ -172,6 +183,10 @@ hook.Add( "PlayerDeath", "fh_halo_death_check", function( victim, inflictor, att
 		
 		net.Start('fh_nodraw_hl_overlay')
 		net.Send(victim)
+	end
+	
+	if attacker:IsPlayer() and attacker:IsAnimatronic() then
+		highlight.Cooldown(attacker, highlight.GetCooldown(attacker) + 10)
 	end
 end)
 	

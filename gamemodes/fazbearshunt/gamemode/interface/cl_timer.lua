@@ -335,8 +335,6 @@ net.Receive("fh_start_game_timer", function()
 		timerMode = "game"
 		roundtimer_alpha = 255
 		roundtimer_y_target = 58
-		
-		toggleScarySound(true)
 	end)
     
     timerMode = "postlobby"
@@ -368,14 +366,3 @@ end)
 function language.SafeGetPhrase(key)
     return string.TrimRight(language.GetPhrase(key))
 end
-
---[[
-concommand.Add("abcd", function()
-
-    a_1 = language.GetPhrase("spawnmenu.revert")
-	a_2 = "Revert"
-    
-    print(a_1, #a_1)
-    print(a_2, #a_2)
-end)
-]]--

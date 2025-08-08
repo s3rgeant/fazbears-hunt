@@ -130,7 +130,7 @@ end)
 -- НЕКОТОРЫЕ СТАТЫ АВТОМАТИЧЕСКИЕ, НУ КАРОЧЕ ЭТИ СНИЗУ. ДА
 hook.Add("PlayerDeath", "fh_stats_deaths", function( victim, inflictor, attacker )
 	if victim:IsPlayer() and attacker:IsPlayer() and attacker:Team() == 2701 then
-		if inflictor:GetClass() == "prop_physics" then
+		if IsValid(inflictor) and inflictor:GetClass() == "prop_physics" then
 			stats.Add(attacker, "killed_using_props", 1)
 		end
 		

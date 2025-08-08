@@ -117,7 +117,7 @@ function GM:ScoreboardShow()
 			surface.DrawTexturedRect(16, 16, anim_scroll_wide, 32)
 			
 			draw.SimpleText(
-				string.upper( language.SafeGetPhrase("fuppr.animatronics_team") ),
+				string.upper( language.SafeGetPhrase("fazhunt.animatronics_team") ),
 				"timerFontSmall",
 				anim_scroll_wide / 2 + 16,
 				20,
@@ -137,7 +137,7 @@ function GM:ScoreboardShow()
 			surface.DrawTexturedRect(surv_scrollPanel.x + 16, 16, surv_scroll_wide, 32)
 			
 			draw.SimpleText(
-				string.upper( language.SafeGetPhrase("fuppr.survivors_team") ),
+				string.upper( language.SafeGetPhrase("fazhunt.survivors_team") ),
 				"timerFontSmall",
 				surv_scrollPanel.x + surv_scroll_wide / 2 + 16,
 				20,

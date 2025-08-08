@@ -80,11 +80,7 @@ function ENT:CheckForPlayers()
 				stats.Add(owner, "slowed_using_cupcake", 1)
 			end
 			
-			if timer.Exists('C_deploycake'..owner:EntIndex()) then
-				timer.Adjust("C_deploycake"..owner:EntIndex(), 10)
-			else
-				timer.Create("C_deploycake"..owner:EntIndex(), 10, 1, function() end)
-			end
+			cooldown.Set(owner, "deploycake", 10)
 			
 			net.Start("fh_net_killer_change")
 			net.WriteString("mine")
@@ -126,6 +122,10 @@ function ENT:CheckForPlayers()
 end
 
 function ENT:OnTakeDamage(dmginfo)
+	local attacker = dmginfo:GetAttacker()
+	
+	if !attacker:IsSurvivor() then return end
+
     self:TakePhysicsDamage(dmginfo)
 	
     local health = self:Health()
