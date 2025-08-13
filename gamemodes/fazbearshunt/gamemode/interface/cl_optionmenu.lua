@@ -112,6 +112,10 @@ function pt_request_complete(ply)
 	net.SendToServer()
 end
 
+hook.Add("PostCleanupMap", "fh_cleanup_optionmenu", function(ply)
+	sel_menu_close()
+end)
+
 --[[
 concommand.Add("fh_menu_test", function(ply, cmd, args)
 	if ply:IsAdmin() then

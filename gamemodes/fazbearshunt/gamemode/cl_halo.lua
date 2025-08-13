@@ -129,7 +129,7 @@ end)
 net.Receive("fh_hl_teammates", function()
 	if LocalPlayer():Team() == 2701 then
 		for _, ply in ipairs(team.GetPlayers(2701)) do
-			if !table.HasValue(teammates, ply) and LocalPlayer() ~= ply then
+			if !table.HasValue(teammates, ply) and ply ~= LocalPlayer() then
 				table.insert(teammates, pills.getMappedEnt(ply))
 			end
 		end
@@ -250,20 +250,39 @@ net.Receive("ToggleHighlightSound", function()
 end)
 
 hook.Add( "PreDrawHalos", "HaloDo", function()
-	-- ДЛЯ ВЫЖИВШИХ
-	halo.Add(animatronics, Color(255, 155, 0, 255), 0.5, 0.5, 1, true, true)
-	
 	-- ДЛЯ АНИМАТРОНИКОВ
 	halo.Add(affectedPlayers, Color(255, 0, 0, 255), 0.5, 0.5, 1, true, true)
 	
 	if fh_halo_teammates:GetBool() then
-	
-		--halo.Add(teammates, Color(0, 255, 0, 255), 2, 2, 1, true, true)
 		
 		if LocalPlayer():Team() == 2701 then
 			halo.Add(ents.FindByClass("plushtrap"), Color(0, 255, 0, 255), 0.5, 0.5, 1, true, true)
 		end
 		
+	end
+	
+	local lp = LocalPlayer()
+	
+	if IsValid(lp) and !lp:Alive() and lp:GetObserverMode() ~= OBS_MODE_NONE then
+		local spectateTargets = {}
+		for _, ply in player.Iterator() do
+			local ent = pills.getMappedEnt(ply)
+			
+			--[[ 
+				ЗАМЕТОЧКА:
+						Игроков с SetNoDraw(true) нельзя просветить.
+			]]--
+			
+			if lp:GetObserverTarget() == ply and lp:GetObserverMode() == OBS_MODE_IN_EYE then continue end
+			
+			if !IsValid(ent) and (ply:GetNoDraw() or ply:GetMaterial() == "models/null") then
+				table.insert(spectateTargets, ply)
+			elseif IsValid(ent) and (ent:GetNoDraw() or ent.dontdraw or ent:GetMaterial() == "models/null") then
+				table.insert(spectateTargets, ent)
+			end
+		end
+		
+		halo.Add(spectateTargets, Color(155, 0, 255, 255), 1, 1, 2, true, false)
 	end
 	
 	local ent = pills.getMappedEnt(LocalPlayer())
@@ -275,55 +294,63 @@ hook.Add( "PreDrawHalos", "HaloDo", function()
 	end
 end)
 
-local glowColor = Color(0, 255, 0)
+local teammateColor = Color(0, 255, 0)
+local enemyColor = Color(255, 155, 0)
 local outlineMaterial = Material("models/debug/debugwhite")
 
 hook.Add("PostDrawOpaqueRenderables", "fh_draw_teammates", function( )
     local ply = LocalPlayer()
     if not IsValid(ply) then return end
 	
-	if !fh_halo_teammates:GetBool() then return end
-
-    local eyePos = ply:EyePos()
-    local eyeDir = ply:EyeAngles():Forward()
-	
-    for _, ent in ipairs(teammates) do
-		if not IsValid(ent) or not ent.DrawModel then continue end
-		
-		local toScreen = ent:GetPos():ToScreen()
-		if toScreen.visible then
-			local trace = util.QuickTrace(eyePos, ent:WorldSpaceCenter() - eyePos, ply)
+	local function drawAnimatronics(tbl, color)
+		local eyePos = ply:EyePos()
+		for _, ent in ipairs(tbl) do
+			if not IsValid(ent) or not ent.DrawModel then continue end
 			
-			if !trace.Hit or trace.Entity == ent then continue end
-			
-			local pos = ent:GetPos()
-			local ang = ent:GetAngles()
+			local toScreen = ent:GetPos():ToScreen()
+			if toScreen.visible then
+				local trace = util.QuickTrace(eyePos, ent:WorldSpaceCenter() - eyePos, ply)
+				
+				if !trace.Hit or ent == pills.getMappedEnt(trace.Entity) then continue end
+				
+				local pos = ent:GetPos()
+				local ang = ent:GetAngles()
 
-			local camForward = EyeAngles():Forward()
-			local backOffset = camForward * 30
+				local camForward = EyeAngles():Forward()
+				local backOffset = camForward * 30
 
-			cam.IgnoreZ(true)
-			render.SuppressEngineLighting(true)
-			render.SetColorModulation(glowColor.r / 255, glowColor.g / 255, glowColor.b / 255)
-			render.SetBlend(0.6)
-			render.MaterialOverride(outlineMaterial)
+				cam.IgnoreZ(true)
+				render.SuppressEngineLighting(true)
+				render.SetColorModulation(color.r / 255, color.g / 255, color.b / 255)
+				render.SetBlend(0.6)
+				render.MaterialOverride(outlineMaterial)
 
-			local mat = Matrix()
-			mat:Translate(pos + backOffset)
-			mat:Rotate(ang)
+				local mat = Matrix()
+				mat:Translate(pos + backOffset)
+				mat:Rotate(ang)
 
-			cam.PushModelMatrix(mat, true)
-				ent:SetLOD(8) -- мы делаем модельку обводки "уёбищной" чтобы она не жрала фпс
-				ent:DrawModel()
-			cam.PopModelMatrix()
+				cam.PushModelMatrix(mat, true)
+					ent:SetLOD(8) -- мы делаем модельку обводки "уёбищной" чтобы она не жрала фпс
+					ent:DrawModel()
+				cam.PopModelMatrix()
 
-			render.MaterialOverride(nil)
-			render.SetColorModulation(1, 1, 1)
-			render.SetBlend(1)
-			render.SuppressEngineLighting(false)
-			ent:SetLOD(-1)
-			cam.IgnoreZ(false)
+				render.MaterialOverride(nil)
+				render.SetColorModulation(1, 1, 1)
+				render.SetBlend(1)
+				render.SuppressEngineLighting(false)
+				ent:SetLOD(-1)
+				cam.IgnoreZ(false)
+			end
 		end
+	end
+	
+	if fh_halo_teammates:GetBool() and !table.IsEmpty(teammates) then 
+		
+		drawAnimatronics(teammates, teammateColor)
+	end
+	
+	if !table.IsEmpty(animatronics) then
+		drawAnimatronics(animatronics, enemyColor)
 	end
 end)
 
@@ -406,7 +433,7 @@ hook.Add("PrePlayerDraw", "fh_stalker_pv", function(ply)
 	end
 end)
 
-hook.Add("PostCleanupMap", "fh_cleanup", function(ply)
+hook.Add("PostCleanupMap", "fh_cleanup_halo", function(ply)
 	target = nil
 	toggleShadows(true)
 	table.Empty(affectedPlayers)

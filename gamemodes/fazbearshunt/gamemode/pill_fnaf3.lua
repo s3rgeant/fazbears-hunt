@@ -87,6 +87,7 @@ pills.register("pill_clown",{
 	viewmodel={
 		weapon="v_clown"
 	},
+	bloodType=BLOOD_COLOR_MECH,
 	
 	animEvent=function(ply,ent,event)
 		if util.GetAnimEventNameByID( event ) == "CLOWN_HIDE_HAMMER" then
@@ -592,6 +593,7 @@ pills.register("pill_plushtrap",{
 	viewmodel={
 		weapon="v_plushtrap"
 	},
+	bloodType=BLOOD_COLOR_MECH,
 	
 	muteSteps = true,
 	health=2000,
@@ -724,12 +726,14 @@ net.Receive("pt_request_complete", function(len, springtrap)
 	
 	RunConsoleCommand("pk_pill_apply", ply:Nick(), "pill_plushtrap")
 	
-	if timer.Exists("pt_kill_timer" .. springtrap:EntIndex()) then
-		net.Start("fh_net_killer_change")
-		net.WriteString("lifetime")
-		net.WriteFloat( "pt_kill_timer" .. springtrap:EntIndex() )
-		net.Send(ply)
-	end
+	timer.Simple(1, function()
+		if timer.Exists("pt_kill_timer" .. springtrap:EntIndex()) then
+			net.Start("fh_net_killer_change")
+			net.WriteString("lifetime")
+			net.WriteFloat( timer.TimeLeft("pt_kill_timer" .. springtrap:EntIndex()) )
+			net.Send(ply)
+		end
+	end)
 	
 	if pt_lastpos != nil then
 		ply:SetPos(pt_lastpos)

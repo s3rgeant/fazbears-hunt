@@ -89,7 +89,21 @@ local positiveEffects = {
 		num = 35,
         func = function(ply)
             ply:SetHealth(ply:Health() + 35)
-        end
+        end,
+		req = function(ply)
+			if ply:Health() < 100 then
+				return true
+			end
+		
+			local damageOnlyAnims = killers.getAllDamageOnly()
+			
+			for k, v in pairs(damageOnlyAnims) do
+				if fh.GetActiveUsedKiller(k) then
+					return true
+				end
+			end
+			return false
+		end
     },
     {
         name = "armor",
@@ -97,6 +111,9 @@ local positiveEffects = {
 		num = 50,
         func = function(ply)
 			ply:SetArmor(math.min(ply:Armor() + 50, 100))
+        end,
+        req = function(ply)
+			return ply:Armor() < 100
         end
     },
     {
@@ -104,6 +121,10 @@ local positiveEffects = {
 		desc = "fazhunt.gifts.invisibility",
         func = function(ply)
             ply:Give("weapon_mask")
+        end,
+        req = function(ply)
+			return ( !timer.Exists("EndGameTimer") or timer.Exists("EndGameTimer") and timer.TimeLeft("EndGameTimer") >= 120 ) 
+			and !ply:HasWeapon("weapon_mask")
         end
     },
     {
@@ -111,6 +132,9 @@ local positiveEffects = {
 		desc = "fazhunt.gifts.gravity_gun",
         func = function(ply)
             ply:Give("weapon_physcannon")
+        end,
+        req = function(ply)
+			return !ply:HasWeapon("weapon_physcannon") and #ents.FindByClass("prop_physics") > 100
         end
     },
     {
@@ -127,7 +151,9 @@ local positiveEffects = {
         func = function(ply)
             ply:Give("weapon_defibrilator")
             effectDesc = 'fazhunt.gifts.defibrilator'
-			format_num = -1
+        end,
+        req = function(ply)
+			return !ply:HasWeapon("weapon_defibrilator")
         end
     },
     {
@@ -160,6 +186,9 @@ local positiveEffects = {
 					end
                 end
             end)
+        end,
+        req = function(ply)
+			return ply:GetRunSpeed() < 600
         end
     },
     {
@@ -174,6 +203,9 @@ local positiveEffects = {
                     ply:SetJumpPower(math.max(ply:GetJumpPower() / 2, 200))
                 end
             end)
+        end,
+        req = function(ply)
+			return fh.GetActiveUsedKiller("pill_wfoxy2") or fh.GetActiveUsedKiller("pill_sfreddy2")
         end
     }
 }
@@ -343,29 +375,7 @@ function ENT:ApplyEffect(player)
     for _, effect in ipairs(positiveEffects) do
 		if effect.req and effect.req(player) then
 			table.insert(availablePositiveEffects, effect)
-		elseif effect.name == "defibrilator" then
-            if !player:HasWeapon("weapon_defibrilator") then
-                table.insert(availablePositiveEffects, effect)
-            end
-        elseif effect.name == "gravity_gun" then
-            if !player:HasWeapon("weapon_physcannon") and #ents.FindByClass("prop_physics") > 100 then
-                table.insert(availablePositiveEffects, effect)
-            end
-		elseif effect.name == "invisibility" then
-			if !timer.Exists("EndGameTimer") or timer.Exists("EndGameTimer") and timer.TimeLeft("EndGameTimer") >= 120 then
-				if !player:HasWeapon("weapon_mask") then
-					table.insert(availablePositiveEffects, effect)
-				end
-			end
-		elseif effect.name == "armor" then
-			if player:Armor() < 100 then
-                table.insert(availablePositiveEffects, effect)
-			end
-		elseif effect.name == "jump_buff" then
-			if fh.GetActiveUsedKiller("pill_wfoxy2") or fh.GetActiveUsedKiller("pill_sfreddy2") then
-                table.insert(availablePositiveEffects, effect)
-			end
-        else
+        elseif !effect.req then
             table.insert(availablePositiveEffects, effect)
         end
     end

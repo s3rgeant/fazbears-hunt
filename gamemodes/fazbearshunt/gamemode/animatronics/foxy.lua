@@ -3,9 +3,6 @@ AddCSLuaFile()
 if SERVER then
 	util.AddNetworkString("BlightRush_Start")
 	util.AddNetworkString("BlightRush_End")
-	util.AddNetworkString("Blight_PlayImpactSound")
-	util.AddNetworkString("Blight_PlayFirstRushSound")
-	util.AddNetworkString("Blight_PlayLethalRushSound")
 	util.AddNetworkString("fh_net_killer_change_tokens")
 
 	local MAX_RUSH_TOKENS = 5
@@ -61,6 +58,9 @@ if SERVER then
 		end)
 	end
 
+	--[[
+				FOXY RUSH ABILITY
+	]]--
 	function foxyRush(ply, ent)
 		if ply.isBlightRushing or ply.isBlightBouncing then return end
 		if not ply:OnGround() or ply:Crouching() then return end
@@ -68,8 +68,8 @@ if SERVER then
 		if not ply.blightRushTokens or ply.blightRushTokens == MAX_RUSH_TOKENS then
 			ply.blightRushTokens = MAX_RUSH_TOKENS
 			ply:SetNWBool("Blight_BlockM1", true)
-			net.Start("Blight_PlayFirstRushSound")
-			net.Send(ply)
+			
+			ply:EmitSound("blight/first_rush.wav")
 		
 			local wep = ply:GetActiveWeapon()
 			if IsValid(wep) and wep:GetClass() == "v_foxy" then
@@ -77,8 +77,7 @@ if SERVER then
 				wep.run_act = ACT_MP_RUN_MELEE
 			end
 		elseif ply.blightRushTokens == 4 and ply.blightRushing then
-			net.Start("Blight_PlayLethalRushSound")
-			net.Send(ply)
+			ply:EmitSound("blight/rushing_lethal.wav")
 		end
 
 		if ply.blightRushTokens ~= MAX_RUSH_TOKENS and not ply.blightRushing then return end
@@ -127,8 +126,6 @@ local function BlightCheckCollision(ply)
 	local velocity = ply:GetVelocity()
 	velocity.z = 0
 
-	if velocity:LengthSqr() < 10 then return { Hit = false } end
-
 	local eyeDir = ply:EyeAngles():Forward()
 	eyeDir.z = 0
 	eyeDir:Normalize()
@@ -136,19 +133,30 @@ local function BlightCheckCollision(ply)
 	local speedDir = velocity:GetNormalized()
 	local dot = eyeDir:Dot(speedDir)
 
-	if dot < 0.5 then return { Hit = false } end
-
 	local startPos = ply:GetPos() + Vector(0, 0, ply:GetStepSize())
 	local traceDist = 30
 	local hullSize = 8
+	
+	local tr = util.TraceLine( {
+		start = ply:GetPos() + Vector(0, 0, ply:GetStepSize()),
+		endpos = startPos + eyeDir * traceDist,
+		filter = ply
+	} )
+	tr.startPos = startPos
+	
+	--debugoverlay.Line( ply:GetPos() + Vector(0, 0, ply:GetStepSize()), startPos + speedDir * traceDist )
+	
+	if tr.Hit then return tr end
 
 	local tr = util.TraceHull({
 		start = startPos,
-		endpos = startPos + eyeDir * traceDist,
+		endpos = startPos + speedDir * traceDist,
 		mins = Vector(-hullSize, -hullSize, 0),
-		maxs = Vector(hullSize, hullSize, ply:OBBMaxs().z),
+		maxs = Vector(hullSize, hullSize, ply:OBBMaxs().z * 0.8),
 		filter = ply
 	})
+	
+	--debugoverlay.Box( startPos + speedDir * traceDist, Vector(-hullSize, -hullSize, 0), Vector(hullSize, hullSize, ply:OBBMaxs().z * 0.8), 3, tr.Hit and Color(0, 255, 0) or Color(255,0,0))
 
 	tr.startPos = startPos
 	return tr
@@ -186,14 +194,14 @@ end
 
 hook.Add("Move", "BlightPredictionMove", function(ply, mv)
 	if not ply.isBlightRushing then return end
-	if not ply:OnGround() or ply:Crouching() then
-		EndRush(ply)
+	if not ply:OnGround() then
+		--EndRush(ply)
 		return
 	end
 
 	local rushDuration = 3.5
 	local speed = 900
-	if CurTime() - (ply.blightRushStart or 0) > rushDuration then
+	if CurTime() - (ply.blightRushStart or 0) > rushDuration or ply:WaterLevel() >= 2 or ply:Crouching() then
 		EndRush(ply)
 		return
 	end
@@ -221,6 +229,27 @@ hook.Add("Move", "BlightPredictionMove", function(ply, mv)
 	if SERVER then
 		local tr = BlightCheckCollision(ply)
 		if tr.Hit and (not tr.Entity or not tr.Entity:IsPlayer() or tr.Entity:Team() == 2701) then
+		
+			if tr.Entity then
+				local ent = tr.Entity
+				local physobj = ent:GetPhysicsObject()
+				
+				if IsValid(physobj) and ent:Health() > 0 then
+					
+					local wep = ply:GetActiveWeapon()
+					
+					local dmginfo = DamageInfo()
+					dmginfo:SetAttacker( ply )
+					dmginfo:SetInflictor( IsValid(wep) and wep or ply )
+					dmginfo:SetDamage( 100 )
+				
+					SuppressHostEvents( NULL )
+					ent:TakeDamageInfo( dmginfo )
+					SuppressHostEvents( ply )
+					
+					return
+				end
+			end
 					
 			ply.isBlightRushing = false
 			ply:SetNWBool("isBlightRushing", false)
@@ -228,7 +257,7 @@ hook.Add("Move", "BlightPredictionMove", function(ply, mv)
 		
 			net.Start("fh_net_killer_change")
 			net.WriteString("charge")
-			net.WriteFloat(1.5)
+			net.WriteFloat(2)
 			net.Send(ply)
 							
 			ply.blightBounceStart = CurTime()
@@ -242,9 +271,8 @@ hook.Add("Move", "BlightPredictionMove", function(ply, mv)
 			ply.puppet:SetPlaybackRate(1)
 			
 			ply.puppet:PillGesture('chargestun', 1, 0.8, 0.1, 0.3)
-		
-			net.Start("Blight_PlayImpactSound")
-			net.Send(ply)
+			
+			ply:EmitSound("blight/impact.wav")
 			
 			net.Start("BlightRush_End")
 			net.Send(ply)
@@ -286,6 +314,7 @@ end)
 hook.Add("StartCommand", "BlightCancelJumpPress", function(ply, cmd)
     if ply:GetNWBool("isBlightRushing") or ply.isBlightBouncing or ply.blightTimeoutTimer then
 		cmd:ClearMovement()
+		cmd:RemoveKey(IN_DUCK)
 		cmd:RemoveKey(IN_JUMP)
 	end
 
@@ -313,18 +342,6 @@ if CLIENT then
 		if IsValid(wep) and wep.Sensitivity then
 			wep.Sensitivity = 1
 		end
-	end)
-
-	net.Receive("Blight_PlayImpactSound", function()
-		surface.PlaySound("blight/impact.wav")
-	end)
-
-	net.Receive("Blight_PlayFirstRushSound", function()
-		surface.PlaySound("blight/first_rush.wav")
-	end)
-
-	net.Receive("Blight_PlayLethalRushSound", function()
-		surface.PlaySound("blight/rushing_lethal.wav")
 	end)
 end
 

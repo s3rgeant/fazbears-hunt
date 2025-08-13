@@ -11,6 +11,8 @@ SWEP.DrawCrosshair    = false
 SWEP.WepSelectIcon    = surface.GetTextureID( "weapons/empty_hands" )
 SWEP.BounceWeaponIcon = false
 
+SWEP.ViewModelFOV = 25 -- чтобы шейдеры не брали в счёт "невидимую руку" которая почему то есть в этом свепе
+
 CreateClientConVar( "emptyhands_showcrosshair", "1", false, false )
 
 function SWEP:DrawWeaponSelection( x, y, wide, tall, alpha )

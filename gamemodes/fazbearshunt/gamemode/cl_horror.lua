@@ -158,7 +158,7 @@ local function fh_gfreddy_check_scarysound()
 		local ent = pills.getMappedEnt(targetPlayer)
 		if ent.dontdraw or ent:GetMaterial() == "models/null" then return end
 
-		local plyPos = targetPlayer:EyePos()
+		local plyPos = (targetPlayer:EyePos() + targetPlayer:GetPos()) / 2
 		local toPly = plyPos - eyePos
 		local distance = toPly:Length()
 		local toPlyNormalized = toPly:GetNormalized()
@@ -173,8 +173,6 @@ local function fh_gfreddy_check_scarysound()
 			filter = {localPlayer, targetPlayer, ent},
 			mask = MASK_VISIBLE
 		})
-		
-		print(not trace.Hit, angle <= fov)
 
 		local canSee = not trace.Hit and angle <= fov
 		
@@ -204,6 +202,8 @@ local function fh_gfreddy_check_scarysound()
 						chan:Play()
 						progressSoundChannel = chan
 						progressStartTime = CurTime()
+						
+						scareImmunityUntil = CurTime() + 1
 					end
 				end)
 				
@@ -249,6 +249,12 @@ local function fh_gfreddy_check_scarysound()
 	end
 end
 
+hook.Add("PostCleanupMap", "fh_cleanup_horror", function()
+	hook.Remove("InputMouseApply", "fh_scared_no_mouse")
+	hook.Remove("StartCommand", "fh_lock_view")
+	hook.Remove("CreateMove", "fh_gfreddy_magnet_view")
+end)
+
 net.Receive("fh_net_scarysound", function()
 	local can = net.ReadBool()
 	toggleScarySound(can)
@@ -272,4 +278,5 @@ function toggleScarySound(can)
 		return
 	end
 	hook.Remove("Think", "fh_scarysound")
+	targetPlayer = nil
 end

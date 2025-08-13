@@ -193,6 +193,9 @@ if CLIENT then
 
 	local nextParticleTime = 0
 	
+	local centerPitch = 0
+	local maxOffset = 45
+	
 	hook.Add("PrePlayerDraw", "fh_dontdraw_outworlded" , function(ply)
 		if outworlded_ppl[ply] then
 			return true
@@ -204,6 +207,10 @@ if CLIENT then
 		end
 	end)
 	
+	--[[
+		# ЗАГРАННЫЙ МИР: ЖЕРТВА
+		НАЧАЛО ИВЕНТА
+	]]
 	net.Receive("fh_wgfreddy_target_outworld_start", function()
 		local myself = LocalPlayer()
 		local assasin = net.ReadPlayer()
@@ -253,6 +260,20 @@ if CLIENT then
 				end
 			end
 		end
+
+		--[[
+			Тестили.
+			
+			Тестер смотрел в пол, или в потолок. Поэтому мы делаем вот такое водт
+		]]
+		hook.Add("CreateMove", "fh_limit_camera_outworld", function(cmd)
+			local ang = cmd:GetViewAngles()
+			
+			local offset = math.Clamp(ang.p - centerPitch, -maxOffset, maxOffset)
+			ang.p = centerPitch + offset
+			
+			cmd:SetViewAngles(ang)
+		end)
 		hook.Add("PrePlayerDraw", "fh_outworld_pv", function(ply)
 			if ply ~= myself then
 				return true
@@ -287,7 +308,6 @@ if CLIENT then
 			render.FogColor(150, 150, 150)
 			return true
 		end)
-
 		hook.Add("Think", "GroundDustParticlesDense", function()
 			local ply = LocalPlayer()
 			if not IsValid(ply) or not ply:Alive() then return end
@@ -353,6 +373,10 @@ if CLIENT then
 		end)
 	end)
 	
+	--[[
+		# ЗАГРАННЫЙ МИР: ЖЕРТВА
+		КОНЕЦ ИВЕНТА
+	]]
 	net.Receive("fh_wgfreddy_target_outworld_end", function()
 		local myself = LocalPlayer()
 		
@@ -392,6 +416,7 @@ if CLIENT then
 		hook.Remove("SetupSkyboxFog", "WhiteFogEffectSkybox")
 		hook.Remove("RenderScreenspaceEffects", "merc_videoglitch_hook")
 		hook.Remove("Think", "GroundDustParticlesDense")
+		hook.Remove("CreateMove", "fh_limit_camera_outworld")
 	end)
 	
 	local function fh_wgfreddy_selecting_halo()
@@ -409,6 +434,8 @@ if CLIENT then
 		
 			for _, target in player.Iterator() do
 				if target == ply or !IsValid(target) or !target:Alive() or target:Team() != TEAM_UNASSIGNED then continue end
+				
+				if target:GetGFreddyImmune() then continue end
 		
 				local targetPos = target:GetPos() + Vector(0, 0, 40)
 				local toTarget = targetPos - eyePos
@@ -453,6 +480,10 @@ if CLIENT then
 		hook.Remove("PostDrawTranslucentRenderables", "fh_draw_gfreddy_target_text")
 	end)
 	
+	--[[
+		# ЗАГРАННЫЙ МИР: ЗОЛОТОЙ ФРЕДДИ
+		НАЧАЛО ИВЕНТА
+	]]
 	net.Receive("fh_wgfreddy_outworld_start", function()
 		local myself = LocalPlayer()
 		local target = net.ReadPlayer()
@@ -517,6 +548,10 @@ if CLIENT then
 		end)
 	end)
 	
+	--[[
+		# ЗАГРАННЫЙ МИР: ЗОЛОТОЙ ФРЕДДИ
+		КОНЕЦ ИВЕНТА
+	]]
 	net.Receive("fh_wgfreddy_outworld_stop", function()
 		local myself = LocalPlayer()
 		
@@ -601,7 +636,6 @@ if CLIENT then
 		
 		ent.dontdraw = false
 	end)
-	
 
 	hook.Add( "PostCleanupMap", "fh_pill_wgfreddy_reset", function( name )
         hook.Remove("RenderScreenspaceEffects", "merc_grayscale_hook")
@@ -615,6 +649,7 @@ if CLIENT then
 		hook.Remove("SetupWorldFog", "WhiteFogEffect")
 		hook.Remove("SetupSkyboxFog", "WhiteFogEffectSkybox")
 		hook.Remove("RenderScreenspaceEffects", "merc_videoglitch_hook")
+		hook.Remove("CreateMove", "fh_limit_camera_outworld")
 		
 		fh_cl_dontdraw_plushies()
 		
@@ -633,6 +668,8 @@ function fh_get_wgfreddy_target(ply)
 	
 	for _, target in player.Iterator() do
 		if target == ply or not IsValid(target) or !target:Alive() or target:Team() != TEAM_UNASSIGNED or target == stalkTarget then continue end
+		
+		if target:GetGFreddyImmune() then continue end
 	
 		local targetPos = target:GetPos() + Vector(0, 0, 40)
 		local toTarget = targetPos - eyePos
@@ -650,6 +687,18 @@ function fh_get_wgfreddy_target(ply)
 		end
 	end
 	return closestPlayer
+end
+
+local PLAYER = FindMetaTable("Player")
+
+if PLAYER then
+	function PLAYER:SetGFreddyImmune(bool)
+		self:SetNWBool("GFreddyImmune", bool)
+	end
+	
+	function PLAYER:GetGFreddyImmune()
+		return self:GetNWBool("GFreddyImmune", false)
+	end
 end
 
 local function cancel_outworld_target(ply)
@@ -673,6 +722,25 @@ local function cancel_outworld_target(ply)
 		
 	ply:SetPushImmune(false)
 	ply:SetPushBlocked(false)
+	
+	ply:SetGFreddyImmune(true)
+	
+	for _, enemy in ipairs( ents.FindInSphere( ply:GetPos(), 350 ) ) do
+		if not enemy:IsPlayer() or not enemy:Alive() or enemy:IsSurvivor() then continue end
+		
+		if enemy:IsAnimatronic() then -- находим первого попавшего анимона и даруем бессмертие жертве
+			
+			ply:GodEnable()
+			ply:SetRunSpeed(500)
+			
+			timer.Simple(8, function()
+				ply:GodDisable()
+				ply:SetRunSpeed(420)
+			end)
+			
+			break
+		end
+	end
 
 	net.Start("fh_wgfreddy_target_outworld_end")
 	net.Send(ply)
@@ -685,6 +753,10 @@ local function cancel_outworld_target(ply)
 		outworld_victims[ply] = nil
 	end
 end
+
+hook.Add("PlayerSpawn", "wgfreddy_noimmune", function(ply)
+	ply:SetGFreddyImmune(false)
+end)
 
 local sfreddy_noclip_movement = {500, 600, 500, 250}
 local function cancel_outworld_wgfreddy(ply)

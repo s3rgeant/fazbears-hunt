@@ -149,7 +149,7 @@ end
 hook.Add("SetupPlayerVisibility", "fh_halo_visibility", function(ply, viewent)
 	if !table.IsEmpty(affectedPlayers) then
 		for _, player in ipairs(affectedPlayers) do
-			if IsValid(player) and ply:IsAnimatronic() then
+			if IsValid(player) and player ~= ply and ply:IsAnimatronic() then
 				AddOriginToPVS(player:GetPos())
 			end
 		end

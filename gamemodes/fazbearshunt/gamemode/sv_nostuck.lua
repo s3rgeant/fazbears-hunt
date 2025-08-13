@@ -196,6 +196,16 @@ function keyPressCheck(ply, key)
     end
 end
 
+local PLAYER = FindMetaTable("Player")
+
+function PLAYER:IsStuck()
+	return IsPlayerStuck(self)
+end
+
+function PLAYER:Unstuck()
+	self:SetPos(safePos)
+end
+
 hook.Add("fh_startgame", "fh_startgame_unstuck", function(roundType)
 	
 	hook.Add("KeyPress", "CheckStuckAndTeleport", function(ply, key)

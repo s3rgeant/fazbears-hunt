@@ -59,6 +59,7 @@ function SWEP:PrimaryAttack()
 	local vm = owner:GetViewModel()
 	
 	local wait = 60
+	local max_anims = 10 -- на всякий случай чтобы не перегрузить сервер, в любом случае аниматроников обычно немного
 	
 	vm:SendViewModelMatchingSequence( vm:LookupSequence( "fire" ) )
 	
@@ -68,15 +69,40 @@ function SWEP:PrimaryAttack()
     local aimDir = owner:GetAimVector()
     local endPos = shootPos + aimDir * 600
 
-    local tr = util.TraceHull({
+    local tr = util.TraceLine({
 		start = shootPos,
 		endpos = endPos,
-		mins = self.MinHitbox,
-		maxs = self.MaxHitbox,
 		filter = function(ent)
 			return ent ~= owner and (ent:IsPlayer() and ent:Team() != owner:Team())
 		end
 	})
+	
+	for _, anim in ipairs( team.GetPlayers(2701) ) do
+		local distance, nearest, linedist = util.DistanceToLine( shootPos, tr.HitPos, anim:GetPos() )
+		
+		if distance > 100 then continue end
+		
+		local trah = util.TraceLine({
+			start = nearest,
+			endpos = anim:GetPos(),
+			filter = function(ent)
+				return ent ~= owner and !ent:IsPlayer()
+			end
+		})
+		
+		if trah.Hit then continue end
+		
+		if anim:Alive() and !anim.tasered and !anim.lobbyFreeze then
+		
+			wait = 90
+			
+			TaseAnimatronic(anim)
+			
+			max_anims = max_anims - 1
+			
+			if max_anims == 0 then break end
+		end
+	end
 	
 	debugoverlay.Box(tr.HitPos, self.MinHitbox, self.MaxHitbox, 3, Color(255, 0, 0, 200))
 
@@ -90,16 +116,6 @@ function SWEP:PrimaryAttack()
 
 	owner:LagCompensation(false)
 	self.Weapon:SetClip1( 0 )
-
-    local entities = ents.FindInSphere(hitPos, 100)
-    for _, ent in ipairs(entities) do
-        if ent:IsPlayer() and ent:Team() == 2701 and ent:Alive() and !ent.tasered and !ent.lobbyFreeze then
-		
-			wait = 90
-			
-			TaseAnimatronic(ent)
-        end
-    end
 	
 	if SERVER and wait == 90 then
 		stats.Add(owner, "tasered", 1)
@@ -135,39 +151,41 @@ function TaseAnimatronic(ent)
 		ent.tasered = true
 		ent:DropToFloor()
 		
-		if IsValid(puppet) and formtbl.name == "pill_springtrap" then
-			ent:SetWalkSpeed(60)
-			ent:SetRunSpeed(60)
-			ent:SetSlowWalkSpeed(60)
-			timer.Simple(5, function()
-				if IsValid(ent) then
-					if IsValid(puppet) then
-						ent:SetRunSpeed(movespeed.run)
-						ent:SetWalkSpeed(movespeed.walk)
-						ent:SetSlowWalkSpeed(movespeed.walk)
+		if IsValid(puppet) then
+			if formtbl.name == "pill_springtrap" then
+				ent:SetWalkSpeed(60)
+				ent:SetRunSpeed(60)
+				ent:SetSlowWalkSpeed(60)
+				timer.Simple(5, function()
+					if IsValid(ent) then
+						if IsValid(puppet) then
+							ent:SetRunSpeed(movespeed.run)
+							ent:SetWalkSpeed(movespeed.walk)
+							ent:SetSlowWalkSpeed(movespeed.walk)
+						end
+						ent.tasered = false
 					end
-					ent.tasered = false
-				end
-			end)
-		else
-			ent:Freeze(true)
-			timer.Simple(5, function()
-				if IsValid(ent) then
-					ent:Freeze(false) 
-					ent.tasered = false
-				end
-			end)
-			
-			if ent.jumpscaring then
-				local poorguy = ent.jumpscaring
+				end)
+			else
+				ent:Freeze(true)
+				timer.Simple(5, function()
+					if IsValid(ent) then
+						ent:Freeze(false) 
+						ent.tasered = false
+					end
+				end)
 				
-				poorguy:Freeze(false)
-				poorguy.jumpscared = nil
+				if ent.jumpscaring then
+					local poorguy = ent.jumpscaring
+					
+					poorguy:Freeze(false)
+					poorguy.jumpscared = nil
+					
+					ent.jumpscaring = nil
+				end
 				
-				ent.jumpscaring = nil
+				timer.Remove("FH_JumpscareKill_" .. ent:EntIndex())
 			end
-			
-			timer.Remove("FH_JumpscareKill_" .. ent:EntIndex())
 		end
 	
 		net.Start("StunEffect_Shake")
@@ -181,7 +199,7 @@ function TaseAnimatronic(ent)
 			else
 				puppet:PillAnim("stun", true)
 				if table.HasValue(has_tasered_vl, formtbl.name) then
-					playVoiceline(killerData[formtbl.name].name, 'tasered', ent, 0.05)
+					playVoiceline(killers.getAll()[formtbl.name].name, 'tasered', ent, 0.05)
 				end
 			end
 			if formtbl == "pill_endo02" then

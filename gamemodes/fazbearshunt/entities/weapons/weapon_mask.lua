@@ -29,6 +29,13 @@ SWEP.HoldType = "slam"
 SWEP.CurrentFOV = 0
 SWEP.LerpFOV = 0
 
+if SERVER then
+	resource.AddFile( "materials/weapons/bonnie_mask.vmt" )
+else
+	SWEP.WepSelectIcon = surface.GetTextureID( "weapons/bonnie_mask" )
+	SWEP.BounceWeaponIcon = false
+end
+
 function SWEP:Initialize()
 
 	self:SetHoldType( self.HoldType )
@@ -76,7 +83,6 @@ function SWEP:SecondaryAttack()
 	if self:GetBlockSwap() then return end
 	
 	self:SendWeaponAnim(ACT_VM_SECONDARYATTACK)
-	self:SetNextSecondaryFire(CurTime() + 0.2)
 	
     local vm = self:GetOwner():GetViewModel()
     if IsValid(vm) then
@@ -84,6 +90,7 @@ function SWEP:SecondaryAttack()
         local dur = vm:SequenceDuration(seq)
 
         self:SetNextIdle(CurTime() + dur)
+		self:SetNextSecondaryFire(CurTime() + dur)
     end
 end
 
@@ -134,7 +141,7 @@ function SWEP:Invisivility(ply)
 	ply:SetCustomCollisionCheck(true)
 	ply:CollisionRulesChanged()
 	ply:SetColor(Color(255, 255, 255, 0))
-	ply:SetNoDraw(true)
+	ply:SetMaterial("models/null")
 	ply:DrawShadow(false)
 
 	for _, wep in ipairs(ply:GetWeapons()) do
@@ -145,10 +152,18 @@ function SWEP:Invisivility(ply)
 		end
 	end
 
-	timer.Simple(15, function()
+	timer.Create("fh_invisibility_timer" .. ply:EntIndex(), 15, 1, function()
+		--[[
+			Я попытался вывести выключение инвиза в отдельную функцию SWEP:StopInvisibility(ply),
+			но узнал что если допустим, ты умираешь, то эта функция свепа перестаёт существовать для тебя на клиенте
+			и выдаёт ошибку.
+		
+		]]--
+	
 		if IsValid(ply) then
 			ply:SetColor(Color(255, 255, 255, 255))
-			ply:SetNoDraw(false)
+			ply:SetMaterial("")
+			
 			ply:DrawShadow(true)
 			ply.invisible = false
 			if CLIENT then
@@ -217,12 +232,14 @@ function SWEP:TranslateFOV( fov )
 	return fov - self.LerpFOV
 end
 
-hook.Add("fh_createragdoll", "bonnie_mask_ondeath", function(ply, rag)
+hook.Add("fh_createragdoll", "bonnie_mask_onragdoll", function(ply, rag)
 	if ply.invisible then
 		ent = ents.Create("prop_physics")
 		ent:SetModel("models/weapons/w_bonmask.mdl")
 		ent:SetPos( rag:GetPos() )
 		ent:SetCollisionGroup(COLLISION_GROUP_DEBRIS)
 		ent:Spawn()
+		
+		rag:SetMaterial("")
 	end
 end)

@@ -11,6 +11,15 @@ local PushSound = {
 	"physics/body/body_medium_impact_soft7.wav",
 }
 
+local PushSound_pills = {
+	"physics/metal/metal_solid_impact_hard1.wav",
+	"physics/metal/metal_solid_impact_hard4.wav",
+	"physics/metal/metal_solid_impact_hard5.wav",
+	"physics/metal/metal_solid_impact_soft1.wav",
+	"physics/metal/metal_solid_impact_soft2.wav",
+	"physics/metal/metal_solid_impact_soft3.wav",
+}
+
 local push = {}
 
 local PLAYER = FindMetaTable("Player")
@@ -42,13 +51,16 @@ hook.Add("KeyPress", "PushInteraction", function(ply, key)
 		local ent = ply:GetEyeTrace().Entity
 		if IsValid(ply) and IsValid(ent) then
 			if ply:IsPlayer() and ply:Team() ~= TEAM_SPECTATOR and ent:IsPlayer() and not ent.lobbyFreeze and not ent:IsPushImmune() then
+			
+				local pushSounds = ent:IsAnimatronic() and PushSound_pills or PushSound
+				
 				if ply:GetPos():Distance(ent:GetPos()) <= 100 then
 					if ent:Alive() and ent:GetMoveType() == MOVETYPE_WALK and not ent:IsFlagSet(FL_FROZEN) then
-						ply:EmitSound(PushSound[math.random(#PushSound)], 100, 100)
+						ply:EmitSound(pushSounds[math.random(#pushSounds)], 100, 100)
 						local velAng = ply:EyeAngles():Forward()
 						velAng.z = math.Clamp(velAng.z, -0.1, 0.5)
 
-						ent:SetVelocity(velAng * 500)
+						ent:SetVelocity(velAng * (ent:IsAnimatronic() and !ply:IsAnimatronic() and 250 or 450))
 						ent:ViewPunch(Angle(math.random(-25, 25), math.random(-25, 25), 0))
 						push[ply:UserID()] = true
 						timer.Simple(0.15, function()

@@ -3,12 +3,15 @@ local playerSounds = playerSounds or {}
 net.Receive("fh_adv_sound_play", function()
 	local ply = LocalPlayer()
 	local snd = net.ReadString()
+	local name = net.ReadString()
+	
+	if string.len(name) <= 3 then name = snd end
 	
 	if !IsValid(ply) then return end
 	
-    if playerSounds[snd] then
-        playerSounds[snd]:Stop()
-        playerSounds[snd] = nil
+    if playerSounds[name] then
+        playerSounds[name]:Stop()
+        playerSounds[name] = nil
     end
 	
     local sound = CreateSound(ply, snd)
@@ -16,7 +19,7 @@ net.Receive("fh_adv_sound_play", function()
 	sound:SetDSP(0)
     sound:Play()
 	
-    playerSounds[snd] = sound
+    playerSounds[name] = sound
 end)
 
 net.Receive("fh_ent_sound_play", function()

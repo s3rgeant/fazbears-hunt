@@ -21,11 +21,15 @@ local function AddCheckbox(parent, x, y, text, convar, action, invert)
     checkbox:SetText(text)
     checkbox:SetDark(true)
     local val = convar:GetBool()
-    checkbox:SetChecked(invert and not val or val)
+	if invert then val = not val end
+    checkbox:SetChecked(val)
     function checkbox:OnChange(b)
+		local bool = b
+		if invert then bool = not b end
+	
         net.Start("AdminAction")
         net.WriteString(action)
-        net.WriteBool(invert and not b or b)
+        net.WriteBool(bool)
         net.SendToServer()
     end
     return checkbox
@@ -241,19 +245,19 @@ local function OpenAdminPanel()
     AddSlider(expPanel, 10, step(30), language.GetPhrase("fazhunt.adminpanel.max_cupcakes"), 3, 10, conVars.fh_max_cupcakes:GetInt(), 0, "fh_max_cupcakes")
     AddCheckbox(expPanel, 10, step(20), language.GetPhrase("fazhunt.adminpanel.silent_highlight"), conVars.fh_silent_highlight, "fh_silent_highlight")
     AddCheckbox(expPanel, 10, step(20), language.GetPhrase("fazhunt.adminpanel.fh_respawn_dead_animatronics"), conVars.fh_respawn_dead_animatronics, "fh_respawn_dead_animatronics", true)
-	AddSlider(expPanel, 10, step(40), "Game Duration (In minutes)", 1, 20, conVars.fh_round_duration:GetInt(), 0, "fh_round_duration")
+	AddSlider(expPanel, 10, step(40), language.GetPhrase("fazhunt.adminpanel.game_duration"), 1, 20, conVars.fh_round_duration:GetInt(), 0, "fh_round_duration")
 	
 	local DCollapsible = vgui.Create( "DCollapsibleCategory", expPanel )
 	DCollapsible:SetLabel( "READ ME" )	
 	DCollapsible:SetPos( 10, justget(15) )
-	DCollapsible:SetSize( 400, 25 )
+	DCollapsible:SetSize( 450, 25 )
 	DCollapsible:SetExpanded( false )
 
     local lblExp = vgui.Create("DLabel", DCollapsible)
     lblExp:SetPos(10, 1)
-    lblExp:SetSize(345, 200)
+    lblExp:SetSize(450, 200)
     lblExp:SetDark(true)
-    lblExp:SetText(language.GetPhrase("fazhunt.adminpanel.experiments_description01") .. language.GetPhrase("fazhunt.adminpanel.experiments_description02"))
+    lblExp:SetText(language.GetPhrase("fazhunt.adminpanel.experiments_description01") .. "\n\n" .. language.GetPhrase("fazhunt.adminpanel.experiments_description02"))
 
     sheet:AddSheet(language.GetPhrase("fazhunt.adminpanel.experiments"), expPanel, "icon16/chart_line.png")
 
@@ -292,10 +296,10 @@ end
 
 function createListAnimatronics()
     AnimatronicList:Clear()
-    local killers = table.Copy(killerData)
-    local preferred = table.GetKeys(getAllPreferables(true))
+    local killers_ = killers.getAll()
+    local preferred = table.GetKeys(killers.getAllPreferables(true))
 
-    for k, v in pairs(killers) do
+    for k, v in pairs(killers_) do
         local line = AnimatronicList:AddLine(language.GetPhrase(v.fullname), k)
         local hasPref = table.HasValue(preferred, k)
         function line:Paint(w, h)

@@ -13,9 +13,9 @@ SWEP.PrintName = "Crappy Video Camera"
 
 if CLIENT then
 SWEP.Instructions = [[
-<color=green>[]].. language.GetPhrase("keys.lmb") ..[[]</color> ]].. language.GetPhrase("crapvidcam.camstart") ..[[
+<color=green>[]].. language.SafeGetPhrase("keys.lmb") ..[[]</color> ]].. language.SafeGetPhrase("crapvidcam.camstart") ..[[
 
-<color=#00ffff> ]].. language.GetPhrase("crapvidcam.camsave") ..[[ </color>]]
+<color=#00ffff> ]].. language.SafeGetPhrase("crapvidcam.camsave") ..[[ </color>]]
 end
 
 if CLIENT then

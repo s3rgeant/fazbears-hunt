@@ -3,15 +3,16 @@ include( "shared.lua" )
 pcall(require,"pills")
 
 include( "interface/cl_admin.lua" )
+include( "interface/cl_anim_selector.lua" )
 include( "interface/cl_hud.lua" )
-include( "interface/cl_playerlist.lua" )
 include( "interface/cl_optionmenu.lua" )
+include( "interface/cl_playerlist.lua" )
 include( "interface/cl_spechud.lua" )
 include( "interface/cl_timer.lua" )
 
+include( "cl_flashlight.lua" )
 include( "cl_halo.lua" )
 include( "cl_horror.lua" )
-include( "cl_nightvision.lua" )
 include( "cl_sound.lua" )
 
 --include( "terror_radius.lua" )
@@ -24,10 +25,10 @@ include("pill_fnaf2.lua")
 include("pill_fnaf3.lua")
 
 function getTeam(team)
-	local teamname = language.GetPhrase("fuppr.survivors_team")
+	local teamname = language.GetPhrase("fazhunt.survivors_team")
 	
 	if team == 2701 or team == 27 or string.find(team, 'animatronic') then
-		teamname = language.GetPhrase("fuppr.animatronics_team")
+		teamname = language.GetPhrase("fazhunt.animatronics_team")
 	elseif team == TEAM_SPECTATOR or string.find(team, 'kill') then 
 		teamname = ' '
 	end
@@ -92,7 +93,7 @@ net.Receive("KillerPicked", function()
     local color = net.ReadColor()
     
     chat.AddText(
-        Color(255, 15, 15), playerName, " ", Color(255,255,255), language.GetPhrase("fuppr.round.became"), " ", color, language.GetPhrase(animatronicName)
+        Color(255, 15, 15), playerName, " ", Color(255,255,255), language.GetPhrase("fazhunt.round.became"), " ", color, language.GetPhrase(animatronicName)
     )
 end)
 
@@ -112,7 +113,7 @@ net.Receive("SurvivorsWin", function()
 	chat:AddText(" ")
 	chat:AddText(Color( 0, 182, 255 ), language.GetPhrase("fazhunt.chat.survivalswin") .. "!")
 	chat:AddText(" ")
-	chat:AddText(Color( 0, 225, 100 ), language.GetPhrase("fuppr.survivors_team"), ": ", Color(255, 255, 255), '- ', table.concat(players, ", "))
+	chat:AddText(Color( 0, 225, 100 ), language.GetPhrase("fazhunt.survivors_team"), ": ", Color(255, 255, 255), '- ', table.concat(players, ", "))
 	chat:AddText(" ")
 end)
 

@@ -120,6 +120,10 @@ function ENT:Initialize()
                 self:PillLoopSound("move")
             end
         end
+		
+		if self.formTable.bloodType then
+			self:GetPillUser():SetBloodColor( self.formTable.bloodType )
+		end
 
         if self.formTable.health then
             self:GetPillUser():SetHealth(self.formTable.health)
@@ -635,7 +639,7 @@ function ENT:Think()
 		and !ply.fh_target_player then
 		
 			self:SetColor(Color(255, 255, 255, 0))
-		elseif self.dontdraw then
+		elseif self.dontdraw or hook.Run("ShouldDrawPill") == false then
 			self:SetNoDraw(true)
 			
         elseif (self:GetPillUser() ~= LocalPlayer()) then

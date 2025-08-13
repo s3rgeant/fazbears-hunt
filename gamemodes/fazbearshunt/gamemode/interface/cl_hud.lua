@@ -293,6 +293,15 @@ function isNotStuck()
 	return Color(255, 255, 255, 255)
 end
 
+function foxyChargeCondition()
+	local ply = LocalPlayer()
+	
+	if ply:Crouching() or !ply:OnGround() then
+		return Color(200, 32, 32, 200)
+	end
+	return Color(255, 255, 255, 255)
+end
+
 function abilityParentClrFunc(name, func)
 	currentAbilities[name].color = func
 end

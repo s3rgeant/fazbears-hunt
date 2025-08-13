@@ -143,7 +143,7 @@ function ENT:Think()
 	if SERVER and self.Active then
 		if self.NextAttackTime and CurTime() >= self.NextAttackTime then
 			if !timer.Exists("pt_jump_delay".. self:EntIndex()) and self.Target and ((math.random(1,80) == 1 and self.Target:IsSprinting() and self:GetVelocity():LengthSqr() > 60) 
-			or (self.Target:GetPos().z > self:GetPos().z and self:GetPos():Distance(self.Target:GetPos()) < 250)) then
+			or self.Target and (self.Target:GetPos().z > self:GetPos().z and self:GetPos():Distance(self.Target:GetPos()) < 250)) then
 				if self:IsOnGround() then
 					self.loco:Jump()
 					self.loco:SetAcceleration(50)

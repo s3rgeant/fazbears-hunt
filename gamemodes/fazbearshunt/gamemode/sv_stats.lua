@@ -85,7 +85,7 @@ function fh.AnnounceStats(maxCount)
         local ply, value = stats.GetTop(statName)
 
         local min = statMeta[statName] and statMeta[statName].min or 1
-        if not ply or value < min then continue end
+        if not ply or !IsValid(ply) or value < min then continue end
 
         local format = statName
 
@@ -147,6 +147,7 @@ hook.Add("PostEntityTakeDamage", "fh_stats_damage", function(target, dmginfo)
 		
 		local attacker = dmginfo:GetAttacker()
 		local inflictor = dmginfo:GetInflictor()
+		
 		if IsValid(attacker) and attacker:IsPlayer() and attacker:Team() == 2701 then
 			stats.Add(attacker, "damaged", dmginfo:GetDamage())
 			if IsValid(inflictor) then
@@ -165,6 +166,18 @@ hook.Add("PostEntityTakeDamage", "fh_stats_damage", function(target, dmginfo)
 				end
 			end)
 		end
+	end
+	
+	if target:GetClass() == "cakemine" then
+		
+		local attacker = dmginfo:GetAttacker()
+		local inflictor = dmginfo:GetInflictor()
+		timer.Simple(0, function()
+			if !IsValid(target) and attacker:IsPlayer() and attacker:IsSurvivor() then
+				stats.Add(attacker, "broke_cupcakes", 1)
+				print('sexas')
+			end
+		end)
 	end
 end)
 

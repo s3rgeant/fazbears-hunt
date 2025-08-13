@@ -69,20 +69,24 @@ end
 
 function SWEP:PrimaryAttack()
 	if SERVER then
+	
+		local owner = self.Owner
+		
+		owner:LagCompensation(true)
 		
 		local Banana = ents.Create("banana_peel");
 
 		Banana.BananaType = 1;
 		Banana.Owner = self.Owner;
 
-		Banana:SetPos(self.Owner:GetShootPos() + self.Owner:GetAimVector() * 30);
+		Banana:SetPos(owner:GetShootPos() + owner:GetAimVector() * 30);
 		Banana:Spawn();
 		Banana:Activate();
 		
 		local Physics = Banana:GetPhysicsObject();
 
 		if IsValid(Physics) then
-			Physics:ApplyForceCenter(self.Owner:GetAimVector() * math.Rand(300,350) * Physics:GetMass());
+			Physics:ApplyForceCenter(owner:GetAimVector() * math.Rand(300,350) * Physics:GetMass());
 
 			self.Weapon:SendWeaponAnim(ACT_VM_THROW);
 
@@ -97,11 +101,13 @@ function SWEP:PrimaryAttack()
 			
 			timer.Simple(0.1,C);
 		end
+		owner:LagCompensation(false)
+		
 		self:TakePrimaryAmmo(1)
 		self:SetNextPrimaryFire(CurTime() + self.Primary.Delay)
 		
 		if self:Clip1() <= 0 and self:Ammo1() <= 0 then
-			self.Owner:StripWeapon(self:GetClass())
+			owner:StripWeapon(self:GetClass())
 		end
 	end
 end

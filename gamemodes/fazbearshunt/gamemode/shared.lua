@@ -49,7 +49,7 @@ local colors = {
     Golden = Color(255, 210, 0)
 }
 
-killerData = killerData or {
+local killerData = killerData or {
     ["pill_wfreddy2"] = {name = "freddy", fullname = "fazhunt.animatronics.freddy", color = colors.Freddy},
     ["pill_wbonnie2"] = {name = "bonnie", fullname = "fazhunt.animatronics.bonnie", color = colors.Bonnie},
     ["pill_wchica2"] = {name = "chica", fullname = "fazhunt.animatronics.chica", color = colors.Chica},
@@ -80,7 +80,10 @@ killerAbilities = {
     },
     foxy = {
         { name = 'kill', key = 'LMB', duration = 0, keyboard = false, hidden = true },
-		{ name = 'charge', key = 'RMB', duration = 0, keyboard = false, tokens = 5 },
+		{ name = 'charge', key = 'RMB', duration = 0, keyboard = false, tokens = 5,
+		condition = function()
+            return foxyChargeCondition()
+        end},
         { name = 'highlight', key = 'R', duration = 0, keyboard = true }
     },
     sfreddy = {
@@ -115,7 +118,14 @@ killerAbilities = {
     }
 }
 
-function getAllSolos()
+killers = killers or {}
+
+function killers.getAll()
+	local tablo = table.Copy(killerData)
+	return tablo
+end
+
+function killers.getAllSolos()
 	local tablo = {}
 	for k, v in pairs( killerData ) do
 		if !killerData[k].secondary then
@@ -125,7 +135,7 @@ function getAllSolos()
 	return tablo
 end
 
-function getAllPreferables(secondaries)
+function killers.getAllPreferables(secondaries)
 	secondaries = secondaries or false
 	local tablo = {}
 	for k, v in pairs( killerData ) do
@@ -137,7 +147,7 @@ function getAllPreferables(secondaries)
 	return tablo
 end
 
-function getAllNonPreferables()
+function killers.getAllNonPreferables()
 	local tablo = {}
 	for k, v in pairs( killerData ) do
 		if !killerData[k].preferable then
@@ -168,6 +178,40 @@ function pill_makeSecondary(anim, bool)
 		end
 	end
 end
+
+function pill_SetInstakill(anim, bool)
+	bool = bool or true
+	if istable(anim) then
+		for k, v in pairs( anim ) do
+			if killerData[v] then
+				killerData[v].instakill = bool
+			end
+		end
+	else
+		if killerData[anim] then
+			killerData[anim].instakill = bool
+		end
+	end
+end
+
+function pill_SetDamageAttack(anim, bool)
+	bool = bool or true
+	if istable(anim) then
+		for k, v in pairs( anim ) do
+			if killerData[v] then
+				killerData[v].damageAttack = bool
+			end
+		end
+	else
+		if killerData[anim] then
+			killerData[anim].damageAttack = bool
+		end
+	end
+end
+
+local damageOnlyAnims = {"pill_springtrap", "pill_plushtrap", "pill_clown"}
+
+pill_SetDamageAttack(damageOnlyAnims)
 
 function save_dontPrefer(net)
 	net = net or false
@@ -216,7 +260,7 @@ hook.Add("Initialize", "fh_dontprefer", function()
 	end
 end)
 
-function getAllSecondaries()
+function killers.getAllSecondaries()
 	local tablo = {}
 	for k, v in pairs( killerData ) do
 		if killerData[k].secondary then
@@ -226,8 +270,13 @@ function getAllSecondaries()
 	return tablo
 end
 
-function getAllKillers()
-	local tablo = table.Copy(killerData)
+function killers.getAllDamageOnly()
+	local tablo = {}
+	for k, v in pairs( killerData ) do
+		if killerData[k].damageAttack and !killerData[k].instakill then
+			tablo[k] = v
+		end
+	end
 	return tablo
 end
 

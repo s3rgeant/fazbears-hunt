@@ -6,15 +6,16 @@ AddCSLuaFile( "shared.lua" )
 include( "shared.lua" )
 
 AddCSLuaFile( "interface/cl_admin.lua" )
-AddCSLuaFile( "interface/cl_playerlist.lua" )
+AddCSLuaFile( "interface/cl_anim_selector.lua" )
 AddCSLuaFile( "interface/cl_hud.lua" )
 AddCSLuaFile( "interface/cl_optionmenu.lua" )
+AddCSLuaFile( "interface/cl_playerlist.lua" )
 AddCSLuaFile( "interface/cl_spechud.lua" )
 AddCSLuaFile( "interface/cl_timer.lua" )
 
+AddCSLuaFile( "cl_flashlight.lua" )
 AddCSLuaFile( "cl_halo.lua" )
 AddCSLuaFile( "cl_horror.lua" )
-AddCSLuaFile( "cl_nightvision.lua" )
 AddCSLuaFile( "cl_sound.lua" )
 
 AddCSLuaFile( "animsoundf2.lua" )
@@ -84,6 +85,23 @@ end
 
 lastKillers = lastKillers or {}
 
+local function GetPlyID(ply)
+    if not IsValid(ply) then return nil end
+    if ply:IsBot() then
+        return "BOT_" .. ply:EntIndex()
+    end
+    return ply:SteamID64()
+end
+
+local function WasKillerRecently(ply)
+    local id = GetPlyID(ply)
+    return id and lastKillers[id] ~= nil
+end
+
+local function RemoveKillerID(id)
+    lastKillers[id] = nil
+end
+
 lobbyDuration = 120
 local gameDuration = 600
 setupGameDuration = 60
@@ -130,11 +148,7 @@ function assignKillers()
         curMaxKillers = 1
     end
 	
-    local availableKillers = table.GetKeys(getAllPreferables(curMaxKillers > 1))
-	
-	for k, v in pairs(lastKillers) do
-		table.RemoveByValue(players, k)
-	end
+    local availableKillers = table.GetKeys(killers.getAllPreferables(curMaxKillers > 1))
 	
     for i = 1, curMaxKillers do
 		players = fh.GetEarnedKillers(players)
@@ -145,9 +159,8 @@ function assignKillers()
 		animatronics[chosenPlayer] = true
 		survivors[chosenPlayer] = nil
 		
-		chosenPlayer:SetTeam(2701)
-		
 		chosenPlayer:Spawn()
+		chosenPlayer:SetTeam(2701)
 		
 		curKillers[chosenPlayer] = true
 		
@@ -157,9 +170,10 @@ function assignKillers()
     end
 	
 	for v, _ in pairs(curKillers) do
-		if !lastKillers[v] then
-			lastKillers[v] = 0
-		end
+		local id = GetPlyID(v)
+        if id and not lastKillers[id] then
+            lastKillers[id] = 0
+        end
 	
 		net.Start("fh_let_killers_choose")
 		net.WriteTable(availableKillers)
@@ -239,14 +253,14 @@ end)
 
 local function giveKillerShared(ply, killer, force)
 	
-	local killers = getAllKillers()
+	local killers_ = killers.getAll()
 	
 	local killerData
 	local command
 	
-	for k, v in pairs(killers) do
+	for k, v in pairs(killers_) do
 		if v.name == killer or k == killer then
-			killerData = killers[k]
+			killerData = killers_[k]
 			command = k
 		end
 	end
@@ -339,15 +353,15 @@ function endGame(killerVictory)
 		timer.Remove("RandomGifts")
 	end
 		
-	for k,v in pairs(lastKillers) do
-		if !IsValid(k) then continue end
-		
-		lastKillers[k] = v + 1
-		
-		if lastKillers[k] > 5 then
-			table.RemoveByValue(lastKillers, k)
-		end
-	end
+	for id, v in pairs(lastKillers) do
+        local ply = player.GetBySteamID64(id)
+        if IsValid(ply) then
+            lastKillers[id] = v + 1
+            if lastKillers[id] > 5 then
+                RemoveKillerID(id)
+            end
+        end
+    end
 	
 	if killerVictory then
 		local win_camera = ents.FindByClass("fh_win_camera")[1]
@@ -367,7 +381,7 @@ function endGame(killerVictory)
 				end)
 				
 				timer.Simple(0.5, function()
-					for _, p in ipairs(player.GetAll()) do
+					for _, p in player.Iterator() do
 						p:ScreenFade( SCREENFADE.OUT, Color( 0, 0, 0, 255 ), 0.5, 0 )
 					end
 				end)
@@ -380,7 +394,7 @@ function endGame(killerVictory)
 					springtrap_ply:SetRenderAngles(win_location:GetAngles())
 					ent:SetAngles(win_location:GetAngles())
 					
-					for _, p in ipairs(player.GetAll()) do
+					for _, p in player.Iterator() do
 						p:SetViewEntity(win_camera)
 						p:SetFOV(65, 2)
 						
@@ -574,13 +588,33 @@ function restoreAnimatronic(ply)
 	survivors[ply] = true
 end
 
+function GetGiftSpawnInterval()
+	local def1 = 65
+	local def2 = 80
+	
+	local count = team.NumPlayers(TEAM_UNASSIGNED) or 1
+	
+	def1 = def1 + (count * ( 0.15 * count ) )
+	def2 = def2 + (count * ( 0.175 * count ) )
+	
+	return def1, def2
+end
+
+function GetGiftSpawnChance()
+	local def = 100
+	
+	local count = math.min(team.NumPlayers(TEAM_UNASSIGNED) or 1, 5)
+	
+	def = def - math.min(count * 1.2, 75)
+	
+	return def
+end
+
 function doGiftSpawning()
 	if timer.Exists('RandomGifts') then return end
-	local random_num1 = 110
-	local random_num2 = 160
-	timer.Create("RandomGifts", fh_random_time(random_num1, random_num2), 0, function()
+	timer.Create("RandomGifts", fh_random_time( GetGiftSpawnInterval() ), 0, function()
 		SpawnGifts()
-		timer.Adjust("RandomGifts", fh_random_time(random_num1, random_num2), nil, nil)
+		timer.Adjust("RandomGifts", fh_random_time( GetGiftSpawnInterval() ), nil, nil)
 	end)
 end
 
@@ -595,8 +629,8 @@ function SpawnGifts()
 	end
 	
 	for ply, _ in pairs(survivors) do
-		if math.random(1, 100) <= 77 and (ply:Alive() and ply:Team() != TEAM_SPECTATOR) then
-			timer.Simple(math.random(1, 12), function()
+		if math.random(1, 100) <= GetGiftSpawnChance() and (ply:Alive() and ply:Team() != TEAM_SPECTATOR) then
+			timer.Simple(util.SharedRandom( math.random(-100,100), 1, 12 ), function()
 				if !IsValid(ply) or ply:Team() == TEAM_SPECTATOR or !ply:Alive() then return end
 				local gift = ents.Create("fh_gift")
 				gift:SetPos(ply:GetPos() + Vector(0, 0, 10))
@@ -633,6 +667,9 @@ end
 hook.Add( "Initialize", "fh_init", function()
 	RunConsoleCommand('sv_noclipspeed', 2)
 	RunConsoleCommand('mp_show_voice_icons', 0)
+	RunConsoleCommand('sv_defaultdeployspeed', 2)
+	
+	RunConsoleCommand("proximity_enabled", 1)
 	
 	table.Empty(lastKillers)
 	
@@ -697,9 +734,9 @@ hook.Add( "StartCommand", "fh_cantattack", function( ply, cmd )
 	end
 end)
 
-hook.Add("SetupPlayerVisibility", "fh_test_pvs", function(ply, viewent)
+hook.Add("SetupPlayerVisibility", "fh_speak_pvs", function(ply, viewent)
 	for _, sex in player.Iterator() do
-		if sex:IsSpeaking() and sex:Alive() then
+		if sex ~= ply and sex:Alive() and sex:IsSpeaking() then
 			AddOriginToPVS(sex:GetPos())
 		end
 	end
@@ -985,6 +1022,8 @@ hook.Add("PillApply", "fh_joinpill", function(ply, name)
 		net.Start("fh_hl_teammates")
 		net.Broadcast()
 	end)
+	
+	local killerData = killers.getAll()
 		
 	if !killerData[name] then return end
 	
@@ -1044,7 +1083,7 @@ end)
 function giveRandomKiller(ply, update)
 	update = update or false
 	
-    local availableKillers = table.GetKeys(getAllPreferables(curMaxKillers > 1))
+    local availableKillers = table.GetKeys(killers.getAllPreferables(curMaxKillers > 1))
 	
 	for k, v in pairs(usedKillers) do
 		if table.HasValue(availableKillers, k) then
@@ -1098,7 +1137,7 @@ net.Receive("fh_initpostentity", function(len, ply)
 	end
 	
 	net.Start("fh_share_notprefered")
-	net.WriteTable(getAllPreferables(true))
+	net.WriteTable(killers.getAllPreferables(true))
 	net.Send(ply)
 end)
 
@@ -1174,26 +1213,37 @@ function fh.GetGameDuration()
 end
 
 function fh.GetEarnedKillers(players)
-	if table.IsEmpty(players) and !table.IsEmpty(lastKillers) then
-		local chosenLastKiller = nil
-		local high = 0
-		
-		for k,v in pairs(lastKillers) do
-			if !IsValid(k) then continue end
-			if v >= high then
-				chosenLastKiller = k
-				high = v
-			end
-		end
-		table.insert(players, chosenLastKiller)
-		lastKillers[chosenLastKiller] = 0
-	end
+    for _, ply in ipairs(players) do
+        if WasKillerRecently(ply) then
+            table.RemoveByValue(players, ply)
+        end
+    end
 	
-	if table.IsEmpty(players) then
-		players = player.GetAll()
-	end
-	
-	return players
+    if table.IsEmpty(players) and not table.IsEmpty(lastKillers) then
+        local chosenLastKillerID = nil
+        local high = 0
+
+        for id, v in pairs(lastKillers) do
+            if v >= high then
+                chosenLastKillerID = id
+                high = v
+            end
+        end
+
+        if chosenLastKillerID then
+            local ply = player.GetBySteamID64(chosenLastKillerID)
+            if IsValid(ply) then
+                table.insert(players, ply)
+                lastKillers[chosenLastKillerID] = 0
+            end
+        end
+    end
+
+    if table.IsEmpty(players) then
+        players = player.GetAll()
+    end
+
+    return players
 end
 
 local round_music = {
@@ -1310,10 +1360,6 @@ end, 100)
 
 fh.RegisterRoundType("springtrap", 1, function()
 	local players = player.GetAll()
-	
-	for k, v in pairs(lastKillers) do
-		table.RemoveByValue(players, k)
-	end
 		
 	players = fh.GetEarnedKillers(players)
 	
@@ -1323,9 +1369,11 @@ fh.RegisterRoundType("springtrap", 1, function()
 	
 	chosenPlayer.lobbyFreeze = true
 	chosenPlayer:Spawn()
+	chosenPlayer:SetTeam(2701)
 	
-	if !lastKillers[chosenPlayer] then
-		lastKillers[chosenPlayer] = 0
+	local id = GetPlyID(chosenPlayer)
+	if id and not lastKillers[id] then
+		lastKillers[id] = 0
 	end
 	
 	RandomTaser()

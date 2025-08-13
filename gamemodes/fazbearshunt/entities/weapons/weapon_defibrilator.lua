@@ -7,7 +7,7 @@ else -- CLIENT
 	SWEP.DrawWeaponInfoBox	= false
 	SWEP.BounceWeaponIcon	= false 
 
-	SWEP.WepSelectIcon = surface.GetTextureID("vgui/achievements/hl2_beat_game") 
+	SWEP.WepSelectIcon = surface.GetTextureID( "weapons/defibrillator" )
 
 	language.Add("weapon_defibrilator", "Defibrilator")
 	
@@ -22,7 +22,7 @@ end
 SWEP.PrintName = "Defibrilator"
 SWEP.Spawnable = true
 
-SWEP.ViewModelFOV = 75
+--SWEP.ViewModelFOV = 75
 SWEP.ViewModel = "models/weapons/defib/v_defibrillator.mdl"
 SWEP.WorldModel = "models/weapons/defib/w_eq_defibrillator.mdl"
 SWEP.ViewModelFlip = false
@@ -221,7 +221,7 @@ function SWEP:PrimaryAttack()
 
     if IsValid(tr.Entity) then
         for k, v in pairs(ents.FindInSphere(self.Owner:GetShootPos(), 70)) do
-            if v:GetClass() == 'prop_ragdoll' then
+            if v:GetClass() == 'prop_ragdoll' and IsValid(v:GetOwner()) then
                 self.Reviving = true
                 self.ReviveStartTime = CurTime()
                 self.ReviveTarget = v
@@ -442,6 +442,8 @@ if CLIENT then
             local corpses = {}
 
             for _, ent in pairs(ents.FindByClass("prop_ragdoll")) do
+				if !IsValid(ent:GetOwner()) then continue end
+				
                 if ent:GetPos():Distance(ply:GetPos()) <= 3064 then
                     table.insert(corpses, ent)
                 end
@@ -460,6 +462,8 @@ if CLIENT then
 	
 		if IsValid(wep) and wep:GetClass() == "weapon_defibrilator" then
 			for _, ent in pairs(ents.FindByClass("prop_ragdoll")) do
+				if !IsValid(ent:GetOwner()) then continue end
+				
 				if ent:GetPos():Distance(ply:GetPos()) <= 377 then
 					local ownerName = IsValid(ent:GetOwner()) and ent:GetOwner():Nick() or "???"
 					local screenPos = ent:GetPos():ToScreen()

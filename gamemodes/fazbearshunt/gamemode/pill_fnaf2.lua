@@ -128,6 +128,7 @@ pills.register("pill_wfreddy2",{
 	end,
 
     jumpPower=250,
+	bloodType=BLOOD_COLOR_MECH,
 	
 	muteSteps = true,
 	health=10000,
@@ -519,6 +520,7 @@ pills.register("pill_wbonnie2",{
 	viewmodel={
 		weapon="v_bonnie"
 	},
+	bloodType=BLOOD_COLOR_MECH,
 	
 	muteSteps = true,
 
@@ -569,10 +571,10 @@ pills.register("pill_wbonnie2",{
 				return 
 			end
 			
-			performJumpscare(ply, ent, target, 1.6, "bonnie", 52, "v_bonnie")
+			local success = performJumpscare(ply, ent, target, 1.6, "bonnie", 52, "v_bonnie")
 			
 			timer.Simple(1.5, function()
-				if !IsValid(target) then return end
+				if !IsValid(target) or !success then return end
 			
 				target:SetVelocity(ply:GetForward() * 600) -- чтоб он нахуй улетел
 				target:TakeDamage(target:Health() + target:Armor(), ply)
@@ -664,7 +666,7 @@ pills.register("pill_wbonnie2",{
 	
 	land=function(ply,ent)
 		if ply.lobbyFreeze != nil and ply.lobbyFreeze then return end
-		if ply:WaterLevel() < 2 and ply:GetVelocity().z < -160 then
+		if ply:WaterLevel() < 2 and ply:GetVelocity().z < -160 and ent.anim != 'ability' then
 			ent:PillAnim("land",true)
 			return
 		end
@@ -757,6 +759,7 @@ pills.register("pill_wchica2",{
     },
 	hull=Vector(32,32,86),
 	duckBy=60,
+	bloodType=BLOOD_COLOR_MECH,
 	
     jumpPower=250,
 	health=10000,
@@ -958,6 +961,7 @@ pills.register("pill_wfoxy2",{
 	viewmodel={
 		weapon="v_foxy"
 	},
+	bloodType=BLOOD_COLOR_MECH,
 	
     jumpPower=400,
 	health=10000,
@@ -1000,7 +1004,7 @@ pills.register("pill_wfoxy2",{
 		func=function(ply,ent)
 			if IsValid(ply:GetEntityInUse()) then return end
 			
-			if ply.isBlightRushing then return end
+			if ply.isBlightRushing or ply.blightTimeoutTimer then return end
 			
 			local target = FindNearestPlayer(ent:GetPos(), 130, ply, 90)
 			
@@ -1028,7 +1032,7 @@ pills.register("pill_wfoxy2",{
 	
 	land=function(ply,ent, iw)
 		if ply.lobbyFreeze != nil and ply.lobbyFreeze then return end
-		if ply:WaterLevel() < 2 and ply:GetVelocity().z < -160 then
+		if ply:WaterLevel() < 2 and ply:GetVelocity().z < -160 and !ply.isBlightRushing then
 			ent:PillAnim("land",true)
 			return
 		end
@@ -1148,6 +1152,7 @@ pills.register("pill_sfreddy2",{
 		xPose="aim_yaw",
 		yPose="aim_pitch"
 	},
+	bloodType=BLOOD_COLOR_MECH,
 	canAim=function(ply,ent)
 		return ent.active
 	end,
@@ -1386,6 +1391,7 @@ pills.register("pill_endo02",{
     },
 	hull=Vector(32,32,86),
 	duckBy=60,
+	bloodType=BLOOD_COLOR_MECH,
 	
 	viewmodel={
 		weapon="v_endo"
@@ -1476,7 +1482,6 @@ pills.register("pill_endo02",{
 			ent.landTimes = ent.landTimes - 1
 		end)
 	end,
-
 	
 	noragdoll=true,
 
@@ -1583,6 +1588,7 @@ pills.register("pill_wgfreddy2",{
     },
 	hull=Vector(32,32,86),
 	duckBy=60,
+	bloodType=BLOOD_COLOR_MECH,
 	
 	viewmodel={
 		weapon="v_freddy",
@@ -1779,6 +1785,7 @@ pills.register("pill_wgfreddyhead2",{
         offset = Vector(0, 0, 90),
 		dist = 150
     },
+	bloodType=BLOOD_COLOR_MECH,
 	hull=Vector(32,32,86),
 	duckBy=60,
 	
@@ -1845,6 +1852,8 @@ pills.register("pill_wgfreddyhead2",{
 	
 
 function playVoiceline(character, line, who, when)
+	if CLIENT then return end
+
 	if who:IsSpeaking() then return end
 
 	if ( timer.Exists( "fh_PlayVoiceLine" .. who:SteamID64()) or timer.Exists( "fh_DontVoiceLine" .. who:SteamID64() ) ) then return end
@@ -1950,7 +1959,9 @@ resource.AddFile("sound/grab_player.wav")
 resource.AddFile("sound/throw_player.wav")
 
 function performJumpscare(ply, ent, target, killDelay, voiceCharacter, jumpscareDistance, wepClass)
-	if not IsValid(target) then return end
+	if not IsValid(target) then return false end
+	
+	if target:HasGodMode() then return false end
 
 	playVoiceline(voiceCharacter, "kill", ply, 2)
 	ent:PillSound("melee", false)
@@ -1979,6 +1990,8 @@ function performJumpscare(ply, ent, target, killDelay, voiceCharacter, jumpscare
 		target:Freeze(false)
 		target:TakeDamage(target:Health() + target:Armor(), ply)
 	end)
+	
+	return true
 end
 
 
@@ -2320,12 +2333,26 @@ if SERVER then
 		if !conVars.fh_less_steps:GetBool() then
 			if table.Count(team.GetPlayers(2701)) > 0 then
 				for _, player in ipairs(team.GetPlayers(2701)) do
-					AddOriginToPVS(player:GetPos())
+					if player ~= ply then
+						AddOriginToPVS(player:GetPos())
+					end
+				end
+			end
+		else
+			if ply:IsAnimatronic() then
+				if table.Count(team.GetPlayers(2701)) > 0 then
+					for _, player in ipairs(team.GetPlayers(2701)) do
+						if player ~= ply then
+							AddOriginToPVS(player:GetPos())
+						end
+					end
 				end
 			end
 		end
-		for k,v in pairs( outworld_victims ) do
-			AddOriginToPVS(k:GetPos())
+		for player,v in pairs( outworld_victims ) do
+			if player ~= ply then
+				AddOriginToPVS(player:GetPos())
+			end
 		end
 	end)
 
