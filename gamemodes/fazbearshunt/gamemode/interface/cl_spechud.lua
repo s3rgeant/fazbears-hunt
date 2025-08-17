@@ -1,18 +1,35 @@
 local playerSpecName
 
 local function DrawDeadHUD()
-	if not IsValid(playerSpecName) or not GetConVar("cl_drawhud"):GetBool() then return end
+	if not GetConVar("cl_drawhud"):GetBool() then return end
+	
+	local lp = LocalPlayer()
+	
+	local obs_target = lp:GetObserverTarget()
+	
+	if !IsValid(obs_target) then return end
+	
+	if lp:GetObserverMode() == OBS_MODE_ROAMING then return end
 	
 	local displayName
 	local healthText
 
-	if playerSpecName:IsPlayer() then
-		if playerSpecName:Nick() == "" then return end
-		displayName = utf8.sub(playerSpecName:Nick(), 0, 23)
-		healthText = playerSpecName:Health() .. " HP"
+	if obs_target:IsPlayer() then
+		if obs_target:Nick() == "" then return end
+		displayName = utf8.sub(obs_target:Nick(), 0, 23)
+		healthText = obs_target:Health() .. " HP"
+	elseif IsValid(obs_target:GetOwner()) then
+		local owner = obs_target:GetOwner()
+		
+		if owner:IsPlayer() then
+			displayName = utf8.sub(owner:Nick(), 0, 23)
+			healthText = owner:Health() .. " HP"
+			
+		end
+		
 	else
-		displayName = playerSpecName:GetClass() -- Имя класса энтити
-		healthText = playerSpecName:Health() and (playerSpecName:Health() .. " HP") or "???"
+		displayName = obs_target:GetClass() -- Имя класса энтити
+		healthText = obs_target:Health() and (obs_target:Health() .. " HP") or "???"
 	end
 
     local x = (ScrW() / 2) - (330 / 2)
@@ -24,7 +41,7 @@ local function DrawDeadHUD()
 	surface.SetMaterial(Material("vgui/spectator/window.png"))
 	surface.DrawTexturedRect(ScrW() / 2 - 200, ScrH() - (100 * 1.2), 400, 100)
 	
-    draw.SimpleText(language.GetPhrase("fazhunt.spectating") .. ":", "timerFontUpper", ScrW() / 2, y + 29, Color(202, 125, 0), TEXT_ALIGN_CENTER, TEXT_ALIGN_CENTER)
+    draw.SimpleText(language.SafeGetPhrase("fazhunt.spectating") .. ":", "timerFontUpper", ScrW() / 2, y + 29, Color(202, 125, 0), TEXT_ALIGN_CENTER, TEXT_ALIGN_CENTER)
 	draw.SimpleText(displayName, "timerFontUpper", ScrW() / 2, y + 61, Color(255, 255, 255), TEXT_ALIGN_CENTER, TEXT_ALIGN_CENTER)
 	draw.SimpleText(healthText, "timerFontSmall", ScrW() / 2, y + 91, Color(202, 125, 0), TEXT_ALIGN_CENTER, TEXT_ALIGN_CENTER)
 end

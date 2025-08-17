@@ -244,7 +244,7 @@ local function OpenAdminPanel()
     AddCheckbox(expPanel, 10, step(15), language.GetPhrase("fazhunt.adminpanel.quiet_animatronics"), conVars.fh_less_steps, "fh_less_steps")
     AddSlider(expPanel, 10, step(30), language.GetPhrase("fazhunt.adminpanel.max_cupcakes"), 3, 10, conVars.fh_max_cupcakes:GetInt(), 0, "fh_max_cupcakes")
     AddCheckbox(expPanel, 10, step(20), language.GetPhrase("fazhunt.adminpanel.silent_highlight"), conVars.fh_silent_highlight, "fh_silent_highlight")
-    AddCheckbox(expPanel, 10, step(20), language.GetPhrase("fazhunt.adminpanel.fh_respawn_dead_animatronics"), conVars.fh_respawn_dead_animatronics, "fh_respawn_dead_animatronics", true)
+    AddCheckbox(expPanel, 10, step(20), language.GetPhrase("fazhunt.adminpanel.fh_respawn_dead_animatronics"), conVars.fh_respawn_dead_animatronics, "fh_respawn_dead_animatronics")
 	AddSlider(expPanel, 10, step(40), language.GetPhrase("fazhunt.adminpanel.game_duration"), 1, 20, conVars.fh_round_duration:GetInt(), 0, "fh_round_duration")
 	
 	local DCollapsible = vgui.Create( "DCollapsibleCategory", expPanel )
@@ -269,7 +269,7 @@ local function OpenAdminPanel()
 		timer.Simple(0, function()
 			for i, item in ipairs(sheet.Items) do
 				if item.Tab == p:GetActiveTab() then
-					lastSelectedTab = i -- Сохраняем индекс текущей вкладки
+					lastSelectedTab = i
 					break
 				end
 			end

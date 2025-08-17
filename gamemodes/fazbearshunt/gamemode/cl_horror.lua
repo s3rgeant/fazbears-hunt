@@ -84,9 +84,13 @@ function render.DrawMercVideoGlitch(strength)
     render.DrawScreenQuad()
 end
 
-local function scaredNear(localPlayer, targetPlayer)
+local function scaredNear()
+    _G.fh_is_scared_lock = true
+
+	local localPlayer = LocalPlayer()
 	local eyePos = localPlayer:EyePos()
 	local plyPos = targetPlayer:EyePos()
+	
 	sound.PlayFile("sound/fnaf2/gfreddy/target_scared_near.wav", "noplay", function(chan, errID, errStr)
 		if IsValid(chan) then
 			chan:SetPos(localPlayer:GetPos())
@@ -100,9 +104,7 @@ local function scaredNear(localPlayer, targetPlayer)
 	localPlayer:SetEyeAngles(newAng)
 	
 	hook.Add("StartCommand", "fh_lock_view", function(ply, cmd)
-		if ply == localPlayer then
-			cmd:SetViewAngles((targetPlayer:EyePos() - localPlayer:EyePos() ):Angle() )
-		end
+		cmd:SetViewAngles(((targetPlayer:EyePos()) - ply:EyePos()):Angle())
 	end)
 	
 	hook.Add("InputMouseApply", "fh_scared_no_mouse", function(cmd, x, y, ang)
@@ -111,6 +113,7 @@ local function scaredNear(localPlayer, targetPlayer)
 	timer.Simple(0.5, function()
 		hook.Remove("InputMouseApply", "fh_scared_no_mouse")
 		hook.Remove("StartCommand", "fh_lock_view")
+        _G.fh_is_scared_lock = false
 		
 		net.Start("cl_target_wgfreddy_scared")
 		net.SendToServer()
@@ -184,7 +187,7 @@ local function fh_gfreddy_check_scarysound()
 				lastSoundTime = currentTime
 			end
 			if currentTime - lastSoundTime >= soundCooldown then
-				scaredNear(localPlayer, targetPlayer)
+				scaredNear()
 				lastSoundTime = currentTime
 				
 				scareImmunityUntil = CurTime() + 4
@@ -215,6 +218,10 @@ local function fh_gfreddy_check_scarysound()
 				end)
 
 				hook.Add("CreateMove", "fh_gfreddy_magnet_view", function(cmd)
+					if !IsValid(targetPlayer) then
+						hook.Remove("CreateMove", "fh_gfreddy_magnet_view")
+						return
+					end
 					local desiredAngle = (targetPlayer:EyePos() - localPlayer:EyePos()):Angle()
 					local currentAngle = cmd:GetViewAngles()
 					local diff = desiredAngle - currentAngle

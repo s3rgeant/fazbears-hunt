@@ -38,12 +38,18 @@ if SERVER then
 
     function ENT:Touch(ent)
         if self.IsUsed then return end
-        if CurTime() - self.SpawnTime > 1.5 and (ent:IsPlayer() and !ent:IsBot()) and ent:Team() != 2701 then
+        if CurTime() - self.SpawnTime > 1.5 and (ent:IsPlayer() and !ent:IsBot()) and ent:IsSurvivor() then
             self.IsUsed = true
             self:ApplyEffect(ent)
             self:Remove()
         end
     end
+	
+	function ENT:OnRemove()
+		if IsValid( self:GetOwner() ) then
+			self:GetOwner():SetGiftOwnership(false)
+		end
+	end
 end
 
 if CLIENT then
@@ -74,6 +80,19 @@ if CLIENT then
         self:SetNextClientThink(CurTime())
         return true
     end
+end
+
+local PLAYER = FindMetaTable("Player")
+
+if PLAYER then
+
+	function PLAYER:SetGiftOwnership(bool)
+		self:SetNWBool("GiftOwnership", bool or false)
+	end
+	
+	function PLAYER:GetGiftOwnership()
+		return self:GetNWBool("GiftOwnership", false)
+	end
 end
 
 gifts = gifts or {}

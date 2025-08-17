@@ -87,9 +87,6 @@ lastKillers = lastKillers or {}
 
 local function GetPlyID(ply)
     if not IsValid(ply) then return nil end
-    if ply:IsBot() then
-        return "BOT_" .. ply:EntIndex()
-    end
     return ply:SteamID64()
 end
 
@@ -114,7 +111,6 @@ local survivors_win_count = 0
 local roundCount = 0
 
 roundActive = false -- когда аниматроники разморожены и идёт раунд
-postGameOn = true -- используется только до начала первого раунда
 isGameOn = false -- начинается прямо под регистрацию раунда и заканчивается после 5 секунд конца раунда
 roundEnding = false -- концовка раунда
 
@@ -159,8 +155,8 @@ function assignKillers()
 		animatronics[chosenPlayer] = true
 		survivors[chosenPlayer] = nil
 		
-		chosenPlayer:Spawn()
 		chosenPlayer:SetTeam(2701)
+		chosenPlayer:Spawn()
 		
 		curKillers[chosenPlayer] = true
 		
@@ -181,50 +177,6 @@ function assignKillers()
 	end
 	freezeAnimatronics()
 end
-
-local function IsDoor(ent)
-    if not IsValid(ent) then return false end
-    local class = ent:GetClass()
-    return class == "func_door" or class == "func_door_rotating" or class == "prop_door_rotating"
-end
-
-local function IsDoorOpen(door)
-    if not IsValid(door) then return false end
-
-    local class = door:GetClass()
-
-    if class == "prop_door_rotating" then
-        return door:GetInternalVariable("m_eDoorState") == 2
-    elseif class == "func_door" or class == "func_door_rotating" then
-        return door:GetInternalVariable("m_toggle_state") == 0
-    end
-
-    return false
-end
-
-hook.Add("OnPlayerPhysicsDrop", "PushPropFromDoor", function(ply, ent, thrw)
-    if not IsValid(ent) then return end
-
-    timer.Simple(0, function()
-        if not IsValid(ent) then return end
-        if not ent:GetPhysicsObject():IsValid() then return end
-        if not string.StartsWith(ent:GetClass(), "prop_") then return end
-
-        local entPos = ent:GetPos()
-        local nearbyEntities = ents.FindInSphere(entPos, 70)
-
-        for _, nearby in ipairs(nearbyEntities) do
-            if IsDoor(nearby) and IsDoorOpen(nearby) then
-				local physobj = ent:GetPhysicsObject()
-                local doorPos = ply:EyePos()
-                local dir = (entPos - doorPos):GetNormalized()
-				physobj:ApplyForceCenter(-dir * 2500 * (physobj:GetMass() / 2))
-
-                break
-            end
-        end
-    end)
-end)
 
 function freezeAnimatronics(duration)
 	duration = duration or setupGameDuration
@@ -248,7 +200,7 @@ end
 hook.Add('fh_poststartgame', 'enable_scary_sound_fh', function()
 	net.Start("fh_net_scarysound")
 	net.WriteBool(true)
-	net.Broadcast()
+	net.SendOmit( table.GetKeys( getOutworldVictims() ) )
 end)
 
 local function giveKillerShared(ply, killer, force)
@@ -525,6 +477,7 @@ function startGame(forceid)
 	
 	net.Start('fh_adv_sound_play')
 	net.WriteString( fh.GetRoundMusic( fh.GetRoundType() ) )
+	net.WriteString( "timer_music" )
 	net.Broadcast()
 	
 	timer.Create("EndGameTimer", fh.GetGameDuration() + setupGameDuration, 1, function()
@@ -553,11 +506,11 @@ function registerNewRound(forceid)
 	end
 	roundCount = roundCount + 1
 	
-	postGameOn = false
 	isGameOn = true
 	roundEnding = false
 	table.Empty(survivors)
 	table.Empty(animatronics)
+	table.Empty(usedKillers)
     for _, ply in player.Iterator() do
         ply:Spawn()
 		survivors[ply] = true
@@ -597,6 +550,11 @@ function GetGiftSpawnInterval()
 	def1 = def1 + (count * ( 0.15 * count ) )
 	def2 = def2 + (count * ( 0.175 * count ) )
 	
+	if !roundActive and def1 <= 90 then
+		def1 = 90
+		def2 = 110
+	end
+	
 	return def1, def2
 end
 
@@ -630,12 +588,20 @@ function SpawnGifts()
 	
 	for ply, _ in pairs(survivors) do
 		if math.random(1, 100) <= GetGiftSpawnChance() and (ply:Alive() and ply:Team() != TEAM_SPECTATOR) then
+			local fh_ShouldPlayerReceiveGifts = hook.Run("fh_ShouldPlayerReceiveGifts", ply)
+			
+			if fh_ShouldPlayerReceiveGifts == false then continue end
+			
+			if ply:GetGiftOwnership() then continue end
+			
 			timer.Simple(util.SharedRandom( math.random(-100,100), 1, 12 ), function()
 				if !IsValid(ply) or ply:Team() == TEAM_SPECTATOR or !ply:Alive() then return end
 				local gift = ents.Create("fh_gift")
 				gift:SetPos(ply:GetPos() + Vector(0, 0, 10))
 				gift:SetOwner(ply)
 				gift:Spawn()
+				
+				ply:SetGiftOwnership(true)
 			end)
 		end
 	end
@@ -671,10 +637,7 @@ hook.Add( "Initialize", "fh_init", function()
 	
 	RunConsoleCommand("proximity_enabled", 1)
 	
-	table.Empty(lastKillers)
-	
 	-- выделенный сервер не включает таймер. пробую делать вот так
-	postGameOn = true
 	isGameOn = false
 	roundEnding = false
 	
@@ -805,8 +768,60 @@ hook.Add("EntityTakeDamage", "fh_anti_animatronic_death", function(target, dmgin
         target:SetHealth(target:GetMaxHealth())
         target:Spawn()
 		
+		local ent = pills.getMappedEnt(target)
+		
+		if IsValid(ent) then
+			ent:ResetSpeed(target)
+		end
+		
 		return true
     end
+end)
+
+hook.Add("OnEntityCreated", "fh_any_prop_isbreakable", function(ent)
+	timer.Simple(0, function()
+		if not IsValid(ent) then return end
+		if string.StartsWith(ent:GetClass(), "prop_physics") then
+			if not IsValid(ent) then return end
+			if not ent:GetPhysicsObject():IsValid() then return end
+			
+			local kv = ent:GetKeyValues()
+			if kv.health and tonumber(kv.health) and tonumber(kv.health) > 1 then
+				return
+			end
+			
+			if not ent.PropHealth then
+				local baseHealth = 135
+				local phys = ent:GetPhysicsObject()
+			
+				baseHealth = baseHealth + (phys:GetMass() * 2.2)
+			
+				ent.PropHealth = baseHealth
+			end
+		end
+	end)
+end)
+
+hook.Add("EntityTakeDamage", "fh_anims_only_breakable_props", function(ent, dmginfo)
+	local attacker = dmginfo:GetAttacker()
+	
+	if IsValid(attacker) and attacker:IsPlayer() and attacker:IsAnimatronic() then
+		local phys = ent:GetPhysicsObject()
+		if ent.PropHealth and phys:IsMotionEnabled() then
+			ent.PropHealth = ent.PropHealth - dmginfo:GetDamage()
+			if ent.PropHealth <= 0 then
+            local effectdata = EffectData()
+				effectdata:SetOrigin(ent:LocalToWorld(ent:OBBCenter()))
+				effectdata:SetMagnitude(2)
+				effectdata:SetScale(1)
+				effectdata:SetRadius(2)
+				util.Effect("Sparks", effectdata, true, true)
+			
+				ent:Fire("Break")
+			end
+		end
+	
+	end
 end)
 
 hook.Add("PlayerDeath", "fh_deaths", function( victim, inflictor, attacker )
@@ -842,7 +857,7 @@ hook.Add("PlayerDeath", "fh_deaths", function( victim, inflictor, attacker )
 		net.Send(victim)
 	end
 	
-    local ent = pills.getMappedEnt(attacker)
+    --local ent = pills.getMappedEnt(attacker)
 	
 	if IsValid(victim:GetRagdollEntity()) then
 		victim:GetRagdollEntity():Remove()
@@ -1038,14 +1053,12 @@ hook.Add("PillApply", "fh_joinpill", function(ply, name)
 	net.Send(ply)
 end)
 
-hook.Add("PlayerChangedTeam", "fh_jointeam", function(ply, oldteam, newteam)
-	if newteam ~= 2701 and !string.lower(team.GetName(newteam)):find("animatronic") then
-		net.Start("RemoveKiller")
-		net.Send(ply)
-		
-		net.Start("fh_uhl_teammates")
-		net.Send(ply)
-	end
+hook.Add("PillRestore", "fh_restorepill", function(ply)
+	net.Start("RemoveKiller")
+	net.Send(ply)
+	
+	net.Start("fh_uhl_teammates")
+	net.Send(ply)
 end)
 
 hook.Add("SetupPlayerVisibility", "fh_spec_pvs", function(ply)
@@ -1213,18 +1226,24 @@ function fh.GetGameDuration()
 end
 
 function fh.GetEarnedKillers(players)
-    for _, ply in ipairs(players) do
-        if WasKillerRecently(ply) then
-            table.RemoveByValue(players, ply)
-        end
-    end
+    local toRemove = {}
+	for _, ply in ipairs(players) do
+		if WasKillerRecently(ply) then
+			table.insert(toRemove, ply)
+		end
+	end
+	for _, ply in ipairs(toRemove) do
+		table.RemoveByValue(players, ply)
+	end
 	
     if table.IsEmpty(players) and not table.IsEmpty(lastKillers) then
+	
         local chosenLastKillerID = nil
         local high = 0
 
         for id, v in pairs(lastKillers) do
             if v >= high then
+			
                 chosenLastKillerID = id
                 high = v
             end

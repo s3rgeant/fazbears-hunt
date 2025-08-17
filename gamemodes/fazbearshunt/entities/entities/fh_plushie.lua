@@ -35,7 +35,8 @@ if CLIENT then
 	
     function ENT:Draw()
 		if drawMe then
-        self:DrawModel() end
+			self:DrawModel() 
+		end
     end
 
     function ENT:Initialize()
@@ -59,11 +60,12 @@ if CLIENT then
 	
 				if dot >= 0.9848 then
 					table.insert(targets, ent)
+					break
 				end
 			end
 	
 			if #targets > 0 then
-				halo.Add(targets, Color(255, 255, 255), 1, 1, 1, true, true)
+				halo.Add(targets, Color(255, 255, 255), 1, 1, 1, true, false)
 			end
 		end)
     end

@@ -278,6 +278,8 @@ function ENT:OnRemove()
 
 				ply:SetNotSolid(false)
             end
+			
+			hook.Run("PillRestore", ply)
 
             if ply:Alive() then
                 -- Just respawn the player to reset most stuff.

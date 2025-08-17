@@ -94,7 +94,7 @@ function KillPlayer(ply)
 end
 
 function StartRound()
-	if !isGameOn and roundEnding or postGameOn then
+	if !isGameOn then
 		registerNewRound()
         LogEvent("(*АДМИН*) - ⌛️ Таймер раунда начат. Количество игроков: "..player.GetCount())
 	end
@@ -156,10 +156,10 @@ end
 
 local function endgame_shared()
 	net.Start('fh_sound_stop')
-	net.WriteString( fh.GetRoundMusic( fh.GetRoundType() ) )
+	net.WriteString( "timer_music" )
 	net.Broadcast()
 	
-	timer.Remove("UnfrozeAnimatronics")
+	timer.Remove("UnfreezeAnims")
 	
 	for v,_ in pairs(animatronics) do
 		v.lobbyFreeze = nil
@@ -176,7 +176,7 @@ function EndRound()
 		
 		net.Start('fh_net_scarysound')
 		net.WriteBool(false)
-		net.Broadcast()
+		net.SendOmit( table.GetKeys( getOutworldVictims() ) )
 	end
 end
 
@@ -187,7 +187,7 @@ function EndPostRound()
 	
 		net.Start('fh_net_scarysound')
 		net.WriteBool(true)
-		net.Broadcast()
+		net.SendOmit( table.GetKeys( getOutworldVictims() ) )
 		
 		local vremya = fh.GetGameDuration()
 		

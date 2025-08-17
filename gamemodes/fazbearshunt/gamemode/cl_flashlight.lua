@@ -20,9 +20,9 @@ local function ToggleNightVision()
                 ["$pp_colour_addr"] = 0,
                 ["$pp_colour_addg"] = 0.05,
                 ["$pp_colour_addb"] = 0.05,
-                ["$pp_colour_brightness"] = 0.025,
-                ["$pp_colour_contrast"] = 1.2,
-                ["$pp_colour_colour"] = 0.45,
+                ["$pp_colour_brightness"] = 0,
+                ["$pp_colour_contrast"] = 0.8,
+                ["$pp_colour_colour"] = 0.65,
                 ["$pp_colour_mulr"] = 0,
                 ["$pp_colour_mulg"] = 0,
                 ["$pp_colour_mulb"] = 0
@@ -36,7 +36,7 @@ local function ToggleNightVision()
             light:SetFarZ(912)
             light:SetNearZ(1)
             light:SetFOV(75)
-            light:SetBrightness(2)
+            light:SetBrightness(3)
             light:SetEnableShadows(false)
             light:SetColor(Color(255, 255, 255))
             light:Update()
@@ -91,10 +91,9 @@ local function ToggleNormalFlashlight()
     end
 end
 
--- Кнопка фонарика
 hook.Add("PlayerBindPress", "fh_flash_nv_normal", function(ply, bind, pressed)
     if string.find(bind, "impulse 100") and pressed then
-        if ply:Team() == 2701 or ply:Team() == TEAM_SPECTATOR or pills.getMappedEnt(ply) then
+        if ply:IsAnimatronic() or ply:Team() == TEAM_SPECTATOR then
             ToggleNightVision()
         else
             ToggleNormalFlashlight()
@@ -103,7 +102,6 @@ hook.Add("PlayerBindPress", "fh_flash_nv_normal", function(ply, bind, pressed)
     end
 end)
 
--- Сеть для отключения ночного видения
 net.Receive("nv_off", function()
     if nightVisionEnabled then
         ToggleNightVision()

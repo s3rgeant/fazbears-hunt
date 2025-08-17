@@ -267,9 +267,11 @@ if CLIENT then
 			Тестер смотрел в пол, или в потолок. Поэтому мы делаем вот такое водт
 		]]
 		hook.Add("CreateMove", "fh_limit_camera_outworld", function(cmd)
-			local ang = cmd:GetViewAngles()
+			if _G.fh_is_scared_lock then return end
 			
+			local ang = cmd:GetViewAngles()
 			local offset = math.Clamp(ang.p - centerPitch, -maxOffset, maxOffset)
+			
 			ang.p = centerPitch + offset
 			
 			cmd:SetViewAngles(ang)
@@ -774,6 +776,8 @@ local function cancel_outworld_wgfreddy(ply)
 	net.Start("fh_draw_anim")
 	net.WriteEntity(ent)
 	net.Broadcast()
+	
+	ply:SetNWBool("wgfreddy_enraged", false)
 
 	if not ent.cloaked then
 		ent:SetSpeed(unpack(sfreddy_noclip_movement))
@@ -936,6 +940,12 @@ function cancel_outworld(ply)
 	first_damage_received[ply] = nil
 end
 
+hook.Add("fh_ShouldPlayerReceiveGifts", "no_outworld_gifts", function(ply)
+	if outworld_victims[ply] then
+		return false
+	end
+end)
+
 local DamageTimers = {}
 
 function StartDelayedDamage(ply)
@@ -1009,7 +1019,7 @@ if SERVER then
 			if !IsValid(ent) then return end
 			
 			if ply:Health() < 30 then
-				PauseDamage(ply, 30 / math.max(ply:Health() - 5, 1))
+				StopDelayedDamage(ply)
 				
 				wgfreddy:SetNWBool("wgfreddy_enraged", true)
 				ent:SetSpeed(unpack(gfreddy_enraged_movement))

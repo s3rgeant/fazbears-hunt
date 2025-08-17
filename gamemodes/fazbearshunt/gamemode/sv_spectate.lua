@@ -44,9 +44,9 @@ local function cyclePlayers(ply, am)
 	end
 	
 	if ply:GetObserverMode() != OBS_MODE_ROAMING then
-		net.Start('DeadHUDChange')
-		net.WriteEntity(players[num])
-		net.Send(ply)
+		--net.Start('DeadHUDChange')
+		--net.WriteEntity(players[num])
+		--net.Send(ply)
 	end
 end
 
@@ -60,7 +60,7 @@ hook.Add('PlayerDeathThink', 'fh_block_respawn', function(ply)
 	end
 end)
 
-hook.Add('fh_createragdoll', 'fh_spectate_dead', function(player, ragdoll)
+hook.Add('fh_createragdoll', 'fh_spectate_ragdoll', function(player, ragdoll)
 	for k, v in ipairs(team.GetPlayers(TEAM_SPECTATOR)) do
 		if v:GetObserverTarget() == player and v:GetObserverMode() != OBS_MODE_ROAMING then
 			if ragdoll then
@@ -79,16 +79,16 @@ hook.Add( "KeyPress", "KEY_PRESS_SPECTATOR", function( ply, key )
 		if key == IN_JUMP and IsValid( ply:GetObserverTarget() ) then	
 			if ply:GetObserverMode() == OBS_MODE_ROAMING then
 				ply:Spectate(OBS_MODE_IN_EYE)
-				net.Start('DeadHUDChange')
-				net.WriteEntity(ply:GetObserverTarget())
-				net.Send(ply)
+				--net.Start('DeadHUDChange')
+				--net.WriteEntity(ply:GetObserverTarget())
+				--net.Send(ply)
 			elseif ply:GetObserverMode() == OBS_MODE_IN_EYE then
 				ply:Spectate(OBS_MODE_CHASE)
 			elseif ply:GetObserverMode() == OBS_MODE_CHASE then
 				ply:Spectate(OBS_MODE_ROAMING)
-				net.Start('DeadHUDChangeString')
-				net.WriteString('')
-				net.Send(ply)
+				--net.Start('DeadHUDChangeString')
+				--net.WriteString('')
+				--net.Send(ply)
 			end
 			
 		elseif ( key == IN_ATTACK ) then

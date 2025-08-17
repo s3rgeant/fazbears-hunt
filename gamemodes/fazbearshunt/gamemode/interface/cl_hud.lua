@@ -44,6 +44,8 @@ function DrawKillerInterface()
 
 	local screenW, screenH = ScrW(), ScrH()
 
+	local hud_color = fh_hud_color or Color(255,255,255,255)
+
 	local size = 330 * uiScale
 	local avatar_y = 260 * uiScale
 
@@ -53,12 +55,10 @@ function DrawKillerInterface()
 	local circleY = screenH - avatar_y - (16 * uiScale)
 
 	surface.SetMaterial(circle_mat)
-	surface.SetDrawColor(255, 255, 255, 255)
+	surface.SetDrawColor(hud_color)
 	surface.DrawTexturedRect(circleX, circleY, circle_width, circle_height)
 
 	local circle_outline_mat_width, circle_outline_mat_height = circle_outline_mat:GetInt("$realwidth") * uiScale, circle_outline_mat:GetInt("$realheight") * uiScale
-
-	local hud_color = fh_hud_color or Color(255,255,255,255)
 
 	surface.SetMaterial(circle_outline_mat)
 	surface.SetDrawColor(hud_color)
@@ -90,7 +90,7 @@ function DrawKillerInterface()
 			local abil_bg_width, abil_bg_height = (abil_bg_mat:GetInt("$realwidth") or 100) * uiScale, (abil_bg_mat:GetInt("$realheight") or 100) * uiScale
 
 			surface.SetMaterial(abil_bg_mat)
-			surface.SetDrawColor(255, 255, 255, 255)
+			surface.SetDrawColor(hud_color)
 			surface.DrawTexturedRect(abilityX, abilityY, abil_bg_width, abil_bg_height)
 
 			local abil_bg_outline_width, abil_bg_outline_height = abil_bg_outline_mat:GetInt("$realwidth") * uiScale, abil_bg_outline_mat:GetInt("$realheight") * uiScale
@@ -320,6 +320,7 @@ function setTokens(name, tkns)
 end
 
 net.Receive("ApplyKiller", function()
+	table.Empty(currentAbilities)
 	hook.Add("HUDPaint", "DrawKillerInterface", DrawKillerInterface)
     currentKiller = net.ReadString()
     fh_hud_color = net.ReadColor()
@@ -547,10 +548,12 @@ hook.Add("OnContextMenuOpen", "fh_contextmenu", function()
 	button:SetChecked( GetConVar("fh_halo_teammates"):GetBool() )
 	button.OnChecked = function( checked ) toggleConsoleCommand("fh_halo_teammates") end
 	
+	--[[
 	local button = contextmenu_options:AddOption( language.GetPhrase("fazhunt.context.dynamic_camera") )
 	button:SetIsCheckable( true )
 	button:SetChecked( GetConVar("fh_dynamic_firstperson"):GetBool() )
 	button.OnChecked = function( checked ) toggleConsoleCommand("fh_dynamic_firstperson") end
+	]]--
 	
 	contextmenu_options:Open()
 	contextmenu_options:SetPos(0, (ScrH() / 2))

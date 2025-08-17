@@ -1662,6 +1662,8 @@ pills.register("pill_wgfreddy2",{
 			
 			if !wgfreddy_targets[ply] or cooldown.Exists(ply, 'appear') then return end
 			
+			if ply:GetNWBool("wgfreddy_enraged") then return end
+			
 			if !ent.cloaked then
 				if !ply:OnGround() and ply:WaterLevel() == 0 then return end
 				if !IsValid(ent) then return end
@@ -1962,6 +1964,8 @@ function performJumpscare(ply, ent, target, killDelay, voiceCharacter, jumpscare
 	if not IsValid(target) then return false end
 	
 	if target:HasGodMode() then return false end
+	
+	if hook.Run("FH_PlayerShouldJumpscare", ply, ent, target) == false then return end
 
 	playVoiceline(voiceCharacter, "kill", ply, 2)
 	ent:PillSound("melee", false)
@@ -1994,6 +1998,14 @@ function performJumpscare(ply, ent, target, killDelay, voiceCharacter, jumpscare
 	return true
 end
 
+hook.Add("FH_PlayerShouldJumpscare", "wgfreddy_target_jumpscare", function(ply, ent, target)
+	if ent.formTable and ent.formTable.name = "pill_wgfreddy2" then
+		local outw_boys = table.GetKeys(getOutworldVictims())
+		if table.HasValue(outw_boys, target) then 
+			return false
+		end
+	end
+end)
 
 function jumpscareEvent(ply, ent, target, dist)
 	if CLIENT then return end
@@ -2486,7 +2498,8 @@ hook.Add("PlayerNoClip", "BlockNoClipForHeldPlayer", function(ply, desiredState)
 	end
 end)
 
-function AnimatronicBreakProp(ply, ent)
+function AnimatronicBreakProp(ply, ent, cooldown)
+	local cooldown = cooldown or 1
 	if ply._breakPropAsAnimTime and ply._breakPropAsAnimTime > CurTime() then
 		return
 	end
@@ -2543,7 +2556,7 @@ function AnimatronicBreakProp(ply, ent)
 			wep:PlayCustomAnimation("ACT_SPECIAL_ATTACK1", 0.8)
 		end
 		
-		ply._breakPropAsAnimTime = CurTime() + 0.5
+		ply._breakPropAsAnimTime = CurTime() + cooldown
 			
 		local effectData = EffectData()
 		effectData:SetOrigin(tr.HitPos)

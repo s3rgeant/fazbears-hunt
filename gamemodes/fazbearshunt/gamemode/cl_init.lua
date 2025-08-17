@@ -36,7 +36,13 @@ function getTeam(team)
 end
 
 hook.Add("HUDDrawTargetID", "HidePlayerNames", function()
-	return false
+	local lp = LocalPlayer()
+	
+	if IsValid(lp) and !lp:IsSuperAdmin() then return false end
+	
+	if !lp:KeyDown( IN_USE ) then
+		return false
+	end
 end)
 
 hook.Add("SetupMove", "CanMove", function(ply) -- иронично не работает)
@@ -188,59 +194,6 @@ net.Receive("fh_animatronic_left_chatmessage", function()
 
 	LocalPlayer():ChatPrint(string.format(language.GetPhrase('fazhunt.chat.animleave'), imya ))
 end)
-
-local customViewPos = nil
-local customViewAng = nil
-
-local dynamic_firstperson = CreateClientConVar('fh_dynamic_firstperson', 1, true, false, 'Toggle dynamic firstperson (Animatronics only)')
-
-hook.Add("CalcView", "fh_animatronic_head_bop", function(ply, pos, angles, fov)
-	customViewPos = nil
-    customViewAng = nil
-	
-    if !IsValid(ply) or !ply:Alive() or ply:GetMoveType() == MOVETYPE_NOCLIP or ply:GetCollisionGroup() == COLLISION_GROUP_DEBRIS or !dynamic_firstperson:GetBool() then return end
-	
-    local targetEnt = pills.getMappedEnt(ply)
-
-    if !IsValid(targetEnt) then return end
-
-    local boneIndex = targetEnt:LookupBone("bip_head")
-    if !boneIndex then return end
-
-    local headPos = select(1, targetEnt:GetBonePosition(boneIndex))
-    if !headPos then return end
-
-    local adjustedHeadPos = Vector(pos.x, pos.y, headPos.z)
-    local desiredPos = LerpVector(0.7, pos, adjustedHeadPos)
-
-    local tr = util.TraceLine({
-        start = ply:GetPos(),
-        endpos = desiredPos,
-        filter = ply,
-        mask = MASK_SOLID_BRUSHONLY
-    })
-
-    local safePos = tr.Hit and tr.HitPos + tr.HitNormal * 4 or desiredPos
-
-    customViewPos = safePos
-    customViewAng = angles
-
-    return {
-        origin = safePos,
-        angles = angles,
-        fov = fov
-    }
-end)
-
-local smoothedVM_Ang = nil
-local smoothSpeed = 16
-
-hook.Add("CalcViewModelView", "MatchViewModelToCustomView", function(wep, vm, oldPos, oldAng, pos, ang)
-    if !dynamic_firstperson:GetBool() or not customViewPos then return end
-
-    return customViewPos, oldAng
-end)
-
 
 function GM:MouthMoveAnimation(ply)
     local weight = ply:IsSpeaking() and math.Clamp(ply:VoiceVolume() * 2, 0, 2) or 0

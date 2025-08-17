@@ -79,12 +79,17 @@ function SWEP:Think()
         self.PreviousOnGround = onGround
 
         if (onGround and ply:WaterLevel() <= 1) and walkSpeed > 10 then
-            if speed >= runSpeed * 0.9 and walkSpeed != runSpeed then
+			if ply:Crouching() and speed >= crouchSpeed * 0.9 then
+                if self.CurAnim ~= 'crouchmove' then
+                    self.Weapon:SendWeaponAnim(ACT_WALK_CROUCH)
+                    self.CurAnim = 'crouchmove'
+                end
+            elseif speed >= runSpeed * 0.9 and walkSpeed != runSpeed then
                 if self.CurAnim ~= 'run' then
                     self.Weapon:SendWeaponAnim(ACT_VM_SPRINT_IDLE)
                     self.CurAnim = 'run'
                 end
-            elseif speed >= walkSpeed * 0.9 and speed > 5 or ply:Crouching() and speed >= crouchSpeed then
+            elseif speed >= walkSpeed * 0.9 and speed > 5 then
                 if self.CurAnim ~= 'walk' then
                     self.Weapon:SendWeaponAnim(ACT_WALK)
                     self.CurAnim = 'walk'
@@ -104,6 +109,25 @@ function SWEP:Think()
     end
 
     return self.BaseClass.Think and self.BaseClass.Think(self)
+end
+
+if CLIENT then
+    local crouchFactor = 0
+
+    function SWEP:CalcViewModelView(ViewModel, OldEyePos, OldEyeAng, EyePos, EyeAng)
+        local ply = self.Owner
+        if not IsValid(ply) then return EyePos, EyeAng end
+		
+		if !ply:OnGround() then return end
+
+        local target = ply:Crouching() and 1 or 0
+        crouchFactor = Lerp(FrameTime() * 5, crouchFactor, target)
+
+        local newPitch = Lerp(crouchFactor, EyeAng.p, 0)
+        EyeAng.p = newPitch
+
+        return EyePos, EyeAng
+    end
 end
 
 function SWEP:PlayCustomAnimation(anim, hold)

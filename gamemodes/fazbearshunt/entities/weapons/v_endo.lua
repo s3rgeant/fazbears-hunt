@@ -120,6 +120,26 @@ function SWEP:Think()
     return self.BaseClass.Think and self.BaseClass.Think(self)
 end
 
+if CLIENT then
+    local crouchFactor = 0
+
+    function SWEP:CalcViewModelView(ViewModel, OldEyePos, OldEyeAng, EyePos, EyeAng)
+        local ply = self.Owner
+        if not IsValid(ply) then return EyePos, EyeAng end
+		
+		if !ply:OnGround() then return end
+
+        local target = ply:Crouching() and 1 or 0
+        crouchFactor = Lerp(FrameTime() * 5, crouchFactor, target)
+
+        local newPitch = Lerp(crouchFactor, EyeAng.p, 0)
+        EyeAng.p = newPitch
+
+        return EyePos, EyeAng
+    end
+end
+
+
 function SWEP:PlayCustomAnimation(anim, hold)
     if not self or not IsValid(self) then return end
     

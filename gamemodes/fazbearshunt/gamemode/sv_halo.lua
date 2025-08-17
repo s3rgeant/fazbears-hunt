@@ -45,7 +45,7 @@ function highlight.ByDistance(ply, ent)
 			end
 		end
 				
-		if team.NumPlayers(TEAM_SPECTATOR) > 0 then
+		if team.NumPlayers(TEAM_SPECTATOR) > 0 and !table.IsEmpty(affectedNicknames) then
 			net.Start('NotifySpectators')
 			net.WriteTable(affectedNicknames)
 			net.WriteEntity(ply)

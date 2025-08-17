@@ -217,7 +217,7 @@ function save_dontPrefer(net)
 	net = net or false
 
 	local tablo = {}
-	for k, v in pairs ( getAllNonPreferables() ) do
+	for k, v in pairs ( killers.getAllNonPreferables() ) do
 		table.insert(tablo, k)
 	end
 	file.Write("fh_dontprefer.txt", table.concat(tablo, "\n"))
