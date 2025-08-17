@@ -1861,7 +1861,6 @@ pills.register("pill_wgfreddyhead2",{
 		ent:PillSound("gs",false)
 	end
 })
-	
 
 function playVoiceline(character, line, who, when)
 	if CLIENT then return end
@@ -1870,7 +1869,7 @@ function playVoiceline(character, line, who, when)
 
 	if ( timer.Exists( "fh_PlayVoiceLine" .. who:SteamID64()) or timer.Exists( "fh_DontVoiceLine" .. who:SteamID64() ) ) then return end
 	
-	timer.Create("fh_PlayVoiceLine" .. who:SteamID64(), when, 1, function()
+	timer.Create("fh_PlayVoiceLine" .. who:SteamID64(), when or 0, 1, function()
 		local ent = pills.getMappedEnt(who)
 		
 		if IsValid(ent) then
@@ -1986,7 +1985,10 @@ function performJumpscare(ply, ent, target, killDelay, voiceCharacter, jumpscare
 	
 	if hook.Run("FH_PlayerShouldJumpscare", ply, ent, target) == false then return end
 
-	playVoiceline(voiceCharacter, "kill", ply, 2)
+	hook.Run("FH_AnimatronicJumpscare", ply, ent, target, 
+		{delay = killDelay, char = voiceCharacter, dist = jumpscareDistance, wep = wepClass}
+	)
+
 	ent:PillSound("melee", false)
 
 	if target:IsNPC() then
@@ -2460,6 +2462,13 @@ if SERVER then
 				net.Send(victim)
 			end
 		end
+	end)
+	
+	hook.Add("FH_AnimatronicJumpscare", "fh_kill_voicelines", function(ply, ent, target, data)
+		local voiceCharacter = data.char
+		local vc_delay = data.delay
+		
+		playVoiceline(voiceCharacter, "kill", ply, vc_delay)
 	end)
 	
 	hook.Add("PlayerSpawn", "fh_pill_gfreddy_spawn_check", function(ply)
