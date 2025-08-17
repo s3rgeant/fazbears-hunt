@@ -7,6 +7,8 @@ SWEP.AdminSpawnable			=  true
 
 SWEP.Primary.Automatic		=  true
 
+SWEP.Weight = 5
+
 function SWEP:CanPrimaryAttack()
 	return true
 end

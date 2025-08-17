@@ -720,10 +720,11 @@ local function cancel_outworld_target(ply)
 	ply:CollisionRulesChanged()
 	ply:SetDSP(0)
 	ply:SetFOV(0)
-	fh_cant_hear[ply] = false
 		
 	ply:SetPushImmune(false)
 	ply:SetPushBlocked(false)
+	
+	ply:SetAudible(true)
 	
 	ply:SetGFreddyImmune(true)
 	
@@ -764,8 +765,12 @@ local sfreddy_noclip_movement = {500, 600, 500, 250}
 local function cancel_outworld_wgfreddy(ply)
 	wgfreddy_targets[ply] = nil
 	
+	ply:ResetListenPlayer()
+	
 	net.Start("fh_wgfreddy_outworld_stop")
 	net.Send(ply)
+	
+	ply:SetNWBool("wgfreddy_enraged", false)
 
 	local ent = pills.getMappedEnt(ply)
 	if !IsValid(ent) or !ply:Alive() then return end
@@ -776,8 +781,6 @@ local function cancel_outworld_wgfreddy(ply)
 	net.Start("fh_draw_anim")
 	net.WriteEntity(ent)
 	net.Broadcast()
-	
-	ply:SetNWBool("wgfreddy_enraged", false)
 
 	if not ent.cloaked then
 		ent:SetSpeed(unpack(sfreddy_noclip_movement))
@@ -796,6 +799,58 @@ local function cancel_outworld_wgfreddy(ply)
 		ent.cloaked = true
 	end
 end
+
+concommand.Add( "fh_dev_start_outworld", function( ply, cmd, args )
+	if !ply:IsSuperAdmin() then return end
+
+	local nick1 = tostring(args[1])
+	local nick2 = tostring(args[2])
+	
+	local gf = nil
+	local target = nil
+	
+	for _, ply in player.Iterator() do
+		local nickname = ply:Nick():lower()
+	
+		if !IsValid(gf) and nickname:match( nick1:lower() ) then
+			gf = ply
+			
+			if IsValid(target) then
+				break
+			else
+				continue
+			end
+		end
+		
+		if !IsValid(target) and nickname:match( nick2:lower() ) then
+			target = ply
+			
+			if IsValid(gf) then
+				break
+			else
+				continue
+			end
+		end
+	end
+	
+	if IsValid(ply) and !IsValid(target) then
+		target = ply
+	end
+	
+	if IsValid(gf) and IsValid(target) then
+		local ent = pills.getMappedEnt(gf)
+		
+		if IsValid(ent) then
+			start_outworld(gf, ent, target)
+			return
+		else
+			print("fh_dev_start_outworld - has failed! Check if first player is Golden Freddy.")
+			return
+		end
+	end
+	
+	print("fh_dev_start_outworld - has failed! Maybe the nicknames were wrong.")
+end )
 
 function start_outworld(ply, ent, target)
 	net.Start("fh_play_sound")
@@ -832,7 +887,9 @@ function start_outworld(ply, ent, target)
 	target:SetPushImmune(true)
 	target:SetPushBlocked(true)
 	
-	fh_cant_hear[target] = true
+	target:SetAudible(false)
+	ply:ForceListenPlayer(target)
+	
 	target:SetCollisionGroup(COLLISION_GROUP_PLAYER_MOVEMENT)
 	target:SetCustomCollisionCheck(true)
 	target:SetRunSpeed(240)

@@ -100,6 +100,15 @@ pills.register("pill_clown",{
 			end
 		end
 	end,
+	
+	startFunction=function(ply,ent)
+		ply:SetJumpBoostMultiplier( math.min( getScaledJumpBoost() + 0.2, 1) )
+		-- дабы он баннихопил быстрее игроков в любом случае
+	end,
+	
+	restore=function(ply,ent)
+		ply:SetJumpBoostMultiplier( getScaledJumpBoost() )
+	end,
 
     jumpPower=250,
 	
@@ -808,16 +817,17 @@ if SERVER then
 		end
 	end)
 	
-	local nextPingTime = {}
+	local nextPingTime = 0
 	hook.Add("Think", "fh_plushalert_range_check", function()
 		if !IsValid(request_plushtrap) then return end
+		
+		local curTime = CurTime()
 	
-		for _, ply in ipairs(player.GetAll()) do
-			if !IsValid(ply) or !ply:IsPlayer() or ply:IsSurvivor() or ply == request_plushtrap then continue end
+		if not nextPingTime or curTime >= nextPingTime then
+			for _, ply in player.Iterator() do
+				if !IsValid(ply) or !ply:IsPlayer() or !ply:IsSurvivor() or ply == request_plushtrap then continue end
 	
-			local curTime = CurTime()
-			if not nextPingTime[ply] or curTime >= nextPingTime[ply] then
-				nextPingTime[ply] = curTime + 3
+				nextPingTime = curTime + 3
 	
 				local distance = ply:GetPos():Distance(request_plushtrap:GetPos())
 				if distance <= plushtrap_vision_range then

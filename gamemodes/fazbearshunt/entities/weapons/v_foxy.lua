@@ -1,10 +1,10 @@
 SWEP.PrintName = "Foxy SWEP"
 
 if CLIENT then
-	local vfov = CreateClientConVar('fh_foxy_fov', 100, true, false, 'Fov of Foxy')
+	local vfov = CreateClientConVar('cl_fov_foxy', 100, true, false, 'Fov of Foxy')
 	SWEP.ViewModelFOV = vfov:GetFloat() or 100
     
-    cvars.AddChangeCallback("fh_foxy_fov", function(name, old_value, new_value)
+    cvars.AddChangeCallback("cl_fov_foxy", function(name, old_value, new_value)
 		local wep = LocalPlayer():GetActiveWeapon()
 		if IsValid(wep) and string.StartWith(wep:GetClass(), "v_") then
 			wep.ViewModelFOV = tonumber(new_value) or 100

@@ -420,7 +420,7 @@ function getScaledJumpBoost()
 	local count = player.GetCount()
 	
 	if count < 8 then
-		return 0.4
+		return 0.3
 	elseif count < 18 then
 		return 0.6
 	end
@@ -834,7 +834,13 @@ hook.Add("PlayerDeath", "fh_deaths", function( victim, inflictor, attacker )
 			LogEvent("☠️ **"..victim:Nick() .. "** просто умер. ( " .. tostring(attacker).." )")
 		end
 		
-		if isGameOn and !roundEnding and table.Count(survivors) == 1 and table.Count(animatronics) >= 2 and timer.TimeLeft("EndGameTimer") >= 200 then
+		local animCount = table.Count(animatronics)
+		
+		if fh.GetActiveUsedKiller("pill_plushtrap") then
+			animCount = math.max(animCount - 1, 1)
+		end
+		
+		if isGameOn and !roundEnding and table.Count(survivors) == 1 and animCount >= 2 and timer.TimeLeft("EndGameTimer") >= 200 then
 			net.Start("fh_timer_cutback")
 			net.WriteFloat(180)
 			net.WriteString("round/time_cutback.mp3")

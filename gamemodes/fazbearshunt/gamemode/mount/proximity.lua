@@ -1,4 +1,3 @@
-local canSpec = CreateConVar("proximity_deadtalk", 0, { FCVAR_ARCHIVE,FCVAR_REPLICATED }, "Can dead people talk? Huh?", 0, 1)
 local proximityEnabled = CreateConVar("proximity_enabled", 1, { FCVAR_ARCHIVE,FCVAR_REPLICATED }, "Switches between global and proximity voice chat.", 0, 1)
 local maxDistance = CreateConVar("proximity_radius", 3000, { FCVAR_ARCHIVE,FCVAR_REPLICATED }, "Radius, in which players can hear each other.")
 local muteVolume = CreateConVar("proximity_mute", 0.3, { FCVAR_ARCHIVE,FCVAR_REPLICATED }, "Volume of players/sounds, when they're behind the walls. (0-1)", 0, 1)
@@ -6,48 +5,71 @@ local muteVolume = CreateConVar("proximity_mute", 0.3, { FCVAR_ARCHIVE,FCVAR_REP
 local muteSpecs = CreateConVar("proximity_hear_spectators", 1, { FCVAR_ARCHIVE,FCVAR_CLIENTDLL,FCVAR_USERINFO }, "Should local player hear other spectators? (0-1)", 0, 1)
 
 if SERVER then
+	local PLAYER = FindMetaTable("Player")
 
-	fh_cant_hear = {}
+	function PLAYER:SetAudible(state)
+		self.fh_audible = state and true or false
+	end
+
+	function PLAYER:GetAudible()
+		if self.fh_audible == nil then
+			return true
+		end
+		return self.fh_audible
+	end
+
+	-- чтобы слушать только одного игрока (за золотого фредди например слышать только жертву)
+	function PLAYER:ForceListenPlayer(talker)
+		if not IsValid(talker) or not talker:IsPlayer() then return end
+		self.fh_force_listen = talker
+	end
+
+	function PLAYER:ResetListenPlayer()
+		self.fh_force_listen = nil
+	end
 	
-	hook.Add( "PlayerCanHearPlayersVoice", "fh_proximity_sv", function(listener, talker)
-		local canSpec = GetConVar("proximity_deadtalk"):GetInt()
-		local maxDistance = GetConVar("proximity_radius"):GetInt()
-		local proximityEnabled = GetConVar("proximity_enabled"):GetInt()
-		
-		if (listener:Team() == TEAM_SPECTATOR and talker:Team() == TEAM_SPECTATOR and listener:GetInfoNum( "proximity_hear_spectators", 1 ) == 0)
-			or fh_cant_hear[listener] then
-			return false, false 
-		end
-		
-		if (listener:Team() == 2701 and talker:Team() == 2701) or listener:Team() == TEAM_SPECTATOR and talker:Team() == TEAM_SPECTATOR then
-			return true, false
-		end
-		
-		if (!talker:Alive() or talker:Team() == TEAM_SPECTATOR) then
-			if canSpec == 0 then
-				return false, false
+	hook.Add("PlayerCanHearPlayersVoice", "fh_proximity_sv", function(listener, talker)
+		if not IsValid(listener) or not IsValid(talker) then return false, false end
+
+		if IsValid(listener.fh_force_listen) then
+			if listener.fh_force_listen == talker then
+				return true, true
 			else
-				return true, false
+				return false, false
 			end
 		end
-	
+
+		if not talker:GetAudible() then
+			return false, false
+		end
+
+		local maxDistance = GetConVar("proximity_radius"):GetInt()
+		local proximityEnabled = GetConVar("proximity_enabled"):GetInt()
+
 		if proximityEnabled == 0 then
 			return true, false
 		end
-		
+
+		-- наблюдатель не хочет слышать других наблюдателей
+		if (listener:Team() == TEAM_SPECTATOR and talker:Team() == TEAM_SPECTATOR and listener:GetInfoNum("proximity_hear_spectators", 1) == 0) then
+			return false, false
+		end
+
+		-- наблюдатели и аниматроники слышат себя не в 3д
+		if (listener:Team() == 2701 and talker:Team() == 2701) 
+		or (listener:Team() == TEAM_SPECTATOR and talker:Team() == TEAM_SPECTATOR) then
+			return true, false
+		end
+
 		local ply = listener
 		if IsValid(listener:GetObserverTarget()) then ply = listener:GetObserverTarget() end
 		if IsValid(listener.fh_target_player) then ply = listener.fh_target_player end
-		
+
 		local distance = ply:GetPos():Distance(talker:GetPos())
-	
-		if distance > maxDistance then
-			return false, false
-		end
-	
+		if distance > maxDistance then return false, true end
+
 		return true, true
 	end)
-
 else
 
 	local function UpdateVoiceDSP(listener, talker)
@@ -73,6 +95,11 @@ else
 				return ent != ply and ent != talker and not ent:IsPlayer() and not ent:IsNPC() and ent:GetClass() != "prop_physics"
 			end
 		})
+		
+		if ply:GetNoDraw() then
+			talker:SetVoiceVolumeScale(0)
+			return
+		end
 	
 		local volume = 1
 		local mute = muteVolume:GetFloat()
@@ -127,5 +154,4 @@ else
 			ply:SetVoiceVolumeScale(1)
 		end
 	end)
-
 end

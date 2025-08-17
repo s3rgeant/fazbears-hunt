@@ -159,7 +159,10 @@ local function fh_gfreddy_check_scarysound()
 
 	if pills and pills.getMappedEnt and pills.getMappedEnt(targetPlayer) ~= nil then
 		local ent = pills.getMappedEnt(targetPlayer)
-		if ent.dontdraw or ent:GetMaterial() == "models/null" then return end
+		if ent.dontdraw or ent:GetMaterial() == "models/null" then 
+			stopScareProgress()
+			return 
+		end
 
 		local plyPos = (targetPlayer:EyePos() + targetPlayer:GetPos()) / 2
 		local toPly = plyPos - eyePos

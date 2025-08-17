@@ -303,7 +303,7 @@ hook.Add("PostDrawOpaqueRenderables", "fh_draw_teammates", function( )
     if not IsValid(ply) then return end
 	
 	local function drawAnimatronics(tbl, color)
-		local eyePos = ply:EyePos()
+		local eyePos = IsValid(ply:GetViewEntity()) and ply:GetViewEntity():GetPos() or ply:EyePos()
 		for _, ent in ipairs(tbl) do
 			if not IsValid(ent) or not ent.DrawModel then continue end
 			

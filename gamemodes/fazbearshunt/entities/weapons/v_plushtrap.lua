@@ -1,10 +1,10 @@
 SWEP.PrintName = "Plushtrap SWEP"
 
 if CLIENT then
-	local vfov = CreateClientConVar('fh_plushtrap_fov', 100, true, false, 'Fov of Plushtrap')
+	local vfov = CreateClientConVar('cl_fov_plushtrap', 100, true, false, 'Fov of Plushtrap')
 	SWEP.ViewModelFOV = vfov:GetFloat() or 100
     
-    cvars.AddChangeCallback("fh_plushtrap_fov", function(name, old_value, new_value)
+    cvars.AddChangeCallback("cl_fov_plushtrap", function(name, old_value, new_value)
 		local wep = LocalPlayer():GetActiveWeapon()
 		if IsValid(wep) and string.StartWith(wep:GetClass(), "v_") then
 			wep.ViewModelFOV = tonumber(new_value) or 100

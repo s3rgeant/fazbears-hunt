@@ -208,7 +208,7 @@ hook.Add("Move", "BlightPredictionMove", function(ply, mv)
 
 	local targetAng = mv:GetMoveAngles()
 	local currentAng = ply.blightRushAngle or targetAng
-	local maxTurn = 1.4
+	local maxTurn = 1.8
 	local yawDiff = math.AngleDifference(targetAng.yaw, currentAng.yaw)
 	yawDiff = math.Clamp(yawDiff, -maxTurn, maxTurn)
 	currentAng.yaw = currentAng.yaw + yawDiff

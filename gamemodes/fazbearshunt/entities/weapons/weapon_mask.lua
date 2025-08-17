@@ -172,7 +172,9 @@ function SWEP:Invisivility(ply)
 			end
 
 			if IsValid(self) then
-				self:SendWeaponAnim(ACT_VM_HOLSTER)
+				if SERVER then
+					self:SendWeaponAnim(ACT_VM_HOLSTER)
+				end
 				self.CurrentFOV = 0
 			end
 			

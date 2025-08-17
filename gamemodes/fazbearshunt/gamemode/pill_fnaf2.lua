@@ -610,10 +610,13 @@ pills.register("pill_wbonnie2",{
 				net.Start("fh_start_yoursmine_view")
 				net.WriteEntity(target)
 				net.Send(ply)
+					
+				ply:SetViewEntity( target )
+				
 				table.insert(affectedPlayers, target)
 			end)
 			
-			net.Start("fh_play_sound")
+			net.Start("fh_ui_sound_play")
 			net.WriteString('bonnie_ability_bonnie.wav')
 			net.Send(ply)
 			
@@ -626,6 +629,8 @@ pills.register("pill_wbonnie2",{
 					net.Start("fh_stop_yoursmine_view")
 					net.Send(ply)
 					ply:SetFOV(0, 0)
+					
+					ply:SetViewEntity( ply )
 			
 					local wep = ply:GetActiveWeapon()
 					if IsValid(wep) and wep:GetClass() == "v_bonnie" then
@@ -1624,6 +1629,8 @@ pills.register("pill_wgfreddy2",{
 		ply:SetCustomCollisionCheck(true)
 		ply:CollisionRulesChanged()
 		
+		ply:SetAudible(false)
+		
 		ent.cloaked = true
 		
 		net.Start("fh_wgfreddy_selecting_halo")
@@ -1637,6 +1644,9 @@ pills.register("pill_wgfreddy2",{
 		
 		net.Start("fh_wgfreddy_stop_selection_halo")
 		net.Send(ply)
+		
+		ply:SetAudible(true)
+		ply:ResetListenPlayer()
 	end,
 	
 	attack={
@@ -1864,10 +1874,9 @@ function playVoiceline(character, line, who, when)
 		local ent = pills.getMappedEnt(who)
 		
 		if IsValid(ent) then
-			if line == "kill" and character != "sfreddy" then
-				if #team.GetPlayers(TEAM_UNASSIGNED) == 0 then
-					line = "lastkill"
-				end		
+			local FH_OverrideVoiceline = hook.Run("FH_OverrideVoiceline", who, character, line)
+			if FH_OverrideVoiceline ~= nil and isstring(FH_OverrideVoiceline) then
+				line = FH_OverrideVoiceline
 			end
 			
 			net.Start("fh_play_voiceline")
@@ -1880,6 +1889,16 @@ function playVoiceline(character, line, who, when)
 		end
 	end)
 end
+
+hook.Add("FH_OverrideVoiceline", "fh_lastkill_vc", function(ply, anim, line)
+	if line:match("kill") and !line:match("last") then
+		if character ~= "sfreddy" then
+			if #team.GetPlayers(TEAM_UNASSIGNED) == 0 then
+				return "lastkill"
+			end	
+		end
+	end
+end)
 
 function FindNearestPlayer(origin, radius, ignorePlayer, fov)
     local nearestPlayer = nil
@@ -1975,6 +1994,9 @@ function performJumpscare(ply, ent, target, killDelay, voiceCharacter, jumpscare
 		return
 	end
 
+	target.jumpscared = true
+	ply.jumpscaring = target
+
 	jumpscareEvent(ply, ent, target, jumpscareDistance or 50)
 	ent:PillAnim("scare", true)
 
@@ -1989,17 +2011,22 @@ function performJumpscare(ply, ent, target, killDelay, voiceCharacter, jumpscare
 	end
 
 	timer.Create("FH_JumpscareKill_" .. ply:EntIndex(), killDelay, 1, function()
-		if not IsValid(target) then return end
-		ply:Freeze(false)
-		target:Freeze(false)
-		target:TakeDamage(target:Health() + target:Armor(), ply)
+		if IsValid(ply) then 
+			ply:Freeze(false)
+			ply.jumpscaring = nil
+		end
+		if IsValid(target) then 
+			target.jumpscared = false
+			target:Freeze(false)
+			target:TakeDamage(target:Health() + target:Armor(), ply)
+		end
 	end)
 	
 	return true
 end
 
 hook.Add("FH_PlayerShouldJumpscare", "wgfreddy_target_jumpscare", function(ply, ent, target)
-	if ent.formTable and ent.formTable.name = "pill_wgfreddy2" then
+	if ent.formTable and ent.formTable.name != "pill_wgfreddy2" then
 		local outw_boys = table.GetKeys(getOutworldVictims())
 		if table.HasValue(outw_boys, target) then 
 			return false
@@ -2058,9 +2085,6 @@ function jumpscareEvent(ply, ent, target, dist)
 	net.Start("JumpscareLight")
 	net.Send(target)
 
-	target.jumpscared = true
-	ply.jumpscaring = target
-
 	target:DropToFloor()
 	ply:DropToFloor()
 
@@ -2096,7 +2120,6 @@ function jumpscareEvent(ply, ent, target, dist)
 	net.WriteEntity(ent)
 	net.Broadcast()
 end
-
 
 local takenPlayers = {}
 
@@ -2151,7 +2174,7 @@ function takePlayer(ply, ent)
 				local newPos = ((ply:GetPos() + ply:EyePos()) / 2) + offset
 		
 				local traceData = {}
-				traceData.start = ply:GetPos()
+				traceData.start = ply:EyePos()
 				traceData.endpos = newPos
 				traceData.filter = {ply, nearestPlayer}
 		
@@ -2173,7 +2196,9 @@ end
 
 hook.Add("KeyRelease", "PlayerRightClickRelease", function(ply, key)
     if key == IN_ATTACK2 then
+		ply:LagCompensation(true)
 		endoRelease(ply)
+		ply:LagCompensation(false)
     end
 end)
 
@@ -2191,14 +2216,39 @@ function endoRelease(ply)
 		
 		target._GrabbedByEndoTime = CurTime()
 		target._LastEndo = ply
+		
+		local plyPos = ply:GetPos()
+		local plyHeight = ply:OBBMaxs().z - ply:OBBMins().z
+		local targetHeight = target:OBBMaxs().z - target:OBBMins().z
+		local newPos = plyPos + Vector(0, 0, plyHeight - targetHeight)
+
+		local traceData = {}
+		traceData.start = target:GetPos()
+		traceData.endpos = target:GetPos()
+		traceData.filter = {ply, target}
+
+		local trace = util.TraceEntity(traceData, target)
+
+		if trace.Hit then
+			print('mne pizda')
+			target:SetPos(newPos)
+		end
 	
 		local direction = (ply:EyeAngles():Forward() * 50):GetNormalized()
-		target:SetVelocity(direction * 600)
+		target:SetVelocity(direction * 800)
 	
 		ply:SetCollisionGroup(COLLISION_GROUP_PASSABLE_DOOR)
 		target:SetCollisionGroup(COLLISION_GROUP_PASSABLE_DOOR)
 		
 		hook.Run("fh_endo_release", ply, target)
+		
+		timer.Simple(1, function()
+			if IsValid(target) then
+				if target:IsStuck() then
+					target:Unstuck()
+				end
+			end
+		end)
 	
 		cooldown.Set(ply, 'grab', 1)
 	

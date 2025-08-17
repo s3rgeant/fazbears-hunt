@@ -1,10 +1,10 @@
 SWEP.PrintName = "Endo SWEP"
 
 if CLIENT then
-	local vfov = CreateClientConVar('fh_endo_fov', 100, true, false, 'Fov of Endo')
+	local vfov = CreateClientConVar('cl_fov_endo', 100, true, false, 'Fov of Endo')
 	SWEP.ViewModelFOV = vfov:GetFloat() or 100
     
-    cvars.AddChangeCallback("fh_endo_fov", function(name, old_value, new_value)
+    cvars.AddChangeCallback("cl_fov_endo", function(name, old_value, new_value)
 		local wep = LocalPlayer():GetActiveWeapon()
 		if IsValid(wep) and string.StartWith(wep:GetClass(), "v_") then
 			wep.ViewModelFOV = tonumber(new_value) or 100

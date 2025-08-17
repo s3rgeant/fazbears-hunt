@@ -1,10 +1,10 @@
 SWEP.PrintName = "Springtrap SWEP"
 
 if CLIENT then
-	local vfov = CreateClientConVar('fh_springtrap_fov', 90, true, false, 'Fov of Springtrap')
+	local vfov = CreateClientConVar('cl_fov_springtrap', 90, true, false, 'Fov of Springtrap')
 	SWEP.ViewModelFOV = vfov:GetFloat() or 90
     
-    cvars.AddChangeCallback("fh_springtrap_fov", function(name, old_value, new_value)
+    cvars.AddChangeCallback("cl_fov_springtrap", function(name, old_value, new_value)
 		local wep = LocalPlayer():GetActiveWeapon()
 		if IsValid(wep) and string.StartWith(wep:GetClass(), "v_") then
 			wep.ViewModelFOV = tonumber(new_value) or 90
