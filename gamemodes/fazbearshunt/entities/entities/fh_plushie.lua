@@ -30,7 +30,7 @@ if CLIENT then
 	end
 	
 	function fh_cl_dontdraw_plushies()
-		drawMe = true
+		drawMe = false
 	end
 	
     function ENT:Draw()
