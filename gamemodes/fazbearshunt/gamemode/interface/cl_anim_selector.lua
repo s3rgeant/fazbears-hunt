@@ -4,7 +4,6 @@ local animatronics = animatronics or {}
 local selectable = selectable or false
 local selector = selector or nil
 local grid = grid or nil
-local animtooltip = nil
 
 local showAnimTooltip = false
 local animTooltipText = ""
@@ -159,6 +158,9 @@ hook.Add("PostRenderVGUI", "DrawAnimTooltip", function()
 	local tooltipWidth = maxWidth
 	local tooltipHeight = #lines * 18 + padding * 2
 
+	surface.SetDrawColor(255, 0, 0, 255)
+	surface.DrawRect(x + 9, y + 9, tooltipWidth + 2, tooltipHeight + 2)
+
 	surface.SetDrawColor(0, 0, 0, 255)
 	surface.DrawRect(x + 10, y + 10, tooltipWidth, tooltipHeight)
 
@@ -170,8 +172,19 @@ end)
 net.Receive("fh_let_killers_choose", function()
     animatronics = net.ReadTable()
     draw_killer_selector()
+	
+	for _, box in pairs(grid:GetItems()) do
+		box:SetAlpha(100)
+	end
 
     timer.Simple(1.5, function()
+	
+		for _, box in pairs(grid:GetItems()) do
+			if box:IsEnabled() then
+				box:SetAlpha(255)
+			end
+		end
+		
         selectable = true
     end)
 end)
@@ -198,3 +211,13 @@ net.Receive("fh_update_killer_selector", function()
         end
     end
 end)
+
+hook.Add("PillCreated", "FH_RememberMyAnim", function(ply, ent)
+	print(ply, ent, ply == LocalPlayer())
+end)
+
+--[[
+if !file.Exists("fh_playedkillers.txt", "DATA") then
+	file.Write("fh_playedkillers.txt", table.concat(dontPrefer, "\n"))
+end
+]]--

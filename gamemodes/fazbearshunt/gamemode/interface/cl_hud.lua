@@ -573,7 +573,6 @@ function toggleConsoleCommand(str)
 end
 
 function openPlayerEditor()
-
     local newv = list.Get( "DesktopWindows" )[ "PlayerEditor" ]
 
 	local Window = vgui.Create( "DFrame" )
@@ -583,5 +582,36 @@ function openPlayerEditor()
 	Window:MakePopup()
 	
 	newv.init( nil, Window )
+end
+
+local fh_rmb_material = Material("hud/fh_rmb")
+
+local fh_rmb_size = 72
+local fh_rmb_halfsize = fh_rmb_size/2
+
+local function DrawRMBHint()
+	surface.SetMaterial( fh_rmb_material )
+	surface.SetDrawColor( 255, 255, 255, 255 )
+	surface.DrawTexturedRect( ScrW() / 2 - fh_rmb_halfsize, ScrH() / 2 + 32, fh_rmb_size, fh_rmb_size )
+end
+
+function RMBHint(duration)
+	--таймер
+
+	hook.Add( "HUDPaint", "FH_HudPaint_RMBHINT", function()
+		DrawRMBHint()
+	end )
 	
+	if duration and duration > 0 then
+		if timer.Exists("FH_DrawRMBHINT_TIMER") then
+			timer.Remove("FH_DrawRMBHINT_TIMER")
+		end
+		timer.Create("FH_DrawRMBHINT_TIMER", duration, 1, function()
+			hook.Remove("HUDPaint", "FH_HudPaint_RMBHINT")
+		end)
+	end
+end
+
+function RemoveRMBHint()
+	hook.Remove("HUDPaint", "FH_HudPaint_RMBHINT")
 end

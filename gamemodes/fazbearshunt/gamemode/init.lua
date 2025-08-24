@@ -354,7 +354,7 @@ function endGame(killerVictory)
 					end
 					
 					net.Start("fh_play_sound")
-					net.WriteString("music/rampage.wav")
+					net.WriteString("#music/rampage.wav")
 					net.Broadcast()
 					
 					timer.Simple(0.01, function()
@@ -476,7 +476,7 @@ function startGame(forceid)
     net.Broadcast()
 	
 	net.Start('fh_adv_sound_play')
-	net.WriteString( fh.GetRoundMusic( fh.GetRoundType() ) )
+	net.WriteString( "#"..fh.GetRoundMusic( fh.GetRoundType() ) )
 	net.WriteString( "timer_music" )
 	net.Broadcast()
 	

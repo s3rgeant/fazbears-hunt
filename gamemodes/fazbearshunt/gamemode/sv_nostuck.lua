@@ -187,6 +187,7 @@ function keyPressCheck(ply, key)
 				local safePos = FindSafePosition(ply)
 				if safePos then
 					ply:SetPos(safePos)
+					ply:DropToFloor()
 					nextCheckTime[ply] = curTime + 4
 				end
 			else
@@ -204,10 +205,22 @@ end
 
 function PLAYER:Unstuck()
 	local safePos = FindSafePosition(self)
-	self:SetPos(safePos)
+	
+	if safePos then
+		self:SetPos(safePos)
+		self:DropToFloor()
+	end
 end
 
 hook.Add("fh_startgame", "fh_startgame_unstuck", function(roundType)
+
+	for i, ply in player.Iterator() do
+		timer.Simple(i/10, function()
+			if ply:IsStuck() then
+				ply:Unstuck()
+			end
+		end)
+	end
 	
 	hook.Add("KeyPress", "CheckStuckAndTeleport", function(ply, key)
 		keyPressCheck(ply,key)
@@ -217,7 +230,7 @@ hook.Add("fh_startgame", "fh_startgame_unstuck", function(roundType)
 		timer.Remove("remove_unstuck_hook")
 	end
 	
-	timer.Create("remove_unstuck_hook", 20, 1, function()
+	timer.Create("remove_unstuck_hook", 5, 1, function()
 		hook.Remove("KeyPress", "CheckStuckAndTeleport")
 	end)
 end)

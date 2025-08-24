@@ -248,6 +248,8 @@ function ENT:Initialize()
     end
 
     pills.mapEnt(ply, self)
+	
+	hook.Run("PillCreated", ply, self)
 end
 
 function ENT:OnRemove()

@@ -103,8 +103,8 @@ function SWEP:DealDamage()
 	if props then
 		local dmgInfo = DamageInfo()
 		dmgInfo:SetDamage(150)
-		dmgInfo:SetAttacker(game.GetWorld())
-		dmgInfo:SetInflictor(game.GetWorld())
+		dmgInfo:SetAttacker(IsValid(ply) and ply or game.GetWorld())
+		dmgInfo:SetInflictor(self)
 		dmgInfo:SetDamageType(DMG_SLASH)
 		
 		for k,prop in ipairs(props) do

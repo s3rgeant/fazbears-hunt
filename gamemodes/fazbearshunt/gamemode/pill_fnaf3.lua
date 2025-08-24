@@ -704,9 +704,39 @@ net.Receive("pt_request", function(len, ply)
 	net.Send(pt_request_springtrap_ply)
 end)
 
-net.Receive("pt_request_complete", function(len, springtrap)
-	local ply = net.ReadPlayer()
+concommand.Add( "fh_dev_spawn_plushtrap", function( ply, cmd, args )
+	if !ply:IsSuperAdmin() then return end
 	
+	local ent = pills.getMappedEnt(ply)
+	
+	if !IsValid(ent) then
+		print("fh_dev_spawn_plushtrap - has failed! You should be an animatronic.")
+		return
+	end
+
+	local nick1 = tostring(args[1])
+	
+	local plushtrap = nil
+	
+	for _, player in player.Iterator() do
+		local nickname = player:Nick():lower()
+	
+		if !IsValid(plushtrap) and nickname:match( nick1:lower() ) then
+			plushtrap = player
+			
+			break
+		end
+	end
+	
+	if IsValid(plushtrap) then
+		plushtrap_request_complete(ply, plushtrap)
+		return
+	end
+	
+	print("fh_dev_spawn_plushtrap - has failed! Maybe the nickname was wrong.")
+end )
+
+function plushtrap_request_complete(springtrap, ply)
 	if IsValid(request_plushtrap) or !IsValid(pt_request_springtrap_ply) then return end
 	
 	if timer.Exists("pt_waiting" .. springtrap:EntIndex()) then
@@ -775,6 +805,12 @@ net.Receive("pt_request_complete", function(len, springtrap)
 	end
 	
 	pt_request_springtrap_ply = nil
+	
+end
+
+net.Receive("pt_request_complete", function(len, springtrap)
+	local ply = net.ReadPlayer()
+	plushtrap_request_complete(springtrap, ply)
 end)
 
 if SERVER then

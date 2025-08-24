@@ -12,12 +12,14 @@ function ENT:Initialize()
 	self:SetModelScale(1.24)
 	
 	self.Active = false
+	
+	self:SetCollisionBounds( Vector(-12,-12,0), Vector(12,12,32) )
     
 	if SERVER then
 		self:SetCollisionBounds( Vector( -8, -8, 0 ), Vector( 12, 8, 32 ) )
 		--self:SetSolid(SOLID_NONE)
 		self:SetCollisionGroup(COLLISION_GROUP_PASSABLE_DOOR)
-		self:SetHealth(100)
+		self:SetHealth(2000)
 		
 		self.loco:SetJumpHeight( 50 )
 		self.loco:SetDesiredSpeed(PT_DEFAULT_SPEED)

@@ -136,7 +136,7 @@ function fh_tag_end()
 			tag_end = false
 			roundActive = false
 			
-			for k,_ in pairs( players ) do
+			for k,_ in pairs( survivors ) do
 				giveKiller(k, "pill_wbonnie2", true)
 				k:Spawn()
 				count = count - 1

@@ -110,6 +110,12 @@ function SWEP:DealDamage()
 	
 	self.Sensitivity = 1
 	
+	timer.Simple(0.15, function()
+		if IsValid(self) then
+			self.Sensitivity = 1
+		end
+	end)
+	
 	if SERVER then
 	
 		timer.Simple(0.15, function()

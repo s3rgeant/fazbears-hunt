@@ -91,6 +91,8 @@ if SERVER then
 				wep.run_act = ACT_VM_SPRINT_IDLE
 			end
 		end
+		
+		ply:SendLua("RemoveRMBHint()")
 
 		net.Start("fh_net_killer_change")
 		net.WriteString("charge")
@@ -218,9 +220,11 @@ hook.Add("Move", "BlightPredictionMove", function(ply, mv)
 	dir.z = 0
 	dir:Normalize()
 	mv:SetVelocity(dir * speed)
-				
-	ply.puppet:SetPlaybackRate(1.3)
-				
+
+	if IsValid( ply.puppet ) then
+		ply.puppet:SetPlaybackRate(1.3)
+	end
+	
 	local wep = ply:GetViewModel(0)
 	if IsValid(wep) and !wep.IsCharging then
 		wep:SetPlaybackRate(1.3)
@@ -293,6 +297,8 @@ hook.Add("Move", "BlightPredictionMove", function(ply, mv)
 				EndRush(ply)
 				return
 			end
+			
+			ply:SendLua("RMBHint(2)")
 
 			ply.blightTimeoutTimer = "BlightTimeout_" .. ply:SteamID()
 			timer.Create(ply.blightTimeoutTimer, 2, 1, function()

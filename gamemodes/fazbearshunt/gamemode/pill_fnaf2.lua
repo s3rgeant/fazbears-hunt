@@ -179,10 +179,25 @@ pills.register("pill_wfreddy2",{
 	attack2 = {
 		mode = "trigger",
 		func = function(ply, ent)
+			if !ply:OnGround() then return end
 			
 			local target = fh_random_stalk_target(ply)
+			
+			if cooldown.Exists(ply, "blindrage") then return end
 	
-			if !IsValid(target) or !ply:OnGround() then return end
+			if !IsValid(target) then 
+				net.Start("fh_play_sound")
+				net.WriteString('ability_failed.wav')
+				net.Send(ply)
+	
+				net.Start("fh_net_killer_change")
+				net.WriteString("stalk")
+				net.WriteFloat(1)
+				net.Send(ply)
+				
+				cooldown.Set(ply, "blindrage", 1)
+				return 
+			end
 	
 			if timer.Exists("fh_stalking" .. ply:EntIndex()) or ply == stalker then return end
 			
@@ -2602,6 +2617,8 @@ function AnimatronicBreakProp(ply, ent, cooldown)
 	
 	if !target:IsPlayer() then
 		local wep = ply:GetActiveWeapon()
+	
+		ply:EmitSound("bonnie_punch.mp3")
 		
 		local dmginfo = DamageInfo()
 		dmginfo:SetAttacker( ply )

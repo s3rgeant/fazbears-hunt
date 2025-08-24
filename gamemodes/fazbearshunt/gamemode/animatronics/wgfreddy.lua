@@ -172,7 +172,7 @@ hook.Add("KeyPress", "fh_plushie_use_check", function(ply, key)
 end)
 
 if SERVER then
-	hook.Add( "CanPlayerSuicide", "fh_pill2_suicide", function( ply )
+	hook.Add( "CanPlayerSuicide", "fh_gfreddy_suicide", function( ply )
 		if outworld_victims[ply] then
 			return false
 		end
@@ -1057,7 +1057,7 @@ function StopDelayedDamage(ply)
 end
 
 if SERVER then
-	local gfreddy_enraged_movement = {130, 560, 0, 0}
+	local gfreddy_enraged_movement = {130, 560, 130, 250}
 	net.Receive("cl_target_wgfreddy_scared", function( len, ply )
 		if outworld_victims[ply] then
 			local wgfreddy = outworld_victims[ply]

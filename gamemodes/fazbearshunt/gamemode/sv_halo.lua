@@ -24,7 +24,6 @@ function highlight.ByDistance(ply, ent)
 		for _, player in player.Iterator() do
 			if player ~= ply and player:IsPlayer() 
 							and player:IsSurvivor()
-							and player:IsValid()
 							and !outworlded[player] then
 				local distance = ply:GetPos():Distance(player:GetPos())
 				

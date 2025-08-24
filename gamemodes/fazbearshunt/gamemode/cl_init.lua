@@ -35,6 +35,26 @@ function getTeam(team)
 	return teamname
 end
 
+do
+    local old_upper = string.upper
+
+    local utf8_lc_uc = {
+        ["а"]="А", ["б"]="Б", ["в"]="В", ["г"]="Г", ["д"]="Д", ["е"]="Е", ["ё"]="Ё",
+        ["ж"]="Ж", ["з"]="З", ["и"]="И", ["й"]="Й", ["к"]="К", ["л"]="Л", ["м"]="М",
+        ["н"]="Н", ["о"]="О", ["п"]="П", ["р"]="Р", ["с"]="С", ["т"]="Т", ["у"]="У",
+        ["ф"]="Ф", ["х"]="Х", ["ц"]="Ц", ["ч"]="Ч", ["ш"]="Ш", ["щ"]="Щ", ["ъ"]="Ъ",
+        ["ы"]="Ы", ["ь"]="Ь", ["э"]="Э", ["ю"]="Ю", ["я"]="Я",
+    }
+
+    string.upper = function(str)
+        return (str:gsub("[%z\1-\127\194-\244][\128-\191]*", function(c)
+            return utf8_lc_uc[c] or old_upper(c)
+        end))
+    end
+end
+
+killicon.AddAlias( "prop_physics_multiplayer", "prop_physics" )
+
 hook.Add("HUDDrawTargetID", "HidePlayerNames", function()
 	local lp = LocalPlayer()
 	

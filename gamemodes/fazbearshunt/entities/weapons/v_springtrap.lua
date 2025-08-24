@@ -45,11 +45,12 @@ SWEP.HitSize = {
 local LAND_ANIM_DELAY = 0.2
 
 function SWEP:SetupDataTables()
-	self:NetworkVar( "Float", 0, "NextMeleeAttack" )
+    self:NetworkVar("Float", 0, "NextMeleeAttack")
+    self:NetworkVar("Int",   1, "AttackArm") -- 1 = LEFT, 2 = RIGHT
 end
 
 function SWEP:Deploy()
-	self.CurAnim = "deploy"
+    self.CurAnim = "deploy"
     return true
 end
 
@@ -58,30 +59,33 @@ function SWEP:Holster()
 end
 
 function SWEP:PrimaryAttack()
-	local ply = self.Owner
-	local ent = pills.getMappedEnt(ply)
-	
-	if !IsValid(ent) then return end
-	
-	if self.IsCharging or ply.tasered then return end
-	
-	if ply:IsFrozen() or timer.Exists('ST_cantKill'..ply:EntIndex()) then return end
-	
-	if SERVER then
-		ent:PillGesture('swing', 2, 1, 0.1, 0.3)
-		
-		ply:EmitSound("fnaf3/sprhit_ready.wav")
-	end
-	
-	local name = (math.random(1,2) == 1) and "LEFT" or "RIGHT"
-	self.Arm = name
-	
-	self:PlayCustomAnimation("ACT_VM_HIT" .. self.Arm, 2)
-	
+    local ply = self.Owner
+    local ent = pills.getMappedEnt(ply)
+    if not IsValid(ent) then return end
+    if self.IsCharging or ply.tasered then return end
+    if ply:IsFrozen() or timer.Exists('ST_cantKill'..ply:EntIndex()) then return end
+
+    if SERVER then
+        ent:PillGesture('swing', 2, 1, 0.1, 0.3)
+        ply:EmitSound("fnaf3/sprhit_ready.wav")
+
+        -- сервер решает руку
+        local arm = (math.random(1,2))
+        self:SetAttackArm(arm)
+    end
+
+    -- у клиента рука берётся только из сетевой переменной
+    local arm = self:GetAttackArm()
+    if arm <= 0 then arm = 1 end
+    local armName = (arm == 1) and "LEFT" or "RIGHT"
+
+    if IsFirstTimePredicted() then
+        self:PlayCustomAnimation("ACT_VM_HIT" .. armName, 2)
+    end
+
     self.IsCharging = true
     self.ChargeStartTime = CurTime()
-	
-	self:SetNextMeleeAttack( CurTime() + self.HitDelay )
+    self:SetNextMeleeAttack(CurTime() + self.HitDelay)
 end
 
 function SWEP:SecondaryAttack()
@@ -89,125 +93,117 @@ function SWEP:SecondaryAttack()
 end
 
 function SWEP:DealDamage()
-	local ply = self.Owner
-	local ent = pills.getMappedEnt(ply)
-	
-	if !IsValid(ent) then return end
-	
-	self:PlayCustomAnimation("ACT_VM_HIT" .. self.Arm .. "2", 0.6)
-	
-	timer.Create('ST_cantKill'..ply:EntIndex(), 1.5, 1, function() end)
-	
-	if SERVER then
-	
-		timer.Simple(0.15, function()
-			if !IsValid(ent) then return end
-			ent:PillStopGesture('swing')
-		end)
-	
-		ent:PillGesture('attack', 2, 1, 0.1, 0.3)
-		
-		net.Start("fh_net_killer_change")
-		net.WriteString("attack")
-		net.WriteFloat(2)
-		net.Send(ply)
-	
-	end
-		
-	ply:LagCompensation(true)
+    local ply = self.Owner
+    local ent = pills.getMappedEnt(ply)
+    if not IsValid(ent) then return end
 
-	local tr = util.TraceLine( {
-		start = ply:GetShootPos(),
-		endpos = ply:GetShootPos() + ply:GetAimVector() * 110,
-		filter = ply,
-		mask = MASK_SHOT_HULL
-	} )
+    local arm = self:GetAttackArm()
+    local armName = (arm == 1) and "LEFT" or "RIGHT"
 
-	if ( !IsValid( tr.Entity ) ) then
-		tr = util.TraceHull( {
-			start = ply:GetShootPos(),
-			endpos = ply:GetShootPos() + ply:GetAimVector() * 110,
-			filter = ply,
-			mins = self.HitSize.Min,
-			maxs = self.HitSize.Max,
-			mask = MASK_SHOT_HULL
-		} )
-		debugoverlay.Box(tr.HitPos, self.HitSize.Min, self.HitSize.Max, 5, Color(255, 0, 0))
-	end
-	debugoverlay.Line(ply:EyePos(), tr.HitPos, 5, Color(255, 0, 0), true)
-	
-	local target = tr.Entity
-	
-	if !IsValid(target) then 
-		ply:LagCompensation(false)
-		return 
-	end
-	
-	if target:IsPlayer() and target:IsSurvivor() then
-	
-		local edata = EffectData()
-		edata:SetOrigin(tr.HitPos)
+    if IsFirstTimePredicted() then
+        self:PlayCustomAnimation("ACT_VM_HIT" .. armName .. "2", 0.6)
+    end
+
+    timer.Create('ST_cantKill'..ply:EntIndex(), 1.5, 1, function() end)
+
+    if SERVER then
+        timer.Simple(0.15, function()
+            if IsValid(ent) then
+                ent:PillStopGesture('swing')
+            end
+        end)
+        ent:PillGesture('attack', 2, 1, 0.1, 0.3)
+
+        net.Start("fh_net_killer_change")
+        net.WriteString("attack")
+        net.WriteFloat(2)
+        net.Send(ply)
+    end
+
+    ply:LagCompensation(true)
+
+    local tr = util.TraceLine({
+        start = ply:GetShootPos(),
+        endpos = ply:GetShootPos() + ply:GetAimVector() * 110,
+        filter = ply,
+        mask = MASK_SHOT_HULL
+    })
+
+    if not IsValid(tr.Entity) then
+        tr = util.TraceHull({
+            start = ply:GetShootPos(),
+            endpos = ply:GetShootPos() + ply:GetAimVector() * 110,
+            filter = ply,
+            mins = self.HitSize.Min,
+            maxs = self.HitSize.Max,
+            mask = MASK_SHOT_HULL
+        })
+    end
+
+    local target = tr.Entity
+    if not IsValid(target) then
+        ply:LagCompensation(false)
+        return
+    end
+
+    if target:IsPlayer() and target:IsSurvivor() then
+        local edata = EffectData()
+        edata:SetOrigin(tr.HitPos)
         edata:SetEntity(target)
-		util.Effect("BloodImpact", edata)
-		
-	end
-	
-	if CLIENT then return end
-	
+        util.Effect("BloodImpact", edata)
+    end
+
+    if CLIENT then
+        ply:LagCompensation(false)
+        return
+    end
+
     local class = target:GetClass()
     if class == "func_breakable" or class == "func_breakable_surf" then
         target:Fire("Shatter", "0", 0)
     end
-	
-	if target:GetMoveType() == MOVETYPE_VPHYSICS then
-		local owner = target:GetOwner()
-		if !IsValid(owner) or IsValid(owner) and !owner:IsAnimatronic() then
-		
-			local phys = target:GetPhysicsObject()
-			if IsValid(phys) then
-				local dir = ply:GetAimVector()
-				phys:ApplyForceCenter(dir * 10000)
-			end
-		end
-	end
-	
-	local dmginfo = DamageInfo()
-	dmginfo:SetAttacker( ply )
-	dmginfo:SetInflictor( self )
-	dmginfo:SetDamage( 60 )
-	
-	SuppressHostEvents( NULL )
-	target:TakeDamageInfo( dmginfo )
-	SuppressHostEvents( ply )
-		
-	local effectData = EffectData()
-	effectData:SetOrigin(tr.HitPos)
-	effectData:SetStart(ply:GetShootPos())
-	effectData:SetEntity(tr.Entity or ply)
-	effectData:SetNormal(tr.HitNormal)
-	effectData:SetSurfaceProp(tr.SurfaceProps or 0)
-	effectData:SetDamageType(DMG_CLUB)
-	effectData:SetHitBox(tr.HitBox or 0)
-	effectData:SetScale(1)
-	
-	util.Effect("Impact_GMOD", effectData, true, true)
-	
-	ply:LagCompensation(false)
-	
-	if target:IsNPC() then
-		target:TakeDamage(99999, ply)
-		return 
-	end
-	
-	if (target:IsPlayer() and target:IsSurvivor()) or target:IsNPC() then
-		ply:EmitSound("fnaf3/spr_punch_hit.wav")
-	end
-	
-	--[[
-	if target:IsPlayer() and !target:Alive() then
-		playVoiceline('springtrap', 'kill', ply, 2)
-	end
-	--]]
+
+    if target:GetMoveType() == MOVETYPE_VPHYSICS then
+        local owner = target:GetOwner()
+        if (not IsValid(owner)) or (IsValid(owner) and not owner:IsAnimatronic()) then
+            local phys = target:GetPhysicsObject()
+            if IsValid(phys) then
+                local dir = ply:GetAimVector()
+                phys:ApplyForceCenter(dir * 10000)
+            end
+        end
+    end
+
+    local dmginfo = DamageInfo()
+    dmginfo:SetAttacker(ply)
+    dmginfo:SetInflictor(self)
+    dmginfo:SetDamage(60)
+
+    SuppressHostEvents(NULL)
+    target:TakeDamageInfo(dmginfo)
+    SuppressHostEvents(ply)
+
+    local effectData = EffectData()
+    effectData:SetOrigin(tr.HitPos)
+    effectData:SetStart(ply:GetShootPos())
+    effectData:SetEntity(tr.Entity or ply)
+    effectData:SetNormal(tr.HitNormal)
+    effectData:SetSurfaceProp(tr.SurfaceProps or 0)
+    effectData:SetDamageType(DMG_CLUB)
+    effectData:SetHitBox(tr.HitBox or 0)
+    effectData:SetScale(1)
+    util.Effect("Impact_GMOD", effectData, true, true)
+
+    ply:LagCompensation(false)
+
+    if target:IsNPC() then
+        target:TakeDamage(99999, ply)
+        return
+    end
+
+    if (target:IsPlayer() and target:IsSurvivor()) or target:IsNPC() then
+        ply:EmitSound("fnaf3/spr_punch_hit.wav")
+    end
 end
 
 function SWEP:Think()

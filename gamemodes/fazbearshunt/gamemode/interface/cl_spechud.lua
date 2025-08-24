@@ -110,3 +110,17 @@ hook.Add( "PlayerButtonDown", "fh_pt_request_buttondown", function( ply, but )
 end )
 
 // базу сделал Zhapka
+
+hook.Add("CalcView", "fh_spec_calcview", function(ply, pos, angles, fov)
+    if ply:GetObserverTarget():IsValid() and ply:GetObserverMode() == OBS_MODE_CHASE then
+        local target = ply:GetObserverTarget()
+		
+		if !target:IsPlayer() then
+			local view = {}
+			view.origin = target:GetPos() + Vector(0, 0, 60) - angles:Forward() * 100
+			view.angles = angles
+			view.fov = fov
+			return view
+		end
+    end
+end)

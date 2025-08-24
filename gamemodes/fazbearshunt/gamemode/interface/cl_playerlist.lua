@@ -3,8 +3,6 @@ local customScoreboard = nil
 local anim_scrollPanel = nil
 local surv_scrollPanel = nil
 
-surface.CreateFont("ScoreFont", {font = "Trebuchet24", size = 24, weight = 500})
-
 surface.CreateFont("metaFont16", { font = "Share Tech Mono Regular", size = 28, extended = true, weight = fh_timer_width, antialias = true, bold = true })
 surface.CreateFont("metaFont14", { font = "Share Tech Mono Regular", size = 18, extended = true, weight = fh_timer_width, antialias = true, bold = true })
 
@@ -12,6 +10,8 @@ local fh_logo = Material("vgui/playerlist/fh logo.png")
 local fh_logo_glow = Material("vgui/playerlist/logo_glow.png")
 
 local playerlist_mat = Material("vgui/playerlist/playerlist.png")
+local playerlist_mat_lowres = Material("vgui/playerlist/playerlist_lowres.png")
+
 local playerlist_header = Material("vgui/playerlist/playerlist_header.png")
 local right_tab_mat = Material("vgui/playerlist/tabs/right_t.png")
 local left_tab_mat = Material("vgui/playerlist/tabs/left_t.png")
@@ -45,14 +45,16 @@ function GM:ScoreboardShow()
     end
 	
 	nextTimeUpdate = CurTime() + 5
+	
+	local lowres = ScrH() <= 600 
 
     customScoreboard = vgui.Create("DFrame")
-    customScoreboard:SetSize(550, 500)
+    customScoreboard:SetSize(550, !lowres and 500 or 300)
     customScoreboard:SetTitle("")
     customScoreboard:ShowCloseButton(false)
     customScoreboard:SetDraggable(false)
     customScoreboard:Center()
-	customScoreboard:SetPos(customScoreboard.x, 300)
+	customScoreboard:SetPos(customScoreboard.x, math.Clamp( ScrH() / 2 - (!lowres and 250 or 100) , 125 , 360))
 	
     anim_scrollPanel = vgui.Create("DScrollPanel", customScoreboard)
 	anim_scrollPanel:SetSize( 278, 500 )
@@ -104,7 +106,7 @@ function GM:ScoreboardShow()
 	
 	customScoreboard.Paint = function(self, w, h)
 		surface.SetDrawColor(255, 255, 255, 250)
-		surface.SetMaterial(playerlist_mat)
+		surface.SetMaterial(!lowres and playerlist_mat or playerlist_mat_lowres)
 		surface.DrawTexturedRect(0, 0, w, h)
 		
 		local anim_scroll_wide = 0
@@ -154,7 +156,7 @@ function GM:ScoreboardShow()
     scoreboardHeader:ShowCloseButton(false)
     scoreboardHeader:SetDraggable(false)
     scoreboardHeader:Center()
-	scoreboardHeader:SetPos(scoreboardHeader.x, 196)
+	scoreboardHeader:SetPos(scoreboardHeader.x, customScoreboard.y - 104)
 	
 	scoreboardHeader.Paint = function(self, w, h)
 		surface.SetDrawColor(255, 255, 255, 250)
@@ -245,41 +247,280 @@ function GM:ScoreboardShow()
 	end
 end
 
-function UpdatePlayerList(teamIndex, scrollbar)
-	local teamIndex = teamIndex or TEAM_UNASSIGNED
-
-    scrollbar:Clear()
-		
-    local players = team.GetPlayers(teamIndex)
+local function CreatePlayerPanel(scrollbar, ply)
+	local plyPanel = scrollbar:Add("DPanel")
+	plyPanel:SetSize(0, 32)
+	plyPanel:Dock(TOP)
+	plyPanel:DockMargin(16, 0, 16, 5)
 	
-	if teamIndex == TEAM_UNASSIGNED then
-		table.Add(players, team.GetPlayers(TEAM_SPECTATOR))
+	local suffix = ply:Team() == TEAM_SPECTATOR and "_dead" or ""
+	
+	local plypanel_mat = Material("vgui/playerlist/tabs/player" .. suffix .. ".png")
+	
+	plyPanel.Paint = function(self, w, h)
+		draw.RoundedBox(8, 0, 0, w, h, Color(0, 0, 0, 255))
+	
+		surface.SetDrawColor(255, 255, 255, 120)
+		surface.SetMaterial(plypanel_mat)
+		surface.DrawTexturedRect(0, 0, w, h)
+	end
+
+	local Avatar = vgui.Create( "AvatarImage", plyPanel )
+	Avatar:SetSize( 24, 24 )
+	Avatar:SetPos( 4, 4 )
+	Avatar:SetPlayer( ply, 32 )
+	
+	Avatar.Paint = function(self, w, h)
+		if self:IsHovered() then
+			surface.SetDrawColor(255, 255, 255, 10)
+			surface.DrawRect(0, 0, w, h)
+		end
+	end
+	local AvatarBtn = vgui.Create("DButton", plyPanel)
+	AvatarBtn:SetSize(24, 24)
+	AvatarBtn:SetPos(4, 4)
+	AvatarBtn:SetText("")
+	AvatarBtn:SetZPos(10)
+	AvatarBtn:SetCursor("hand")
+	
+	AvatarBtn.Paint = function(self, w, h)
+		if self:IsHovered() then
+			surface.SetDrawColor(255, 255, 255, 20)
+			surface.DrawRect(0, 0, w, h)
+		end
 	end
 	
-    table.sort(players, function(a, b)
-        return a:Team() < b:Team()
-    end)
+	AvatarBtn.DoClick = function()
+		if ply:IsBot() then return end
+		
+		local isMyself = ply == LocalPlayer()
+		
+		AvatarBtn:SetEnabled(false)
+	
+		local frame = vgui.Create("DFrame", plyPanel)
+		frame:SetTitle("")
+		frame:SetSize(200, isMyself and 45 or 90)
+		frame:SetPos(gui.MouseX() - 16, gui.MouseY() - 16)
+		frame:MakePopup()
+		frame:ShowCloseButton(false)
+		
+		hook.Add( "ScoreboardHide", "playerlist_frame_" .. tostring(frame), function()
+			if !IsValid(frame) then return end
+			frame:Close()
+			hook.Remove("ScoreboardHide", "playerlist_frame_" .. tostring(frame))
+		end )
+		
+		frame.OnClose = function()
+			AvatarBtn:SetEnabled(true)
+		end
+	
+		frame.Paint = function(self, w, h)
+			draw.RoundedBox(8, 0, 0, w, h, Color(40, 40, 40, 230))
+		end
+	
+		local profileBtn = vgui.Create("DButton", frame)
+		profileBtn:SetText(language.GetPhrase("fazhunt.playerlist.showprofile"))
+		profileBtn:SetSize(180, 30)
+		profileBtn:SetPos(10, 10)
+		profileBtn:SetColor(Color(0,0,0))
+		profileBtn.DoClick = function()
+			ply:ShowProfile()
+			frame:Close()
+			hook.Remove("ScoreboardHide", "playerlist_frame_" .. tostring(frame))
+		end
+	
+		local muteBtn = vgui.Create("DButton", frame)
+		muteBtn:SetText(ply:IsMuted() and language.GetPhrase("fazhunt.playerlist.unmute_player") or language.GetPhrase("fazhunt.playerlist.mute_player"))
+		muteBtn:SetSize(180, 30)
+		muteBtn:SetPos(10, 50)
+		muteBtn:SetColor(ply:IsMuted() and Color(255, 0, 0) or Color(0,0,0))
+		muteBtn.DoClick = function()
+			ply:SetMuted(not ply:IsMuted())
+			frame:Close()
+			hook.Remove("ScoreboardHide", "playerlist_frame_" .. tostring(frame))
+		end
+		
+		frame.OnCursorExited = function()
+			if muteBtn:IsHovered() or profileBtn:IsHovered() then return end
+			frame:Close()
+			hook.Remove("ScoreboardHide", "playerlist_frame_" .. tostring(frame))
+		end
+	end
+	
+	local clr = Color(255,255,255)
+	local name_x = 28
+	local sub_name_val = 0
 
-    for _, ply in ipairs(players) do
-        local plyPanel = scrollbar:Add("DPanel")
-        plyPanel:SetSize(0, 32)
-        plyPanel:Dock(TOP)
-        plyPanel:DockMargin(16, 0, 16, 5)
+	if table.HasValue(boosters, ply:SteamID64()) then
+		clr = Color(243, 168, 38)
+		name_x = 48
+
+		local boosty = vgui.Create( "DImage", plyPanel )
+		boosty:SetSize( 14, 16 )
+		boosty:SetPos( 36, 8 )
+		boosty:SetImage("vgui/playerlist/icons/boosty.png")
+		sub_name_val = 2
+	end
+	
+	if ply:Team() == TEAM_SPECTATOR then
+	
+		clr = Color(120,120,120)
+	
+	end
+
+	local nameLabel = vgui.Create("DLabel", plyPanel)
+	nameLabel:SetText(utf8.sub(ply:Nick(), 0, 16 - sub_name_val))
+	nameLabel:SetTextColor(clr)
+	nameLabel:SetFont("timerFontSmall")
+	nameLabel:DockMargin(name_x, 0, 0, 0)
+	nameLabel:SetSize(300, 30)
+	nameLabel:Dock(FILL)
+	nameLabel:SetContentAlignment(5)
+end
+
+local showAnimTooltip = false
+local animTooltipText = ""
+
+local function CreateAnimatronicPanel(scrollbar, ply, killerData)
+	local ent = pills.getMappedEnt(ply)
+	
+	local panel_height = 40
+	
+	local plyPanel = scrollbar:Add("DPanel")
+	plyPanel:SetSize(0, panel_height)
+	plyPanel:Dock(TOP)
+	plyPanel:DockMargin(16, 0, 16, 5)
+	
+	local plypanel_mat = Material("vgui/playerlist/tabs/animatronic.png", "smooth")
+	local animName
+	local animFullName
+	
+	local imagePath = ""
+
+	if IsValid(ent) then
+		animName = ent.formTable.name
+		animFullName = killerData[animName].fullname
+	
+		local panelColor = killerData[animName] and killerData[animName].color or Color(255, 255, 255, 0)
 		
-		local suffix = ply:Team() == TEAM_SPECTATOR and "_dead" or ""
+		panelColor.a = 120
 		
-		local plypanel_mat = Material("vgui/playerlist/tabs/player" .. suffix .. ".png")
+		plyPanel.Paint = function(self, w, h)
+			draw.RoundedBox(8, 0, 0, w, h, Color(0, 0, 0, 255))
 		
-        plyPanel.Paint = function(self, w, h)
-            draw.RoundedBox(8, 0, 0, w, h, Color(0, 0, 0, 255))
-		
-			surface.SetDrawColor(255, 255, 255, 120)
+			surface.SetDrawColor(panelColor)
 			surface.SetMaterial(plypanel_mat)
 			surface.DrawTexturedRect(0, 0, w, h)
-        end
+		end
+		
+		imagePath = "vgui/bars/" .. killerData[animName].name .. ".png"
+	end
+		
+	local animImage = nil
+		
+    if file.Exists("materials/" .. imagePath, "GAME") then
+		animImage = Material(imagePath, "mips") 
 
+        local box = vgui.Create("DImageButton", plyPanel)
+        box:SetSize(32, 32)
+		box:SetPos( 4, 4 )
+        box.name = animName
+		
+		box.OnCursorEntered = function(self)
+			local key = "fazhunt.animatronics.description." .. killerData[self.name].name
+			local localized = language.GetPhrase(key)
+
+			if localized == key then
+				showAnimTooltip = false
+			else
+				showAnimTooltip = true
+				animTooltipText = language.SafeGetPhrase(animFullName):upper() .. "\n\n" .. localized
+			end
+		end
+
+		box.OnCursorExited = function(self)
+			showAnimTooltip = false
+		end
+		
+		box.DoClick = function()
+			if ply:IsBot() then return end
+			
+			local isMyself = ply == LocalPlayer()
+			
+			box:SetEnabled(false)
+		
+			local frame = vgui.Create("DFrame", plyPanel)
+			frame:SetTitle("")
+			frame:SetSize(200, isMyself and 45 or 90)
+			frame:SetPos(gui.MouseX() - 16, gui.MouseY() - 16)
+			frame:MakePopup()
+			frame:ShowCloseButton(false)
+			
+			hook.Add( "ScoreboardHide", "playerlist_frame_" .. tostring(frame), function()
+				if !IsValid(frame) then return end
+				frame:Close()
+				hook.Remove("ScoreboardHide", "playerlist_frame_" .. tostring(frame))
+			end )
+			
+			frame.OnClose = function()
+				box:SetEnabled(true)
+			end
+		
+			frame.Paint = function(self, w, h)
+				draw.RoundedBox(8, 0, 0, w, h, Color(40, 40, 40, 230))
+			end
+		
+			local profileBtn = vgui.Create("DButton", frame)
+			profileBtn:SetText(language.GetPhrase("fazhunt.playerlist.showprofile"))
+			profileBtn:SetSize(180, 30)
+			profileBtn:SetPos(10, 10)
+			profileBtn:SetColor(Color(0,0,0))
+			profileBtn.DoClick = function()
+				ply:ShowProfile()
+				frame:Close()
+				hook.Remove("ScoreboardHide", "playerlist_frame_" .. tostring(frame))
+			end
+		
+			local muteBtn = vgui.Create("DButton", frame)
+			muteBtn:SetText(ply:IsMuted() and language.GetPhrase("fazhunt.playerlist.unmute_player") or language.GetPhrase("fazhunt.playerlist.mute_player"))
+			muteBtn:SetSize(180, 30)
+			muteBtn:SetPos(10, 50)
+			muteBtn:SetColor(ply:IsMuted() and Color(255, 0, 0) or Color(0,0,0))
+			muteBtn.DoClick = function()
+				ply:SetMuted(not ply:IsMuted())
+				frame:Close()
+				hook.Remove("ScoreboardHide", "playerlist_frame_" .. tostring(frame))
+			end
+			
+			frame.OnCursorExited = function()
+				if muteBtn:IsHovered() or profileBtn:IsHovered() then return end
+				frame:Close()
+				hook.Remove("ScoreboardHide", "playerlist_frame_" .. tostring(frame))
+			end
+		end
+
+        if file.Exists("materials/" .. imagePath, "GAME") then
+            box:SetMaterial(animImage)
+        else
+            box.Paint = function(self, w, h)
+                draw.RoundedBox(4, 0, 0, w, h, Color(0, 0, 0))
+                draw.SimpleText(language.SafeGetPhrase(killerData[animName].fullname), "timerFontSmall", w / 2, h / 2, color_white, TEXT_ALIGN_CENTER, TEXT_ALIGN_CENTER)
+            end
+        end
+	else
+	
+		local panelColor = Color(255, 255, 255, 120)
+		
+		plyPanel.Paint = function(self, w, h)
+			draw.RoundedBox(8, 0, 0, w, h, Color(0, 0, 0, 255))
+		
+			surface.SetDrawColor(panelColor)
+			surface.SetMaterial(plypanel_mat)
+			surface.DrawTexturedRect(0, 0, w, h)
+		end
+		
 		local Avatar = vgui.Create( "AvatarImage", plyPanel )
-		Avatar:SetSize( 24, 24 )
+		Avatar:SetSize( 32, 32 )
 		Avatar:SetPos( 4, 4 )
 		Avatar:SetPlayer( ply, 32 )
 		
@@ -289,8 +530,9 @@ function UpdatePlayerList(teamIndex, scrollbar)
 				surface.DrawRect(0, 0, w, h)
 			end
 		end
+		
 		local AvatarBtn = vgui.Create("DButton", plyPanel)
-		AvatarBtn:SetSize(24, 24)
+		AvatarBtn:SetSize(32, 32)
 		AvatarBtn:SetPos(4, 4)
 		AvatarBtn:SetText("")
 		AvatarBtn:SetZPos(10)
@@ -360,55 +602,102 @@ function UpdatePlayerList(teamIndex, scrollbar)
 			end
 		end
 		
-		local clr = Color(255,255,255)
-		local name_x = 28
-		local sub_name_val = 0
+	end
 	
-		if table.HasValue(boosters, ply:SteamID64()) then
-			clr = Color(243, 168, 38)
-			name_x = 48
+	local clr = Color(255,255,255)
+	local name_x = 32
+	local sub_name_val = 1
 
-			local boosty = vgui.Create( "DImage", plyPanel )
-			boosty:SetSize( 14, 16 )
-			boosty:SetPos( 36, 8 )
-			boosty:SetImage("vgui/playerlist/icons/boosty.png")
-			sub_name_val = 2
-		end
-		
-		if ply:Team() == TEAM_SPECTATOR then
-		
-			clr = Color(120,120,120)
-		
-		end
+	if table.HasValue(boosters, ply:SteamID64()) then
+		clr = Color(243, 168, 38)
+		name_x = 52
 
-        local nameLabel = vgui.Create("DLabel", plyPanel)
-        nameLabel:SetText(utf8.sub(ply:Nick(), 0, 16 - sub_name_val))
-		nameLabel:SetTextColor(clr)
-        nameLabel:SetFont("timerFontSmall")
-        nameLabel:DockMargin(name_x, 0, 0, 0)
-        nameLabel:SetSize(300, 30)
-        nameLabel:Dock(FILL)
-        nameLabel:SetContentAlignment(5)
-		
-		--[[
-		if ply != LocalPlayer() then
+		local boosty = vgui.Create( "DImage", plyPanel )
+		boosty:SetSize( 14, 16 )
+		boosty:SetPos( 40, panel_height / 2 - (16 / 2) )
+		boosty:SetImage("vgui/playerlist/icons/boosty.png")
+		sub_name_val = 3
+	end
 
-			local muteButton = vgui.Create("DButton", plyPanel)
-			muteButton:SetSize(32, 32)
-			muteButton:Dock(RIGHT)
-			muteButton:SetText("")
-			muteButton:SetTooltip("Заглушить игрока")
-			muteButton.Paint = function(self, w, h)
-				if !IsValid(ply) then return end
-				local isMuted = ply:IsMuted()
-				local bgColor = isMuted and Color(200, 0, 0, 200) or Color(255, 255, 255, 200)
-				draw.RoundedBox(12, 0, 0, w, h, bgColor)
+	local nameLabel = vgui.Create("DLabel", plyPanel)
+	nameLabel:SetText(utf8.sub(ply:Nick(), 0, 16 - sub_name_val))
+	nameLabel:SetTextColor(clr)
+	nameLabel:SetFont("timerFontSmall")
+	nameLabel:DockMargin(name_x, 0, 0, 0)
+	nameLabel:SetSize(300, 30)
+	nameLabel:Dock(FILL)
+	nameLabel:SetContentAlignment(5)
+end
+
+hook.Add("PostRenderVGUI", "DrawPLAnimTooltip", function()
+	if not showAnimTooltip then return end
+
+	local x, y = input.GetCursorPos()
+	local maxWidth = 300
+	local padding = 10
+
+	surface.SetFont("DermaDefault")
+
+	local rawLines = string.Explode("\n", animTooltipText, false)
+	local lines = {}
+
+	for _, rawLine in ipairs(rawLines) do
+		if rawLine == "" then
+			table.insert(lines, "")
+		else
+			local currentLine = ""
+			for word in string.gmatch(rawLine, "%S+") do
+				local testLine = currentLine == "" and word or currentLine .. " " .. word
+				local testWidth = surface.GetTextSize(testLine)
+
+				if testWidth > maxWidth - padding * 2 then
+					if currentLine ~= "" then table.insert(lines, currentLine) end
+					currentLine = word
+				else
+					currentLine = testLine
+				end
 			end
-			muteButton.DoClick = function()
-				ply:SetMuted(!ply:IsMuted())
-			end
+			if currentLine ~= "" then table.insert(lines, currentLine) end
 		end
-		]]--
+	end
+
+	local tooltipWidth = maxWidth
+	local tooltipHeight = #lines * 18 + padding * 2
+
+	surface.SetDrawColor(255, 0, 0, 255)
+	surface.DrawRect(x + 9, y + 9, tooltipWidth + 2, tooltipHeight + 2)
+
+	surface.SetDrawColor(0, 0, 0, 255)
+	surface.DrawRect(x + 10, y + 10, tooltipWidth, tooltipHeight)
+
+	for i, line in ipairs(lines) do
+		draw.SimpleText(line, "DermaDefault", x + 10 + padding, y + 10 + padding + (i - 1) * 18, color_white, TEXT_ALIGN_LEFT, TEXT_ALIGN_TOP)
+	end
+end)
+
+function UpdatePlayerList(teamIndex, scrollbar)
+	local teamIndex = teamIndex or TEAM_UNASSIGNED
+
+    scrollbar:Clear()
+		
+    local players = team.GetPlayers(teamIndex)
+	
+	if teamIndex == TEAM_UNASSIGNED then
+		table.Add(players, team.GetPlayers(TEAM_SPECTATOR))
+	end
+	
+    table.sort(players, function(a, b)
+        return a:Team() < b:Team()
+    end)
+	
+	local killerData = killers.getAll()
+
+    for _, ply in ipairs(players) do
+		if !ply:IsAnimatronic() then
+			CreatePlayerPanel(scrollbar, ply)
+		else
+			CreateAnimatronicPanel(scrollbar, ply, killerData)
+		end
     end
 end
 

@@ -99,6 +99,8 @@ gifts = gifts or {}
 
 local effectDesc = ''
 local format_num = -1
+	
+local anim_visibility_users = {}
 
 -- Позитивные эффекты
 local positiveEffects = {
@@ -162,7 +164,16 @@ local positiveEffects = {
         func = function(ply)
             net.Start("fh_hl_animatronics")
             net.Send(ply)
-        end
+			
+			table.insert(anim_visibility_users, ply)
+			
+			timer.Simple(30, function()
+				table.RemoveByValue(anim_visibility_users, ply)
+			end)
+        end,
+		req = function(ply)
+			return !table.HasValue(anim_visibility_users, ply)
+		end
     },
     {
         name = "defibrilator",
@@ -384,6 +395,16 @@ if SERVER then
 		return ply:HasWeapon("weapon_crowbar")
 	end)
 	]]--
+
+	hook.Add("SetupPlayerVisibility", "fh_gift_visibility", function(ply, viewent)
+		if !table.IsEmpty(anim_visibility_users) then
+			for _, player in ipairs( team.GetPlayers(2701) ) do
+				if IsValid(player) and player ~= ply and ply:IsSurvivor() then
+					AddOriginToPVS(player:GetPos())
+				end
+			end
+		end
+	end)
 end
 
 function ENT:ApplyEffect(player)
