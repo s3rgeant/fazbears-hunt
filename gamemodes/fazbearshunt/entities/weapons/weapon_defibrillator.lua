@@ -19,7 +19,7 @@ else -- CLIENT
 	end )
 end
 
-SWEP.PrintName = "Defibrilator"
+SWEP.PrintName = "#weapon_defibrillator"
 SWEP.Spawnable = true
 
 --SWEP.ViewModelFOV = 75

@@ -111,16 +111,37 @@ end )
 
 // базу сделал Zhapka
 
+local real_zoom = 1
+local zoom = 1
+local add_fov = 0
+
+hook.Add( "InputMouseApply", "fh_zooming_mwheel", function( cmd )
+	real_zoom = real_zoom + cmd:GetMouseWheel()
+	
+	if real_zoom < 0 then
+		real_zoom = math.Clamp(real_zoom, -15, 70)
+		add_fov = math.Clamp(-real_zoom, 0, 25)
+	end
+	
+	if real_zoom > 70 then
+		real_zoom = 70
+	end
+	
+	zoom = math.Clamp(real_zoom, 0, 70)
+end )
+
 hook.Add("CalcView", "fh_spec_calcview", function(ply, pos, angles, fov)
-    if ply:GetObserverTarget():IsValid() and ply:GetObserverMode() == OBS_MODE_CHASE then
-        local target = ply:GetObserverTarget()
-		
-		if !target:IsPlayer() then
+    if ply:GetObserverTarget():IsValid() then 
+		local observermode = ply:GetObserverMode()
+		if observermode == OBS_MODE_CHASE then
+			local target = ply:GetObserverTarget()
+			
 			local view = {}
-			view.origin = target:GetPos() + Vector(0, 0, 60) - angles:Forward() * 100
+
 			view.angles = angles
-			view.fov = fov
+			view.origin = pos - view.angles:Forward() * -zoom
+			view.fov = fov + add_fov
 			return view
 		end
-    end
+	end
 end)

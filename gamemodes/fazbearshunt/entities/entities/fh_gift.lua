@@ -177,13 +177,12 @@ local positiveEffects = {
     },
     {
         name = "defibrilator",
-		desc = "fazhunt.gifts.defibrilator",
+		desc = "fazhunt.gifts.defibrillator",
         func = function(ply)
-            ply:Give("weapon_defibrilator")
-            effectDesc = 'fazhunt.gifts.defibrilator'
+            ply:Give("weapon_defibrillator")
         end,
         req = function(ply)
-			return !ply:HasWeapon("weapon_defibrilator")
+			return !ply:HasWeapon("weapon_defibrillator")
         end
     },
     {

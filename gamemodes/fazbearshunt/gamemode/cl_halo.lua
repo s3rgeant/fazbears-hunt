@@ -511,11 +511,26 @@ net.Receive("fh_start_yoursmine_view", function()
             return true
         end
     end)
+	
+    hook.Add("RenderScreenspaceEffects", "fh_yoursmine_fx", function()
+        local lp = LocalPlayer()
+        if not IsValid(lp.fh_target_player) then return end
+
+        local t = CurTime() - lp.fh_start_time
+        local frac = 1 - math.Clamp((t / lp.fh_total_duration), 0, 1)
+
+        DrawMotionBlur(0.1, 0.8 * frac, 0.01)
+        DrawToyTown(2, ScrH()/2)
+		DrawBloom( 0.65, 1 * frac, 9, 9, 1, 1, 1, 1, 1 )
+    end)
+	
+	LocalPlayer():ScreenFade( SCREENFADE.IN, Color( 0, 0, 0, 180 ), 2, 0 )
 end)
 
 net.Receive("fh_stop_yoursmine_view", function()
     hook.Remove("CalcView", "fh_yoursmine_view")
     hook.Remove("CalcView", "fh_yoursmine_ply")
+    hook.Remove("RenderScreenspaceEffects", "fh_yoursmine_fx")
     LocalPlayer().fh_target_player = nil
     LocalPlayer().fh_start_time = nil
     LocalPlayer().fh_initial_phase_duration = nil

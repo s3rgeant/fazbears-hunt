@@ -11,6 +11,7 @@ local haloUsers = {}
 
 hook.Add( "PostCleanupMap", "fh_halo_reset", function( name )
 	table.Empty(haloUsers)
+	table.Empty(affectedPlayers)
 end)
 
 function highlight.ByDistance(ply, ent)
@@ -57,7 +58,8 @@ function highlight.ByDistance(ply, ent)
 	end
 end
 
-function highlight.Add(ply, players)
+function highlight.Add(ply, players, duration)
+	local duration = duration or conVars.halo_time:GetFloat() or 5
 	if istable(players) then
 		if !table.IsEmpty(players) then
 			net.Start("AddAffectedPlayers")
@@ -67,7 +69,7 @@ function highlight.Add(ply, players)
 			for _, v in ipairs(players) do
 				table.insert(affectedPlayers, v)
 				
-				timer.Simple(conVars.halo_time:GetFloat(), function()
+				timer.Simple(duration, function()
 					table.RemoveByValue(affectedPlayers, v)
 				end)
 			end
@@ -80,13 +82,17 @@ function highlight.Add(ply, players)
 			
 			table.insert(affectedPlayers, players)
 			
-			timer.Simple(conVars.halo_time:GetFloat(), function()
+			timer.Simple(duration, function()
 				table.RemoveByValue(affectedPlayers, players)
 			end)
 		end
 	end
 end
 
+
+--[[
+				КУЛДАУНЫ
+]]
 function highlight.Cooldown(ply, duration)
 	haloUsers[ply] = {hl_Time = CurTime() + duration}
 		
@@ -103,6 +109,10 @@ function highlight.GetCooldown(ply)
 	return haloUsers[ply].hl_Time - CurTime()
 end
 
+
+--[[
+				ЗВУКИ ПРОСВЕТА
+]]
 local vision_sounds = {
 	["default"] = {affected = "vision_affected.wav", unaffected = "vision_unaffected.wav"}
 }
@@ -128,6 +138,8 @@ function highlight.GetVisionSound(ent)
 	return vision_sounds["default"]
 end
 
+
+
 function highlight.NotifyTarget(target, ent, isAffected)
 	local sound_to_play = highlight.GetVisionSound(ent)
 	if !conVars.fh_silent_highlight:GetBool() then
@@ -145,6 +157,11 @@ function highlight.NotifyTarget(target, ent, isAffected)
 	end
 end
 
+
+
+--[[
+				МАШКУ ЗА ЛЯЖКУ
+]]
 hook.Add("SetupPlayerVisibility", "fh_halo_visibility", function(ply, viewent)
 	if !table.IsEmpty(affectedPlayers) then
 		for _, player in ipairs(affectedPlayers) do

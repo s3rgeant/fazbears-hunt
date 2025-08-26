@@ -1,3 +1,36 @@
+
+-- запоминание за кого играл игронк
+
+local playedkillers = playedkillers or {}
+
+if file.Exists("fh_playedkillers.txt", "DATA") then
+	local data = file.Read("fh_playedkillers.txt", "DATA") or ""
+	
+	if data != "" then 
+		local lines = string.Split(data, "\n")
+		
+		for k, v in pairs(lines) do
+			table.insert(playedkillers, v)
+		end
+	end
+end
+
+local function rememberPlayedAnimatronic(anim)
+	if !table.HasValue(playedkillers, anim) then
+		table.insert(playedkillers, anim)
+
+		if !file.Exists("fh_playedkillers.txt", "DATA") then
+			file.Write("fh_playedkillers.txt", table.concat(playedkillers, "\n"))
+		end
+	end
+end
+
+function NeverPlayedAs(anim)
+	if table.IsEmpty(playedkillers) then return true end
+	
+	return !table.HasValue(playedkillers,anim)
+end
+
 -- #### ВЫБИРАЛКА АНИМАТРОНОВ!!!
 
 local animatronics = animatronics or {}
@@ -118,8 +151,31 @@ function draw_killer_selector()
                 draw.SimpleText(language.SafeGetPhrase(killerData[animName].fullname), "timerFontSmall", w / 2, h / 2, color_white, TEXT_ALIGN_CENTER, TEXT_ALIGN_CENTER)
             end
         end
+		
+		if NeverPlayedAs(box.name) then
+			local new_end_x = 36
+			local new_end_y = 118
+		
+			box.PaintOver = function(self, w, h)
+				surface.SetDrawColor(0,0,0,225)
+				surface.DrawRect( 0, new_end_y, new_end_x, new_end_x )
 
-        grid:AddItem(box)
+				for i = 0, 2 do
+				
+					surface.SetDrawColor(255, 200, 0, 255)
+					surface.DrawOutlinedRect(i, i, w - i*2, h - i*2)
+					surface.DrawLine( 0, new_end_y + i, new_end_x, new_end_y + i )
+					surface.DrawLine( new_end_x + i, 140, new_end_x + i, new_end_y )
+				end
+				
+				surface.SetFont( "Default" )
+				surface.SetTextColor( 255, 200, 0 )
+				surface.SetTextPos( 8, new_end_y + 4 ) 
+				surface.DrawText( "NEW",  false)
+			end
+		end
+
+		grid:AddItem(box)
     end
 end
 
@@ -198,6 +254,8 @@ net.Receive("fh_update_killer_selector", function()
             selector:Close()
 			showAnimTooltip = false
             selectable = false
+			
+			rememberPlayedAnimatronic(killer)
         end
         return
     end
@@ -211,13 +269,3 @@ net.Receive("fh_update_killer_selector", function()
         end
     end
 end)
-
-hook.Add("PillCreated", "FH_RememberMyAnim", function(ply, ent)
-	print(ply, ent, ply == LocalPlayer())
-end)
-
---[[
-if !file.Exists("fh_playedkillers.txt", "DATA") then
-	file.Write("fh_playedkillers.txt", table.concat(dontPrefer, "\n"))
-end
-]]--

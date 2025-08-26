@@ -123,26 +123,20 @@ pills.register("pill_clown",{
 		return ent.active
 	end,
 	
-	moveMod=function(ply,ent)
-		if IsValid(ent) then
-			if CLIENT then return end
-		
-			if timer.Exists( "CheckConditions"..ply:EntIndex()) or timer.Exists( "ChaseCheck"..ply:EntIndex()) then return end
-			
-			timer.Create("CheckConditions"..ply:EntIndex(), 2, 0, function()
-				if !IsValid(ent) then
-					if timer.Exists( "CheckConditions"..ply:EntIndex()) then
-						timer.Remove("CheckConditions"..ply:EntIndex())
-					end
-					if timer.Exists( "ChaseCheck"..ply:EntIndex()) then
-						timer.Remove("ChaseCheck"..ply:EntIndex())
-					end
-					return
+	startFunction=function(ply,ent)
+		timer.Create("CheckConditions"..ply:EntIndex(), 2, 0, function()
+			if !IsValid(ent) then
+				if timer.Exists( "CheckConditions"..ply:EntIndex()) then
+					timer.Remove("CheckConditions"..ply:EntIndex())
 				end
-				
-				chaseCheck(ply, 'clown')
-			end)
-		end
+				if timer.Exists( "ChaseCheck"..ply:EntIndex()) then
+					timer.Remove("ChaseCheck"..ply:EntIndex())
+				end
+				return
+			end
+			
+			chaseCheck(ply, 'clown')
+		end)
 	end,
 
 	noFallDamage=true,

@@ -553,26 +553,20 @@ pills.register("pill_wbonnie2",{
 	noFallDamage=true,
 	hideHud = true,
 	
-	moveMod=function(ply,ent)
-		if IsValid(ent) then
-			if CLIENT then return end
-		
-			if timer.Exists( "CheckConditions"..ply:EntIndex()) or timer.Exists( "ChaseCheck"..ply:EntIndex()) then return end
-			
-			timer.Create("CheckConditions"..ply:EntIndex(), 2, 0, function()
-				if !IsValid(ent) then
-					if timer.Exists( "CheckConditions"..ply:EntIndex()) then
-						timer.Remove("CheckConditions"..ply:EntIndex())
-					end
-					if timer.Exists( "ChaseCheck"..ply:EntIndex()) then
-						timer.Remove("ChaseCheck"..ply:EntIndex())
-					end
-					return
+	startFunction=function(ply,ent)
+		timer.Create("CheckConditions"..ply:EntIndex(), 2, 0, function()
+			if !IsValid(ent) then
+				if timer.Exists( "CheckConditions"..ply:EntIndex()) then
+					timer.Remove("CheckConditions"..ply:EntIndex())
 				end
-				
-				chaseCheck(ply, 'bonnie')
-			end)
-		end
+				if timer.Exists( "ChaseCheck"..ply:EntIndex()) then
+					timer.Remove("ChaseCheck"..ply:EntIndex())
+				end
+				return
+			end
+			
+			chaseCheck(ply, 'bonnie')
+		end)
 	end,
 	
 	attack={
@@ -797,26 +791,20 @@ pills.register("pill_wchica2",{
 	noFallDamage=true,
 	hideHud = true,
 	
-	moveMod=function(ply,ent)
-		if IsValid(ent) then
-			if CLIENT then return end
-		
-			if timer.Exists( "CheckConditions"..ply:EntIndex()) or timer.Exists( "ChaseCheck"..ply:EntIndex()) then return end
-			
-			timer.Create("CheckConditions"..ply:EntIndex(), 2, 0, function()
-				if !IsValid(ent) then
-					if timer.Exists( "CheckConditions"..ply:EntIndex()) then
-						timer.Remove("CheckConditions"..ply:EntIndex())
-					end
-					if timer.Exists( "ChaseCheck"..ply:EntIndex()) then
-						timer.Remove("ChaseCheck"..ply:EntIndex())
-					end
-					return
+	startFunction=function(ply,ent)
+		timer.Create("CheckConditions"..ply:EntIndex(), 2, 0, function()
+			if !IsValid(ent) then
+				if timer.Exists( "CheckConditions"..ply:EntIndex()) then
+					timer.Remove("CheckConditions"..ply:EntIndex())
 				end
-				
-				chaseCheck(ply, 'chica')
-			end)
-		end
+				if timer.Exists( "ChaseCheck"..ply:EntIndex()) then
+					timer.Remove("ChaseCheck"..ply:EntIndex())
+				end
+				return
+			end
+			
+			chaseCheck(ply, 'chica')
+		end)
 	end,
 	
 	attack={
@@ -999,24 +987,20 @@ pills.register("pill_wfoxy2",{
 	noFallDamage=true,
 	hideHud = true,
 	
-	moveMod=function(ply,ent)
-		if IsValid(ent) then
-			if timer.Exists( "CheckConditions"..ply:EntIndex()) or timer.Exists( "ChaseCheck"..ply:EntIndex()) then return end
-			
-			timer.Create("CheckConditions"..ply:EntIndex(), 2, 0, function()
-				if !IsValid(ent) then
-					if timer.Exists( "CheckConditions"..ply:EntIndex()) then
-						timer.Remove("CheckConditions"..ply:EntIndex())
-					end
-					if timer.Exists( "ChaseCheck"..ply:EntIndex()) then
-						timer.Remove("ChaseCheck"..ply:EntIndex())
-					end
-					return
+	startFunction=function(ply,ent)
+		timer.Create("CheckConditions"..ply:EntIndex(), 2, 0, function()
+			if !IsValid(ent) then
+				if timer.Exists( "CheckConditions"..ply:EntIndex()) then
+					timer.Remove("CheckConditions"..ply:EntIndex())
 				end
-				
-				chaseCheck(ply, 'foxy')
-			end)
-		end
+				if timer.Exists( "ChaseCheck"..ply:EntIndex()) then
+					timer.Remove("ChaseCheck"..ply:EntIndex())
+				end
+				return
+			end
+			
+			chaseCheck(ply, 'foxy')
+		end)
 	end,
 	
 	attack={
@@ -1185,27 +1169,20 @@ pills.register("pill_sfreddy2",{
 		ply:SetPushBlocked(false)
 	end,
 	
-	moveMod=function(ply,ent)
-		if IsValid(ent) then
-			if CLIENT then return end
-		
-			if timer.Exists( "CheckConditions"..ply:EntIndex()) or timer.Exists( "ChaseCheck"..ply:EntIndex()) then return end
-			
-			timer.Create("CheckConditions"..ply:EntIndex(), 2, 0, function()
-				if !IsValid(ent) then
-					if timer.Exists( "CheckConditions"..ply:EntIndex()) then
-						timer.Remove("CheckConditions"..ply:EntIndex())
-					end
-					if timer.Exists( "ChaseCheck"..ply:EntIndex()) then
-						timer.Remove("ChaseCheck"..ply:EntIndex())
-					end
-					return
+	startFunction=function(ply,ent)
+		timer.Create("CheckConditions"..ply:EntIndex(), 2, 0, function()
+			if !IsValid(ent) then
+				if timer.Exists( "CheckConditions"..ply:EntIndex()) then
+					timer.Remove("CheckConditions"..ply:EntIndex())
 				end
-				
-				if ent.cloaked then return end
-				chaseCheck(ply, 'sfreddy')
-			end)
-		end
+				if timer.Exists( "ChaseCheck"..ply:EntIndex()) then
+					timer.Remove("ChaseCheck"..ply:EntIndex())
+				end
+				return
+			end
+			
+			chaseCheck(ply, 'sfreddy')
+		end)
 	end,
 	
 	attack={
@@ -1433,26 +1410,20 @@ pills.register("pill_endo02",{
 	noFallDamage=true,
 	hideHud = true,
 	
-	moveMod=function(ply,ent)
-		if IsValid(ent) then
-			if CLIENT then return end
-		
-			if timer.Exists( "CheckConditions"..ply:EntIndex()) or timer.Exists( "ChaseCheck"..ply:EntIndex()) then return end
-			
-			timer.Create("CheckConditions"..ply:EntIndex(), 2, 0, function()
-				if !IsValid(ent) then
-					if timer.Exists( "CheckConditions"..ply:EntIndex()) then
-						timer.Remove("CheckConditions"..ply:EntIndex())
-					end
-					if timer.Exists( "ChaseCheck"..ply:EntIndex()) then
-						timer.Remove("ChaseCheck"..ply:EntIndex())
-					end
-					return
+	startFunction=function(ply,ent)
+		timer.Create("CheckConditions"..ply:EntIndex(), 2, 0, function()
+			if !IsValid(ent) then
+				if timer.Exists( "CheckConditions"..ply:EntIndex()) then
+					timer.Remove("CheckConditions"..ply:EntIndex())
 				end
-				
-				chaseCheck(ply, "endo")
-			end)
-		end
+				if timer.Exists( "ChaseCheck"..ply:EntIndex()) then
+					timer.Remove("ChaseCheck"..ply:EntIndex())
+				end
+				return
+			end
+			
+			chaseCheck(ply, 'endo')
+		end)
 	end,
 	
 	attack={
@@ -1919,7 +1890,8 @@ function FindNearestPlayer(origin, radius, ignorePlayer, fov)
     local nearestDistance = radius
 
     local useFov = fov and fov > 0
-    local candidates = {}
+    local candidates
+    local eyePos = IsValid(ignorePlayer) and ignorePlayer:EyePos() or origin
 
     if useFov and IsValid(ignorePlayer) then
         local dir = ignorePlayer:EyeAngles():Forward()
@@ -1930,18 +1902,19 @@ function FindNearestPlayer(origin, radius, ignorePlayer, fov)
 
     for _, ply in ipairs(candidates) do
         if ply ~= ignorePlayer and ((ply:IsPlayer() and ply:IsSurvivor()) or ply:IsNPC()) then
-            local distance = origin:Distance(ply:GetPos())
-            local trace = util.TraceLine({
-                start = ignorePlayer:EyePos(),
-                endpos = ply:EyePos(),
-                filter = function(ent)
-                    return ent ~= ignorePlayer and ent ~= ply and not ent:IsPlayer() and not ent:IsNPC() and ent:GetClass() ~= "prop_physics"
+            local pos = ply:GetPos()
+            local distance = origin:DistToSqr(pos)
+            if distance <= nearestDistance * nearestDistance then
+                local trace = util.TraceLine({
+                    start = eyePos,
+                    endpos = ply:EyePos(),
+                    mask = MASK_VISIBLE,
+                    filter = ignorePlayer
+                })
+                if not trace.Hit then
+                    nearestDistance = math.sqrt(distance)
+                    nearestPlayer = ply
                 end
-            })
-
-            if distance <= nearestDistance and not trace.Hit then
-                nearestDistance = distance
-                nearestPlayer = ply
             end
         end
     end
@@ -1982,7 +1955,7 @@ function fh_get_nearest_props(origin, radius)
         end
     end
 
-	if table.Count(props) > 0 then
+	if !table.IsEmpty(props) then
 		return props
 	end
 	return nil
@@ -2651,6 +2624,8 @@ function AnimatronicBreakProp(ply, ent, cooldown)
 end
 
 function chaseCheck(ply, name)
+	if timer.Exists( "ChaseCheck"..ply:EntIndex()) then return end
+	
 	if (ply:IsSprinting() or ply:GetWalkSpeed() == ply:GetRunSpeed()) and ply:GetVelocity():LengthSqr() > ply:GetRunSpeed() * 0.9 then
 		local target = FindNearestPlayer(ply:GetPos(), 750, ply, 90)
 		
@@ -2658,8 +2633,6 @@ function chaseCheck(ply, name)
 		if target:IsNPC() then return end
 		
 		if target:IsSprinting() and target:GetVelocity():LengthSqr() > target:GetWalkSpeed() then
-	
-			if timer.Exists( "ChaseCheck"..ply:EntIndex()) then return end
 			
 			playVoiceline(name, 'chase', ply, 1)
 			

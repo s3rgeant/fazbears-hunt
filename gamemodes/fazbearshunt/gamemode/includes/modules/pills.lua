@@ -331,7 +331,7 @@ end
 function restore(ply, breakout)
 		
 	local found = false
-	for _, plyr in ipairs(player.GetAll()) do
+	for _, plyr in player.Iterator() do
 		if plyr:Nick() == ply then
 			ply = plyr
 			found = true

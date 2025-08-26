@@ -12,7 +12,7 @@ game.AddAmmoType( {
 	maxsplash = 5
 } )
 
-SWEP.PrintName = "Taser Gun"
+SWEP.PrintName = "#weapon_taser"
 
 SWEP.Spawnable = true
 SWEP.AdminOnly = false

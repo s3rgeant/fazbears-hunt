@@ -1,6 +1,6 @@
 include( 'shared.lua' )
 
-SWEP.PrintName        = "Empty Hands"
+SWEP.PrintName = "#weapon_empty_hands"
 
 SWEP.Slot             = 0
 SWEP.SlotPos          = 0
@@ -10,6 +10,7 @@ SWEP.DrawCrosshair    = false
 
 SWEP.WepSelectIcon    = surface.GetTextureID( "weapons/empty_hands" )
 SWEP.BounceWeaponIcon = false
+SWEP.DrawWeaponInfoBox = false
 
 SWEP.ViewModelFOV = 25 -- чтобы шейдеры не брали в счёт "невидимую руку" которая почему то есть в этом свепе
 
