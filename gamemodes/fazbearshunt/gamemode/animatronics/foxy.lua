@@ -27,6 +27,7 @@ if SERVER then
 	end
 
 	local function stopReceivingTokens(ply)
+		if not IsValid(ply) then return end
 		timer.Remove("receiving_tokens" .. ply:EntIndex())
 	end
 
@@ -122,6 +123,43 @@ if SERVER then
 		net.Start("BlightRush_Start")
 		net.Send(ply)
 	end
+	
+	hook.Add("PlayerDisconnected", "BlightRush_Cleanup", function(ply)
+		stopReceivingTokens(ply)
+		if ply.blightTimeoutTimer then
+			timer.Remove(ply.blightTimeoutTimer)
+			ply.blightTimeoutTimer = nil
+		end
+		StopBleeding(ply)
+	end)
+	
+	hook.Add("PlayerDeath", "BlightRush_ResetOnDeath", function(ply)
+		stopReceivingTokens(ply)
+		if ply.blightTimeoutTimer then
+			timer.Remove(ply.blightTimeoutTimer)
+			ply.blightTimeoutTimer = nil
+		end
+
+		ply.isBlightRushing = false
+		ply.isBlightBouncing = false
+		ply:SetNWBool("isBlightRushing", false)
+		ply:SetNWBool("Blight_BlockM1", false)
+		StopBleeding(ply)
+	end)
+	
+	
+	hook.Add("PlayerSpawn", "BlightRush_ResetOnSpawn", function(ply)
+		stopReceivingTokens(ply)
+		if ply.blightTimeoutTimer then
+			timer.Remove(ply.blightTimeoutTimer)
+			ply.blightTimeoutTimer = nil
+		end
+
+		ply.isBlightRushing = false
+		ply.isBlightBouncing = false
+		ply:SetNWBool("isBlightRushing", false)
+		ply:SetNWBool("Blight_BlockM1", false)
+	end)
 end
 
 local function BlightCheckCollision(ply)
@@ -272,9 +310,10 @@ hook.Add("Move", "BlightPredictionMove", function(ply, mv)
 			ply.blightBounceDir = normal
 			ply.blightBounceSpeed = 80
 					
-			ply.puppet:SetPlaybackRate(1)
-			
-			ply.puppet:PillGesture('chargestun', 1, 0.8, 0.1, 0.3)
+			if IsValid(ply.puppet) then
+				ply.puppet:SetPlaybackRate(1)
+				ply.puppet:PillGesture('chargestun', 1, 0.8, 0.1, 0.3)
+			end
 			
 			ply:EmitSound("blight/impact.wav")
 			

@@ -11,8 +11,6 @@ local teammates = teammates or {}
 local fh_halo_teammates = CreateClientConVar('fh_halo_teammates', 1, true, false, 'Highlight Teammates? (Animatronics Only) Turn Off for Performance.', 0, 1)
 
 net.Receive("NotifySpectators", function()
-	if (LocalPlayer():Team() != TEAM_SPECTATOR) then return end
-	
 	local players = net.ReadTable()
 	local ply = net.ReadEntity()
 	local player = ply:Nick()
@@ -97,6 +95,22 @@ net.Receive("fh_addaffected_springtrap", function()
 	local player = net.ReadEntity()
 	addAffected(player, 90)
 	
+	local starttime = CurTime()
+	
+    hook.Add("RenderScreenspaceEffects", "fh_springtrap_fx", function()
+        local lp = LocalPlayer()
+
+        local t = CurTime() - starttime
+        local frac = 1 - math.Clamp((t / 90), 0, 1)
+
+        DrawToyTown(2, ScrH()/2)
+		DrawBloom( 0.65, 1 * frac, 9, 9, 1, 1, 1, 1, 1 )
+    end)
+	
+	timer.Simple(90, function()
+		hook.Remove("RenderScreenspaceEffects", "fh_springtrap_fx")
+	end)
+	
 	if player:IsPlayer() then
 		LocalPlayer():ChatPrint(string.format(language.GetPhrase('fazhunt.springtrap.target'), player:Nick() ))
 	end
@@ -168,11 +182,18 @@ net.Receive("fh_draw_hl_overlay", function()
     drawHighlightTimer(bool)
 end)
 
+net.Receive("fh_draw_hl_overlay_timed", function()
+    local bool = net.ReadBool()
+    local dur = net.ReadFloat()
+    drawHighlightTimer(bool, dur)
+end)
+
 net.Receive("fh_nodraw_hl_overlay", function()
 	hook.Remove("HUDPaint", "fh_hl_overlay_draw")
 end)
 	
-function drawHighlightTimer(bool)
+function drawHighlightTimer(bool, duration)
+	duration = duration or conVars.halo_time:GetFloat()
 	hook.Add("HUDPaint", "fh_hl_overlay_draw", drawHighlight)
 	
 	if timer.Exists('fh_hud_hl_overlay') then
@@ -180,7 +201,7 @@ function drawHighlightTimer(bool)
 	end
 	
 	if !bool then return end
-	timer.Create( "fh_hud_hl_overlay", conVars.halo_time:GetFloat(), 1, function()
+	timer.Create( "fh_hud_hl_overlay", duration, 1, function()
 		hook.Remove("HUDPaint", "fh_hl_overlay_draw")
 	end)
 end
@@ -444,6 +465,8 @@ hook.Add("PostCleanupMap", "fh_cleanup_halo", function(ply)
 	hook.Remove("HUDPaint", "fh_plushalert_draw")
 	hook.Remove("HUDPaint", "fh_plushalert_removing")
 	
+	hook.Remove("RenderScreenspaceEffects", "fh_springtrap_fx")
+	
 	if IsValid(selector) then
 		selector:Close()
 	end
@@ -529,7 +552,7 @@ end)
 
 net.Receive("fh_stop_yoursmine_view", function()
     hook.Remove("CalcView", "fh_yoursmine_view")
-    hook.Remove("CalcView", "fh_yoursmine_ply")
+    hook.Remove("PrePlayerDraw", "fh_yoursmine_ply")
     hook.Remove("RenderScreenspaceEffects", "fh_yoursmine_fx")
     LocalPlayer().fh_target_player = nil
     LocalPlayer().fh_start_time = nil

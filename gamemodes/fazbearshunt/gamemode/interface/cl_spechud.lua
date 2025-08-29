@@ -133,8 +133,8 @@ end )
 hook.Add("CalcView", "fh_spec_calcview", function(ply, pos, angles, fov)
     if ply:GetObserverTarget():IsValid() then 
 		local observermode = ply:GetObserverMode()
-		if observermode == OBS_MODE_CHASE then
-			local target = ply:GetObserverTarget()
+		local target = ply:GetObserverTarget()
+		if IsValid(target) and observermode == OBS_MODE_CHASE then
 			
 			local view = {}
 

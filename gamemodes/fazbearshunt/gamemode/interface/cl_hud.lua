@@ -190,7 +190,7 @@ function DrawKillerInterface()
 				draw.SimpleText(tostring(math.ceil(timeLeft)) .. " s", "fh_hud_ability_time", abilityX + timer_x + max_timer_width/2, abilityY + (36 * uiScale), Color(255, 255, 255, 255), TEXT_ALIGN_CENTER)
 			end
 
-			if abilityData.tokens >= 0 then
+			if isnumber(abilityData.tokens) and abilityData.tokens >= 0 then
 				local y_20 = abilityY - 24 * uiScale
 			
 				local tokens_bg_width, tokens_bg_height = (tokens_bg_mat:GetInt("$realwidth") or 100) * uiScale, (tokens_bg_mat:GetInt("$realheight") or 100) * uiScale

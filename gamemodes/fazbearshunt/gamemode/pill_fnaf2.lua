@@ -19,6 +19,7 @@ if SERVER then
 	util.AddNetworkString("fh_play_voiceline")
 	
 	util.AddNetworkString("fh_draw_hl_overlay")
+	util.AddNetworkString("fh_draw_hl_overlay_timed")
 	util.AddNetworkString("fh_nodraw_hl_overlay")
 	
 	util.AddNetworkString("fh_start_yoursmine_view")
@@ -181,9 +182,9 @@ pills.register("pill_wfreddy2",{
 		func = function(ply, ent)
 			if !ply:OnGround() then return end
 			
-			local target = fh_random_stalk_target(ply)
-			
 			if cooldown.Exists(ply, "blindrage") then return end
+			
+			local target = fh_random_stalk_target(ply)
 	
 			if !IsValid(target) then 
 				net.Start("fh_play_sound")
@@ -232,57 +233,76 @@ pills.register("pill_wfreddy2",{
 			net.WriteString('freddy_stalking_others.wav')
 			net.SendOmit(ply)
 	
-			timer.Create("stalk_check" .. ent:EntIndex(), 1, 11, function()
-	
-				if timer.RepsLeft("stalk_check" .. ent:EntIndex()) == 8 then
+			local stalkTimerName = "stalk_check" .. ent:EntIndex()
+			ply._isStalkingActive = true
+
+			timer.Create(stalkTimerName, 1, 11, function()
+				if not IsValid(ply) or not IsValid(ent) or not IsValid(target) then
+					timer.Remove(stalkTimerName)
+					ply._isStalkingActive = nil
+					return
+				end
+
+				if not ply._isStalkingActive then return end
+
+				if timer.RepsLeft(stalkTimerName) == 8 then
 					target:SetDSP(22)
 				end
-				if timer.RepsLeft("stalk_check" .. ent:EntIndex()) == 6 then
+				if timer.RepsLeft(stalkTimerName) == 6 then
 					target:SetDSP(25)
 				end
-	
-				if timer.RepsLeft("stalk_check" .. ent:EntIndex()) == 1 then
+
+				if timer.RepsLeft(stalkTimerName) == 1 then
+					if not ply._isStalkingActive then return end
+					ply._isStalkingActive = nil
+
 					timer.Remove("SmoothLookAt_" .. ply:EntIndex())
-					timer.Remove("stalk_check" .. ent:EntIndex())
+					timer.Remove(stalkTimerName)
 					ply:SetFOV(0, 1)
+
 					successStalk(ply, ent, target)
 					return
 				end
-	
+
 				local currentPosition = target:GetPos()
-	
 				if not target:Crouching() then
 					local distance = currentPosition:Distance(lastPosition)
 					if distance > 5 then
 						movementTime = movementTime + 1
 						if movementTime >= 5 then
+							if not ply._isStalkingActive then return end
+							ply._isStalkingActive = nil
+
 							ent:PillAnim("idle")
 							timer.Remove("SmoothLookAt_" .. ply:EntIndex())
-							timer.Remove("stalk_check" .. ent:EntIndex())
-							timer.Adjust('fh_stalking' .. ply:EntIndex(), 40, 1)
+							timer.Remove(stalkTimerName)
+							timer.Adjust("fh_stalking" .. ply:EntIndex(), 40, 1)
 							ply:SetFOV(0, 1)
-							net.Start('fh_sound_stop')
-							net.WriteString('freddy_stalking.wav')
+
+							net.Start("fh_sound_stop")
+							net.WriteString("freddy_stalking.wav")
 							net.Send(ply)
-	
-							net.Start('fh_sound_stop')
-							net.WriteString('freddy_stalking_others.wav')
+
+							net.Start("fh_sound_stop")
+							net.WriteString("freddy_stalking_others.wav")
 							net.Broadcast()
-	
-							ent:EmitSound('freddy_cancelled.wav')
-		
-							if math.random(1, 10) > 4 then playVoiceline('freddy', 'negative', ply, 0.1) end
-	
+
+							ent:EmitSound("freddy_cancelled.wav")
+
+							if math.random(1, 10) > 4 then
+								playVoiceline("freddy", "negative", ply, 0.1)
+							end
+
 							local wep = ply:GetActiveWeapon()
 							if IsValid(wep) and wep:GetClass() == "v_freddy" then
 								wep:PlayCustomAnimation("ACT_IDLE", 0)
 							end
-	
+
 							if IsValid(target) then
 								target:SetDSP(1)
 								stats.Add(target, "evaded_blind_rage", 1)
 							end
-	
+
 							net.Start("fh_net_killer_change")
 							net.WriteString("stalk")
 							net.WriteFloat(40)
@@ -291,7 +311,7 @@ pills.register("pill_wfreddy2",{
 						end
 					end
 				end
-	
+
 				lastPosition = currentPosition
 			end)
 		end
@@ -844,7 +864,8 @@ pills.register("pill_wchica2",{
 				cupcake:Spawn()
 				cupcake:Activate()
 				
-				table.insert(cupcakes, cupcake:EntIndex())
+				cupcakes[cupcake:EntIndex()] = true
+				--table.insert(cupcakes, cupcake:EntIndex())
 			
 				net.Start("fh_net_killer_change")
 				net.WriteString("mine")
@@ -1234,6 +1255,8 @@ pills.register("pill_sfreddy2",{
 					ply:EmitSound("sfreddyout.mp3")
 					
 					ent.cloaked=false
+					
+					hook.Run("FH_SFreddySubmergeOut", ply, ent)
 	
 					ent:ToggleCloak()
 						
@@ -1305,6 +1328,8 @@ pills.register("pill_sfreddy2",{
 					end)
 					
 					ent.cloaked=true
+					
+					hook.Run("FH_SFreddySubmergeIn", ply, ent)
 					ent:ToggleCloak()
 					
 					timer.Create("Cloacking"..ply:EntIndex(), 0.55, 1, function()
@@ -1323,6 +1348,8 @@ pills.register("pill_sfreddy2",{
 						
 						ply:SetCollisionGroup(COLLISION_GROUP_DEBRIS )
 						ply:SetCustomCollisionCheck(true)
+						
+						hook.Run("FH_SFreddySubmergePostIn", ply, ent)
 					end)
 				end
 			end
@@ -1611,7 +1638,7 @@ pills.register("pill_wgfreddy2",{
 		ent:SetMaterial("models/null")
 		ent:DrawShadow(false)
 		
-		ply:SetCollisionGroup(COLLISION_GROUP_DEBRIS )
+		ply:SetCollisionGroup( COLLISION_GROUP_DEBRIS )
 		ply:SetCustomCollisionCheck(true)
 		ply:CollisionRulesChanged()
 		
@@ -1655,6 +1682,11 @@ pills.register("pill_wgfreddy2",{
 		mode="trigger",
 		func = function(ply,ent)
 			if !ply:OnGround() then return end
+			
+			if !navmesh.IsLoaded() or navmesh.GetNavAreaCount() < 5 then 
+				ply:ChatPrint("Refused. No navmesh.")
+				return 
+			end
 			
 			if !wgfreddy_targets[ply] or cooldown.Exists(ply, 'appear') then return end
 			
@@ -2452,6 +2484,17 @@ if SERVER then
 		end
 	end)
 	
+	hook.Add("FH_OutworldStart", "cancel_freddy_rage", function(wgfreddy, victim)
+		if victim == stalkTarget then
+			net.Start('fh_sound_stop')
+			net.WriteString('freddy_targeted_ambience.wav')
+			net.Send(victim)
+			if IsValid(stalker) then
+				noMoreStalk(stalker)
+			end
+		end
+	end)
+	
 	hook.Add("FH_AnimatronicJumpscare", "fh_kill_voicelines", function(ply, ent, target, data)
 		local voiceCharacter = data.char
 		local vc_delay = data.delay
@@ -2492,18 +2535,18 @@ if SERVER then
 	end)
 	
 	function killCupcakes(ply)
-		if table.Count(cupcakes) == 0 then return end
-		for _, index in pairs(cupcakes) do
+		if table.IsEmpty(cupcakes) then return end
+		for index, _ in pairs(cupcakes) do
 			if ents.GetByIndex(index):GetOwner() == ply then
 				ents.GetByIndex(index):Remove()
-				table.RemoveByValue(cupcakes, 1)
+				cupcakes[index] = nil
 			end
 		end
 	end
 	
 	hook.Add("EntityRemoved", "RemoveKilledCupcake", function(ent)
-		if table.HasValue(cupcakes, ent:EntIndex()) then
-			table.RemoveByValue(cupcakes, ent:EntIndex())
+		if cupcakes[ent:EntIndex()] then
+			cupcakes[ent:EntIndex()] = false
 		end
 	end)
 	
@@ -2565,7 +2608,7 @@ function AnimatronicBreakProp(ply, ent, cooldown)
 		return
 	end
 	
-	local fh_animatronic_break_prop = hook.Run("fh_animatronic_break_prop", ply, ent, target)
+	local fh_animatronic_break_prop = hook.Run("fh_animatronic_break_prop", ply, ent, tr)
 	
 	if fh_animatronic_break_prop == false then
 		return
@@ -2620,7 +2663,7 @@ function AnimatronicBreakProp(ply, ent, cooldown)
 		util.Effect("Impact_GMOD", effectData, true, true)
 	end
 	
-	hook.Run("fh_animatronic_post_break_prop", ply, ent, target)
+	hook.Run("fh_animatronic_post_break_prop", ply, ent, tr)
 end
 
 function chaseCheck(ply, name)

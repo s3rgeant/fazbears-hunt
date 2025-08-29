@@ -269,6 +269,7 @@ pills.register("pill_springtrap",{
 			timer.Create( timerName , 1, 0, function()
 				if !IsValid(ent) or !IsValid(ply) then
 					timer.Remove( timerName )
+					spring_rage_total = 0
 					return
 				end
 				
@@ -510,9 +511,17 @@ function successRage(ply, ent, target)
 	net.WriteBool(false)
 	net.Send(target)
 	
-	net.Start("PlayHighlightSounds")
+	net.Start("fh_play_sound")
+	net.WriteString("fnaf3/spr_enraged.wav")
+	net.Send(ply)
+	
+	net.Start("fh_play_sound")
+	net.WriteString("fnaf3/spr_rage_affected.wav")
+	net.Send(target)
+	
+	net.Start("fh_draw_hl_overlay_timed")
 	net.WriteBool(true)
-	net.WriteBool(true)
+	net.WriteFloat(90)
 	net.Send(target)
 	
 	spring_rage_total = 0

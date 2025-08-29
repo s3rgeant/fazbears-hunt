@@ -27,6 +27,7 @@ hook.Add("fh_startgame", "spawn_wgfreddy", function(roundType)
 				local chosenPlayer = fh.randomChoice(players)
 		
 				giveKillerSilent(chosenPlayer, "pill_wgfreddy2", true)
+				chosenPlayer:Spawn()
 			end
 		end
 	end
@@ -46,7 +47,7 @@ function fh_spawnPlushies(ply)
 	local maxDistFromPlayerStrict = 2500
 	local maxDistFromPlayerLoose = 2000
 	local minSpacing = 1600
-	local plushCount = 4
+	local plushCount = 5
 	local placed = 0
 	local usedPositions = {}
 	
@@ -55,9 +56,10 @@ function fh_spawnPlushies(ply)
 		return distSqr >= minDistFromPlayer^2 and distSqr <= maxDistFromPlayerStrict^2
 	end
 	
-	local function isFarFromOthers(pos)
+	local function isFarFromOthers(pos, minimumSpacing)
+		minimumSpacing = minimumSpacing or minSpacing
 		for _, used in ipairs(usedPositions) do
-			if used:DistToSqr(pos) < minSpacing^2 then
+			if used:DistToSqr(pos) < minimumSpacing^2 then
 				return false
 			end
 		end
@@ -103,7 +105,7 @@ function fh_spawnPlushies(ply)
 			if area:HasAttributes(NAV_MESH_CROUCH) or area:HasAttributes(NAV_MESH_AVOID) or area:IsUnderwater() then continue end
 	
 			local pos = area:GetCenter()
-			if isLooseCandidate(pos) and isFarFromOthers(pos) then
+			if isLooseCandidate(pos) and isFarFromOthers(pos, 800) then
 				spawnPlushAt(pos)
 			end
 		end
@@ -869,6 +871,10 @@ function start_outworld(ply, ent, target)
 	
 	target:SetNWBool("can_be_gf_scared", true)
 	
+	hook.Add("SetupPlayerVisibility", "fh_seenet_dontdraw_pvs", function(ply)
+		AddOriginToPVS(player:GetPos())
+	end)
+	
 	-- никто не видит их
 	for _, player in player.Iterator() do
 		if player ~= ply and player ~= target and player:Team() != TEAM_SPECTATOR and player:Alive() then
@@ -881,6 +887,8 @@ function start_outworld(ply, ent, target)
 			net.Send(player)
 		end
 	end
+	
+	hook.Remove("SetupPlayerVisibility", "fh_seenet_dontdraw_pvs")
 	
 	ply:SetPushImmune(true)
 	ply:SetPushBlocked(true)
@@ -958,6 +966,8 @@ function start_outworld(ply, ent, target)
 	net.Start("fh_wgfreddy_target_outworld_start")
 	net.WritePlayer(ply)
 	net.Send(target)
+	
+	hook.Run("FH_OutworldStart", ply, target)
 end
 
 local first_damage_received = {}

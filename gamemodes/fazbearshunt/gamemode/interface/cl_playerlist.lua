@@ -418,7 +418,7 @@ local function CreateAnimatronicPanel(scrollbar, ply, killerData)
 		
 	local animImage = nil
 		
-    if file.Exists("materials/" .. imagePath, "GAME") then
+    if file.Exists("materials/" .. imagePath, "GAME") and IsValid(ent) then
 		animImage = Material(imagePath, "mips") 
 
         local box = vgui.Create("DImageButton", plyPanel)

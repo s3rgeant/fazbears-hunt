@@ -87,6 +87,10 @@ function ENT:Initialize()
         else
             ply:SetCrouchedWalkSpeed(.3)
         end
+		
+		if !speed.maxwalk then
+			speed.maxwalk = speed.walk or 200
+		end
 
         ply:SetJumpPower(self.formTable.jumpPower or 200)
         self.loopingSounds = {}
@@ -437,6 +441,8 @@ function ENT:Think()
                 if not overrideRate then
 					local velocity = ply:GetVelocity()
 					local speed = velocity:Length2D()
+					
+					local pillspeed = self.formTable.moveSpeed or {}
 				
 					local forward = ply:GetForward()
 					local right = ply:EyeAngles():Right()
@@ -444,7 +450,7 @@ function ENT:Think()
 					local moveX = forward:Dot(velocity)
 					local moveY = right:Dot(velocity)
 				
-					local maxSpeed = math.max(80, ply:GetWalkSpeed())
+					local maxSpeed = math.max(pillspeed.maxwalk or 80, ply:GetWalkSpeed())
 					if ply:IsSprinting() and ply:GetWalkSpeed() != ply:GetRunSpeed() then
 						maxSpeed = ply:GetRunSpeed()
 					end

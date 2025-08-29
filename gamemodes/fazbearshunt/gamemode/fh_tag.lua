@@ -32,7 +32,7 @@ fh.RegisterRoundType("bonnie_tag", 2, function()
 	timer.Create("EndGameTimer", tagDuration + tagSetup, 1, function()
 		fh_tag_end()
 	end)
-end, 20, 8)
+end, 0, 8)
 
 hook.Add("fh_startgame", "tag_prevent_default_startgame", function(roundType)
 	if roundType == 2 then
@@ -68,7 +68,7 @@ hook.Add( "PlayerShouldTakeDamage", "fh_tagkill", function( ply, attacker )
 		return false 
 	end
 	
-	if ply:IsAnimatronic() and attacker:IsPlayer() then
+	if fh.GetRoundType() == 2 and ply:IsAnimatronic() and attacker:IsPlayer()  then
 		return false
 	end
 end )

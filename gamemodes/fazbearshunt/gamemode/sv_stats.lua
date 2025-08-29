@@ -43,6 +43,7 @@ stats.SetMin("damaged_by_winded_up_plushtrap", 70)
 
 function stats.Add(ply, statName, value)
     local sid = ply:SteamID()
+	value = value or 1
     
     if not playerStats[sid] then
         playerStats[sid] = {
@@ -175,7 +176,6 @@ hook.Add("PostEntityTakeDamage", "fh_stats_damage", function(target, dmginfo)
 		timer.Simple(0, function()
 			if !IsValid(target) and attacker:IsPlayer() and attacker:IsSurvivor() then
 				stats.Add(attacker, "broke_cupcakes", 1)
-				print('sexas')
 			end
 		end)
 	end
@@ -188,6 +188,29 @@ end)
 hook.Add( "PropBreak", "fh_stats_props", function( attacker, prop )
 	if IsValid( attacker ) and attacker:IsPlayer() then 
 		stats.Add(attacker, "broke_props", 1)
+	end
+end)
+
+local rememberLucky = {}
+hook.Add("FH_SFreddySubmergeOut", "fh_stats_sfreddy_appearance", function(sfreddy, ent)
+	local luckyplayers = fh_get_nearest_players(sfreddy:GetPos(), 200, sfreddy)
+	
+	if luckyplayers then
+	
+		for _, ply in pairs(luckyplayers) do
+			rememberLucky[ply] = true
+		end
+	
+	end
+end)
+
+hook.Add("FH_SFreddySubmergePostIn", "fh_stats_sfreddy_dissappear", function(sfreddy, ent)
+	
+	for ply, v in pairs(rememberLucky) do
+		if ply:IsSurvivor() and ply:Alive() then
+			stats.Add(ply, "evaded_sfreddy_appearance", 1)
+		end
+		rememberLucky[ply] = false
 	end
 end)
 
@@ -236,4 +259,5 @@ end)
 hook.Add("PlayerDisconnected", "SuperRunTrackerCleanup", function(ply)
     lastPos[ply] = nil
     accumMeters[ply] = nil
+	rememberLucky[ply] = nil
 end)

@@ -6,7 +6,7 @@ local hullMax = Vector(16, 16, 72)
 hook.Add("PlayerSelectSpawn", "PreventPlayerStuckSpawn", function(ply)
     local spawns
 
-    if ply:Team() == 2701 then
+    if ply:Team() == 2701 or ply:Team() == 27 or team.GetName(ply:Team()):lower():match("animatronic") then
         spawns = ents.FindByClass("info_player_killer") -- кастомные спавны для аниматроников
         if #spawns == 0 then
             spawns = ents.FindByClass("info_player_start")

@@ -60,7 +60,9 @@ function SWEP:PrimaryAttack()
 	timer.Create('Cl_cantKill'..ply:EntIndex(), 2, 1, function() end)
 	
 	if SERVER then
-		ent:PillGesture('hit', 2, 1, 0.1, 0.3)
+		if !ply:Crouching() then
+			ent:PillGesture('hit', 2, 1, 0.1, 0.3)
+		end
 	
 		net.Start("fh_net_killer_change")
 		net.WriteString("attack")

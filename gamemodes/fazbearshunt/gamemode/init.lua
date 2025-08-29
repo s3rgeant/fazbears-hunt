@@ -125,8 +125,6 @@ survivors = {}
 
 usedKillers = {}
 
-local gifts_can_spawn = true
-
 function assignKillers()
     local players = player.GetAll()
     local totalPlayers = #players
@@ -156,7 +154,7 @@ function assignKillers()
 		survivors[chosenPlayer] = nil
 		
 		chosenPlayer:SetTeam(2701)
-		chosenPlayer:Spawn()
+		chosenPlayer:ReturnToSpawn()
 		
 		curKillers[chosenPlayer] = true
 		
@@ -229,8 +227,8 @@ local function giveKillerShared(ply, killer, force)
 		
 	usedKillers[command] = ply
 
-	RunConsoleCommand("pk_pill_apply", ply:Nick(), command)
-	ply:SetTeam(2701)
+	--RunConsoleCommand("pk_pill_apply", ply:Nick(), command)
+	pills.apply(ply:Nick(), command, "user")
 	
 	animatronics[ply] = true
 	survivors[ply] = nil
@@ -268,6 +266,7 @@ end
 function setupPlayerVars(ply)
 	ply:AllowFlashlight(true)
 	ply:SetRunSpeed(420)
+	ply:SetWalkSpeed(200)
 	ply:SetJumpPower(200)
 	ply:SetDuckSpeed(0.1)
 	ply:SetUnDuckSpeed(0.1)
@@ -524,13 +523,14 @@ end
 function restoreAnimatronics()
 	if !table.IsEmpty(animatronics) then
 		for ply, _ in pairs(animatronics) do
-			RunConsoleCommand("pk_pill_restore", ply:Nick())
+			pills.restore(ply:Nick(), true)
 		end
 	end
 	
-	if !table.IsEmpty(team.GetPlayers(2701)) then
-		for ply, _ in pairs(team.GetPlayers(2701)) do
-			RunConsoleCommand("pk_pill_restore", ply:Nick())
+	local animteam = team.GetPlayers(2701)
+	if !table.IsEmpty(animteam) then
+		for _, ply in pairs(animteam) do
+			pills.restore(ply:Nick(), true)
 		end
 	end
 end
@@ -595,7 +595,7 @@ function SpawnGifts()
 			if ply:GetGiftOwnership() then continue end
 			
 			timer.Simple(util.SharedRandom( math.random(-100,100), 1, 12 ), function()
-				if !IsValid(ply) or ply:Team() == TEAM_SPECTATOR or !ply:Alive() then return end
+				if !IsValid(ply) or !ply:IsSurvivor() then return end
 				local gift = ents.Create("fh_gift")
 				gift:SetPos(ply:GetPos() + Vector(0, 0, 10))
 				gift:SetOwner(ply)
@@ -737,13 +737,68 @@ hook.Add( "PlayerNoClip", "fh_noclip", function( ply, desiredNoClipState )
 	end
 end )
 
-hook.Add("PlayerSpawn", "fh_spawn", function(ply)
+local function LookupPlayerClass( ply )
+
+	local id = ply:GetClassID()
+	if ( id == 0 ) then return end
+
+	local plyClass = ply.m_CurrentPlayerClass
+	if ( plyClass && plyClass.Player == ply ) then
+		if ( plyClass.ClassID == id && plyClass.Func ) then return plyClass end -- current class is still good, behave normally
+		if ( plyClass.ClassChanged ) then plyClass:ClassChanged() end -- the class id changed, remove the old class
+	end
+
+	local classname = util.NetworkIDToString( id )
+	if ( !classname ) then return end
+
+	local t = Type[ classname ]
+	if ( !t ) then return end
+
+	local newClass = {
+		Player = ply,
+		ClassID = id,
+		Func = function() end
+	}
+
+	setmetatable( newClass, { __index = t } )
+
+	ply.m_CurrentPlayerClass = newClass
+
+	newClass.Player:InstallDataTable()
+	newClass:SetupDataTables()
+	newClass:Init()
+	return newClass
+end
+
+
+function GM:PlayerSetModel( pl )
+
+	player_manager.RunClass( pl, "SetModel" )
+
+end
+
+local PLAYER = FindMetaTable("Player")
+
+if PLAYER then
+
+	function PLAYER:ReturnToSpawn()
+		if not IsValid(self) or not self:IsPlayer() then return end
+
+		local spawnPoint = hook.Run("PlayerSelectSpawn", self)
+
+		self:SetPos(spawnPoint:GetPos())
+		self:SetEyeAngles(spawnPoint:GetAngles())
+	end
+
+end
+
+hook.Add("PlayerSpawn", "fh_spawn", function( ply, transiton )
 	player_manager.SetPlayerClass( ply, "player_sandbox" )
 	ply:SetShouldServerRagdoll(true)
 	
 	ply:SendLua( 'if !system.HasFocus() then system.FlashWindow() end' )
 	
-	ply:SetTeam(TEAM_UNASSIGNED)
+	--ply:SetTeam(TEAM_UNASSIGNED)
 	net.Start('DeadHUDDisable')
 	net.Send(ply)
 	
@@ -756,26 +811,28 @@ hook.Add("PlayerSpawn", "fh_spawn", function(ply)
 end)
 
 hook.Add("EntityTakeDamage", "fh_anti_animatronic_death", function(target, dmginfo)
-	if !conVars.fh_respawn_dead_animatronics:GetBool() then return end
-    if not IsValid(target) or not target:IsPlayer() or !target:IsAnimatronic() then return end
-	
-	if hook.Run("fh_should_animatronic_respawn", target) == false then return end
+	if conVars.fh_respawn_dead_animatronics:GetBool() then
+		if IsValid(target) and target:IsPlayer() and target:IsAnimatronic() then
+			
+			if hook.Run("fh_should_animatronic_respawn", target) == false then return end
 
-    local damage = dmginfo:GetDamage()
-    local healthAfterDamage = target:Health() - damage
+			local damage = dmginfo:GetDamage()
+			local healthAfterDamage = target:Health() - damage
 
-    if healthAfterDamage <= 0 then
-        target:SetHealth(target:GetMaxHealth())
-        target:Spawn()
-		
-		local ent = pills.getMappedEnt(target)
-		
-		if IsValid(ent) then
-			ent:ResetSpeed(target)
+			if healthAfterDamage <= 0 then
+				target:SetHealth(target:GetMaxHealth())
+				target:ReturnToSpawn()
+				
+				local ent = pills.getMappedEnt(target)
+				
+				if IsValid(ent) then
+					ent:ResetSpeed(target)
+				end
+				
+				return true
+			end
 		end
-		
-		return true
-    end
+	end
 end)
 
 hook.Add("OnEntityCreated", "fh_any_prop_isbreakable", function(ent)
@@ -897,6 +954,7 @@ function animatronicsVictory_check(last_ply)
 	
 		net.Start("AnimatronicsWin")
 		net.WriteString(last_ply:Nick())
+		net.WriteInt(fh.GetGameDuration() - timer.TimeLeft("EndGameTimer"), 16)
 		net.Broadcast()
 		
 		endGame(true)
@@ -1393,8 +1451,7 @@ fh.RegisterRoundType("springtrap", 1, function()
 	giveKiller(chosenPlayer, "pill_springtrap", true)
 	
 	chosenPlayer.lobbyFreeze = true
-	chosenPlayer:Spawn()
-	chosenPlayer:SetTeam(2701)
+	chosenPlayer:ReturnToSpawn()
 	
 	local id = GetPlyID(chosenPlayer)
 	if id and not lastKillers[id] then
@@ -1404,6 +1461,6 @@ fh.RegisterRoundType("springtrap", 1, function()
 	RandomTaser()
 	
 	freezeAnimatronics()
-end, 20, nil, 18)
+end, 20, 6, 18)
 
 include( "fh_tag.lua" )

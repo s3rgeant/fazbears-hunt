@@ -19,9 +19,7 @@ local function rememberPlayedAnimatronic(anim)
 	if !table.HasValue(playedkillers, anim) then
 		table.insert(playedkillers, anim)
 
-		if !file.Exists("fh_playedkillers.txt", "DATA") then
-			file.Write("fh_playedkillers.txt", table.concat(playedkillers, "\n"))
-		end
+		file.Write("fh_playedkillers.txt", table.concat(playedkillers, "\n"))
 	end
 end
 

@@ -161,6 +161,11 @@ local function OpenAdminPanel()
                     chat.AddText(Color(255, 0, 0), language.GetPhrase("fazhunt.adminpanel.error"))
                     return
                 end
+				
+				if a.action == "give_animatronic" and (!selectedAnimatron or selectedAnimatron:len() < 1) then
+                    chat.AddText(Color(255, 0, 0), language.GetPhrase("fazhunt.adminpanel.error_give"))
+                    return
+				end
 
                 net.Start("AdminAction")
                 net.WriteString(a.action)

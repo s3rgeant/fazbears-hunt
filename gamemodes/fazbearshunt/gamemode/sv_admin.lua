@@ -7,10 +7,13 @@ util.AddNetworkString("fh_change_notprefered")
 function GiveAnimatronic(ply, killer)
 	if killer == nil or killer == "" then return end
 	
-	RevivePlayer(ply)
+	if !ply:Alive() then
+		--RevivePlayer(ply)
+		ply:UnSpectate()
+		ply:Spawn()
+	end
 	giveKiller(ply, killer, true)
-	ply:SetTeam(2701)
-	ply:Spawn()
+	ply:ReturnToSpawn()
 end
 
 function RevivePlayer(ply)
@@ -28,7 +31,7 @@ function RevivePlayer(ply)
 	end
 	
 	if ply:Team() == 2701 or animatronics[ply] or IsValid(pills.getMappedEnt(ply)) then
-		RunConsoleCommand("pk_pill_restore", ply:Nick())
+		pills.restore(ply:Nick(), true)
 		animatronics[ply] = nil
 	end
 	ply:SetTeam(TEAM_UNASSIGNED)
@@ -181,7 +184,7 @@ function EndRound()
 end
 
 function EndPostRound()
-	if !roundEnding and isGameOn then
+	if !roundActive and !roundEnding and isGameOn then
 		roundActive = true
 		endgame_shared()
 	

@@ -125,11 +125,14 @@ end)
 
 net.Receive("AnimatronicsWin", function()
     local VIP = net.ReadString()
+    local timeleft = net.ReadInt(16)
 			
 	chat:AddText(" ")
 	chat:AddText(Color( 228, 0, 70 ), language.GetPhrase("fazhunt.chat.animatronicwin") .. "!")
 	chat:AddText(" ")
 	chat:AddText(Color( 0, 225, 100 ), language.GetPhrase("fazhunt.stats.last_standing"), ": ", Color(255, 255, 255), '- ', VIP)
+	chat:AddText(" ")
+	chat:AddText(Color( 0, 140, 190 ), language.GetPhrase("fazhunt.stats.round_time"), ": ", Color(255, 255, 255), formatTime(timeleft))
 	chat:AddText(" ")
 end)
 

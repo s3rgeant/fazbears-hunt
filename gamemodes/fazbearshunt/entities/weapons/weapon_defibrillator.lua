@@ -155,8 +155,8 @@ function SWEP:Think()
 					LogEvent("☦️ Игрок **" .. self.Owner:Nick() .. "** возродил **" .. ply:Nick() .. "** дефибриллятором")
 
                     timer.Simple(1 / 100, function()
-                        if IsValid(ply) and IsStuckInWall(ply) then
-                            ply:SetPos(FindSafePosition(ply, self.Owner))
+                        if IsValid(ply) and ply:IsStuck() then
+                            ply:Unstuck()
                         end
                     end)
 					
@@ -438,7 +438,7 @@ if CLIENT then
         local ply = (IsValid(target) and target:IsPlayer()) and target or lply
         local wep = ply:GetActiveWeapon()
 
-        if IsValid(wep) and wep:GetClass() == "weapon_defibrilator" then
+        if IsValid(wep) and wep:GetClass() == "weapon_defibrillator" then
             local corpses = {}
 
             for _, ent in pairs(ents.FindByClass("prop_ragdoll")) do
@@ -460,7 +460,7 @@ if CLIENT then
         local ply = (IsValid(target) and target:IsPlayer()) and target or lply
         local wep = ply:GetActiveWeapon()
 	
-		if IsValid(wep) and wep:GetClass() == "weapon_defibrilator" then
+		if IsValid(wep) and wep:GetClass() == "weapon_defibrillator" then
 			for _, ent in pairs(ents.FindByClass("prop_ragdoll")) do
 				if !IsValid(ent:GetOwner()) then continue end
 				
@@ -473,59 +473,4 @@ if CLIENT then
 			end
 		end
 	end)
-end
-
-function IsStuckInWall(player)
-    local trace = util.TraceEntity({
-        start = player:GetPos(),
-        endpos = player:GetPos(),
-        filter = player,
-    }, player)
-    return trace.Hit
-end
-
-function FindSafePosition(player, reviver)
-    local startPos = player:GetPos()
-    local startPosR = reviver:GetPos()
-    local maxDistance = 100
-    local stepSize = 10
-
-    for radius = stepSize, maxDistance, stepSize do
-        for angle = 0, 360, 15 do
-            local offsetX = math.cos(math.rad(angle)) * radius
-            local offsetY = math.sin(math.rad(angle)) * radius
-            local testPos = startPos + Vector(offsetX, offsetY, 0)
-            local testPosR = startPosR + Vector(offsetX, offsetY, 0)
-
-            local trace = util.TraceHull({
-                start = testPos,
-                endpos = testPos,
-                mins = player:OBBMins(),
-                maxs = player:OBBMaxs(),
-                filter = player,
-				mask = MASK_ALL,
-            })
-
-            if not trace.Hit then
-				debugoverlay.Line(startPos, testPos, 5, Color(255, 0, 0), true)
-                return testPos
-            end
-
-            local trace = util.TraceHull({
-                start = testPosR,
-                endpos = testPosR,
-                mins = player:OBBMins(),
-                maxs = player:OBBMaxs(),
-                filter = player,
-				mask = MASK_ALL,
-            })
-
-            if not trace.Hit then
-				debugoverlay.Line(startPos, testPos, 5, Color(0, 255, 0), true)
-                return testPosR
-            end
-        end
-    end
-
-    return startPos
 end

@@ -12,8 +12,8 @@ end
 
 local PLAYER = {}
 
-PLAYER.DuckSpeed			= 0.1		-- How fast to go from not ducking, to ducking
-PLAYER.UnDuckSpeed			= 0.1		-- How fast to go from ducking, to not ducking
+PLAYER.DuckSpeed			= 0.2		-- How fast to go from not ducking, to ducking
+PLAYER.UnDuckSpeed			= 0.2		-- How fast to go from ducking, to not ducking
 
 --
 -- Creates a Taunt Camera
@@ -26,6 +26,7 @@ PLAYER.TauntCam = TauntCamera()
 PLAYER.SlowWalkSpeed		= 100
 PLAYER.WalkSpeed 			= 200
 PLAYER.RunSpeed				= 420
+PLAYER.UseVMHands			= true		-- Uses viewmodel hands
 
 --
 -- Set up the network table accessors
@@ -53,12 +54,24 @@ function PLAYER:Loadout()
 
 end
 
---
--- Called when the player spawns
---
-function PLAYER:Spawn()
 
-	BaseClass.Spawn( self )
+function PLAYER:SetModel()
+
+	local cl_playermodel = self.Player:GetInfo( "cl_playermodel" )
+	local modelname = player_manager.TranslatePlayerModel( cl_playermodel )
+	util.PrecacheModel( modelname )
+	self.Player:SetModel( modelname )
+
+	local skin = self.Player:GetInfoNum( "cl_playerskin", 0 )
+	self.Player:SetSkin( skin )
+
+	local bodygroups = self.Player:GetInfo( "cl_playerbodygroups" )
+	if ( bodygroups == nil ) then bodygroups = "" end
+
+	local groups = string.Explode( " ", bodygroups )
+	for k = 0, self.Player:GetNumBodyGroups() - 1 do
+		self.Player:SetBodygroup( k, tonumber( groups[ k + 1 ] ) or 0 )
+	end
 
 end
 

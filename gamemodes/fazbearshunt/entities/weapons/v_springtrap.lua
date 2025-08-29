@@ -66,7 +66,9 @@ function SWEP:PrimaryAttack()
     if ply:IsFrozen() or timer.Exists('ST_cantKill'..ply:EntIndex()) then return end
 
     if SERVER then
-        ent:PillGesture('swing', 2, 1, 0.1, 0.3)
+		if !ply:Crouching() then
+			ent:PillGesture('swing', 2, 1, 0.1, 0.3)
+		end
         ply:EmitSound("fnaf3/sprhit_ready.wav")
 
         -- сервер решает руку
@@ -112,7 +114,10 @@ function SWEP:DealDamage()
                 ent:PillStopGesture('swing')
             end
         end)
-        ent:PillGesture('attack', 2, 1, 0.1, 0.3)
+		
+		if !ply:Crouching() then
+			ent:PillGesture('attack', 2, 1, 0.1, 0.7)
+		end
 
         net.Start("fh_net_killer_change")
         net.WriteString("attack")
