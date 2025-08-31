@@ -49,6 +49,10 @@ if SERVER then
 		if proximityEnabled == 0 then
 			return true, false
 		end
+		
+		if listener:Team() ~= TEAM_SPECTATOR and talker:Team() == TEAM_SPECTATOR then
+			return false, false
+		end
 
 		-- наблюдатель не хочет слышать других наблюдателей
 		if (listener:Team() == TEAM_SPECTATOR and talker:Team() == TEAM_SPECTATOR and listener:GetInfoNum("proximity_hear_spectators", 1) == 0) then

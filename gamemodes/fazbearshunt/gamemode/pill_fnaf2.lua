@@ -199,6 +199,8 @@ pills.register("pill_wfreddy2",{
 				cooldown.Set(ply, "blindrage", 1)
 				return 
 			end
+			
+			hook.Run("FH_BlindRageStart", ply, ent, target)
 	
 			if timer.Exists("fh_stalking" .. ply:EntIndex()) or ply == stalker then return end
 			
@@ -302,6 +304,8 @@ pills.register("pill_wfreddy2",{
 								target:SetDSP(1)
 								stats.Add(target, "evaded_blind_rage", 1)
 							end
+							
+							hook.Run("FH_BlindRageFailed", ply, ent, target)
 
 							net.Start("fh_net_killer_change")
 							net.WriteString("stalk")
@@ -470,6 +474,8 @@ function successStalk(ply, ent, target)
 		net.WriteFloat(-1)
 		net.WriteFloat(6)
 		net.Send(target)
+		
+		hook.Run("FH_BlindRageSuccess", ply, ent, victim)
 	end
 end
 
@@ -620,9 +626,11 @@ pills.register("pill_wbonnie2",{
 
 			local target = fh_random_yoursmine_target(ply)
 			
-			ply.fh_target_player = target
-			
 			if not IsValid(target) then return end
+			
+			hook.Run("FH_YoursMineStart", ply, ent, target)
+			
+			ply.fh_target_player = target
 			
 			ent:PillAnim('ability', true)
 			
@@ -636,6 +644,8 @@ pills.register("pill_wbonnie2",{
 			ent:EmitSound( "bonnie_ability_others.wav" )
 			
 			timer.Simple(1, function()
+				hook.Run("FH_YoursMineSpectating", ply, ent, target)
+				
 				net.Start("fh_start_yoursmine_view")
 				net.WriteEntity(target)
 				net.Send(ply)
@@ -654,6 +664,7 @@ pills.register("pill_wbonnie2",{
 			net.Send(target)
 			
 			timer.Simple(8, function()
+				hook.Run("FH_YoursMineEnd", ply, ent, target)
 				if IsValid(ply) then
 					net.Start("fh_stop_yoursmine_view")
 					net.Send(ply)
@@ -863,6 +874,8 @@ pills.register("pill_wchica2",{
 				cupcake:SetOwner(ply)
 				cupcake:Spawn()
 				cupcake:Activate()
+				
+				hook.Run("FH_MinePlanted", ply, ent, cupcake)
 				
 				cupcakes[cupcake:EntIndex()] = true
 				--table.insert(cupcakes, cupcake:EntIndex())
@@ -1909,7 +1922,7 @@ end
 
 hook.Add("FH_OverrideVoiceline", "fh_lastkill_vc", function(ply, anim, line)
 	if line:match("kill") and !line:match("last") then
-		if character ~= "sfreddy" then
+		if anim ~= "sfreddy" then
 			if #team.GetPlayers(TEAM_UNASSIGNED) == 0 then
 				return "lastkill"
 			end	
@@ -1940,7 +1953,6 @@ function FindNearestPlayer(origin, radius, ignorePlayer, fov)
                 local trace = util.TraceLine({
                     start = eyePos,
                     endpos = ply:EyePos(),
-                    mask = MASK_VISIBLE,
                     filter = ignorePlayer
                 })
                 if not trace.Hit then

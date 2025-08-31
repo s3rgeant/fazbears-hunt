@@ -27,7 +27,7 @@ hook.Add("fh_startgame", "spawn_wgfreddy", function(roundType)
 				local chosenPlayer = fh.randomChoice(players)
 		
 				giveKillerSilent(chosenPlayer, "pill_wgfreddy2", true)
-				chosenPlayer:Spawn()
+				chosenPlayer:ReturnToSpawn()
 			end
 		end
 	end
@@ -739,8 +739,10 @@ local function cancel_outworld_target(ply)
 			ply:SetRunSpeed(500)
 			
 			timer.Simple(8, function()
-				ply:GodDisable()
-				ply:SetRunSpeed(420)
+				if IsValid(ply) then
+					ply:GodDisable()
+					ply:SetRunSpeed(420)
+				end
 			end)
 			
 			break
@@ -1001,6 +1003,8 @@ function cancel_outworld(ply)
 			end
 		end
 	end
+	
+	hook.Run("FH_OutworldEnd", ply)
 
 	outworld_victims[ply] = nil
 	wgfreddy_targets[ply] = nil

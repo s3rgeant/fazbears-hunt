@@ -147,7 +147,6 @@ if SERVER then
 		StopBleeding(ply)
 	end)
 	
-	
 	hook.Add("PlayerSpawn", "BlightRush_ResetOnSpawn", function(ply)
 		stopReceivingTokens(ply)
 		if ply.blightTimeoutTimer then

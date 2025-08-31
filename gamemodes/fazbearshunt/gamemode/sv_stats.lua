@@ -205,7 +205,6 @@ hook.Add("FH_SFreddySubmergeOut", "fh_stats_sfreddy_appearance", function(sfredd
 end)
 
 hook.Add("FH_SFreddySubmergePostIn", "fh_stats_sfreddy_dissappear", function(sfreddy, ent)
-	
 	for ply, v in pairs(rememberLucky) do
 		if ply:IsSurvivor() and ply:Alive() then
 			stats.Add(ply, "evaded_sfreddy_appearance", 1)

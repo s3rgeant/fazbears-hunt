@@ -287,6 +287,8 @@ hook.Add( "PreDrawHalos", "HaloDo", function()
 	if IsValid(lp) and !lp:Alive() and lp:GetObserverMode() ~= OBS_MODE_NONE then
 		local spectateTargets = {}
 		for _, ply in player.Iterator() do
+			if !ply:Alive() then continue end
+		
 			local ent = pills.getMappedEnt(ply)
 			
 			--[[ 

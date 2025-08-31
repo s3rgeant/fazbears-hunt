@@ -438,9 +438,6 @@ end
 function startGame(forceid)
 	RunConsoleCommand("proximity_enabled", 1)
 	
-	roundType = math.random(1,10) > 7 and player.GetCount() < 16 and 1 or 0
-	local springtrapRound = roundType == 1 and true or false
-	
 	if timer.Exists("endGameWait") then
 		timer.Remove("endGameWait")
 	end
@@ -449,7 +446,7 @@ function startGame(forceid)
 		doGiftSpawning()
 	end
 	
-	local fh_prestartgame = hook.Run("fh_prestartgame", roundType)
+	local fh_prestartgame = hook.Run("fh_prestartgame")
 	
 	if fh_prestartgame != nil and fh_prestartgame == false then 
 		return 
@@ -651,14 +648,16 @@ hook.Add("PlayerInitialSpawn", "fh_ply_spawn", function(ply)
 	
 	if isGameOn then
 		timer.Simple(0, function()
-			ply:KillSilent()
+			if IsValid(ply) then
+				ply:KillSilent()
+				
+				ply:StripWeapons()
+				ply:Spectate(OBS_MODE_CHASE)
+				ply:SetTeam(TEAM_SPECTATOR)
 			
-			ply:StripWeapons()
-			ply:Spectate(OBS_MODE_CHASE)
-			ply:SetTeam(TEAM_SPECTATOR)
-		
-			net.Start('DeadHUDEnable')
-			net.Send(ply)
+				net.Start('DeadHUDEnable')
+				net.Send(ply)
+			end
 		end)
 	
 		survivors[ply] = nil
@@ -737,44 +736,8 @@ hook.Add( "PlayerNoClip", "fh_noclip", function( ply, desiredNoClipState )
 	end
 end )
 
-local function LookupPlayerClass( ply )
-
-	local id = ply:GetClassID()
-	if ( id == 0 ) then return end
-
-	local plyClass = ply.m_CurrentPlayerClass
-	if ( plyClass && plyClass.Player == ply ) then
-		if ( plyClass.ClassID == id && plyClass.Func ) then return plyClass end -- current class is still good, behave normally
-		if ( plyClass.ClassChanged ) then plyClass:ClassChanged() end -- the class id changed, remove the old class
-	end
-
-	local classname = util.NetworkIDToString( id )
-	if ( !classname ) then return end
-
-	local t = Type[ classname ]
-	if ( !t ) then return end
-
-	local newClass = {
-		Player = ply,
-		ClassID = id,
-		Func = function() end
-	}
-
-	setmetatable( newClass, { __index = t } )
-
-	ply.m_CurrentPlayerClass = newClass
-
-	newClass.Player:InstallDataTable()
-	newClass:SetupDataTables()
-	newClass:Init()
-	return newClass
-end
-
-
 function GM:PlayerSetModel( pl )
-
 	player_manager.RunClass( pl, "SetModel" )
-
 end
 
 local PLAYER = FindMetaTable("Player")
@@ -1301,7 +1264,6 @@ function fh.GetEarnedKillers(players)
 	end
 	
     if table.IsEmpty(players) and not table.IsEmpty(lastKillers) then
-	
         local chosenLastKillerID = nil
         local high = 0
 

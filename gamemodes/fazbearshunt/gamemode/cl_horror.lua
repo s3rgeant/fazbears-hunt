@@ -284,6 +284,7 @@ end)
 
 function toggleScarySound(can)
 	if can then
+		stopScareProgress()
 		hook.Add("Think", "fh_scarysound", fh_default_check_scarysound)
 		return
 	end
