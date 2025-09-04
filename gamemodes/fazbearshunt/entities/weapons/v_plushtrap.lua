@@ -266,6 +266,7 @@ if CLIENT then
 			local nearPlayers = {}
 			
 			for _, ent in pairs(team.GetPlayers( TEAM_UNASSIGNED )) do
+				if !ent:Alive() then continue end
 				if ent ~= ply and ent:GetPos():Distance(ply:GetPos()) <= 2200 then
 					table.insert(nearPlayers, ent)
 				end

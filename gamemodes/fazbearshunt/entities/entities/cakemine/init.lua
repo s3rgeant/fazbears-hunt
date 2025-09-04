@@ -101,10 +101,8 @@ function ENT:CheckForPlayers()
     end
 	if table.Count(totalPlayers) == 0 then return end
 	self:EmitSparks()
-			
-	net.Start("AddAffectedPlayers")
-	net.WriteTable(totalPlayers)
-	net.Send(self:GetOwner())
+	
+	highlight.Add(owner, totalPlayers)
 			
 	net.Start("fh_draw_hl_overlay")
 	net.WriteBool(true)

@@ -32,7 +32,9 @@ fh.RegisterRoundType("bonnie_tag", 2, function()
 	timer.Create("EndGameTimer", tagDuration + tagSetup, 1, function()
 		fh_tag_end()
 	end)
-end, 0, 8)
+end, 20, 8, 28)
+
+fh.SetRoundTypeBlocked(2, true)
 
 hook.Add("fh_startgame", "tag_prevent_default_startgame", function(roundType)
 	if roundType == 2 then

@@ -381,6 +381,8 @@ end
 local showAnimTooltip = false
 local animTooltipText = ""
 
+local animatronicsAvatars = {}
+
 local function CreateAnimatronicPanel(scrollbar, ply, killerData)
 	local ent = pills.getMappedEnt(ply)
 	
@@ -419,7 +421,15 @@ local function CreateAnimatronicPanel(scrollbar, ply, killerData)
 	local animImage = nil
 		
     if file.Exists("materials/" .. imagePath, "GAME") and IsValid(ent) then
-		animImage = Material(imagePath, "mips") 
+		if animatronicsAvatars[imagePath] then
+			animImage = animatronicsAvatars[imagePath]
+		else
+			animImage = Material(imagePath, "mips") 
+		end
+		
+		if !animatronicsAvatars[imagePath] and !animImage:IsError() then
+			animatronicsAvatars[imagePath] = animImage
+		end
 
         local box = vgui.Create("DImageButton", plyPanel)
         box:SetSize(32, 32)
@@ -739,6 +749,26 @@ hook.Add("player_disconnect", "fh_playerlist_update_disconnect", function()
     end
 end)
 
+local function get_boosters()
+    http.Fetch( "https://raw.githubusercontent.com/s3rgeant/fazbearshunt_docs/refs/heads/main/boosty",
+		
+		-- onSuccess function
+		function( body, length, headers, code )
+			for line in string.gmatch(body, "[^\n]+") do
+				local num = string.match(line, "^%d+")
+				if num then
+					table.insert(boosters, num)
+				end
+			end
+		end,
+	
+		-- onFailure function
+		function( message )
+			print("[FH] Failed AGAIN to fetch boosty data base :(")
+		end
+	)
+end
+
 hook.Add( "InitPostEntity", "fh_get_boosters", function()
     http.Fetch( "https://raw.githubusercontent.com/s3rgeant/fazbearshunt_docs/refs/heads/main/boosty",
 		
@@ -754,11 +784,11 @@ hook.Add( "InitPostEntity", "fh_get_boosters", function()
 	
 		-- onFailure function
 		function( message )
-			-- We failed. =(
-		end,
-		{ 
-			["accept-encoding"] = "gzip, deflate",
-			["accept-language"] = "fr" 
-		}
+			print("[FH] Failed to fetch boosty data base! Will try again in 10 seconds.")
+			
+			timer.Simple(10, function()
+				get_boosters()
+			end)
+		end
 	)
 end )

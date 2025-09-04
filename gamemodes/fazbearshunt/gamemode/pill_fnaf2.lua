@@ -1909,11 +1909,26 @@ function playVoiceline(character, line, who, when)
 				line = FH_OverrideVoiceline
 			end
 			
+			local rf = RecipientFilter()
+			
+			for _, ply in player.Iterator() do
+				if ply:GetInfoNum("fh_voicelines", 1) == 0 then continue end
+				
+				if hook.Run("FH_PlayerShouldHearVoiceline", ply, who,
+				{char = character, voiceline = line} ) == false then continue end
+				
+				rf:AddPlayer(ply)
+			end
+			
+			who:EmitSound(character .. "." .. line, 75, 100, 1, CHAN_VOICE, 0, 0, rf)
+			
+			--[[
 			net.Start("fh_play_voiceline")
 			net.WriteString(character)
 			net.WriteString(line)
 			net.WritePlayer(who)
 			net.Broadcast()
+			]]--
 			
 			timer.Create("fh_DontVoiceLine" .. who:SteamID64(), 5, 1, function() end)
 		end
@@ -1952,8 +1967,8 @@ function FindNearestPlayer(origin, radius, ignorePlayer, fov)
             if distance <= nearestDistance * nearestDistance then
                 local trace = util.TraceLine({
                     start = eyePos,
-                    endpos = ply:EyePos(),
-                    filter = ignorePlayer
+                    endpos = ply:GetPos() + ply:OBBCenter(),
+                    filter = {ignorePlayer, ply}
                 })
                 if not trace.Hit then
                     nearestDistance = math.sqrt(distance)
@@ -2577,6 +2592,7 @@ if SERVER then
 else
 	local fh_voicelines = CreateClientConVar("fh_voicelines", "1", true, true, "Should play any animatronic voicelines?", 0, 1)
 	
+	--[[
 	net.Receive("fh_play_voiceline", function()
 		if !fh_voicelines:GetBool() then return end
 		
@@ -2592,6 +2608,7 @@ else
 			who:EmitSound( character .. "." .. line)
 		end
 	end)
+	]]--
 end
 	
 hook.Add("PlayerNoClip", "BlockNoClipForHeldPlayer", function(ply, desiredState)

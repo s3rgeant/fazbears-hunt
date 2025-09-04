@@ -128,6 +128,10 @@ hook.Add("fh_postendgame", "fh_show_stats", function(killerVictory, animatronics
 	table.Empty(playerStats)
 end)
 
+hook.Add("fh_prestartgame", "fh_erase_stats", function()
+	table.Empty(playerStats)
+end)
+
 -- НЕКОТОРЫЕ СТАТЫ АВТОМАТИЧЕСКИЕ, НУ КАРОЧЕ ЭТИ СНИЗУ. ДА
 hook.Add("PlayerDeath", "fh_stats_deaths", function( victim, inflictor, attacker )
 	if victim:IsPlayer() and attacker:IsPlayer() and attacker:Team() == 2701 then
@@ -144,7 +148,7 @@ end)
 
 hook.Add("PostEntityTakeDamage", "fh_stats_damage", function(target, dmginfo)
 	if target:IsPlayer() and target:Team() ~= 2701 then
-		stats.Add(target, "got_damaged", dmginfo:GetDamage())
+		stats.Add(target, "got_damaged", math.ceil(dmginfo:GetDamage()))
 		
 		local attacker = dmginfo:GetAttacker()
 		local inflictor = dmginfo:GetInflictor()

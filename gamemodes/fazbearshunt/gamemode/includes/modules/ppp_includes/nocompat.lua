@@ -17,6 +17,8 @@ hook.Add("CalcView", "momo_calcview", function(ply, pos, ang, fov, nearZ, farZ)
 
         if pills.convars.cl_thirdperson:GetBool() then
             local dist
+			
+			if hook.Run("HandlePillThirdperson", ply, ent) == false then return end
 
             if ent.formTable.type == "phys" and ent.formTable.camera and ent.formTable.camera.distFromSize then
                 dist = ent:BoundingRadius() * 5

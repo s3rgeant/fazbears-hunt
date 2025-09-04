@@ -138,6 +138,8 @@ net.Receive("StunEffect_Shake", function()
 end)
 
 function TaseAnimatronic(ent)
+	if hook.Run("FH_HandleTaserHit", ent) == false then return end
+
 	local puppet = pills.getMappedEnt(ent)
 	
 	if !IsValid(puppet) then return end

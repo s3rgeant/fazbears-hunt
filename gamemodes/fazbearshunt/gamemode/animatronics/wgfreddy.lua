@@ -33,6 +33,19 @@ hook.Add("fh_startgame", "spawn_wgfreddy", function(roundType)
 	end
 end)
 
+hook.Add("PlayerShouldTakeDamage", "gf_nodamage", function(ply, attacker)
+	if fh.GetActiveUsedKiller("pill_wgfreddy2") == ply then
+		return false
+	end
+end)
+
+
+hook.Add("FH_HandleTaserHit", "gf_notaser", function(ply)
+	if wgfreddy_targets[ply] then
+		return false
+	end
+end)
+
 hook.Add("PillApply", "gf_joinpill", function(ply, name)
 	if name == "pill_wgfreddy2" then
 		ply:SetTeam(27)
@@ -43,11 +56,11 @@ function fh_spawnPlushies(ply)
 	if !IsValid(ply) then return end
 
 	local origin = ply:GetPos()
-	local minDistFromPlayer = 800
-	local maxDistFromPlayerStrict = 2500
-	local maxDistFromPlayerLoose = 2000
+	local minDistFromPlayer = 1000
+	local maxDistFromPlayerStrict = 2700
+	local maxDistFromPlayerLoose = 2400
 	local minSpacing = 1600
-	local plushCount = 5
+	local plushCount = 4
 	local placed = 0
 	local usedPositions = {}
 	
@@ -113,6 +126,9 @@ function fh_spawnPlushies(ply)
 	
 	if placed < plushCount then
 		print("[fh_plushie] Не удалось заспавнить "..plushCount.." плюшки. Заспавнено: " .. placed)
+		if placed < 3 then
+			outworld_victims_count[ply] = outworld_victims_count[ply] + (3 - placed)
+		end
 	else
 		print("[fh_plushie] Успешно заспавнены "..plushCount.." плюшки.")
 	end
@@ -155,7 +171,7 @@ hook.Add("KeyPress", "fh_plushie_use_check", function(ply, key)
 				net.WriteString("fnaf2/gfreddy/plushie_taken.wav")
 				net.Send(ply)
 				
-				PauseDamage(ply, 16)
+				PauseDamage(ply, 10)
 				
 				for k,v in pairs( wgfreddy_targets ) do
 					if ply == v then
@@ -721,7 +737,7 @@ local function cancel_outworld_target(ply)
 	ply:SetCustomCollisionCheck(true)
 	ply:CollisionRulesChanged()
 	ply:SetDSP(0)
-	ply:SetFOV(0)
+	ply:SetFOV(0, 0, game.GetWorld())
 		
 	ply:SetPushImmune(false)
 	ply:SetPushBlocked(false)
@@ -867,8 +883,6 @@ function start_outworld(ply, ent, target)
 	
 	ply:ChatPrint(target:Nick() .. " - твоя цель.")
 	
-	table.insert(affectedPlayers, target)
-	
 	StartDelayedDamage(target)
 	
 	target:SetNWBool("can_be_gf_scared", true)
@@ -905,7 +919,7 @@ function start_outworld(ply, ent, target)
 	target:SetRunSpeed(240)
 	target:SetWalkSpeed(120)
 	target:SetJumpBoostMultiplier(0)
-	target:SetFOV(75)
+	target:SetFOV(75, 0, game.GetWorld())
 	
 	net.Start("fh_net_wgfreddy_scarysound")
 	net.WriteBool(true)
@@ -1011,8 +1025,20 @@ function cancel_outworld(ply)
 	first_damage_received[ply] = nil
 end
 
+hook.Add( "SetupPlayerVisibility", "fh_pvs_wgfreddy_target", function( ply, viewEntity )
+	if wgfreddy_targets[ply] and IsValid(wgfreddy_targets[ply]) then
+		AddOriginToPVS( wgfreddy_targets[ply]:GetPos() )
+	end
+end )
+
 hook.Add("fh_ShouldPlayerReceiveGifts", "no_outworld_gifts", function(ply)
 	if outworld_victims[ply] then
+		return false
+	end
+end)
+
+hook.Add("FH_PlayerShouldHearVoiceline", "no_outworld_voicelines", function(ply)
+	if outworld_victims[ply] or wgfreddy_targets[ply] then
 		return false
 	end
 end)
@@ -1026,7 +1052,7 @@ function StartDelayedDamage(ply)
     
     if DamageTimers[steamID] then return end
 
-    timer.Simple(30, function()
+    timer.Simple(10, function()
         if not IsValid(ply) or !outworld_victims[ply] then return end
 
         local timerName = "DamagePlayer_" .. steamID
@@ -1041,9 +1067,11 @@ function StartDelayedDamage(ply)
             if ply._damagePausedUntil and CurTime() < ply._damagePausedUntil then
                 return
             end
+			
+			local playerIsHealthy = ply:Health() > 100 or ply:Armor() > 10 or (timer.Exists("EndGameTimer") and timer.TimeLeft("EndGameTimer") < 180)
 
             local dmg = DamageInfo()
-            dmg:SetDamage(1)
+            dmg:SetDamage(playerIsHealthy and 2 or 1)
             dmg:SetAttacker(game.GetWorld())
             dmg:SetDamageType(DMG_GENERIC)
             ply:TakeDamageInfo(dmg)
@@ -1091,6 +1119,24 @@ if SERVER then
 			
 			if ply:Health() < 30 then
 				StopDelayedDamage(ply)
+				
+				if ent.cloaked then
+					ply:DrawViewModel(true)
+					
+					ent:SetMaterial()
+					ent:DrawShadow(true)
+						
+					ply:SetCollisionGroup(COLLISION_GROUP_PLAYER_MOVEMENT)
+					ply:SetCustomCollisionCheck(true)
+					ply:CollisionRulesChanged()
+								
+					ent.cloaked=false
+					timer.Simple(0.5, function()
+						if IsValid(wgfreddy) and wgfreddy:IsStuck() then
+							wgfreddy:Unstuck()
+						end
+					end)
+				end
 				
 				wgfreddy:SetNWBool("wgfreddy_enraged", true)
 				ent:SetSpeed(unpack(gfreddy_enraged_movement))

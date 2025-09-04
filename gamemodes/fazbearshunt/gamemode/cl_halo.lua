@@ -37,10 +37,13 @@ end
 
 net.Receive("AddAffectedPlayers", function()
     players = net.ReadTable()
+	duration = net.ReadFloat()
+	
+	if duration <= 0 then duration = nil end
 	
 	for _, targetPlayer in ipairs(players) do
 		if IsValid(targetPlayer) then
-			addAffected(targetPlayer)
+			addAffected(targetPlayer, duration)
 		end
 	end
 end)
@@ -209,10 +212,11 @@ end
 local highlight_mat = Material("vgui/highlightOverlay.png")
 function drawHighlight()
 	if !GetConVar("cl_drawhud"):GetBool() then return end
+	
+	if highlight_mat:IsError() then return end
+	
     surface.SetDrawColor(255, 255, 255, 23)
-    
     surface.SetMaterial(highlight_mat)
-    
     surface.DrawTexturedRect(0, 0, ScrW(), ScrH())
 end
 
@@ -246,6 +250,8 @@ local plushtrap_overlay_mat = Material("vgui/plushtrap overlay.png")
 local plushtrap_alert_mat = Material("vgui/plushtrap_alert.vtf")
 
 function plushtrap_alert()
+	if plushtrap_overlay_mat:IsError() then return end
+	
     local speed = FrameTime() * 2
     plushalert_y = Lerp(speed, plushalert_y, plushalert_y_target)
     plushalert_alpha = Lerp(speed, plushalert_alpha, plushalert_alpha_target)
@@ -273,14 +279,6 @@ end)
 hook.Add( "PreDrawHalos", "HaloDo", function()
 	-- ДЛЯ АНИМАТРОНИКОВ
 	halo.Add(affectedPlayers, Color(255, 0, 0, 255), 0.5, 0.5, 1, true, true)
-	
-	if fh_halo_teammates:GetBool() then
-		
-		if LocalPlayer():Team() == 2701 then
-			halo.Add(ents.FindByClass("plushtrap"), Color(0, 255, 0, 255), 0.5, 0.5, 1, true, true)
-		end
-		
-	end
 	
 	local lp = LocalPlayer()
 	
@@ -367,9 +365,14 @@ hook.Add("PostDrawOpaqueRenderables", "fh_draw_teammates", function( )
 		end
 	end
 	
-	if fh_halo_teammates:GetBool() and !table.IsEmpty(teammates) then 
-		
-		drawAnimatronics(teammates, teammateColor)
+	if fh_halo_teammates:GetBool() then 
+		if !table.IsEmpty(teammates) then
+			drawAnimatronics(teammates, teammateColor)
+		end
+	
+		if LocalPlayer():IsAnimatronic() then
+			drawAnimatronics(ents.FindByClass("plushtrap"), teammateColor)
+		end
 	end
 	
 	if !table.IsEmpty(animatronics) then
@@ -471,6 +474,12 @@ hook.Add("PostCleanupMap", "fh_cleanup_halo", function(ply)
 	
 	if IsValid(selector) then
 		selector:Close()
+	end
+end)
+
+hook.Add("HandlePillThirdperson", "no_thirdperson_yoursmine", function(ply, ent)
+	if ply.fh_target_player then
+		return false
 	end
 end)
 

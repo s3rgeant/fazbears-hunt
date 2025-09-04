@@ -42,6 +42,11 @@ function PLAYER:IsPushBlocked()
 	return self._PushBlocked == true
 end
 
+hook.Add( "PlayerSpawn", "reset_push_onspawn", function(ply)
+	ply._PushBlocked = nil
+	ply._PushImmune = nil
+end)
+
 hook.Add("KeyPress", "PushInteraction", function(ply, key)
 	if ply:IsPushBlocked() then return end
 

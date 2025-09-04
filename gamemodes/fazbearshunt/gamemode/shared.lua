@@ -118,6 +118,13 @@ killerAbilities = {
     }
 }
 
+local function IsNavmesh()
+	if CLIENT then
+		return true
+	end
+	return navmesh.IsLoaded() and navmesh.GetNavAreaCount() >= 5
+end
+
 killers = killers or {}
 
 function killers.getAll()
@@ -140,6 +147,7 @@ function killers.getAllPreferables(secondaries)
 	local tablo = {}
 	for k, v in pairs( killerData ) do
 		if !secondaries and killerData[k].secondary then continue end
+		if killerData[k].navmesh and !IsNavmesh() then continue end -- золотой фредде)
 		if killerData[k].preferable then
 			tablo[k] = v
 		end
@@ -209,9 +217,26 @@ function pill_SetDamageAttack(anim, bool)
 	end
 end
 
-local damageOnlyAnims = {"pill_springtrap", "pill_plushtrap", "pill_clown"}
+function pill_RequiresNavmesh(anim, bool)
+	bool = bool or true
+	if istable(anim) then
+		for k, v in pairs( anim ) do
+			if killerData[v] then
+				killerData[v].navmesh = bool
+			end
+		end
+	else
+		if killerData[anim] then
+			killerData[anim].navmesh = bool
+		end
+	end
+end
 
-pill_SetDamageAttack(damageOnlyAnims)
+pill_RequiresNavmesh("pill_wgfreddy2")
+
+pill_SetDamageAttack( {"pill_springtrap", "pill_plushtrap", "pill_clown"} )
+
+pill_makeSecondary( {"pill_endo02", "pill_sfreddy2", "pill_wgfreddy2"} )
 
 function save_dontPrefer(net)
 	net = net or false
@@ -222,8 +247,6 @@ function save_dontPrefer(net)
 	end
 	file.Write("fh_dontprefer.txt", table.concat(tablo, "\n"))
 end
-
-pill_makeSecondary( {"pill_endo02", "pill_sfreddy2", "pill_wgfreddy2"} )
 
 function pill_makePreferable(anim, bool)
 	bool = bool or false

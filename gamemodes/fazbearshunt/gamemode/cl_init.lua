@@ -73,7 +73,10 @@ end)
 
 hook.Add("PlayerStartVoice", "HideVoicePanels", function(ply)
     local listener = LocalPlayer()
-    if ply == LocalPlayer() and listener:Team() != 2701 and listener:Team() != TEAM_SPECTATOR then
+	
+	if !IsValid(listener) then return end
+	
+    if ply == listener and listener:Team() != 2701 and listener:Team() != TEAM_SPECTATOR then
         hook.Add("HUDPaint", "DrawLocalPlayerVoiceIcon", function()
             local x, y = (ScrW() / 2) - (64 / 2), ScrH() - 50 - (64 / 2)
 			draw.RoundedBox(12, x, y, 64, 64, Color(0, 0, 0, 120))

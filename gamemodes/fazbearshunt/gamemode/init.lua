@@ -19,6 +19,8 @@ AddCSLuaFile( "cl_horror.lua" )
 AddCSLuaFile( "cl_sound.lua" )
 
 AddCSLuaFile( "animsoundf2.lua" )
+
+include( "voicelines.lua" )
 AddCSLuaFile( "voicelines.lua" )
 
 include( "sv_admin.lua" )
@@ -144,6 +146,8 @@ function assignKillers()
 	
     local availableKillers = table.GetKeys(killers.getAllPreferables(curMaxKillers > 1))
 	
+	if totalPlayers == 0 or !players then return end
+	
     for i = 1, curMaxKillers do
 		players = fh.GetEarnedKillers(players)
 		
@@ -173,7 +177,6 @@ function assignKillers()
 		net.WriteTable(availableKillers)
 		net.Send(v)
 	end
-	freezeAnimatronics()
 end
 
 function freezeAnimatronics(duration)
@@ -272,7 +275,7 @@ function setupPlayerVars(ply)
 	ply:SetUnDuckSpeed(0.1)
 	ply:SetStepSize(18)
 	ply:UnLock()
-	ply:SetFOV(0)
+	ply:SetFOV(0, 0, game.GetWorld())
 	ply:SetViewEntity(ply)
 	
 	ply:SetJumpBoostMultiplier( GetScaledPlayerValue(7, 18, 0.5, 0.9) )
@@ -1047,6 +1050,7 @@ hook.Add( "PlayerShouldTakeDamage", "fh_shouldtakedamage", function( ply, attack
 	
 		if IsValid(attacker) and 
 		(ply:Team() == attacker:Team() or 
+		 ply:IsAnimatronic() and attacker:IsAnimatronic() or
 		ply:Team() == 2701 and conVars.fh_animatronic_immortal:GetBool()
 		or attacker:Team() == TEAM_SPECTATOR 
 		or !roundActive or roundEnding) then
@@ -1325,6 +1329,11 @@ function fh.RegisterRoundType(name, id, func, weight, minPlayers, maxPlayers)
         fh.RoundTypeIDCounter = fh.RoundTypeIDCounter + 1
         id = fh.RoundTypeIDCounter
     end
+	
+	if fh.RoundTypes[id] then 
+		print("[FH] Failed to register new round type with ID: " .. id .. ". Such ID is already in use!")
+		return 
+	end
 
     fh.RoundTypes[id] = {
         name = name,
@@ -1339,6 +1348,13 @@ function fh.RegisterRoundType(name, id, func, weight, minPlayers, maxPlayers)
     fh.RoundTypeIDToName[id] = name
 end
 
+function fh.SetRoundTypeBlocked(id, block)
+	if !fh.RoundTypes[id] then return end
+	if !isbool(block) then return end
+	
+	fh.RoundTypes[id].blocked = block
+end
+
 concommand.Add( "fh_force_roundtype", function( ply, cmd, args )
 	if !ply:IsSuperAdmin() then return end
 	local round = tonumber(args[1]) or 0
@@ -1351,9 +1367,15 @@ function fh.SelectRoundType(forcedID)
 
     if forcedID then
         selected = fh.RoundTypes[forcedID]
+		
+		if selected.blocked then
+			print("Forcing a round type that is blocked!")
+		end
     else
         local pool = {}
         for id, data in pairs(fh.RoundTypes) do
+			if data.blocked then continue end
+		
             local minOK = not data.minPlayers or playerCount >= data.minPlayers
             local maxOK = not data.maxPlayers or playerCount <= data.maxPlayers
 
@@ -1408,16 +1430,18 @@ fh.RegisterRoundType("springtrap", 1, function()
 		
 	players = fh.GetEarnedKillers(players)
 	
-	local chosenPlayer = fh.randomChoice(players)
-	
-	giveKiller(chosenPlayer, "pill_springtrap", true)
-	
-	chosenPlayer.lobbyFreeze = true
-	chosenPlayer:ReturnToSpawn()
-	
-	local id = GetPlyID(chosenPlayer)
-	if id and not lastKillers[id] then
-		lastKillers[id] = 0
+	if players then
+		local chosenPlayer = fh.randomChoice(players)
+		
+		giveKiller(chosenPlayer, "pill_springtrap", true)
+		
+		chosenPlayer.lobbyFreeze = true
+		chosenPlayer:ReturnToSpawn()
+		
+		local id = GetPlyID(chosenPlayer)
+		if id and not lastKillers[id] then
+			lastKillers[id] = 0
+		end
 	end
 	
 	RandomTaser()

@@ -58,7 +58,7 @@ function DrawKillerInterface()
 	surface.SetDrawColor(hud_color)
 	surface.DrawTexturedRect(circleX, circleY, circle_width, circle_height)
 
-	local circle_outline_mat_width, circle_outline_mat_height = circle_outline_mat:GetInt("$realwidth") * uiScale, circle_outline_mat:GetInt("$realheight") * uiScale
+	local circle_outline_mat_width, circle_outline_mat_height = (circle_outline_mat:GetInt("$realwidth") or 100) * uiScale, (circle_outline_mat:GetInt("$realheight") or 100) * uiScale
 
 	surface.SetMaterial(circle_outline_mat)
 	surface.SetDrawColor(hud_color)

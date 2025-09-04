@@ -28,8 +28,16 @@ if SERVER then
 		self.fh_force_listen = nil
 	end
 	
+	hook.Add( "PlayerSpawn", "reset_proximity_onspawn", function(ply)
+		ply.fh_force_listen = nil
+		ply.fh_audible = nil
+	end)
+	
 	hook.Add("PlayerCanHearPlayersVoice", "fh_proximity_sv", function(listener, talker)
 		if not IsValid(listener) or not IsValid(talker) then return false, false end
+		
+		local list_team = listener:Team()
+		local talker_team = talker:Team()
 
 		if IsValid(listener.fh_force_listen) then
 			if listener.fh_force_listen == talker then
@@ -50,18 +58,18 @@ if SERVER then
 			return true, false
 		end
 		
-		if listener:Team() ~= TEAM_SPECTATOR and talker:Team() == TEAM_SPECTATOR then
+		if list_team ~= TEAM_SPECTATOR and talker_team == TEAM_SPECTATOR then
 			return false, false
 		end
 
 		-- наблюдатель не хочет слышать других наблюдателей
-		if (listener:Team() == TEAM_SPECTATOR and talker:Team() == TEAM_SPECTATOR and listener:GetInfoNum("proximity_hear_spectators", 1) == 0) then
+		if (list_team == TEAM_SPECTATOR and talker_team == TEAM_SPECTATOR and listener:GetInfoNum("proximity_hear_spectators", 1) == 0) then
 			return false, false
 		end
 
 		-- наблюдатели и аниматроники слышат себя не в 3д
-		if (listener:Team() == 2701 and talker:Team() == 2701) 
-		or (listener:Team() == TEAM_SPECTATOR and talker:Team() == TEAM_SPECTATOR) then
+		if (list_team == 2701 and talker_team == 2701) 
+		or (list_team == TEAM_SPECTATOR and talker_team == TEAM_SPECTATOR) then
 			return true, false
 		end
 

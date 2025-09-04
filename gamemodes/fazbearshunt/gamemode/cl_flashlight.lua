@@ -13,6 +13,8 @@ end
 local function ToggleNightVision()
     surface.PlaySound('items/flashlight1.wav')
     nightVisionEnabled = not nightVisionEnabled
+	
+	if normalFlashlightEnabled then ToggleNormalFlashlight() end
 
     if nightVisionEnabled then
         hook.Add("RenderScreenspaceEffects", "NightVisionEffect", function()
@@ -60,6 +62,8 @@ end
 local function ToggleNormalFlashlight()
     surface.PlaySound('items/flashlight1.wav')
     normalFlashlightEnabled = not normalFlashlightEnabled
+	
+	if nightVisionEnabled then ToggleNightVision() end
 
     if normalFlashlightEnabled then
         if not LocalPlayer().NormalFlashlight then
@@ -76,10 +80,6 @@ local function ToggleNormalFlashlight()
         end
 
         hook.Add("Think", "UpdateNormalFlashlight", function()
-            if LocalPlayer():Team() == 2701 or LocalPlayer():Team() == TEAM_SPECTATOR then
-                if normalFlashlightEnabled then ToggleNormalFlashlight() end
-                return
-            end
             UpdateFlashlightPosition(LocalPlayer().NormalFlashlight)
         end)
     else

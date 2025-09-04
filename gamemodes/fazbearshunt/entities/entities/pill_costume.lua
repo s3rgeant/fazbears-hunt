@@ -38,7 +38,7 @@ function ENT:Initialize()
         self:SetModel("models/Combine_Helicopter/helicopter_bomb01.mdl")
         self:SetPos(ply:GetPos())
         self:SetParent(ply)
-		self:SetRenderMode(RENDERMODE_TRANSALPHA)
+		self:SetRenderMode(RENDERMODE_NORMAL)
 		self:SetIK(true)
         //self:DrawShadow(false)
         ply:StripWeapons()
@@ -641,23 +641,8 @@ function ENT:Think()
     else
 		local ply = self:GetPillUser()
 		
-		if ply == LocalPlayer():GetObserverTarget() 
-		and LocalPlayer():GetViewEntity() == LocalPlayer()
-		and LocalPlayer():GetObserverMode() == OBS_MODE_IN_EYE or ply == LocalPlayer() 
-		and ply:GetViewEntity() == ply
-		and !pills.convars.cl_thirdperson:GetBool() 
-		and !ply.fh_target_player then
-		
-			self:SetColor(Color(255, 255, 255, 0))
-		elseif self.dontdraw or hook.Run("ShouldDrawPill") == false then
+		if self.dontdraw or hook.Run("ShouldDrawPill", self) == false then
 			self:SetNoDraw(true)
-			
-        elseif (self:GetPillUser() ~= LocalPlayer()) then
-			self:SetNoDraw(false)
-			self:SetColor(Color(255, 255, 255, 255))
-        else
-			self:SetNoDraw(false)
-			self:SetColor(Color(255, 255, 255, 255))
         end
 
         local realWep = self:GetPillUser():GetActiveWeapon()
@@ -1049,7 +1034,27 @@ function ENT:ResetAngle()
 end
 
 function ENT:Draw()
-    self:DrawModel()
+	local ply = self:GetPillUser()
+	
+	if ply == LocalPlayer():GetObserverTarget() 
+	and LocalPlayer():GetViewEntity() == LocalPlayer()
+	and LocalPlayer():GetObserverMode() == OBS_MODE_IN_EYE then
+		return
+	end
+	
+	if ply == LocalPlayer() 
+	and ply:GetViewEntity() == ply
+	and !pills.convars.cl_thirdperson:GetBool() 
+	and !ply.fh_target_player then
+		self:DrawShadow(false)
+		return
+	end
+	
+	self:DrawModel()
+	
+	if ply == LocalPlayer() then
+		self:DrawShadow(true)
+	end
 end
 
 function ENT:DrawTranslucent()

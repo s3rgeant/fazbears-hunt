@@ -50,7 +50,6 @@ function highlightSelected(targets, owner)
 			
 			if isAffected then
 				table.insert(affectedNicknames, v:Nick())
-				table.insert(affectedPlayers, v)
 				table.insert(affected, v)
 			end
 		end

@@ -58,16 +58,63 @@ function highlight.ByDistance(ply, ent)
 	end
 end
 
+concommand.Add("fh_show_halo_radius", function(ply, cmd, args)
+	if IsValid(ply) and ply:IsSuperAdmin() then
+
+		debugoverlay.Sphere( ply:GetPos(), conVars.halo_radius:GetInt(), 10, Color( 255, 0, 0, 120 ), true )
+	end
+end)
+
+local function GetMapHalfSize()
+    local mins, maxs = Vector(math.huge, math.huge, math.huge), Vector(-math.huge, -math.huge, -math.huge)
+
+    for _, ent in ents.Iterator() do
+		local modelname = ent:GetModel()
+		if modelname and ( modelname:match("skybox") or modelname:match("cloud") or !modelname:match(".mdl") ) or !modelname then continue end
+	
+        local eMins, eMaxs = ent:WorldSpaceAABB()
+        mins.x = math.min(mins.x, eMins.x)
+        mins.y = math.min(mins.y, eMins.y)
+        mins.z = math.min(mins.z, eMins.z)
+        maxs.x = math.max(maxs.x, eMaxs.x)
+        maxs.y = math.max(maxs.y, eMaxs.y)
+        maxs.z = math.max(maxs.z, eMaxs.z)
+    end
+
+    local size = maxs - mins
+    local half = size:Length() / 2
+
+    return half
+end
+
+concommand.Add("fh_test_auto_halo_radius", function(ply, cmd, args)
+	if IsValid(ply) and ply:IsSuperAdmin() then
+	
+		local halfDiagonal = GetMapHalfSize()
+		print("Auto Halo Radius: ", halfDiagonal / 2, conVars.halo_radius:GetInt())
+
+		debugoverlay.Sphere( ply:GetPos(), conVars.halo_radius:GetInt(), 8, Color( 255, 0, 0, 120 ), true )
+		
+		debugoverlay.Sphere( ply:GetPos(), halfDiagonal / 2, 8, Color( 0, 125, 255, 120 ), true )
+	end
+end)
+
 function highlight.Add(ply, players, duration)
+    assert(ply, "Can't highlight players for someone who is NOT VALID!")
+    assert(players, "Can't highlight players if they are NOT VALID!")
+
 	local duration = duration or conVars.halo_time:GetFloat() or 5
 	if istable(players) then
 		if !table.IsEmpty(players) then
 			net.Start("AddAffectedPlayers")
 			net.WriteTable(players)
+			net.WriteFloat(duration)
 			net.Send(ply)
 			
 			for _, v in ipairs(players) do
-				table.insert(affectedPlayers, v)
+				if !table.HasValue(affectedPlayers, v) then
+					table.insert(affectedPlayers, v)
+				end
 				
 				timer.Simple(duration, function()
 					table.RemoveByValue(affectedPlayers, v)
@@ -78,9 +125,12 @@ function highlight.Add(ply, players, duration)
 		if players:IsValid() then
 			net.Start("AddAffectedPlayers")
 			net.WriteTable( {players} )
+			net.WriteFloat(duration)
 			net.Send(ply)
 			
-			table.insert(affectedPlayers, players)
+			if !table.HasValue(affectedPlayers, v) then
+				table.insert(affectedPlayers, players)
+			end
 			
 			timer.Simple(duration, function()
 				table.RemoveByValue(affectedPlayers, players)
