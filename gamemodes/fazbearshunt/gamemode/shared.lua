@@ -25,9 +25,12 @@ conVars = {
 	--[[
 		ADMIN PANEL: EXPERIMENTS
 	]]
-	fh_gifts_spawning = CreateConVar( "fh_gifts_spawning", 1, { FCVAR_ARCHIVE, FCVAR_REPLICATED}, "Toggle gifts spawning" ),
-	fh_animatronic_immortal = CreateConVar( "fh_animatronic_immortal", 1, { FCVAR_ARCHIVE, FCVAR_REPLICATED}, "Toggle immortality for animatronic team" ),
-	fh_less_steps = CreateConVar( "fh_less_steps", 0, { FCVAR_ARCHIVE, FCVAR_REPLICATED}, "Toggle PVS adding for animatronics (makes footsteps silent when they're not rendered)" ),
+	fh_gifts_spawning = CreateConVar( "fh_gifts_spawning", 1, { FCVAR_ARCHIVE, FCVAR_REPLICATED}, "Toggle gifts spawning." ),
+	fh_animatronic_immortal = CreateConVar( "fh_animatronic_immortal", 1, { FCVAR_ARCHIVE, FCVAR_REPLICATED}, "Toggle immortality for animatronic team." ),
+	
+	fh_less_steps = CreateConVar( "fh_less_steps", 0, { FCVAR_ARCHIVE, FCVAR_REPLICATED}, "Makes footsteps silent when they're not rendered." ),
+	fh_less_steps_volume = CreateConVar( "fh_less_steps_volume", 0.3, { FCVAR_ARCHIVE, FCVAR_REPLICATED}, "Footstep volume when quiet animatronics is on." ),
+	
 	fh_max_cupcakes = CreateConVar( "fh_max_cupcakes", 3, { FCVAR_ARCHIVE, FCVAR_REPLICATED}, "Maximum amount of cupcakes Chica can spawn." ),
 	fh_silent_highlight = CreateConVar( "fh_silent_highlight", 0, { FCVAR_ARCHIVE, FCVAR_REPLICATED}, "Makes highlights fully mute, and removes its overlay." ),
 	fh_respawn_dead_animatronics = CreateConVar( "fh_respawn_dead_animatronics", 1, { FCVAR_ARCHIVE, FCVAR_REPLICATED}, "Respawn animatronic if it died?" ),
@@ -58,8 +61,11 @@ local killerData = killerData or {
     ["pill_sfreddy2"] = {name = "sfreddy", fullname = "fazhunt.animatronics.sfreddy", color = colors.Shadow},
     ["pill_wgfreddy2"] = {name = "gfreddy", fullname = "fazhunt.animatronics.gfreddy", color = colors.Golden},
     ["pill_clown"] = {name = "clown", fullname = "fazhunt.animatronics.clown", color = colors.Clown},
+	
     ["pill_springtrap"] = {name = "springtrap", fullname = "fazhunt.animatronics.springtrap", color = colors.Springtrap},
-    ["pill_plushtrap"] = {name = "plushtrap", fullname = "fazhunt.animatronics.plushtrap", color = colors.Springtrap}
+    ["pill_plushtrap"] = {name = "plushtrap", fullname = "fazhunt.animatronics.plushtrap", color = colors.Springtrap},
+	
+    ["pill_mangle"] = {name = "mangle", fullname = "fazhunt.animatronics.mangle", color = colors.Endo}
 }
 
 killerAbilities = {
@@ -115,6 +121,13 @@ killerAbilities = {
     gfreddy = {
         { name = 'submerge', key = 'RMB', duration = 0 },
         { name = 'choose_target', key = 'R', duration = 0, keyboard = true }
+    },
+    mangle = {
+        { name = 'kill', key = 'LMB', duration = 0, keyboard = false, hidden = true },
+        { name = 'lunge', key = 'RMB', duration = 0, condition = function()
+            return CanMangleLunge()
+        end },
+        { name = 'highlight', key = 'R', duration = 0, keyboard = true }
     }
 }
 

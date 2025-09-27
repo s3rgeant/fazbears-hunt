@@ -65,10 +65,10 @@ hook.Add('fh_createragdoll', 'fh_spectate_ragdoll', function(player, ragdoll)
 	end
 end)
 
-hook.Add( "PlayerButtonDown", "KEY_PRESS_SPECTATOR", function( ply, key )
+hook.Add( "KeyPress", "KEY_PRESS_SPECTATOR", function( ply, key )
 	if ply:Team() == TEAM_SPECTATOR and ply:GetViewEntity() == ply then
 		
-		if key == KEY_SPACE and IsValid( ply:GetObserverTarget() ) then	
+		if key == IN_JUMP and IsValid( ply:GetObserverTarget() ) then	
 			if ply:GetObserverMode() == OBS_MODE_ROAMING then
 				ply:Spectate(OBS_MODE_IN_EYE)
 			elseif ply:GetObserverMode() == OBS_MODE_IN_EYE then
@@ -77,9 +77,9 @@ hook.Add( "PlayerButtonDown", "KEY_PRESS_SPECTATOR", function( ply, key )
 				ply:Spectate(OBS_MODE_ROAMING)
 			end
 			
-		elseif ( key == MOUSE_LEFT ) then
+		elseif ( key == IN_ATTACK ) then
 			cyclePlayers(ply, 1)
-		elseif ( key == MOUSE_RIGHT ) then
+		elseif ( key == IN_ATTACK2 ) then
 			cyclePlayers(ply, -1)
 		end
 	end

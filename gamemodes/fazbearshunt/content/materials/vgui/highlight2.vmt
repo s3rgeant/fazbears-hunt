@@ -1,0 +1,17 @@
+"UnlitGeneric"
+{
+	"$basetexture" "vgui/highlight2"
+	"$nolod" 1
+	"$vertexalpha" 1
+	"$vertexcolor" 1
+	"$smooth" 1
+	"Proxies"
+	{
+			"AnimatedTexture"
+			{
+			"animatedTextureVar" "$basetexture"
+			"animatedTextureFrameNumVar" "$frame"
+			"animatedTextureFrameRate" "15"
+			}
+	}
+}

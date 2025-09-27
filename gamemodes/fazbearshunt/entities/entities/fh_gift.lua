@@ -105,13 +105,14 @@ local anim_visibility_users = {}
 -- Позитивные эффекты
 local positiveEffects = {
     {
-        name = "heal",
-		desc = "fazhunt.gifts.heal",
-		num = 35,
+        name = "medkit",
+		desc = "fazhunt.gifts.medkit",
         func = function(ply)
-            ply:SetHealth(ply:Health() + 35)
+            ply:Give("weapon_fh_medkit")
         end,
 		req = function(ply)
+			if ply:HasWeapon("weapon_fh_medkit") then return false end
+			
 			if ply:Health() < 100 then
 				return true
 			end

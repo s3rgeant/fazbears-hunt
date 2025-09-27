@@ -221,6 +221,8 @@ function TaseAnimatronic(ent)
 	fx:SetMagnitude(10)
 	fx:SetEntity(puppet)
 	util.Effect("teslaHitBoxes", fx)
+	
+	hook.Run("SuccessTaserHit", ent, formtbl.name)
 end
 
 hook.Add( "PlayerShouldTakeDamage", "fh_tasered_cant_deal_damage", function( ply, attacker )

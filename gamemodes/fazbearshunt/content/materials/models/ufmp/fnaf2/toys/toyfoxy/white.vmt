@@ -1,0 +1,23 @@
+"VertexLitGeneric"
+{
+"$basetexture" "models\ufmp/FNAF2/toys/toyfoxy\White"
+$bumpmap "models\ufmp/FNAF2/toys\shared\Flat"
+$phongexponenttexture "models\ufmp/FNAF2/toys\shared\toyspec8"
+$surfaceprop metal
+$phong "1"
+$phongexponent "0"
+$phongboost "5"
+$color "0.75"
+$basetexturetransform "[0.4 0 0 0 0 0.4 0 0 0 0 1 0 0 0 0 1]"
+$phongfresnelranges "[0.0500000007 0.200000003 1]"
+$halflambert "1"
+$nodecal "1"
+$model "1"
+$diffuseexp "1.5"
+$normalmapalphaenvmapmask   "1"
+$color2 "0.92"
+}
+
+
+
+

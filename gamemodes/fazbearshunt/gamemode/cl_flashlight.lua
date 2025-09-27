@@ -10,7 +10,7 @@ local function UpdateFlashlightPosition(light)
     light:Update()
 end
 
-local function ToggleNightVision()
+function ToggleNightVision()
     surface.PlaySound('items/flashlight1.wav')
     nightVisionEnabled = not nightVisionEnabled
 	
@@ -59,7 +59,7 @@ local function ToggleNightVision()
 end
 
 -- Новый: обычный фонарик для остальных игроков
-local function ToggleNormalFlashlight()
+function ToggleNormalFlashlight()
     surface.PlaySound('items/flashlight1.wav')
     normalFlashlightEnabled = not normalFlashlightEnabled
 	

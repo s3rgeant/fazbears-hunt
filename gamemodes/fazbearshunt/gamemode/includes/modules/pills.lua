@@ -374,6 +374,16 @@ function restore(ply, breakout)
     end
 end
 
+hook.Add("KeyPress", "pk_pill_keypress_shared", function(ply, key)
+	local ent = getMappedEnt(ply)
+
+	if IsValid(ent) then
+		ply:LagCompensation( true )
+		ent:DoKeyPressShared(ply, key)
+		ply:LagCompensation( false )
+	end
+end)
+
 -- THEM HOOKS
 if SERVER then
     hook.Add("KeyPress", "pk_pill_keypress", function(ply, key)
@@ -541,45 +551,6 @@ else -- CLIENT HOOKS
                 surface.DrawRect(ScrW() - 368, ScrH() - 108, 296 * math.min(ent:GetCloakLeft() / ent.formTable.cloak.max, 1), 26)
                 draw.SimpleText("Cloak: " .. string.format("%.3f", ent:GetCloakLeft()) .. " Seconds", "ChatFont", ScrW() - 200, ScrH() - 86, Color(255, 255, 255, 255), TEXT_ALIGN_CENTER, TEXT_ALIGN_BOTTOM)
             end
-
-			--[[
-            if ent.formTable.aim and (not ent.formTable.aim.usesSecondaryEnt or IsValid(ent:GetPillAimEnt())) and not ent.formTable.aim.nocrosshair then
-                local aimEnt = (ent.GetPillAimEnt and IsValid(ent:GetPillAimEnt()) and ent:GetPillAimEnt()) or ent
-                local attachment
-
-                if ent.formTable.aim.attachment then
-                    attachment = aimEnt:GetAttachment(aimEnt:LookupAttachment(ent.formTable.aim.attachment))
-                end
-
-                local dir
-
-                if ent.formTable.aim.simple or not attachment then
-                    dir = LocalPlayer():EyeAngles():Forward()
-                else
-                    dir = attachment.Ang:Forward()
-                end
-
-                local start = ent.formTable.aim.overrideStart and ent:LocalToWorld(ent.formTable.aim.overrideStart) or (attachment and attachment.Pos) or (ent.formTable.type == "ply" and LocalPlayer():GetShootPos() or ent:GetPos())
-                local tr = util.QuickTrace(start, dir * 99999, {aimEnt, LocalPlayer()})
-                local screenPos = tr.HitPos:ToScreen()
-                local chColor = Color(160, 220, 50)
-
-                if IsValid(tr.Entity) and (tr.Entity:IsPlayer() or tr.Entity:IsNPC() or tr.Entity:GetClass() == "pill_ent_phys") then
-                    chColor = Color(255, 0, 0)
-                end
-
-                if screenPos.visible then
-                    draw.TexturedQuad({
-                        texture = surface.GetTextureID("sprites/hud/v_crosshair1"),
-                        color = chColor,
-                        x = screenPos.x - 20,
-                        y = screenPos.y - 20,
-                        w = 40,
-                        h = 40
-                    })
-                end
-            end
-			]]--
         end
 
         -- nametags
@@ -666,6 +637,16 @@ hook.Add("PlayerFootstep", "pk_pill_step", function(ply, pos, foot, snd, vol, fi
         end
     end
 end)
+
+hook.Add( "StartCommand", "pk_froze_movement", function( ply, cmd )
+    local ent = getMappedEnt(ply)
+
+	if IsValid(ent) then
+		if ent:GetFrozen() then
+			cmd:ClearMovement()
+		end
+	end
+end )
 
 include("ppp_includes/util.lua")
 include("ppp_includes/nocompat.lua")

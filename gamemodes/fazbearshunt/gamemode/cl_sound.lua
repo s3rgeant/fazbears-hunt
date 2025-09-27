@@ -72,3 +72,20 @@ net.Receive("fh_ui_sound_play", function()
 		end
 	end)
 end)
+
+-- ДОДЕЛАТЬ РАСПИЗДЯЙ!!
+hook.Add("EntityEmitSound", "fh_silent_anims", function(data)
+	if conVars.fh_less_steps:GetBool() then
+		local ply = LocalPlayer()
+		if !IsValid(ply) then return end
+		
+		if IsValid(data.Entity) and data.Entity:GetClass() == "pill_costume" then
+			local tr = util.QuickTrace( ply:EyePos(), data.Entity:WorldSpaceCenter() - ply:EyePos(), {data.Entity, ply} )
+		
+			if tr.Hit then
+				data.Volume = conVars.fh_less_steps_volume:GetFloat()
+				return true
+			end
+		end
+	end
+end)

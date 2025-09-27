@@ -209,13 +209,13 @@ function drawHighlightTimer(bool, duration)
 	end)
 end
 
-local highlight_mat = Material("vgui/highlightOverlay.png")
+local highlight_mat = Material("vgui/highlight2.vtf")
 function drawHighlight()
 	if !GetConVar("cl_drawhud"):GetBool() then return end
 	
 	if highlight_mat:IsError() then return end
 	
-    surface.SetDrawColor(255, 255, 255, 23)
+    surface.SetDrawColor(255, 255, 255, 225)
     surface.SetMaterial(highlight_mat)
     surface.DrawTexturedRect(0, 0, ScrW(), ScrH())
 end
@@ -324,7 +324,8 @@ hook.Add("PostDrawOpaqueRenderables", "fh_draw_teammates", function( )
     if not IsValid(ply) then return end
 	
 	local function drawAnimatronics(tbl, color)
-		local eyePos = IsValid(ply:GetViewEntity()) and ply:GetViewEntity():GetPos() or ply:EyePos()
+		local viewEntity = ply:GetViewEntity()
+		local eyePos = IsValid(viewEntity) and (viewEntity:IsPlayer() and viewEntity:EyePos() or viewEntity:GetPos() ) or ply:EyePos()
 		for _, ent in ipairs(tbl) do
 			if not IsValid(ent) or not ent.DrawModel then continue end
 			

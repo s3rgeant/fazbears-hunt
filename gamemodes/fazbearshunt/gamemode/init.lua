@@ -112,18 +112,18 @@ local survivors_win_count = 0
 
 local roundCount = 0
 
-roundActive = false -- когда аниматроники разморожены и идёт раунд
-isGameOn = false -- начинается прямо под регистрацию раунда и заканчивается после 5 секунд конца раунда
-roundEnding = false -- концовка раунда
+roundActive = roundActive or false -- когда аниматроники разморожены и идёт раунд
+isGameOn = isGameOn or false -- начинается прямо под регистрацию раунда и заканчивается после 5 секунд конца раунда
+roundEnding = roundEnding or false -- концовка раунда
 
 --[[
 	0 - обыкновенный раунд
 	1 - спрингтрап
 ]]--
-local roundType = 0
+local roundType = roundType or 0
 
-animatronics = {}
-survivors = {}
+animatronics = animatronics or {}
+survivors = survivors or {}
 
 usedKillers = {}
 
@@ -512,6 +512,7 @@ function registerNewRound(forceid)
 	table.Empty(usedKillers)
     for _, ply in player.Iterator() do
         ply:Spawn()
+		ply:SetTeam(TEAM_UNASSIGNED)
 		survivors[ply] = true
     end
 	LogEvent(" ")
@@ -588,9 +589,9 @@ function SpawnGifts()
 	
 	for ply, _ in pairs(survivors) do
 		if math.random(1, 100) <= GetGiftSpawnChance() and (ply:Alive() and ply:Team() != TEAM_SPECTATOR) then
-			local fh_ShouldPlayerReceiveGifts = hook.Run("fh_ShouldPlayerReceiveGifts", ply)
+			local FH_ShouldPlayerReceiveGifts = hook.Run("FH_ShouldPlayerReceiveGifts", ply)
 			
-			if fh_ShouldPlayerReceiveGifts == false then continue end
+			if FH_ShouldPlayerReceiveGifts == false then continue end
 			
 			if ply:GetGiftOwnership() then continue end
 			
@@ -669,6 +670,10 @@ end)
 
 hook.Add( "AllowPlayerPickup", "fh_allow_pickup", function( ply, ent )
     return ply:Team() != TEAM_SPECTATOR
+end )
+
+hook.Add( "PlayerSwitchFlashlight", "fh_no_flashlight", function( ply, on )
+    return false
 end )
 
 hook.Add("SetupMove", "fh_lock_position", function(ply, mv, cmd)
@@ -761,6 +766,9 @@ end
 hook.Add("PlayerSpawn", "fh_spawn", function( ply, transiton )
 	player_manager.SetPlayerClass( ply, "player_sandbox" )
 	ply:SetShouldServerRagdoll(true)
+	
+	ply:SetMaterial("")
+	ply:DrawShadow(true)
 	
 	ply:SendLua( 'if !system.HasFocus() then system.FlashWindow() end' )
 	

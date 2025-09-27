@@ -140,7 +140,7 @@ function fh_tag_end()
 			
 			for k,_ in pairs( survivors ) do
 				giveKiller(k, "pill_wbonnie2", true)
-				k:Spawn()
+				k:ReturnToSpawn()
 				count = count - 1
 				if count == 0 then break end
 			end

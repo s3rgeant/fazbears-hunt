@@ -21,6 +21,30 @@ sound.Add({
 						,"bigstep4.mp3"}
 })
 
+//mangle
+
+sound.Add({
+	name = 			"mangle.foot1",
+	channel = 		CHAN_BODY,
+	level = 		90,
+	volume = 		1.0,
+	sound = 			{"2metalstep1.mp3"
+						,"2metalstep2.mp3"
+						,"2metalstep3.mp3"
+						,"2metalstep4.mp3"}
+})
+
+sound.Add({
+	name = 			"mangle.foot2",
+	channel = 		CHAN_BODY,
+	level = 		90,
+	volume = 		1.0,
+	sound = 			{"2metalstep1.mp3"
+						,"2metalstep2.mp3"
+						,"2metalstep3.mp3"
+						,"2metalstep4.mp3"}
+})
+
 //springtrap
 sound.Add({
 	name = 			"springtrap.foot1",

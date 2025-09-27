@@ -41,6 +41,11 @@ if CLIENT then
 
     function ENT:Initialize()
 		hook.Add("PreDrawHalos", "fh_plushie_halo" .. self:EntIndex(), function()
+			if not IsValid(self) then 
+				hook.Remove("PreDrawHalos", "fh_plushie_halo" .. self:EntIndex() )
+				return
+			end
+			
 			local ply = LocalPlayer()
 			if !IsValid(ply) or !drawMe then return end
 	
@@ -48,20 +53,16 @@ if CLIENT then
 			local eyePos = ply:EyePos()
 	
 			local targets = {}
-			for _, ent in ipairs(ents.FindByClass("fh_plushie")) do
-				if not IsValid(ent) then continue end
-	
-				local toEnt = (ent:GetPos() - eyePos)
-				local distSqr = toEnt:LengthSqr()
-				if distSqr > (200 * 100) then continue end
-	
-				local dirToEnt = toEnt:GetNormalized()
-				local dot = viewDir:Dot(dirToEnt)
-	
-				if dot >= 0.9848 then
-					table.insert(targets, ent)
-					break
-				end
+
+			local toEnt = (self:GetPos() - eyePos)
+			local distSqr = toEnt:LengthSqr()
+			if distSqr > (200 * 100) then return end
+
+			local dirToEnt = toEnt:GetNormalized()
+			local dot = viewDir:Dot(dirToEnt)
+
+			if dot >= 0.9848 then
+				table.insert(targets, self)
 			end
 	
 			if #targets > 0 then

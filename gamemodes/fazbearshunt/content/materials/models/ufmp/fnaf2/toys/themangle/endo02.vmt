@@ -1,0 +1,28 @@
+"VertexLitGeneric"
+{
+"$basetexture" "models\ufmp/FNAF2/toys/shared\Black"
+$bumpmap "models\ufmp/FNAF2/toys\shared\Flat"
+$phongexponenttexture "models\ufmp/FNAF2/toys\shared\ToySpec3"
+$surfaceprop metal
+$phong "1"
+$phongexponent "0"
+$phongboost "900"
+$color2 "[ 0 0 0 ]"
+$basemapluminancephongmask "1"
+$phongtint "[ 0.663427 0.663427 0.663427 ]"
+$basetexturetransform "[1.2 0 0 0 0 1.2 0 0 0 0 1 0 0 0 0 1]"
+$phongfresnelranges "[0.05 0.5 1]"
+$halflambert "1"
+$nodecal "1"
+$model "1"
+$diffuseexp "1.5"
+$normalmapalphaenvmapmask   "1"
+$nocull 1
+$rimlight "1"
+$rimlightboost "0.1"
+$rimlightexponent "1"
+}
+
+
+
+

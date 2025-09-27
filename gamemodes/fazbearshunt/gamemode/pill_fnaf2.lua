@@ -1,6 +1,10 @@
 ﻿AddCSLuaFile()
+
+pcall(require,"pills")
+
 include( "animatronics/wgfreddy.lua" )
 include( "animatronics/foxy.lua" )
+include( "animatronics/mangle.lua" )
 
 if SERVER then
 	util.AddNetworkString("JumpscareLight")
@@ -60,14 +64,11 @@ if SERVER then
 	resource.AddFile( "materials/models/null.vmt" )
 end
 
-pcall(require,"pills")
-
 local cupcakes = {} 
 
 shadow_freddyability = CreateConVar( "fuppr_sfreddy_noclip", "1", { FCVAR_NOTIFY, FCVAR_ARCHIVE, FCVAR_REPLICATED }, "Noclip." )
 
 pills.packStart("FUPPR 2 WE","FUPPR 2 WE","icon/fnafur2we.png")
-
 
 local stalker
 local stalkTarget
@@ -1022,6 +1023,7 @@ pills.register("pill_wfoxy2",{
 	hideHud = true,
 	
 	startFunction=function(ply,ent)
+		ply.blightRushTokens = 5
 		timer.Create("CheckConditions"..ply:EntIndex(), 2, 0, function()
 			if !IsValid(ent) then
 				if timer.Exists( "CheckConditions"..ply:EntIndex()) then
@@ -1042,7 +1044,7 @@ pills.register("pill_wfoxy2",{
 		func=function(ply,ent)
 			if IsValid(ply:GetEntityInUse()) then return end
 			
-			if ply.isBlightRushing or ply.blightTimeoutTimer then return end
+			if ply:GetNWBool("isBlightRushing") or ply:GetNWBool("isBlightBouncing") or ply:GetNWBool("blightRushing") then return end
 			
 			local target = FindNearestPlayer(ent:GetPos(), 130, ply, 90)
 			
@@ -1055,7 +1057,7 @@ pills.register("pill_wfoxy2",{
 		end
     },
 	
-	attack2={
+	attack2_sh={
 		mode="trigger",
 		func = function(ply,ent)
 			foxyRush(ply, ent)
@@ -1215,7 +1217,7 @@ pills.register("pill_sfreddy2",{
 				return
 			end
 			
-			chaseCheck(ply, 'sfreddy')
+			chaseCheck(ply, 'sfreddy', ent)
 		end)
 	end,
 	
@@ -1670,6 +1672,8 @@ pills.register("pill_wgfreddy2",{
 		
 		net.Start("fh_wgfreddy_stop_selection_halo")
 		net.Send(ply)
+		
+		ply:SetCollisionGroup( COLLISION_GROUP_PLAYER_MOVEMENT )
 		
 		ply:SetAudible(true)
 		ply:ResetListenPlayer()
@@ -2180,6 +2184,8 @@ function takePlayer(ply, ent)
 		takenPlayers[ply] = {}
 	end
 	
+	if hook.Run("FH_HandlePlayerGrab", ply, nearestPlayer) == false then return end
+	
 	local remember_taken = takenPlayers[ply]
 
     if IsValid(nearestPlayer) and !nearestPlayer:IsFrozen() then
@@ -2449,21 +2455,6 @@ if SERVER then
 					end
 				end
 			end
-		else
-			if ply:IsAnimatronic() then
-				if table.Count(team.GetPlayers(2701)) > 0 then
-					for _, player in ipairs(team.GetPlayers(2701)) do
-						if player ~= ply then
-							AddOriginToPVS(player:GetPos())
-						end
-					end
-				end
-			end
-		end
-		for player,v in pairs( outworld_victims ) do
-			if player ~= ply then
-				AddOriginToPVS(player:GetPos())
-			end
 		end
 	end)
 
@@ -2573,7 +2564,7 @@ if SERVER then
 	
 	hook.Add("EntityRemoved", "RemoveKilledCupcake", function(ent)
 		if cupcakes[ent:EntIndex()] then
-			cupcakes[ent:EntIndex()] = false
+			cupcakes[ent:EntIndex()] = nil
 		end
 	end)
 	
@@ -2695,8 +2686,10 @@ function AnimatronicBreakProp(ply, ent, cooldown)
 	hook.Run("fh_animatronic_post_break_prop", ply, ent, tr)
 end
 
-function chaseCheck(ply, name)
+function chaseCheck(ply, name, ent)
 	if timer.Exists( "ChaseCheck"..ply:EntIndex()) then return end
+	
+	if IsValid(ent) and ent.cloaked then return end
 	
 	if (ply:IsSprinting() or ply:GetWalkSpeed() == ply:GetRunSpeed()) and ply:GetVelocity():LengthSqr() > ply:GetRunSpeed() * 0.9 then
 		local target = FindNearestPlayer(ply:GetPos(), 750, ply, 90)

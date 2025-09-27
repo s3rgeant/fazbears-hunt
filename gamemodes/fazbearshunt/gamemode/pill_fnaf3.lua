@@ -707,13 +707,13 @@ net.Receive("pt_request", function(len, ply)
 	net.Send(pt_request_springtrap_ply)
 end)
 
-concommand.Add( "fh_dev_spawn_plushtrap", function( ply, cmd, args )
+concommand.Add( "dev_spawn_plushtrap", function( ply, cmd, args )
 	if !ply:IsSuperAdmin() then return end
 	
 	local ent = pills.getMappedEnt(ply)
 	
 	if !IsValid(ent) then
-		print("fh_dev_spawn_plushtrap - has failed! You should be an animatronic.")
+		print("dev_spawn_plushtrap - has failed! You should be an animatronic.")
 		return
 	end
 
@@ -736,7 +736,7 @@ concommand.Add( "fh_dev_spawn_plushtrap", function( ply, cmd, args )
 		return
 	end
 	
-	print("fh_dev_spawn_plushtrap - has failed! Maybe the nickname was wrong.")
+	print("dev_spawn_plushtrap - has failed! Maybe the nickname was wrong.")
 end )
 
 function plushtrap_request_complete(springtrap, ply)

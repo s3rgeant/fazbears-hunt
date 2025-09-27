@@ -266,7 +266,7 @@ if CLIENT then
 			local nearPlayers = {}
 			
 			for _, ent in pairs(team.GetPlayers( TEAM_UNASSIGNED )) do
-				if !ent:Alive() then continue end
+				if !ent:Alive() or ent:GetNoDraw() then continue end
 				if ent ~= ply and ent:GetPos():Distance(ply:GetPos()) <= 2200 then
 					table.insert(nearPlayers, ent)
 				end
@@ -274,6 +274,18 @@ if CLIENT then
 			halo.Add(nearPlayers, Color(255, 0, 0), 1, 1, 2, true, true)
 			
 			hook.Add("HUDPaint", "fh_pt_draw_affected", function()
+				if !IsValid(wep) then
+					hook.Remove("HUDPaint", "fh_pt_draw_affected")
+					return
+				end
+			
+				cam.Start3D()
+					for k, v in pairs(nearPlayers) do
+						if v ~= LocalPlayer() and v:IsValid() and v:Health() > 0 then
+							v:DrawModel()
+						end
+					end
+				cam.End3D()
 				if IsValid(wep) and wep:GetClass() == "v_plushtrap" then
 					draw_orbs(nearPlayers)
 				end

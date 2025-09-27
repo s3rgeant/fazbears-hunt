@@ -223,6 +223,85 @@ function setConvarValue(n, value)
 	game.ConsoleCommand(n.." "..value.."\n")
 end
 
+local actions = {}
+
+local function addAction(name, func)
+	if !actions[name] then
+		if isfunction(func) then
+			actions[name] = func
+		end
+	end
+end
+
+addAction( "start_round", StartRound )
+addAction( "highlight_all", HighlightAll )
+addAction( "end_round", EndRound )
+addAction( "set_highlight_delay", function() 
+	local value = net.ReadFloat()
+	setConvarValue("halo_cooldown", math.floor(value))
+end)
+addAction( "set_highlight_duration", function()
+	local value = net.ReadFloat()
+	setConvarValue("halo_time", math.floor(value))
+end)
+addAction( "set_highlight_distance", function()
+	local value = net.ReadFloat()
+	setConvarValue("halo_radius", math.floor(value))
+end)
+addAction( "end_post_round", EndPostRound )
+addAction( "end_lobby_timer", EndLobbyTimer )
+addAction( "fh_spawn_gifts", SpawnGifts )
+addAction( "fh_auto_map_hl", function()
+	local mapInfo = fh.GetMapData()
+	
+	if !mapInfo then return end
+	
+	setConvarValue("halo_cooldown", mapInfo.halo_cooldown)
+	setConvarValue("halo_time", mapInfo.halo_time)
+	setConvarValue("halo_radius", mapInfo.halo_radius)
+	setConvarValue("fh_max_cupcakes", mapInfo.max_cupcakes)
+end)
+addAction( "fh_auto_map_save", function()
+	AddOrUpdateMapData(
+	
+		game.GetMap(), 
+		{
+			halo_cooldown = GetConVar('halo_cooldown'):GetInt(),
+			halo_time = GetConVar('halo_time'):GetInt(),
+			halo_radius = GetConVar('halo_radius'):GetInt(),
+			max_cupcakes = GetConVar('fh_max_cupcakes'):GetInt()
+		}
+		
+	)
+end)
+addAction( "fh_gifts_spawning", function()
+	local bool = net.ReadBool()
+	if !bool then
+		disableGiftSpawning()
+	else
+		game.ConsoleCommand("fh_gifts_spawning 1\n")
+		doGiftSpawning()
+	end
+end)
+addAction( "fh_gifts_spawning", function()
+	local bool = net.ReadBool()
+	if !bool then
+		disableGiftSpawning()
+	else
+		game.ConsoleCommand("fh_gifts_spawning 1\n")
+		doGiftSpawning()
+	end
+end)
+
+local function setCCFloat(action)
+	local num = net.ReadFloat()
+	
+	game.ConsoleCommand(action .. " " .. math.floor(num) .. "\n")
+end
+
+addAction( "fh_max_cupcakes", setCCFloat )
+addAction( "fh_round_duration", setCCFloat )
+
 net.Receive("AdminAction", function(len, ply)
     if not ply:IsAdmin() then return end
 
@@ -270,60 +349,8 @@ net.Receive("AdminAction", function(len, ply)
 		net.WriteBool(string.match(action, "add"))
 		net.Broadcast()
     else
-		if action == "start_round" then
-			StartRound()
-		elseif action == "highlight_all" then
-			HighlightAll()
-		elseif action == "end_round" then
-			EndRound()
-		elseif action == "set_highlight_delay" then
-			local value = net.ReadFloat()
-			setConvarValue("halo_cooldown", math.floor(value))
-		elseif action == "set_highlight_duration" then
-			local value = net.ReadFloat()
-			setConvarValue("halo_time", math.floor(value))
-		elseif action == "set_highlight_distance" then
-			local value = net.ReadFloat()
-			setConvarValue("halo_radius", math.floor(value))
-		elseif action == "end_post_round" then
-			EndPostRound()
-		elseif action == "end_lobby_timer" then
-			EndLobbyTimer()
-		elseif action == "fh_spawn_gifts" then
-			SpawnGifts()
-		elseif action == "fh_auto_map_hl" then
-			local mapInfo = fh.GetMapData()
-			
-			if !mapInfo then return end
-			
-			setConvarValue("halo_cooldown", mapInfo.halo_cooldown)
-			setConvarValue("halo_time", mapInfo.halo_time)
-			setConvarValue("halo_radius", mapInfo.halo_radius)
-			setConvarValue("fh_max_cupcakes", mapInfo.max_cupcakes)
-		elseif action == "fh_auto_map_save" then
-			AddOrUpdateMapData(
-			
-				game.GetMap(), 
-				{
-					halo_cooldown = GetConVar('halo_cooldown'):GetInt(),
-					halo_time = GetConVar('halo_time'):GetInt(),
-					halo_radius = GetConVar('halo_radius'):GetInt(),
-					max_cupcakes = GetConVar('fh_max_cupcakes'):GetInt()
-				}
-				
-			)
-		elseif action == "fh_gifts_spawning" then
-			local bool = net.ReadBool()
-			if !bool then
-				disableGiftSpawning()
-			else
-				game.ConsoleCommand("fh_gifts_spawning 1\n")
-				doGiftSpawning()
-			end
-		elseif action == "fh_max_cupcakes" or action == "fh_round_duration" then
-			local num = net.ReadFloat()
-			
-			game.ConsoleCommand(action .. " " .. math.floor(num) .. "\n")
+		if actions[action] then
+			actions[action](action)
 		else
 			local bool = net.ReadBool() and 1 or 0
 			

@@ -40,8 +40,6 @@ SWEP.HitSize = {
 	Max = Vector( 24, 24, 16 )
 }
 
-SWEP.Sensitivity = 1
-
 local LAND_ANIM_DELAY = 0.2
 
 function SWEP:SetupDataTables()
@@ -51,10 +49,6 @@ end
 function SWEP:Deploy()
 	self.CurAnim = "deploy"
     return true
-end
-
-function SWEP:AdjustMouseSensitivity()
-    return 1 / self.Sensitivity
 end
 
 function SWEP:Holster()
@@ -69,8 +63,6 @@ function SWEP:PrimaryAttack()
 	if !ply:GetNWBool("isBlightRushing") then return end
 	
 	ply.blightRushStart = ct + 1.5
-	
-	self.Sensitivity = 3
 	
 	if !IsValid(ent) then return end
 	
@@ -107,14 +99,6 @@ function SWEP:DealDamage()
 	self:SetPlaybackRate(1)
 	
 	timer.Create('FOXY_cantKill'..ply:EntIndex(), 2, 1, function() end)
-	
-	self.Sensitivity = 1
-	
-	timer.Simple(0.15, function()
-		if IsValid(self) then
-			self.Sensitivity = 1
-		end
-	end)
 	
 	if SERVER then
 	

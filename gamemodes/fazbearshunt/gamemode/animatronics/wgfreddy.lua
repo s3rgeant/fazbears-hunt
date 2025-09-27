@@ -37,11 +37,20 @@ hook.Add("PlayerShouldTakeDamage", "gf_nodamage", function(ply, attacker)
 	if fh.GetActiveUsedKiller("pill_wgfreddy2") == ply then
 		return false
 	end
+	
+	if outworld_victims[ply] and (attacker ~= outworld_victims[ply] and attacker ~= game.GetWorld()) then
+		return false
+	end
 end)
-
 
 hook.Add("FH_HandleTaserHit", "gf_notaser", function(ply)
 	if wgfreddy_targets[ply] then
+		return false
+	end
+end)
+
+hook.Add("FH_HandlePlayerGrab", "gf_victim_nograb", function(endo, ply)
+	if outworld_victims[ply] then
 		return false
 	end
 end)
@@ -53,12 +62,14 @@ hook.Add("PillApply", "gf_joinpill", function(ply, name)
 end)
 
 function fh_spawnPlushies(ply)
-	if !IsValid(ply) then return end
+	if !IsValid(ply) then return -1 end
 
 	local origin = ply:GetPos()
 	local minDistFromPlayer = 1000
 	local maxDistFromPlayerStrict = 2700
 	local maxDistFromPlayerLoose = 2400
+	local sameFloorDist = 140
+	local sameFloorDistMax = 450
 	local minSpacing = 1600
 	local plushCount = 4
 	local placed = 0
@@ -97,7 +108,7 @@ function fh_spawnPlushies(ply)
 	local areas = navmesh.GetAllNavAreas()
 	if not areas or #areas == 0 then
 		print("[fh_plushie] Нет nav-меша.")
-		return
+		return -2
 	end
 	
 	table.Shuffle(areas)
@@ -107,7 +118,8 @@ function fh_spawnPlushies(ply)
 		if area:HasAttributes(NAV_MESH_CROUCH) or area:HasAttributes(NAV_MESH_AVOID) or area:IsUnderwater() then continue end
 	
 		local pos = area:GetCenter()
-		if isWithinStrictRange(pos) and isFarFromOthers(pos) then
+		
+		if isWithinStrictRange(pos) and isFarFromOthers(pos) and math.abs(origin.z - pos.z) < sameFloorDist then
 			spawnPlushAt(pos)
 		end
 	end
@@ -118,7 +130,7 @@ function fh_spawnPlushies(ply)
 			if area:HasAttributes(NAV_MESH_CROUCH) or area:HasAttributes(NAV_MESH_AVOID) or area:IsUnderwater() then continue end
 	
 			local pos = area:GetCenter()
-			if isLooseCandidate(pos) and isFarFromOthers(pos, 800) then
+			if isLooseCandidate(pos) and isFarFromOthers(pos, 800) and math.abs(origin.z - pos.z) < sameFloorDistMax then
 				spawnPlushAt(pos)
 			end
 		end
@@ -126,12 +138,13 @@ function fh_spawnPlushies(ply)
 	
 	if placed < plushCount then
 		print("[fh_plushie] Не удалось заспавнить "..plushCount.." плюшки. Заспавнено: " .. placed)
-		if placed < 3 then
-			outworld_victims_count[ply] = outworld_victims_count[ply] + (3 - placed)
+		if placed < 3 and placed > 0 then
+			outworld_victims_count[ply] = (outworld_victims_count[ply] or 0) + (3 - placed)
 		end
 	else
 		print("[fh_plushie] Успешно заспавнены "..plushCount.." плюшки.")
 	end
+	return placed
 end
 
 function killPlushies(ply)
@@ -170,6 +183,8 @@ hook.Add("KeyPress", "fh_plushie_use_check", function(ply, key)
 				net.Start("fh_ui_sound_play")
 				net.WriteString("fnaf2/gfreddy/plushie_taken.wav")
 				net.Send(ply)
+				
+				ply._LastGFPlushie = CurTime()
 				
 				PauseDamage(ply, 10)
 				
@@ -216,6 +231,13 @@ if CLIENT then
 	
 	hook.Add("PrePlayerDraw", "fh_dontdraw_outworlded" , function(ply)
 		if outworlded_ppl[ply] then
+			ply:DestroyShadow()
+		
+			for _, wep in ipairs(ply:GetWeapons()) do
+				if IsValid(wep) then
+					wep:DestroyShadow()
+				end
+			end
 			return true
 		end
 	end)
@@ -296,6 +318,13 @@ if CLIENT then
 		end)
 		hook.Add("PrePlayerDraw", "fh_outworld_pv", function(ply)
 			if ply ~= myself then
+				ply:DestroyShadow()
+		
+				for _, wep in ipairs(ply:GetWeapons()) do
+					if IsValid(wep) then
+						wep:DestroyShadow()
+					end
+				end
 				return true
 			end
 		end)
@@ -563,6 +592,13 @@ if CLIENT then
 		end
 		hook.Add("PrePlayerDraw", "fh_gfreddy_outworld_pv", function(ply)
 			if ply ~= target then
+				ply:DestroyShadow()
+			
+				for _, wep in ipairs(ply:GetWeapons()) do
+					if IsValid(wep) then
+						wep:DestroyShadow()
+					end
+				end
 				return true
 			end
 		end)
@@ -612,6 +648,8 @@ if CLIENT then
 	net.Receive("fh_dontdraw_player", function()
 		local dude = net.ReadPlayer()
 		
+		if !IsValid(dude) then return end
+		
 		outworlded_ppl[dude] = true
 		
 		dude:SetNoDraw(true)
@@ -629,7 +667,7 @@ if CLIENT then
 	net.Receive("fh_dontdraw_anim", function()
 		local ent = net.ReadEntity()
 		
-		ent.dontdraw = true
+		ent:SetNoDraw(true)
 	end)
 	
 	net.Receive("fh_draw_player", function()
@@ -654,7 +692,7 @@ if CLIENT then
 	net.Receive("fh_draw_anim", function()
 		local ent = net.ReadEntity()
 		
-		ent.dontdraw = false
+		ent:SetNoDraw(false)
 	end)
 
 	hook.Add( "PostCleanupMap", "fh_pill_wgfreddy_reset", function( name )
@@ -820,7 +858,7 @@ local function cancel_outworld_wgfreddy(ply)
 	end
 end
 
-concommand.Add( "fh_dev_start_outworld", function( ply, cmd, args )
+concommand.Add( "dev_start_outworld", function( ply, cmd, args )
 	if !ply:IsSuperAdmin() then return end
 
 	local nick1 = tostring(args[1])
@@ -864,15 +902,23 @@ concommand.Add( "fh_dev_start_outworld", function( ply, cmd, args )
 			start_outworld(gf, ent, target)
 			return
 		else
-			print("fh_dev_start_outworld - has failed! Check if first player is Golden Freddy.")
+			print("dev_start_outworld - has failed! Check if first player is Golden Freddy.")
 			return
 		end
 	end
 	
-	print("fh_dev_start_outworld - has failed! Maybe the nicknames were wrong.")
+	print("dev_start_outworld - has failed! Maybe the nicknames were wrong.")
 end )
 
 function start_outworld(ply, ent, target)
+	local placedPlushies = fh_spawnPlushies(target)
+	
+	if placedPlushies <= 0 then
+		print("[GF] Failed to spawn plushies for Golden Freddy: " .. ply:Nick() .. " and Target: " .. target:Nick())
+		print("[GF] Plushie Error Code: " .. placedPlushies)
+		return
+	end
+
 	net.Start("fh_play_sound")
 	net.WriteString('fnaf2/gfreddy/gfreddy_target.wav')
 	net.Send(ply)
@@ -887,8 +933,19 @@ function start_outworld(ply, ent, target)
 	
 	target:SetNWBool("can_be_gf_scared", true)
 	
-	hook.Add("SetupPlayerVisibility", "fh_seenet_dontdraw_pvs", function(ply)
-		AddOriginToPVS(player:GetPos())
+	hook.Add("SetupPlayerVisibility", "fh_seenet_dontdraw_pvs", function(player)
+		if player ~= ply and player ~= target then
+			AddOriginToPVS(ply:GetPos())
+			AddOriginToPVS(target:GetPos())
+		end
+	end)
+	
+	hook.Add("SetupPlayerVisibility", "fh_seenet_dontdraw_pvs_everyone", function(ployer)
+		if ployer == ply or ployer == target then
+			for _, kent in player.Iterator() do
+				AddOriginToPVS(kent:GetPos())
+			end
+		end
 	end)
 	
 	-- никто не видит их
@@ -904,7 +961,10 @@ function start_outworld(ply, ent, target)
 		end
 	end
 	
-	hook.Remove("SetupPlayerVisibility", "fh_seenet_dontdraw_pvs")
+	timer.Simple(5, function()
+		hook.Remove("SetupPlayerVisibility", "fh_seenet_dontdraw_pvs")
+		hook.Remove("SetupPlayerVisibility", "fh_seenet_dontdraw_pvs_everyone")
+	end)
 	
 	ply:SetPushImmune(true)
 	ply:SetPushBlocked(true)
@@ -921,6 +981,8 @@ function start_outworld(ply, ent, target)
 	target:SetJumpBoostMultiplier(0)
 	target:SetFOV(75, 0, game.GetWorld())
 	
+	target._LastGFPlushie = CurTime()
+	
 	net.Start("fh_net_wgfreddy_scarysound")
 	net.WriteBool(true)
 	net.WritePlayer(ply)
@@ -929,8 +991,6 @@ function start_outworld(ply, ent, target)
 	if target:HasWeapon("weapon_crapvidcam") then
 		target:StripWeapon("weapon_crapvidcam")
 	end
-	
-	fh_spawnPlushies(target)
 	
 	local timer_name = "plushie_hint_" .. ply:EntIndex()
 	
@@ -1026,12 +1086,14 @@ function cancel_outworld(ply)
 end
 
 hook.Add( "SetupPlayerVisibility", "fh_pvs_wgfreddy_target", function( ply, viewEntity )
-	if wgfreddy_targets[ply] and IsValid(wgfreddy_targets[ply]) then
-		AddOriginToPVS( wgfreddy_targets[ply]:GetPos() )
+	for player,v in pairs( outworld_victims ) do
+		if player ~= ply then
+			AddOriginToPVS(player:GetPos())
+		end
 	end
 end )
 
-hook.Add("fh_ShouldPlayerReceiveGifts", "no_outworld_gifts", function(ply)
+hook.Add("FH_ShouldPlayerReceiveGifts", "no_outworld_gifts", function(ply)
 	if outworld_victims[ply] then
 		return false
 	end
@@ -1068,7 +1130,12 @@ function StartDelayedDamage(ply)
                 return
             end
 			
-			local playerIsHealthy = ply:Health() > 100 or ply:Armor() > 10 or (timer.Exists("EndGameTimer") and timer.TimeLeft("EndGameTimer") < 180)
+			local playerIsHealthy = ply:Health() > 100 
+				or ply:Armor() > 10 
+				or (timer.Exists("EndGameTimer") and timer.TimeLeft("EndGameTimer") < 180)
+				or (ply._LastGFPlushie and ply._LastGFPlushie < CurTime() - 60)
+				
+			--print(ply._LastGFPlushie, CurTime(), CurTime() - 60)
 
             local dmg = DamageInfo()
             dmg:SetDamage(playerIsHealthy and 2 or 1)
@@ -1101,7 +1168,7 @@ end
 if SERVER then
 	local gfreddy_enraged_movement = {130, 560, 130, 250}
 	net.Receive("cl_target_wgfreddy_scared", function( len, ply )
-		if outworld_victims[ply] then
+		if outworld_victims[ply] and ply:Alive() then
 			local wgfreddy = outworld_victims[ply]
 		
             ply:TakeDamage( math.min(ply:Health() / 2, 20), wgfreddy, wgfreddy:GetActiveWeapon() )
@@ -1165,6 +1232,7 @@ if SERVER then
 			end
 			
 			if not ent.cloaked then
+			
 				if fh_can_see_player(wgfreddy_targets[wgfreddy], wgfreddy, 1500) then
 					wgfreddy_targets[wgfreddy]:ScreenFade(SCREENFADE.IN, Color(0,0,0), 1, 0.5)
 					
@@ -1190,6 +1258,10 @@ if SERVER then
 
 				ent.cloaked = true
 			end
+			
+			net.Start("fh_play_sound")
+			net.WriteString("fnaf2/gfreddy/gfreddy_success_scare.wav")
+			net.Send(wgfreddy)
 			
 			PauseDamage(ply, 10)
 		end

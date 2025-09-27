@@ -238,6 +238,13 @@ function DrawKillerInterface()
 	end
 end
 
+function getAbilityTokens(name)
+	if !currentAbilities[name] or !currentAbilities[name].tokens then
+		return 0
+	end
+	return currentAbilities[name].tokens
+end
+
 local function updateAnimHudHeader(name)
 	killerIconPath = "vgui/animatronics_hud/heads/"..name..".png"
 	killerIcon = Material( killerIconPath, "smooth" )
@@ -289,6 +296,18 @@ function isNotStuck()
 	})
 	if trace.Hit then
 		return Color(200, 32, 32, 200)
+	end
+	return Color(255, 255, 255, 255)
+end
+
+function CanMangleLunge()
+	local ply = LocalPlayer()
+	local eyeAng = ply:EyeAngles()
+	
+	if !ply:GetNWBool("_MangleHooked") then
+		if !ply:OnGround() or ply:Crouching() or eyeAng.p > -10 then
+			return Color(200, 32, 32, 200)
+		end
 	end
 	return Color(255, 255, 255, 255)
 end

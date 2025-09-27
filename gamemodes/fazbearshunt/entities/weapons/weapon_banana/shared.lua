@@ -38,6 +38,7 @@ SWEP.DrawAmmo = true
 SWEP.Spawnable				= true;
 SWEP.AdminSpawnable			= false;
 
+SWEP.UseHands = true
 SWEP.ViewModel				= "models/weapons/v_banana.mdl";
 SWEP.WorldModel				= "models/weapons/w_banana.mdl";
 

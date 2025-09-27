@@ -1,0 +1,23 @@
+"VertexLitGeneric"
+{
+"$basetexture" "models\ufmp/FNAF2/toys/toyfoxy\Bowtie"
+$bumpmap "models\ufmp/FNAF2/toys\shared\Flat"
+$phongexponenttexture "models\ufmp/FNAF2/toys\shared\ToySpec3"
+$surfaceprop metal
+$phong "1"
+$phongexponent "0"
+$phongboost "60"
+$basetexturetransform "[0.4 0 0 0 0 0.4 0 0 0 0 1 0 0 0 0 1]"
+$phongfresnelranges "[0.0100000007 0.1000000015 0.5]"
+$halflambert "1"
+$model "1"
+$diffuseexp "1.5"
+$normalmapalphaenvmapmask   "1"
+$color2 "0.92"
+}
+
+
+
+
+
+

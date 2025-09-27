@@ -8,8 +8,13 @@ function ENT:SetupDataTables()
     self:NetworkVar("Entity", 0, "PillUser")
     self:NetworkVar("Float", 0, "ChargeTime")
     self:NetworkVar("Angle", 0, "ChargeAngs")
+    self:NetworkVar("Bool", false, "UseForceAngles")
+    self:NetworkVar("Angle", nil, "ForceAngles")
     self:NetworkVar("Float", 1, "CloakLeft")
+	self:NetworkVar( "Bool", false, "Frozen" )
 end
+
+local fh_pill_update_rate = CreateConVar( "fh_pill_update_rate", 0, { FCVAR_ARCHIVE, FCVAR_REPLICATED}, "Increasing this will result in better performance with a lot of pill_costume running. (Animation errors might occure)" )
 
 function ENT:Initialize()
 	self.usedLayers = {}
@@ -24,14 +29,20 @@ function ENT:Initialize()
 
         return
     end
+	self.formTable.initMoveSpeed = self.formTable.moveSpeed
 
     local hull = self.formTable.hull or Vector(32, 32, 72)
     local duckBy = self.formTable.duckBy or (self.formTable.hull and 0 or 36)
     ply:SetHull(-Vector(hull.x / 2, hull.y / 2, 0), Vector(hull.x / 2, hull.y / 2, hull.z))
     ply:SetHullDuck(-Vector(hull.x / 2, hull.y / 2, 0), Vector(hull.x / 2, hull.y / 2, hull.z - duckBy or 0))
-	ply:SetRenderMode(RENDERMODE_NONE)
+	ply:SetMaterial("models/null")
+	ply:DrawShadow(false)
     --Do this so weapon equips are not blocked
     pills.mapEnt(ply, nil)
+	
+	if CLIENT then
+		ply:SetRenderBounds(-Vector(hull.x / 2, hull.y / 2, 0), Vector(hull.x / 2, hull.y / 2, hull.z + 30))
+	end
 
 	self:ResetAngle()
     if SERVER then
@@ -214,7 +225,7 @@ function ENT:Initialize()
         end
 
         if self.formTable.modelScale then
-            self:SetModelScale(self.formTable.modelScale, .1)
+            self:SetModelScale(self.formTable.modelScale, 0)
         end
 
         if self.formTable.boneMorphs then
@@ -244,11 +255,6 @@ function ENT:Initialize()
 		if self.formTable.startFunction then
             self.formTable.startFunction(ply, self)
 		end
-
-        --puppet:SetParent(self)
-        //puppet:Spawn()
-        //self:DeleteOnRemove(puppet)
-        //self:SetPuppet(puppet)
     end
 
     pills.mapEnt(ply, self)
@@ -298,6 +304,8 @@ function ENT:OnRemove()
                 ply:StripAmmo()
                 ply:Spawn()
                 ply:SetEyeAngles(angs)
+				ply:SetMaterial("")
+				ply:DrawShadow(true)
                 ply:SetPos(pos)
                 ply:SetVelocity(vel)
                 ply:SetHealth(hp)
@@ -326,77 +334,77 @@ end
 
 function ENT:Think()
     local ply = self:GetPillUser()
-    local puppet = self
     if not IsValid(self) or not IsValid(ply) then return end
+
     local vel = ply:GetVelocity():Length()
 
     if SERVER then
-        --Anims
+        -- ======== АНІМАЦІЇ ========
         local anims = table.Copy(self.formTable.anims.default or {})
-        table.Merge(anims, (IsValid(ply:GetActiveWeapon()) and self.formTable.anims[ply:GetActiveWeapon():GetHoldType()]) or (self.forceAnimSet and self.formTable.anims[self.forceAnimSet]) or {})
-        local anim
-        --local useSeqVel=true
-        local overrideRate
-
-        if (not self.anim or not anims[self.anim]) then
-            self.animFreeze = nil
-            self.ignoreFreeze = nil
-            self.animStart = nil
+        local wep = ply:GetActiveWeapon()
+        if IsValid(wep) then
+            table.Merge(anims, self.formTable.anims[wep:GetHoldType()] or {})
+        elseif self.forceAnimSet then
+            table.Merge(anims, self.formTable.anims[self.forceAnimSet] or {})
         end
 
-        if self.animFreeze and not self.plyFrozen then
+        -- сброс при отсутствии валидной анимации
+        if not self.anim or not anims[self.anim] then
+            self.animFreeze, self.ignoreFreeze, self.animStart = nil, nil, nil
+        end
+
+        -- состояние заморозки
+        if self.animFreeze and not self:GetFrozen() then
             ply:SetWalkSpeed(5)
             ply:SetRunSpeed(5)
+            ply:SetSlowWalkSpeed(5)
             ply:SetJumpPower(0)
-			ply:SetSlowWalkSpeed(5)
-            self.plyFrozen = true
-        elseif not self.animFreeze and self.plyFrozen then
-			self:ResetSpeed(ply)
+            self:SetFrozen(true)
+        elseif not self.animFreeze and self:GetFrozen() then
+            self:ResetSpeed(ply)
         end
-		
-		if self.anim == 'jump' and ply:IsOnGround() then
-			self.anim = nil
-            self.animCycle = nil
-		end
 
+        -- сброс прыжковой анимации
+        if self.anim == "jump" and ply:IsOnGround() then
+            self.anim, self.animCycle = nil, nil
+        end
+
+        -- выбор анимации
+        local anim, overrideRate
         if self.anim and anims[self.anim] then
-            anim = anims[self.anim]
-            overrideRate = anims[self.anim .. "_rate"] or 1
+            anim, overrideRate = anims[self.anim], anims[self.anim .. "_rate"] or 1
             local cycle = self:GetCycle()
 
             if not self.animStart then
-                if ( cycle == 1 or (self.animCycle and self.animCycle > cycle) or (string.lower(anim) ~= string.lower(self:GetSequenceName(self:GetSequence()))) ) and !self.animLoop then
-					if self.formTable.animStopped then
-						self.formTable.animStopped(ply, self, anim)
-					end
-					self.anim = nil
-                    self.animCycle = nil
-
-                    if self.animFreeze then
-                        self.animFreeze = nil
-						self.ignoreFreeze = nil
+                local wrongSeq = (cycle == 1 or (self.animCycle and self.animCycle > cycle) 
+                                  or string.lower(anim) ~= string.lower(self:GetSequenceName(self:GetSequence())))
+                if wrongSeq then
+                    if not self.animLoop and not anims[self.anim .. "_loop"] then
+                        if self.formTable.animStopped then
+                            self.formTable.animStopped(ply, self, anim)
+                        end
+                        self.anim, self.animCycle, self.animFreeze, self.ignoreFreeze = nil, nil, nil, nil
+                    elseif anims[self.anim .. "_loop"] then
+                        anim = anims[self.anim .. "_loop"]
                     end
-                elseif self.animCycle then
+                else
                     self.animCycle = cycle
                 end
             end
         elseif self.tickAnim and anims[self.tickAnim] then
-            anim = anims[self.tickAnim]
-            overrideRate = anims[self.tickAnim .. "_rate"] or 1
+            anim, overrideRate = anims[self.tickAnim], anims[self.tickAnim .. "_rate"] or 1
             self.tickAnim = nil
         elseif self.burrowed then
             anim = anims["burrow_loop"]
         elseif ply:WaterLevel() > 2 then
             anim = anims["swim"] or anims["glide"] or anims["idle"]
-        elseif ply:IsOnGround() then
+        elseif ply:OnGround() then
             if ply:Crouching() then
-                if vel > ply:GetCrouchedWalkSpeed() / 4 then
-                    anim = anims["crouch_walk"] or anims["crouch"] or anims["walk"] or anims["idle"]
-                else
-                    anim = anims["crouch"] or anims["idle"]
-                end
+                anim = (vel > ply:GetCrouchedWalkSpeed() / 4) 
+                    and (anims["crouch_walk"] or anims["crouch"] or anims["walk"]) 
+                    or (anims["crouch"] or anims["idle"])
             else
-                if vel > (ply:GetWalkSpeed() + ply:GetRunSpeed()) / 2 and ply:GetWalkSpeed() != ply:GetRunSpeed() then
+                if vel > (ply:GetWalkSpeed() + ply:GetRunSpeed()) / 2 and ply:GetWalkSpeed() ~= ply:GetRunSpeed() then
                     anim = anims["run"] or anims["walk"] or anims["idle"]
                 elseif vel > 20 then
                     anim = anims["walk"] or anims["idle"]
@@ -412,322 +420,113 @@ function ENT:Think()
             overrideRate = 1
         end
 
-        if (anim and self:GetSequence() ~= self:LookupSequence(anim)) or self.animStart or (self.formTable.autoRestartAnims and self:GetCycle() == 1) then
+        if anim and (self:GetSequence() ~= self:LookupSequence(anim) or self.animStart or (self.formTable.autoRestartAnims and self:GetCycle() == 1)) then
             self:ResetSequence(self:LookupSequence(anim))
             self:SetCycle(0)
             self.animCycle = 0
         end
-
         self.animStart = nil
+
         local seq_vel = self:GetSequenceGroundSpeed(self:GetSequence())
-
-        --if true then
-        if self.formTable.movePoseMode ~= "xy" and self.formTable.movePoseMode ~= "xy-bot" and not overrideRate then
-            local rate = overrideRate or vel / seq_vel
-
-            --goofy limitation (floods console with errors if above 12!)
-            if rate > 12 then
-                rate = 12
-            end
-
-            puppet:SetPlaybackRate(rate)
-        else
-            --puppet:SetPlaybackRate(1)
+        if not overrideRate and self.formTable.movePoseMode ~= "xy" and self.formTable.movePoseMode ~= "xy-bot" then
+            local rate = vel / (seq_vel ~= 0 and seq_vel or 1)
+            self:SetPlaybackRate(math.min(rate, 12))
         end
 
-        --print(puppet:GetCycle())
-        if self.formTable.movePoseMode then
-            if self.formTable.movePoseMode == "xy" then
-                if not overrideRate then
-					local velocity = ply:GetVelocity()
-					local speed = velocity:Length2D()
-					
-					local pillspeed = self.formTable.moveSpeed or {}
-				
-					local forward = ply:GetForward()
-					local right = ply:EyeAngles():Right()
-				
-					local moveX = forward:Dot(velocity)
-					local moveY = right:Dot(velocity)
-				
-					local maxSpeed = math.max(pillspeed.maxwalk or 80, ply:GetWalkSpeed())
-					if ply:IsSprinting() and ply:GetWalkSpeed() != ply:GetRunSpeed() then
-						maxSpeed = ply:GetRunSpeed()
-					end
-					if ply:Crouching() then
-						maxSpeed = maxSpeed * 0.5
-					end
-					
-					local len = math.sqrt(moveX * moveX + moveY * moveY)
-					if len > 0 then
-						moveX = moveX / len
-						moveY = moveY / len
-					end
-					
-					local speed = velocity:Length2D()
-					local speedRatio = math.Clamp(speed / maxSpeed, 0, 1)
-					
-					moveX = moveX * speedRatio
-					moveY = moveY * speedRatio
-					
-					puppet:SetPoseParameter("move_x", moveX)
-					puppet:SetPoseParameter("move_y", moveY)
-                else
-                    puppet:SetPoseParameter("move_x", 0)
-                    puppet:SetPoseParameter("move_y", 0)
-                end
-            elseif self.formTable.movePoseMode == "xy-bot" then
-                if not overrideRate then
-                    local localvel = ply:WorldToLocal(ply:GetPos() + ply:GetVelocity())
-                    local maxdim = math.Max(math.abs(localvel.x), math.abs(localvel.y))
-                    local clampedvel = maxdim == 0 and Vector(0, 0, 0) or localvel / maxdim
-                    local move_dir = puppet:WorldToLocalAngles(ply:GetVelocity():Angle())
-                    puppet:SetPoseParameter("move_x", clampedvel.x)
-                    puppet:SetPoseParameter("move_y", -clampedvel.y)
-                    puppet:SetPoseParameter("move_yaw", move_dir.y)
-                    puppet:SetPoseParameter("move_scale", 1)
-                    seq_vel = puppet:GetSequenceGroundSpeed(puppet:GetSequence())
+        if self.formTable.movePoseMode == "xy" then
+            if not overrideRate then
+                local velocity, pillspeed = ply:GetVelocity(), self.formTable.moveSpeed or {}
+                local fwd, right = ply:GetForward(), ply:EyeAngles():Right()
+                local moveX, moveY = fwd:Dot(velocity), right:Dot(velocity)
 
-                    if seq_vel ~= 0 then
-                        puppet:SetPoseParameter("move_x", math.Clamp(localvel.x / seq_vel, -.99, .99))
-                        puppet:SetPoseParameter("move_y", math.Clamp(-localvel.y / seq_vel, -.99, .99))
-                        puppet:SetPoseParameter("move_scale", math.Clamp(localvel:Length() / seq_vel, -.99, .99))
-                    end
-                else
-                    puppet:SetPoseParameter("move_x", 0)
-                    puppet:SetPoseParameter("move_y", 0)
-                    puppet:SetPoseParameter("move_yaw", 0)
-                    puppet:SetPoseParameter("move_scale", 0)
+                local maxSpeed = math.max(pillspeed.maxwalk or 80, ply:GetWalkSpeed())
+                if ply:IsSprinting() and ply:GetWalkSpeed() ~= ply:GetRunSpeed() then
+                    maxSpeed = ply:GetRunSpeed()
                 end
+                if ply:Crouching() then maxSpeed = maxSpeed * 0.5 end
+
+                local len = math.sqrt(moveX * moveX + moveY * moveY)
+                if len > 0 then moveX, moveY = moveX / len, moveY / len end
+
+                local ratio = math.Clamp(velocity:Length2D() / maxSpeed, 0, 1)
+                self:SetPoseParameter("move_x", moveX * ratio)
+                self:SetPoseParameter("move_y", moveY * ratio)
+            else
+                self:SetPoseParameter("move_x", 0)
+                self:SetPoseParameter("move_y", 0)
+            end
+
+        elseif self.formTable.movePoseMode == "xy-bot" then
+            if not overrideRate then
+                local localvel = ply:WorldToLocal(ply:GetPos() + ply:GetVelocity())
+                local maxdim = math.max(math.abs(localvel.x), math.abs(localvel.y))
+                local clampedvel = maxdim == 0 and Vector(0, 0, 0) or localvel / maxdim
+                local move_dir = self:WorldToLocalAngles(ply:GetVelocity():Angle())
+
+                self:SetPoseParameter("move_x", clampedvel.x)
+                self:SetPoseParameter("move_y", -clampedvel.y)
+                self:SetPoseParameter("move_yaw", move_dir.y)
+
+                if seq_vel ~= 0 then
+                    self:SetPoseParameter("move_x", math.Clamp(localvel.x / seq_vel, -0.99, 0.99))
+                    self:SetPoseParameter("move_y", math.Clamp(-localvel.y / seq_vel, -0.99, 0.99))
+                    self:SetPoseParameter("move_scale", math.Clamp(localvel:Length() / seq_vel, -0.99, 0.99))
+                end
+            else
+                self:SetPoseParameter("move_x", 0)
+                self:SetPoseParameter("move_y", 0)
+                self:SetPoseParameter("move_yaw", 0)
+                self:SetPoseParameter("move_scale", 0)
             end
         end
 
-        --gliding and landing
         if not ply:IsOnGround() and ply:WaterLevel() == 0 and self.formTable.glideThink then
             self.formTable.glideThink(ply, self)
-        end
-
-        if not ply:IsOnGround() and not self.touchingWater and ply:WaterLevel() > 0 and self.formTable.land and !ply:IsFrozen() then
+        elseif not ply:IsOnGround() and not self.touchingWater and ply:WaterLevel() > 0 and self.formTable.land and not ply:IsFrozen() then
             self.formTable.land(ply, self)
         end
-
-        --water death
         self.touchingWater = ply:WaterLevel() > 1
 
-        if (self.formTable.damageFromWater and self.touchingWater) then
+        if self.formTable.damageFromWater and self.touchingWater then
             if self.formTable.damageFromWater == -1 then
-                --self:PillDie()
                 ply:Kill()
             else
                 ply:TakeDamage(self.formTable.damageFromWater)
-                --TODO APPLY DAMAGE
-            end
-        end
-
-        --tick attack
-        if ply:KeyDown(IN_ATTACK) and self.formTable.attack and self.formTable.attack.mode == "tick" then
-            self.formTable.attack.func(ply, self, self.formTable.attack)
-        end
-
-        if ply:KeyDown(IN_ATTACK2) and self.formTable.attack2 and self.formTable.attack2.mode == "tick" then
-            self.formTable.attack2.func(ply, self, self.formTable.attack2)
-        end
-
-        --auto attack
-        if ply:KeyDown(IN_ATTACK) and self.formTable.attack and self.formTable.attack.mode == "auto" then
-            if not self.formTable.aim then
-                self:PillLoopSound("attack")
-            else
-                self:PillLoopStop("attack")
-            end
-
-            if (not self.lastAttack or (self.formTable.attack.interval or self.formTable.attack.delay) < CurTime() - self.lastAttack) then
-                self.formTable.attack.func(ply, self, self.formTable.attack)
-                self.lastAttack = CurTime()
-            end
-        else
-            self:PillLoopStop("attack")
-        end
-
-        if ply:KeyDown(IN_ATTACK2) and self.formTable.attack2 and self.formTable.attack2.mode == "auto" then
-            if not self.formTable.aim then
-                self:PillLoopSound("attack2")
-            else
-                self:PillLoopStop("attack2")
-            end
-
-            if not self.lastAttack2 or (self.formTable.attack2.interval or self.formTable.attack2.delay) < CurTime() - self.lastAttack2 then
-                self.formTable.attack2.func(ply, self, self.formTable.attack2)
-                self.lastAttack2 = CurTime()
-            end
-        else
-            self:PillLoopStop("attack2")
-        end
-
-        --charge
-        if self:GetChargeTime() ~= 0 then
-            if ply:OnGround() then
-                local charge = self.formTable.charge
-                local angs = ply:EyeAngles()
-                self:PillAnimTick("charge_loop")
-                local hit_ent = ply:TraceHullAttack(ply:EyePos(), ply:EyePos() + angs:Forward() * 100, Vector(-20, -20, -20), Vector(20, 20, 20), charge.dmg, DMG_CRUSH, 1, true)
-
-                if IsValid(hit_ent) then
-                    self:PillAnim("charge_hit", true)
-                    self:PillGesture("charge_hit")
-                    self:PillSound("charge_hit")
-                    self:SetChargeTime(0)
-                    self:PillLoopStop("charge")
-                end
-            else
-                self:SetChargeTime(0)
-                self:PillLoopStop("charge")
-            end
-        end
-
-        --Cloak
-        if self.formTable.cloak then
-            local cloak = self.formTable.cloak
-
-            if self.iscloaked then
-                local cloakamt = self:GetCloakLeft()
-
-                if cloakamt ~= -1 then
-                    cloakamt = cloakamt - FrameTime()
-
-                    if cloakamt < 0 then
-                        cloakamt = 0
-                        self:ToggleCloak()
-                    end
-
-                    self:SetCloakLeft(cloakamt)
-                end
-            else
-                local cloakamt = self:GetCloakLeft()
-
-                if cloakmt ~= -1 and cloakamt < cloak.max then
-                    cloakamt = cloakamt + FrameTime() * cloak.rechargeRate
-
-                    if cloakamt > cloak.max then
-                        cloakamt = cloak.max
-                    end
-
-                    self:SetCloakLeft(cloakamt)
-                end
-            end
-
-            local color = self:GetColor()
-
-            if self.iscloaked then
-                if color.a > 0 then
-                    color.a = color.a - 5
-                    self:SetColor(color)
-                end
-            else
-                if color.a < 255 then
-                    color.a = color.a + 5
-                    self:SetColor(color)
-                end
-            end
-			
-			if color.a > 255 then color.a = 255 end
-			if color.a < 0 then color.a = 0 end
-
-            --PrintTable(color)
-            if IsValid(self.wepmdl) and self.wepmdl:GetColor().a ~= color.a then
-                self.wepmdl:SetColor(color)
             end
         end
     else
-		local ply = self:GetPillUser()
-		
-		if self.dontdraw or hook.Run("ShouldDrawPill", self) == false then
-			self:SetNoDraw(true)
+        if self.formTable.movePoseMode == "yaw" then
+            local move_dir = self:WorldToLocalAngles(ply:GetVelocity():Angle())
+            self:SetPoseParameter("move_yaw", move_dir.y)
         end
-
-        local realWep = self:GetPillUser():GetActiveWeapon()
-
-        if IsValid(realWep) and realWep:GetModel() ~= "" and not realWep:GetNoDraw() then
-            //realWep:SetNoDraw(true)
-        end
-		
-        if self.formTable.movePoseMode then
-            if self.formTable.movePoseMode == "yaw" then
-                local move_dir = puppet:WorldToLocalAngles(ply:GetVelocity():Angle())
-                puppet:SetPoseParameter("move_yaw", move_dir.y)
-			end
-			
-		end
     end
-	
-    --Aimage
+
     if self.formTable.aim then
         if self.formTable.aim.xPose then
             local yaw = math.AngleDifference(ply:EyeAngles().y, self:GetAngles().y)
-			
-			--[[
-			if SERVER then
-				print(ply:EyeAngles().y, self:GetAngles().y)
-			end
-			
-			if anims["turnleft"] and yaw > 85 and yaw < 95 then
-				local angs = ply:EyeAngles()
-				angs.p = 0
-					
-				if SERVER then 
-					self:SetAngles(angs)
-					self:PillGesture('turnleft')
-				else
-					self:SetRenderAngles(angs)
-				
-				end
-			end
-			]]
-			
-			--[[
-				КОРОЧЕ. self:GetAngles() на сервере и клиенте выдаёт разные значения, поэтому одновременная
-				проверка не сильно возможна. На сервере в основном всё хуёво. Поэтому код сверху хуйня не работает
-			]]--
-
-            if self.formTable.aim.xInvert then
-                yaw = -yaw
-            end
-
-            puppet:SetPoseParameter(self.formTable.aim.xPose, yaw)
+            if self.formTable.aim.xInvert then yaw = -yaw end
+            self:SetPoseParameter(self.formTable.aim.xPose, yaw)
         end
-
         if self.formTable.aim.yPose then
-            local pitch = math.AngleDifference(ply:EyeAngles().p, puppet:GetAngles().p)
-
-            if self.formTable.aim.yInvert then
-                pitch = -pitch
-            end
-
-            puppet:SetPoseParameter(self.formTable.aim.yPose, pitch)
+            local pitch = math.AngleDifference(ply:EyeAngles().p, self:GetAngles().p)
+            if self.formTable.aim.yInvert then pitch = -pitch end
+            self:SetPoseParameter(self.formTable.aim.yPose, pitch)
         end
     end
 
-    --Align pos and angles with player
     if SERVER then
         self:SetPos(ply:GetPos())
     else
         self:SetRenderOrigin(ply:GetPos())
     end
 
-    if vel > 5 or ply:IsFlagSet(FL_FROZEN) then
-        local angs = ply:EyeAngles()
-        angs.p = 0
-
-        if SERVER then
-            self:SetAngles(angs)
-        else
-            --self:SetAngles(angs)
-            self:SetRenderAngles(angs)
-        end
+    if vel > 5 or ply:IsFlagSet(FL_FROZEN) or self:GetUseForceAngles() then
+        local angs = self:GetUseForceAngles() and self:GetForceAngles() or ply:EyeAngles()
+        if not self:GetUseForceAngles() then angs.p = 0 end
+        if SERVER then self:SetAngles(angs) else self:SetRenderAngles(angs) end
     end
 
-    self:NextThink(CurTime())
-
+    self:NextThink(CurTime() + fh_pill_update_rate:GetFloat())
     return true
 end
 
@@ -818,6 +617,7 @@ if SERVER then
         self.anim = name
         self.animStart = true
         self.animFreeze = freeze
+		self.animLoop = false
     end
 
     function ENT:PillAnimTick(name)
@@ -972,6 +772,22 @@ function ENT:PillLoopStopAll()
     end
 end
 
+function ENT:DoKeyPressShared(ply, key)
+	if self.animFreeze and !self.ignoreFreeze then return end
+
+	if key == IN_ATTACK and self.formTable.attack_sh and self.formTable.attack_sh.mode == "trigger" and !self.ignoreFreeze then
+		self.formTable.attack_sh.func(ply, self, self.formTable.attack_sh)
+	end
+
+	if key == IN_ATTACK2 and self.formTable.attack2_sh and self.formTable.attack2_sh.mode == "trigger" then
+		self.formTable.attack2_sh.func(ply, self, self.formTable.attack2_sh)
+	end
+
+	if key == IN_RELOAD and self.formTable.reload_sh then
+		self.formTable.reload_sh(ply, self)
+	end
+end
+
 function ENT:ToggleCloak()
     local ply = self:GetPillUser()
 
@@ -1005,12 +821,12 @@ function ENT:SetSpeed(walk, run, duck, jump)
 end
 
 function ENT:ResetSpeed(ply)
-    local speed = self.formTable.moveSpeed or {}
+    local speed = self.formTable.initMoveSpeed or {}
     ply:SetWalkSpeed(speed.walk or 200)
     ply:SetRunSpeed(speed.run or speed.walk or 500)
 	ply:SetJumpPower(self.formTable.jumpPower or 200)
 	ply:SetSlowWalkSpeed(speed.walk or 200)
-    self.plyFrozen = nil
+    self:SetFrozen(nil)
 end
 
 function ENT:ReplaceAnimation(old, new)
@@ -1033,8 +849,18 @@ function ENT:ResetAngle()
 	end
 end
 
+ENT.IsDrawn = true
+
 function ENT:Draw()
 	local ply = self:GetPillUser()
+	
+	ply:RemoveAllDecals()
+	
+	if hook.Run("ForceDrawPill", ply, self) == true then
+		self:DrawModel()
+		self.IsDrawn = true
+		return
+	end
 	
 	if ply == LocalPlayer():GetObserverTarget() 
 	and LocalPlayer():GetViewEntity() == LocalPlayer()
@@ -1046,11 +872,13 @@ function ENT:Draw()
 	and ply:GetViewEntity() == ply
 	and !pills.convars.cl_thirdperson:GetBool() 
 	and !ply.fh_target_player then
+		self.IsDrawn = false
 		self:DrawShadow(false)
 		return
 	end
 	
 	self:DrawModel()
+	self.IsDrawn = true
 	
 	if ply == LocalPlayer() then
 		self:DrawShadow(true)
@@ -1060,3 +888,29 @@ end
 function ENT:DrawTranslucent()
     self:Draw()
 end
+
+hook.Add("PrePlayerDraw", "fh_pill_costume_mirrors", function(ply)
+    if ply ~= LocalPlayer() then return end
+    
+    local ent = pills.getMappedEnt(ply)
+    if not IsValid(ent) then return end
+	
+	if ent.IsDrawn or ent:GetNoDraw() or ent:GetMaterial() == "models/null" then return end
+    
+    if not IsValid(ent.mirrorPill) then
+        local m = ClientsideModel(ent:GetModel(), RENDERGROUP_OPAQUE)
+        if IsValid(m) then
+            m:SetParent(ent)
+			m:SetSkin(ent:GetSkin())
+            m:AddEffects(EF_BONEMERGE)
+            m:SetNoDraw(true)
+            ent.mirrorPill = m
+        end
+    end
+
+    local cm = ent.mirrorPill
+    if IsValid(cm) then
+        cm:SetModel(ent:GetModel()) -- на всякий
+        cm:DrawModel()
+    end
+end)
