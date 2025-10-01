@@ -730,7 +730,9 @@ function ENT:PillSound(name, bulk)
         if bulk then
             sound.Play(s, self:GetPos(), self.formTable.sounds[name .. "_level"] or (name == "step" and 75 or 75), self.formTable.sounds[name .. "_pitch"] or 100, 1)
         else
-            self:EmitSound(s, self.formTable.sounds[name .. "_level"] or (name == "step" and 75 or 100), self.formTable.sounds[name .. "_pitch"] or 100)
+			local recipients = hook.Run("PillSound", self:GetPillUser(), self, name)
+		
+            self:EmitSound(s, self.formTable.sounds[name .. "_level"] or 75, self.formTable.sounds[name .. "_pitch"] or 100, 1, CHAN_AUTO, 0, 0, recipients or nil)
         end
 
         return true

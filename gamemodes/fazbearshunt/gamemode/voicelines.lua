@@ -1,6 +1,6 @@
 --CONVAR gmod_language
 
-local allowed_langs = {"ru", "en"}
+local allowed_langs = {"ru", "en", "hu"}
 
 local localized_voicelines_path = ""
 

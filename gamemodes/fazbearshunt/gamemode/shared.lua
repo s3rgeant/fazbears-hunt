@@ -13,6 +13,11 @@ if GetConVar("fh_mountsandbox"):GetBool() then
 end
 ]]--
 
+TEAM_SURVIVOR = 2700 -- UNUSED
+TEAM_PILLS = 2701
+TEAM_ADMIN = 2702
+TEAM_EDITOR = 2703
+
 conVars = {
 	halo_radius = CreateConVar( "halo_radius", 2000, { FCVAR_ARCHIVE, FCVAR_REPLICATED}, "Halo radius." ),
 	halo_time = CreateConVar( "halo_time", 10, { FCVAR_ARCHIVE, FCVAR_REPLICATED}, "Time for halo to dissolve." ),

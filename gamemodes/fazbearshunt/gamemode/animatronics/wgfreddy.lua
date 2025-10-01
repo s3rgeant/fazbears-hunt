@@ -33,6 +33,25 @@ hook.Add("fh_startgame", "spawn_wgfreddy", function(roundType)
 	end
 end)
 
+hook.Add("PillSound", "gf_pillsound_management", function(ply, ent, name)
+	if !table.IsEmpty(wgfreddy_targets) then
+		for k, v in pairs( wgfreddy_targets ) do
+			local victim = v
+			
+			if IsValid(victim) then -- на всякий случень
+				if ply ~= outworld_victims[victim] then
+			
+					local rf = RecipientFilter()
+					rf:AddAllPlayers()
+					rf:RemovePlayer(victim)
+					
+					return rf
+				end
+			end
+		end
+	end
+end)
+
 hook.Add("PlayerShouldTakeDamage", "gf_nodamage", function(ply, attacker)
 	if fh.GetActiveUsedKiller("pill_wgfreddy2") == ply then
 		return false
@@ -296,7 +315,7 @@ if CLIENT then
 				local ent = pills.getMappedEnt(ply)
 				
 				if IsValid(ent) then
-					ent.dontdraw = true
+					ent:SetNoDraw(true)
 				end
 			end
 		end
@@ -455,7 +474,7 @@ if CLIENT then
 			local ent = pills.getMappedEnt(ply)
 			
 			if IsValid(ent) then
-				ent.dontdraw = false
+				ent:SetNoDraw(false)
 			end
 		end
 		hook.Remove("PrePlayerDraw", "fh_outworld_pv")

@@ -127,6 +127,7 @@ local positiveEffects = {
 			return false
 		end
     },
+	--[[
     {
         name = "armor",
 		desc = "fazhunt.gifts.armor",
@@ -138,6 +139,7 @@ local positiveEffects = {
 			return ply:Armor() < 100
         end
     },
+	--]]
     {
         name = "invisibility",
 		desc = "fazhunt.gifts.invisibility",

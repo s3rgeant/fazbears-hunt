@@ -42,8 +42,6 @@ function PLAYER:Loadout()
 
 	self.Player:GiveAmmo( 128,	"Pistol", 		true )
 	self.Player:GiveAmmo( 20,	"grenade", 		true )
-	
-	self.Player:Give( "weapon_crapvidcam" )
 
 	self.Player:Give( "weapon_pistol" )
 	self.Player:Give( "weapon_frag" )

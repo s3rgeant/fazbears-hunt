@@ -15,8 +15,6 @@ local packString = ""
 local packs = {}
 local currentPack
 
-TEAM_PILLS = 2701
-
 if SERVER then
 	team.SetUp(TEAM_PILLS, 'PILLS', Color(255, 0, 0))
 end

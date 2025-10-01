@@ -525,7 +525,7 @@ net.Receive("fh_net_thinkfast", function()
 	end)
 end)
 
-local contextmenu_options = nil
+local contextmenu_options = contextmenu_options or nil
 
 hook.Add("OnContextMenuOpen", "fh_contextmenu", function()
 	
@@ -539,15 +539,11 @@ hook.Add("OnContextMenuOpen", "fh_contextmenu", function()
 	local playeredit_button = contextmenu_options:AddOption( language.GetPhrase("fazhunt.context.player_editor"), openPlayerEditor )
 	playeredit_button:SetIcon("icon16/user.png")
 	
-	local button = contextmenu_options:AddOption( language.GetPhrase("fazhunt.context.mute_spectators") )
-	button:SetIsCheckable( true )
-	button:SetChecked( !GetConVar("proximity_hear_spectators"):GetBool() )
-	button.OnChecked = function( checked ) toggleConsoleCommand("proximity_hear_spectators") end
+	local button = contextmenu_options:AddCVar( language.GetPhrase("fazhunt.context.mute_spectators"), "proximity_hear_spectators", "1", "0" )
 	
 	local panel = vgui.Create( "DPanel", contextmenu_options )
 	panel:SetSize( 55, 25 )
 	panel:SetBackgroundColor( Color( 255, 255, 255 ) )
-	
 	local dlable = vgui.Create( "DLabel", panel )
 	dlable:SetSize( 200, 25 )
 	dlable:SetText( language.GetPhrase("fazhunt.context.animatronics_only") )
@@ -557,22 +553,8 @@ hook.Add("OnContextMenuOpen", "fh_contextmenu", function()
 	contextmenu_options:AddPanel(panel)
 	contextmenu_options:AddSpacer()
 	
-	local button = contextmenu_options:AddOption( language.GetPhrase("fazhunt.context.thirperson") )
-	button:SetIsCheckable( true )
-	button:SetChecked( GetConVar("fh_thirdperson"):GetBool() )
-	button.OnChecked = function( checked ) toggleConsoleCommand("fh_thirdperson") end
-	
-	local button = contextmenu_options:AddOption( language.GetPhrase("fazhunt.context.halo_teammates") )
-	button:SetIsCheckable( true )
-	button:SetChecked( GetConVar("fh_halo_teammates"):GetBool() )
-	button.OnChecked = function( checked ) toggleConsoleCommand("fh_halo_teammates") end
-	
-	--[[
-	local button = contextmenu_options:AddOption( language.GetPhrase("fazhunt.context.dynamic_camera") )
-	button:SetIsCheckable( true )
-	button:SetChecked( GetConVar("fh_dynamic_firstperson"):GetBool() )
-	button.OnChecked = function( checked ) toggleConsoleCommand("fh_dynamic_firstperson") end
-	]]--
+	local button = contextmenu_options:AddCVar( language.GetPhrase("fazhunt.context.halo_teammates"), "fh_halo_teammates", "1", "0" )
+	local button = contextmenu_options:AddCVar( language.GetPhrase("fazhunt.context.thirperson"), "fh_thirdperson", "1", "0" )
 	
 	contextmenu_options:Open()
 	contextmenu_options:SetPos(0, (ScrH() / 2))
