@@ -2,27 +2,25 @@ include( "shared.lua" )
 
 pcall(require,"pills")
 
-include( "interface/cl_admin.lua" )
-include( "interface/cl_anim_selector.lua" )
-include( "interface/cl_hud.lua" )
-include( "interface/cl_optionmenu.lua" )
-include( "interface/cl_playerlist.lua" )
-include( "interface/cl_spechud.lua" )
-include( "interface/cl_timer.lua" )
+local function recursive_include(path)
+    local files, folders = file.Find(path .. "*", "LUA")
 
-include( "cl_flashlight.lua" )
-include( "cl_halo.lua" )
-include( "cl_horror.lua" )
-include( "cl_sound.lua" )
+    for _, file_name in ipairs(files) do
+		if file_name == "cl_init.lua" then continue end
+        local full_path = path .. file_name
 
---include( "terror_radius.lua" )
+        if file_name:StartWith("cl_") then
+            include(full_path)
+        elseif file_name:StartWith("sh_") or file_name:StartWith("fh_") then
+            include(full_path)
+        end
+    end
+end
+
+recursive_include("fazbearshunt/gamemode/")
+recursive_include("fazbearshunt/gamemode/interface/")
 
 include( "mount/proximity.lua" )
-
-include( "animsoundf2.lua" )
-include( "voicelines.lua" )
-include("pill_fnaf2.lua")
-include("pill_fnaf3.lua")
 
 function getTeam(team)
 	local teamname = language.GetPhrase("fazhunt.survivors_team")

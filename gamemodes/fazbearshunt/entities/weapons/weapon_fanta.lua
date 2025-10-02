@@ -1,7 +1,6 @@
 local math_min = math.min
 local timer_Create = timer.Create
 local timer_Remove = timer.Remove
-local ents_Create = SERVER and ents.Create
 
 SWEP.Base = "weapon_base"
 
@@ -32,6 +31,10 @@ SWEP.HealAmount = 10
 SWEP.Skin = 4
 SWEP.SubMaterial = "models/johnmason/food/fanta_can"
 
+SWEP.FlexWeight = 0
+
+SWEP.Consuming = false
+
 CreateConVar("consumable_drinks_heal_modifier", 1, FCVAR_ARCHIVE, "Drinks heal multiplier", 0, 200)
 CreateConVar("consumable_drinks_armor_modifier", 1, FCVAR_ARCHIVE, "Drinks armor multiplier", 0, 200)
 
@@ -54,6 +57,8 @@ function SWEP:PrimaryAttack()
 
 	self:SendWeaponAnim(ACT_VM_RELEASE)
 	self.Owner:SetAnimation(PLAYER_ATTACK1)
+	
+	self.Consuming = true
 
 	timer_Create("drink_remove_" .. self:EntIndex(), 4.7, 1, function()
 		if not IsValid(self) or not IsValid(self.Owner) then return end
@@ -82,17 +87,9 @@ function SWEP:OnDrink()
 end
 
 function SWEP:FireAnimationEvent( pos, ang, event, options )
-	
-	if util.GetAnimEventNameByID( event ) == "COLA_DEFORM" then
-	
-		local owner = self.Owner
-		local vm = owner:GetViewModel()
-		
-		vm:SetFlexWeight( vm:GetFlexNum() - 1, 1 ) -- бля чё за хуйня
-		
-		return true 
-	end	
-
+	if event == 49 then
+	self.FlexWeight = 1
+	end
 end
 
 function SWEP:OnRemove()
@@ -107,13 +104,54 @@ function SWEP:Holster()
 	if CLIENT and IsValid(self.Owner) and IsValid(self.Owner:GetViewModel()) then
 		self.Owner:GetViewModel():SetSubMaterial(1, nil)
 	end
+	if self.Consuming then
+		return false
+	end
 	return true
 end
 
-function SWEP:SecondaryAttack()
-	return
+function SWEP:Deploy()
+	self.FlexWeight = 0
+	self.FlexWeightLerp = 0
+	
+	local vm = self.Owner:GetViewModel()
+	
+	if !IsValid(vm) then return end
+
+	local FlexNum = vm:GetFlexNum()
+	if ( FlexNum <= 0 ) then return end
+
+	for i = 0, FlexNum do
+
+		self.FlexWeightLerp = Lerp(FrameTime() * 16, self.FlexWeightLerp, self.FlexWeight)
+		vm:SetFlexWeight( i, self.FlexWeightLerp )
+
+	end
+	return true
 end
 
 function SWEP:Reload()
     return
+end
+
+function SWEP:SecondaryAttack()
+    return
+end
+
+SWEP.FlexWeightLerp = 0
+
+function SWEP:Think()
+	local vm = self.Owner:GetViewModel()
+
+	local FlexNum = vm:GetFlexNum()
+	if ( FlexNum <= 0 ) then return end
+
+	for i = 0, FlexNum do
+
+		self.FlexWeightLerp = Lerp(FrameTime() * 16, self.FlexWeightLerp, self.FlexWeight)
+		vm:SetFlexWeight( i, self.FlexWeightLerp )
+
+	end
+	vm:SetFlexScale( 1 )
+	return true
 end

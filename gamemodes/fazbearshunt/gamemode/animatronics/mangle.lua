@@ -403,9 +403,13 @@ hook.Add("FinishMove", "mangle_hook_ready", function( ply, mv )
 		end
 		
 		if SERVER and hooktype ~= "" then
+			ply:LagCompensation(true)
 			local tr = MangleKillCheck(ply, mv)
 			
-			if !tr then return end
+			if !tr then 
+				ply:LagCompensation(false)
+				return 
+			end
 		
 			if tr.Entity and tr.Entity:IsPlayer() and tr.Entity:IsSurvivor() then
 				local victim = tr.Entity
@@ -423,8 +427,11 @@ hook.Add("FinishMove", "mangle_hook_ready", function( ply, mv )
 				
 				ply:SetNWBool("_MangleHookReady", false)
 				ply:SetNWString("_MangleLastHookType", "")
+				
+				ply:LagCompensation(false)
 				return
 			end
+			ply:LagCompensation(false)
 		end
 	end
 end)

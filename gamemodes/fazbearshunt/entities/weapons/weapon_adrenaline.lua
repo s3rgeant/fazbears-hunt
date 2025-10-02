@@ -84,7 +84,7 @@ function SWEP:PrimaryAttack()
 			end
 		end)
 		
-		timer.Simple(15, function()
+		timer.Simple(8, function()
 			if IsValid(owner) then
 				owner:SetWalkSpeed(owner:GetWalkSpeed() / 1.2)
 				owner:SetRunSpeed(owner:GetRunSpeed() / 1.2)

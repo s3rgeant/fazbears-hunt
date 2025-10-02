@@ -78,14 +78,6 @@ net.Receive("dead_pt_request_stop", function()
 	pt_request_on = false
 end)
 
-net.Receive("DeadHUDChange", function()
-	playerSpecName = net.ReadEntity()
-end)
-
-net.Receive("DeadHUDChangeString", function()
-	playerSpecName = net.ReadString()
-end)
-
 net.Receive("DeadHUDDisable", function()
 	hook.Remove("HUDPaint", "DrawDead")
 	hook.Remove("HUDPaint", "show_pt_request")

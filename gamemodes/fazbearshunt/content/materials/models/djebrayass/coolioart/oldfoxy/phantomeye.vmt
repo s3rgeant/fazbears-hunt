@@ -1,6 +1,6 @@
 "UnlitGeneric"
 {
-	"$basetexture" "models\djebrayass\CoolioArt\OldFoxy\phantomeye"
+	"$basetexture" "models\djebrayass\CoolioArt\shared\phantomeye"
 	"$bumpmap" "models\djebrayass\CoolioArt\shared\flat"
 	
 	$surfaceprop metal

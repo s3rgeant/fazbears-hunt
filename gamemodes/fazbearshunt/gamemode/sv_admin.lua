@@ -72,7 +72,7 @@ function highlightSelected(targets, owner)
 		net.Send( team.GetPlayers(TEAM_SPECTATOR) )
 	end
 	
-    LogEvent("(*АДМИН*) Подсвечено "..table.Count(targets).." игроков.")
+    print(owner:Nick() or "An admin " .. "highlighted" .. table.Count(targets).." players.")
 end
 
 function KillPlayer(ply)
@@ -87,7 +87,7 @@ function KillPlayer(ply)
 		ply:Kill()
 		ply:SetTeam(TEAM_SPECTATOR)
 		
-        LogEvent("(*АДМИН*) - Убит игрок **"..ply:Nick().."**")
+        print("An Admin killed " .. ply:Nick())
 		
 		if !roundEnding and isGameOn then
 			animatronicsVictory_check(ply)
@@ -98,7 +98,7 @@ end
 function StartRound()
 	if !isGameOn then
 		registerNewRound()
-        LogEvent("(*АДМИН*) - ⌛️ Таймер раунда начат. Количество игроков: "..player.GetCount())
+        print("An Admin force-started the round. Player count: " .. player.GetCount())
 	end
 end
 
@@ -151,8 +151,6 @@ function HighlightAll()
 			net.WriteEntity(player.GetAll()[1])
 			net.Broadcast()
 		end
-		
-        LogEvent("(*АДМИН*) Все игроки подсвечены.")
 	end
 end
 
@@ -173,8 +171,6 @@ function EndRound()
 	if !roundEnding and isGameOn then
 		endGame(true)
 		endgame_shared()
-		LogEvent(" ")
-        LogEvent("(*АДМИН*) - Раунд закончил *АДМИН*.")
 		
 		net.Start('fh_net_scarysound')
 		net.WriteBool(false)
@@ -203,9 +199,6 @@ function EndPostRound()
 		end
 		
 		hook.Run("fh_poststartgame", roundType, animatronics)
-		
-		LogEvent(" ")
-        LogEvent("(*АДМИН*) - Все аниматроники разморожены, раунд начат.")
 	end
 end
 
@@ -332,7 +325,6 @@ net.Receive("AdminAction", function(len, ply)
                 GiveAnimatronic(target, killer)
             elseif action == "resurrect" then
                 RevivePlayer(target)
-				LogEvent("(*АДМИН*) - Воскрешён игрок "..target:Nick())
             elseif action == "kill" then
                 KillPlayer(target)
             end

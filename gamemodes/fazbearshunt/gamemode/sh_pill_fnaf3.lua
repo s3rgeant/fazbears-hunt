@@ -1,5 +1,3 @@
-AddCSLuaFile()
-
 if SERVER then
 	util.AddNetworkString("fh_addaffected_springtrap")
 	
@@ -20,8 +18,6 @@ if SERVER then
 	util.PrecacheModel("models/UFMP/FNAF3/Springtrap.mdl")
 	util.PrecacheModel("models/tetTris/FNaF/HW/Plushtrap.mdl")
 end
-
-pcall(require,"pills")
 
 pills.packStart("FH FNAF3", "FH FNAF3", "icon16/pill.png")
 
@@ -202,7 +198,10 @@ local spring_rage_movement = {210, 600, 70, 255} -- дохуя скромник
 
 pills.register("pill_springtrap",{
 	printName="Springtrap",
-	bodyGroups={0},
+	options=function() return {
+		{skin=2}
+	} end,
+	bodyGroups={24},
 	modelScale="0.85",
 	model="models/UFMP/FNAF3/Springtrap.mdl",
 	anims={
@@ -244,7 +243,8 @@ pills.register("pill_springtrap",{
 	duckBy=60,
 	
 	viewmodel={
-		weapon="v_springtrap"
+		weapon="v_springtrap",
+		skin=2
 	},
 
     jumpPower=250,

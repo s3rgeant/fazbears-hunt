@@ -7,11 +7,7 @@ GM.Author = "sergeant"
 GM.Email = "N/A"
 GM.Website = "N/A"
 
---[[
-if GetConVar("fh_mountsandbox"):GetBool() then
-	DeriveGamemode("sandbox")
-end
-]]--
+--DeriveGamemode("sandbox")
 
 TEAM_SURVIVOR = 2700 -- UNUSED
 TEAM_PILLS = 2701
@@ -54,21 +50,30 @@ local colors = {
     Shadow = Color(105, 0, 255), 
     Clown = Color(216, 93, 244),
     Springtrap = Color(105, 150, 70),
-    Golden = Color(255, 210, 0)
+    Plushtrap = Color(130, 119, 48),
+	
+    Golden = Color(255, 210, 0),
+	
+    PFreddy = Color(67, 83, 50),
+    PBonnie = Color(51, 34, 76),
+    PEndo = Color(255, 255, 255),
+    PChica = Color(50, 62, 36),
+    PFoxy = Color(57, 30, 11),
+    HSpringtrap = Color(150, 129, 61)
 }
 
 local killerData = killerData or {
-    ["pill_wfreddy2"] = {name = "freddy", fullname = "fazhunt.animatronics.freddy", color = colors.Freddy},
-    ["pill_wbonnie2"] = {name = "bonnie", fullname = "fazhunt.animatronics.bonnie", color = colors.Bonnie},
-    ["pill_wchica2"] = {name = "chica", fullname = "fazhunt.animatronics.chica", color = colors.Chica},
-    ["pill_wfoxy2"] = {name = "foxy", fullname = "fazhunt.animatronics.foxy", color = colors.Foxy},
-    ["pill_endo02"] = {name = "endo", fullname = "fazhunt.animatronics.endo", color = colors.Endo},
+    ["pill_wfreddy2"] = {name = "freddy", fullname = "fazhunt.animatronics.freddy", color = colors.PFreddy},
+    ["pill_wbonnie2"] = {name = "bonnie", fullname = "fazhunt.animatronics.bonnie", color = colors.PBonnie},
+    ["pill_wchica2"] = {name = "chica", fullname = "fazhunt.animatronics.chica", color = colors.PChica},
+    ["pill_wfoxy2"] = {name = "foxy", fullname = "fazhunt.animatronics.foxy", color = colors.PFoxy},
+    ["pill_endo02"] = {name = "endo", fullname = "fazhunt.animatronics.endo", color = colors.PEndo},
     ["pill_sfreddy2"] = {name = "sfreddy", fullname = "fazhunt.animatronics.sfreddy", color = colors.Shadow},
     ["pill_wgfreddy2"] = {name = "gfreddy", fullname = "fazhunt.animatronics.gfreddy", color = colors.Golden},
     ["pill_clown"] = {name = "clown", fullname = "fazhunt.animatronics.clown", color = colors.Clown},
 	
-    ["pill_springtrap"] = {name = "springtrap", fullname = "fazhunt.animatronics.springtrap", color = colors.Springtrap},
-    ["pill_plushtrap"] = {name = "plushtrap", fullname = "fazhunt.animatronics.plushtrap", color = colors.Springtrap},
+    ["pill_springtrap"] = {name = "springtrap", fullname = "fazhunt.animatronics.springtrap", color = colors.HSpringtrap},
+    ["pill_plushtrap"] = {name = "plushtrap", fullname = "fazhunt.animatronics.plushtrap", color = colors.Plushtrap},
 	
     ["pill_mangle"] = {name = "mangle", fullname = "fazhunt.animatronics.mangle", color = colors.Endo}
 }

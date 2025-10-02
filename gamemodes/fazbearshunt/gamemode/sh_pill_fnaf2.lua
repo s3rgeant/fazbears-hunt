@@ -1,8 +1,4 @@
-﻿AddCSLuaFile()
-
-pcall(require,"pills")
-
-include( "animatronics/wgfreddy.lua" )
+﻿include( "animatronics/wgfreddy.lua" )
 include( "animatronics/foxy.lua" )
 include( "animatronics/mangle.lua" )
 
@@ -78,8 +74,11 @@ local wfreddy_stalk_movement = {150, 600, 70, 255} -- сталкер дохуя
 
 pills.register("pill_wfreddy2",{
 	printName="Withered Freddy",
-	model="models/speps/pill/oldfreddy.mdl",
-	bodyGroups={0},
+	model="models/speps/pill/phantomfreddy.mdl",
+	options=function() return {
+		{skin=2}
+	} end,
+	--bodyGroups={0},
 	anims={
 		default={
 			idle="idle",
@@ -120,7 +119,7 @@ pills.register("pill_wfreddy2",{
 	
 	viewmodel={
 		weapon="v_freddy",
-		skin=0
+		skin=3
 	},
 	
 	animEvent=function(ply,ent,event)
@@ -511,14 +510,12 @@ function noMoreStalk(ply)
 end
 
 
-
-
 --bonnie
 
 pills.register("pill_wbonnie2",{
 	printName="Withered Bonnie",
-	model="models/speps/pill/oldbonnie.mdl",
-	bodyGroups={math.random(1,1000) == 27 and 0 or 10},		-- рофлянка лицо бонни
+	model="models/speps/pill/phantombonnie.mdl",
+	--bodyGroups={math.random(1,1000) == 2 and 0 or 10},		-- рофлянка лицо бонни
 	anims={
 		default={
 			idle="idle",
@@ -560,7 +557,8 @@ pills.register("pill_wbonnie2",{
 	duckBy=60,
 	
 	viewmodel={
-		weapon="v_bonnie"
+		weapon="v_bonnie",
+		skin=1
 	},
 	bloodType=BLOOD_COLOR_MECH,
 	
@@ -768,6 +766,9 @@ end
 pills.register("pill_wchica2",{
 	printName="Withered Chica",
 	model="models/speps/pill/oldchica.mdl",
+	options=function() return {
+		{skin=1}
+	} end,
 	anims={
 		default={
 			idle="idle",
@@ -956,8 +957,8 @@ end
 
 pills.register("pill_wfoxy2",{
 	printName="Withered Foxy",
-	model="models/speps/pill/oldfoxy.mdl",
-	bodyGroups={0},
+	model="models/speps/pill/phantomfoxy.mdl",
+	--bodyGroups={0},
 	anims={
 		default={
 			idle="idle",
@@ -1002,7 +1003,8 @@ pills.register("pill_wfoxy2",{
 	duckBy=60,
 	
 	viewmodel={
-		weapon="v_foxy"
+		weapon="v_foxy",
+		skin=1
 	},
 	bloodType=BLOOD_COLOR_MECH,
 	
@@ -1140,7 +1142,6 @@ pills.register("pill_sfreddy2",{
 	} end,
 	bodyGroups={12},
 	anims={
-
 		default={
 			idle="sidle",
 			crouch="scrouch",
@@ -1384,14 +1385,14 @@ pills.register("pill_sfreddy2",{
 
 
 
-
-
-
 --endo
 
 pills.register("pill_endo02",{
 	printName="Endo02",
 	model="models/speps/pill/endo02.mdl",
+	options=function() return {
+		{skin=1}
+	} end,
 	anims={
 		default={
 			idle="idle",
@@ -1924,7 +1925,17 @@ function playVoiceline(character, line, who, when)
 				rf:AddPlayer(ply)
 			end
 			
-			who:EmitSound(character .. "." .. line, 75, 100, 1, CHAN_VOICE, 0, 0, rf)
+			local isHalloweenish = {
+				["freddy"] = true,
+				["bonnie"] = true,
+				["chica"] = true,
+				["foxy"] = true,
+				["endo"] = true
+			}
+			
+			local dsp = isHalloweenish[character] and 38 or 0
+			
+			who:EmitSound(character .. "." .. line, 75, 100, 1, CHAN_VOICE, 0, dsp, rf)
 			
 			--[[
 			net.Start("fh_play_voiceline")

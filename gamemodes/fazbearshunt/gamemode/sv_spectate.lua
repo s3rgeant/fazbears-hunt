@@ -44,6 +44,15 @@ local function cyclePlayers(ply, am)
 	end
 end
 
+hook.Add("SetupPlayerVisibility", "fh_spec_pvs", function(ply)
+    if ply:Team() == TEAM_SPECTATOR then
+        local target = ply:GetObserverTarget()
+        if IsValid(target) then
+            AddOriginToPVS(target:GetPos())
+        end
+    end
+end)
+
 hook.Add('PlayerDeathThink', 'fh_block_respawn', function(ply)
 	if isGameOn then
 		local obstarget = ply:GetObserverTarget()

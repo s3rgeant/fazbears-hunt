@@ -122,7 +122,7 @@ function foxyRush(ply, ent)
 		ply:SetNWBool("Blight_BlockM1", true)
 		
 		if SERVER then
-			ply:EmitSound("blight/first_rush.wav")
+			ply:EmitSound("blight/first_rush.wav", 75, 100, 1, CHAN_AUTO, 0, 38)
 		
 			local wep = ply:GetActiveWeapon()
 			if IsValid(wep) and wep:GetClass() == "v_foxy" then
@@ -131,7 +131,7 @@ function foxyRush(ply, ent)
 			end
 		end
 	elseif ply.blightRushTokens == 4 and ply:GetNWBool("blightRushing") and SERVER then
-		ply:EmitSound("blight/rushing_lethal.wav")
+		ply:EmitSound("blight/rushing_lethal.wav", 75, 100, 1, CHAN_AUTO, 0, 38)
 	end
 
 	if ply.blightRushTokens ~= MAX_RUSH_TOKENS and not ply:GetNWBool("blightRushing") then return end

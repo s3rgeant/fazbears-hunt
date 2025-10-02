@@ -2,46 +2,35 @@ fh = fh or {}
 
 AddCSLuaFile( "cl_init.lua" )
 AddCSLuaFile( "shared.lua" )
-
 include( "shared.lua" )
 
-AddCSLuaFile( "interface/cl_admin.lua" )
-AddCSLuaFile( "interface/cl_anim_selector.lua" )
-AddCSLuaFile( "interface/cl_hud.lua" )
-AddCSLuaFile( "interface/cl_optionmenu.lua" )
-AddCSLuaFile( "interface/cl_playerlist.lua" )
-AddCSLuaFile( "interface/cl_spechud.lua" )
-AddCSLuaFile( "interface/cl_timer.lua" )
+pcall(require,"pills")
 
-AddCSLuaFile( "cl_flashlight.lua" )
-AddCSLuaFile( "cl_halo.lua" )
-AddCSLuaFile( "cl_horror.lua" )
-AddCSLuaFile( "cl_sound.lua" )
+local function recursive_include(path)
+    local files, folders = file.Find(path .. "*", "LUA")
 
-AddCSLuaFile( "animsoundf2.lua" )
+    for _, file_name in ipairs(files) do
+        local full_path = path .. file_name
 
-include( "voicelines.lua" )
-AddCSLuaFile( "voicelines.lua" )
+        if file_name:StartWith("sv_") then
+            include(full_path)
 
-include( "sv_admin.lua" )
-include( "sv_halo.lua" )
-include( "sv_spectate.lua" )
-include( "sv_nostuck.lua" )
-include( "sv_ragdolls.lua" )
-include( "sv_logs.lua" )
-include( "sv_stats.lua" )
-include( "sv_cooldown.lua" )
+        elseif file_name:StartWith("sh_") then
+            AddCSLuaFile(full_path)
+            include(full_path)
+
+        elseif file_name:StartWith("cl_") then
+            AddCSLuaFile(full_path)
+        end
+    end
+end
+
+recursive_include("fazbearshunt/gamemode/")
+recursive_include("fazbearshunt/gamemode/interface/")
 
 include( "mount/push.lua" )
-
 include( "mount/proximity.lua" )
 AddCSLuaFile( "mount/proximity.lua" )
-
---include( "terror_radius.lua" )
---AddCSLuaFile( "terror_radius.lua" )
-
-include( "pill_fnaf2.lua" )
-include( "pill_fnaf3.lua" )
 
 util.AddNetworkString("KillerPicked")
 util.AddNetworkString("ApplyKiller")
@@ -64,9 +53,7 @@ util.AddNetworkString("fh_timer_cutback")
 util.AddNetworkString("ResetTimer")
 
 util.AddNetworkString( "DeadHUDEnable" )
-util.AddNetworkString( "DeadHUDChange" )
 util.AddNetworkString( "DeadHUDDisable" )
-util.AddNetworkString( "DeadHUDChangeString" )
 
 util.AddNetworkString("AnimatronicsWin")
 util.AddNetworkString("SurvivorsWin")
@@ -191,8 +178,6 @@ function freezeAnimatronics(duration)
 			ply.lobbyFreeze = false
 		end
 		roundActive = true
-		LogEvent(" ")
-        LogEvent("(*АВТО*) - Все аниматроники разморожены, раунд начат.")
 		
 		hook.Run("fh_poststartgame", roundType, animatronics)
     end)
@@ -236,7 +221,7 @@ local function giveKillerShared(ply, killer, force)
 	animatronics[ply] = true
 	survivors[ply] = nil
 	
-    LogEvent("🤖 Игроку **" .. ply:Nick() .. "** выдан **" .. killerData.name.."**")
+    print(ply:Nick() .. " is " .. killerData.name.." now.")
 	
 	if timer.Exists("UnfreezeAnims") then
 		ply.lobbyFreeze = true
@@ -515,7 +500,6 @@ function registerNewRound(forceid)
 		ply:SetTeam(TEAM_UNASSIGNED)
 		survivors[ply] = true
     end
-	LogEvent(" ")
 	
 	restoreAnimatronics()
 	startGame(forceid)
@@ -859,12 +843,6 @@ hook.Add("PlayerDeath", "fh_deaths", function( victim, inflictor, attacker )
 	if survivors[victim] then
 		survivors[victim] = nil
 		
-		if attacker:IsPlayer() and victim != attacker then
-			LogEvent("☠️ Игрок **" .. attacker:Nick() .. "** убил **" .. victim:Nick().."**")
-		else
-			LogEvent("☠️ **"..victim:Nick() .. "** просто умер. ( " .. tostring(attacker).." )")
-		end
-		
 		local animCount = table.Count(animatronics)
 		
 		if fh.GetActiveUsedKiller("pill_plushtrap") then
@@ -917,10 +895,8 @@ function fh_win_coefficient()
 
     local survivorsPercentage = math.Round((survivors_win_count / totalWins) * 100)
     local animatronicsPercentage = math.Round((animatronics_win_count / totalWins) * 100)
-
-    local message = "Коэффициент побед: Выжившие (" .. survivorsPercentage .. "%) / Аниматроники (" .. animatronicsPercentage .. "%)"
-	local log_embed_table = {survivorsPercentage, animatronicsPercentage, totalWins, animatronics_win_count, survivors_win_count}
-	LogEmbedEvent(message, "stats", log_embed_table)
+	
+	return totalWins, survivorsPercentage, animatronicsPercentage
 end
 
 function animatronicsVictory_check(last_ply)
@@ -933,19 +909,11 @@ function animatronicsVictory_check(last_ply)
 		
 		endGame(true)
 		
-		LogEvent(" ")
-		
-		local log_embed_table = { last_ply:Nick(), formatTime((fh.GetGameDuration() + setupGameDuration) - (timer.TimeLeft("EndGameTimer") or 0)), fh_get_plytable_nicknames(animatronics) }
-		
-		timer.Simple(1, function()
-			LogEmbedEvent("Победа аниматроников.", "anims_win", log_embed_table)
-		end)
 		animatronics_win_count = animatronics_win_count + 1
 		
 		if timer.Exists("EndGameTimer") then
 			timer.Remove("EndGameTimer")
 		end
-	
 	end
 end
 
@@ -963,14 +931,6 @@ function animatronicsDied_check()
 		net.Start("SurvivorsWin")
 		net.WriteTable(plys)
 		net.Broadcast()
-		
-		LogEvent(" ")
-		
-		local log_embed_table = { fh_get_plytable_nicknames(survivors), {'Сдохли.'} }
-		
-		timer.Simple(1, function()
-			LogEmbedEvent("Все аниматроники умерли. Победа выживших.", "survs_win", log_embed_table)
-		end)
 			
 		survivors_win_count = survivors_win_count + 1
 			
@@ -992,14 +952,6 @@ function animatronicsLeft_check()
 		net.Start("SurvivorsWin")
 		net.WriteTable(plys)
 		net.Broadcast()
-		
-		LogEvent(" ")
-		
-		local log_embed_table = { fh_get_plytable_nicknames(survivors), {'все ливнули.'} }
-		
-		timer.Simple(1, function()
-			LogEmbedEvent("Все аниматроники вышли из игры. Победа выживших.", "survs_win", log_embed_table)
-		end)
 			
 		survivors_win_count = survivors_win_count + 1
 			
@@ -1020,14 +972,6 @@ function survivorsWin()
 	net.Start("SurvivorsWin")
 	net.WriteTable(plys)
 	net.Broadcast()
-	
-	LogEvent(" ")
-	
-	local log_embed_table = { fh_get_plytable_nicknames(survivors), fh_get_plytable_nicknames(animatronics) }
-	
-	timer.Simple(1, function()
-		LogEmbedEvent("Победа выживших.", "survs_win", log_embed_table)
-	end)
 		
 	survivors_win_count = survivors_win_count + 1
 		
@@ -1098,15 +1042,6 @@ hook.Add("PillRestore", "fh_restorepill", function(ply)
 	
 	net.Start("fh_uhl_teammates")
 	net.Send(ply)
-end)
-
-hook.Add("SetupPlayerVisibility", "fh_spec_pvs", function(ply)
-    if ply:Team() == TEAM_SPECTATOR then
-        local target = ply:GetObserverTarget()
-        if IsValid(target) then
-            AddOriginToPVS(target:GetPos())
-        end
-    end
 end)
 
 hook.Add( "GetFallDamage", "FH_FallDamage", function(ply, speed)
@@ -1181,8 +1116,6 @@ net.Receive("fh_initpostentity", function(len, ply)
 	
 		timer.Create("GameStartTimer", lobbyDuration, 1, function()
 			registerNewRound()
-			LogEvent(" ")
-			LogEvent("(*АВТО*) - ⌛️ Таймер раунда начат. Количество игроков: "..player.GetCount())
 		end)
 		
 		lobbyDuration = 30
