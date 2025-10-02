@@ -9,8 +9,8 @@ SWEP.PrintName = "Fanta"
 SWEP.DrawWeaponInfoBox	= false
 SWEP.BounceWeaponIcon	= false 
 
-SWEP.Slot = 1
-SWEP.SlotPos = 1
+SWEP.Slot = 3
+SWEP.SlotPos = 2
 
 SWEP.ViewModel = Model("models/johnmason/food/c_coca_cola_can.mdl")
 SWEP.WorldModel = Model("models/johnmason/food/w_coca_cola_can.mdl")
@@ -35,9 +35,6 @@ SWEP.FlexWeight = 0
 
 SWEP.Consuming = false
 
-CreateConVar("consumable_drinks_heal_modifier", 1, FCVAR_ARCHIVE, "Drinks heal multiplier", 0, 200)
-CreateConVar("consumable_drinks_armor_modifier", 1, FCVAR_ARCHIVE, "Drinks armor multiplier", 0, 200)
-
 function SWEP:Initialize()
 	self:SetHoldType("slam")
 	self:SetSkin(self.Skin)
@@ -59,12 +56,16 @@ function SWEP:PrimaryAttack()
 	self.Owner:SetAnimation(PLAYER_ATTACK1)
 	
 	self.Consuming = true
+	
+	timer.Simple(2.1, function()
+		
+		if IsValid(self.Owner) and IsValid(self) then
+			self:OnDrink()
+		end
+	end)
 
 	timer_Create("drink_remove_" .. self:EntIndex(), 4.7, 1, function()
 		if not IsValid(self) or not IsValid(self.Owner) then return end
-
-		-- Эффект напитка
-		self:OnDrink()
 
 		if SERVER then
 			self.Owner:StripWeapon(self:GetClass())
@@ -76,6 +77,25 @@ function SWEP:OnDrink()
 	if not (IsValid(self.Owner) and SERVER) then return end
 
 	local ply = self.Owner
+	
+	local heal = math.random(3,5)
+	local armor = 10
+	
+	for i = 1, heal do
+		timer.Simple(0 + i/1, function()
+			if IsValid(ply) and ply:Health() < 100 then
+				ply:SetHealth(ply:Health() + 1)
+			end
+		end) 
+	end
+	
+	for i = 1, armor do
+		timer.Simple(0 + i/10, function()
+			if IsValid(ply) and ply:Armor() < 100 then
+				ply:SetArmor(ply:Armor() + 1)
+			end
+		end) 
+	end
 	
 	ply:SetJumpPower(ply:GetJumpPower() * 2)
 	

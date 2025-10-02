@@ -15,8 +15,8 @@ SWEP.HoldType = "slam"
 SWEP.DrawWeaponInfoBox	= false
 SWEP.BounceWeaponIcon	= false 
 
-SWEP.Slot = 4
-SWEP.SlotPos = 73
+SWEP.Slot = 3
+SWEP.SlotPos = 1
 SWEP.DrawCrosshair = false
 SWEP.DrawAmmo = false
 SWEP.Weight = 30
