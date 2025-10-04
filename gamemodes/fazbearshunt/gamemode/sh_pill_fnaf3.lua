@@ -193,7 +193,7 @@ local spring_enraged = false
 local pt_request_springtrap_ply = nil
 local request_plushtrap = nil
 
-local spring_default_movement = {210, 500, 45, 250} -- обычное передвижение
+local spring_default_movement = {210, 500, 50, 250} -- обычное передвижение
 local spring_rage_movement = {210, 600, 70, 255} -- дохуя скромник
 
 pills.register("pill_springtrap",{
@@ -741,6 +741,8 @@ end )
 
 function plushtrap_request_complete(springtrap, ply)
 	if IsValid(request_plushtrap) or !IsValid(pt_request_springtrap_ply) then return end
+	
+	if request_plushtrap:Alive() then return end -- на а хули?
 	
 	if timer.Exists("pt_waiting" .. springtrap:EntIndex()) then
 		timer.Remove("pt_waiting" .. springtrap:EntIndex())

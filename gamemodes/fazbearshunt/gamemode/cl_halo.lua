@@ -431,7 +431,8 @@ function draw_orbs(tbl, material)
     local textureSize = 64 / 2
     
     for _, target in ipairs(tbl) do
-        if IsValid(target) and target:Alive() and target:Team() != TEAM_SPECTATOR then
+        if IsValid(target) then
+			if target:IsPlayer() and (!target:Alive() or target:Team() == TEAM_SPECTATOR) then continue end
             local min, max = target:GetCollisionBounds()
             local targetPos = target:GetPos() + Vector(0, 0, (min.z + max.z) / 2)
             local screenPos = targetPos:ToScreen()

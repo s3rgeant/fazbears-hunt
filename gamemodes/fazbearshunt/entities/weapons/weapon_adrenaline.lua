@@ -2,9 +2,6 @@ AddCSLuaFile()
 
 SWEP.PrintName = "#weapon_adrenaline"
 SWEP.Author = "Valve"
-SWEP.Category = "nZR: L4D2 Other"
-SWEP.Spawnable = true
-SWEP.AdminSpawnable = false
 
 SWEP.ViewModel = "models/items/v_l4d2adren.mdl"
 SWEP.WorldModel = "models/items/w_l4d2adren.mdl"

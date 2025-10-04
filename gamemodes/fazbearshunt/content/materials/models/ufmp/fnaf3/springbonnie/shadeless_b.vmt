@@ -1,0 +1,19 @@
+"VertexlitGeneric"
+{
+$basetexture "models\ufmp\black"
+$bumpmap "models\UFMP/Flat"
+$surfaceprop metal
+$color "0"
+$phong "1"
+$phongexponent "0"
+$phongboost "0"
+$phongfresnelranges "[0.05 0.5 1]"
+$phongalbedotint "1"
+$halflambert "1"
+$ambientocclusion "0"
+$phongalbedotint "1"
+$nodecal "1"
+$model "1"
+$diffuseexp "1.5"
+$normalmapalphaenvmapmask   "1"
+}

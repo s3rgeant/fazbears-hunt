@@ -1,6 +1,6 @@
-"VertexlitGeneric"
+"UnlitGeneric"
 {
 	"$basetexture" "models\djebrayass\CoolioArt\OldFreddy\Glow"
-	"$selfillum"	"1"
+	//"$selfillum" 1
 
 }

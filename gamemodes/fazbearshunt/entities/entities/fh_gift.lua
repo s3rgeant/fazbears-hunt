@@ -16,9 +16,13 @@ if SERVER then
     util.AddNetworkString("fh_net_thinkfast")
 end
 
+local giftModel = (os.date("%B") == "October") and "pumpkin_loot" or "halloween_gift"
+local modelScale = (giftModel == "pumpkin_loot") and 1.5 or 1
+
 function ENT:Initialize()
     if SERVER then
-        self:SetModel("models/props_halloween/halloween_gift.mdl")
+        self:SetModel("models/props_halloween/" .. giftModel .. ".mdl")
+		self:SetModelScale(modelScale)
         self:SetMoveType(MOVETYPE_NONE)
         self:SetSolid(SOLID_BBOX)
         self:SetCollisionGroup(COLLISION_GROUP_DEBRIS_TRIGGER)
@@ -53,39 +57,38 @@ if SERVER then
 end
 
 if CLIENT then
-    function ENT:Draw()
-        self:DrawModel()
-        if IsValid(self:GetOwner()) then
-            local distance = LocalPlayer():GetPos():Distance(self:GetPos())
-            if distance <= 1300 then
-                local ang = LocalPlayer():EyeAngles()
-                ang:RotateAroundAxis(ang:Forward(), 90)
-                ang:RotateAroundAxis(ang:Right(), 90)
-                
-                cam.Start3D2D(self:GetPos() + Vector(0, 0, 65), Angle(0, ang.y, 90), 0.25)
-                draw.SimpleText(string.format( language.GetPhrase("fazhunt.gifts.owner"), self:GetOwner():Nick() ), "timerFontUpper", 0, 0, Color(255, 255, 255), TEXT_ALIGN_CENTER, TEXT_ALIGN_CENTER)
-                cam.End3D2D()
-            end
-        end
-    end
-
-    function ENT:Think()
-        local height = math.sin((CurTime() - self.SpawnTime) * 2) * 5
-        local pos = self:GetPos()
-        pos.z = self.InitialZ + height
-        self:SetPos(pos)
-
-        self:NextThink(CurTime())
-        self:SetRenderAngles(self:GetAngles() + Angle(0, 1, 0))
-        self:SetNextClientThink(CurTime())
-        return true
-    end
+	function ENT:Draw()
+		self:DrawModel()
+		if IsValid(self:GetOwner()) then
+			local distance = LocalPlayer():GetPos():Distance(self:GetPos())
+			if distance <= 1000 then
+				local ang = LocalPlayer():EyeAngles()
+				ang:RotateAroundAxis(ang:Forward(), 90)
+				ang:RotateAroundAxis(ang:Right(), 90)
+				
+				cam.Start3D2D(self:GetPos() + Vector(0, 0, 65), Angle(0, ang.y, 90), 0.25)
+				draw.SimpleText(string.format( language.GetPhrase("fazhunt.gifts.owner"), self:GetOwner():Nick() ), "timerFontUpper", 0, 0, Color(255, 255, 255), TEXT_ALIGN_CENTER, TEXT_ALIGN_CENTER)
+				cam.End3D2D()
+			end
+		end
+	end
+	
+	function ENT:Think()
+		local height = math.sin((CurTime() - self.SpawnTime) * 2) * 5
+		local pos = self:GetPos()
+		pos.z = self.InitialZ + height
+		self:SetPos(pos)
+	
+		self:NextThink(CurTime())
+		self:SetRenderAngles(self:GetAngles() + Angle(0, 1, 0))
+		self:SetNextClientThink(CurTime())
+		return true
+	end
 end
 
 local PLAYER = FindMetaTable("Player")
 
 if PLAYER then
-
 	function PLAYER:SetGiftOwnership(bool)
 		self:SetNWBool("GiftOwnership", bool or false)
 	end
@@ -194,50 +197,61 @@ local positiveEffects = {
 		num = 5,
         func = function(ply)
             ply:Give("weapon_banana")
+			ply:SetSuppressPickupNotices(true)
             ply:GiveAmmo(4, "ammo_banana", true)
+			ply:SetSuppressPickupNotices(false)
         end
     },
     {
-        name = "speed_buff",
-		desc = "fazhunt.gifts.speed_buff",
-		num = 15,
+        name = "adrenaline",
+		desc = "fazhunt.gifts.adrenaline",
         func = function(ply)
-            ply:SetWalkSpeed(ply:GetWalkSpeed() * 1.2)
-            ply:SetRunSpeed(ply:GetRunSpeed() * 1.2)
-            ply:SetCrouchedWalkSpeed(ply:GetCrouchedWalkSpeed() * 1.4)
+            ply:Give("weapon_adrenaline")
+        end,
+        req = function(ply)
+			return !ply:HasWeapon("weapon_adrenaline")
+        end
+    },
+    {
+        name = "fanta",
+		desc = "fazhunt.gifts.fanta",
+        func = function(ply)
+            ply:Give("weapon_fanta")
+        end,
+        req = function(ply)
+			if fh.GetActiveUsedKiller("pill_wfoxy2") or fh.GetActiveUsedKiller("pill_sfreddy2") then
+				if !ply:HasWeapon("weapon_fanta") then
+					return true
+				end
+			end
+			return false
+        end
+    },
+    {
+        name = "killer_mask",
+		desc = "fazhunt.gifts.killer_mask",
+        func = function(ply)
+            ply:Give("weapon_killmask")
+        end,
+        req = function(ply)
+			local fuck = false
+			for _, ply in player.Iterator() do
+				if ply:HasWeapon("weapon_killmask") or ply:HasWeapon("weapon_killer_axe") then
+					fuck = true
+					break
+				end
+			end
 			
-			local trail = util.SpriteTrail(ply, ply:LookupAttachment( "chest" ), Color(0, 169, 255, 255), true, 32, 0, 1, 1 / ( ( 32 + 0 ) * 0.5 ), "trails/physbeam")
-            
-            timer.Simple(15, function()
-                if IsValid(ply) then
-                    ply:SetWalkSpeed(ply:GetWalkSpeed() / 1.2)
-                    ply:SetRunSpeed(ply:GetRunSpeed() / 1.2)
-                    ply:SetCrouchedWalkSpeed(ply:GetCrouchedWalkSpeed() / 1.4)
-					if IsValid(trail) then
-						trail:Remove()
-					end
-                end
-            end)
-        end,
-        req = function(ply)
-			return ply:GetRunSpeed() < 600
-        end
-    },
-    {
-        name = "jump_buff",
-		desc = "fazhunt.gifts.jump_buff",
-		num = 25,
-        func = function(ply)
-            ply:SetJumpPower(ply:GetJumpPower() * 2)
-            
-            timer.Simple(25, function()
-                if IsValid(ply) then
-                    ply:SetJumpPower(math.max(ply:GetJumpPower() / 2, 200))
-                end
-            end)
-        end,
-        req = function(ply)
-			return fh.GetActiveUsedKiller("pill_wfoxy2") or fh.GetActiveUsedKiller("pill_sfreddy2")
+			if fuck then
+				return false
+			end
+		
+			if team.NumPlayers(2701) > 1 and math.random(1,5) == 5 then
+				if !ply:HasWeapon("weapon_killmask") then
+					return true
+				end
+			end
+			return false
         end
     }
 }
@@ -363,6 +377,73 @@ local negativeEffects = {
                 end
             end)
         end
+    },
+    {
+        name = "vanish",
+		desc = "",
+		silent=true,
+        func = function(ply)
+
+			local pos = ply:GetPos()
+			local ang = ply:GetAngles()
+			
+			local ragdoll
+			
+			if ply:GetModel() == "models/player/skeleton.mdl" then
+				local effectdata = EffectData()
+				effectdata:SetOrigin(pos+Vector(0,0,16))
+				effectdata:SetScale(1)
+				util.Effect("Explosion", effectdata, true, true)
+			else
+
+				ragdoll = ents.Create("prop_ragdoll")
+				ragdoll:SetModel("models/player/skeleton.mdl")
+				ragdoll:SetPos(pos)
+				ragdoll:SetAngles(ang)
+				ragdoll:Spawn()
+				ragdoll:Activate()
+				
+				ragdoll:SetCollisionGroup(COLLISION_GROUP_WEAPON)
+				ragdoll:SetCustomCollisionCheck( true )
+				
+				local plyvel = ply:GetVelocity()
+
+				for i = 0, ragdoll:GetPhysicsObjectCount() - 1 do
+					local bone = ragdoll:GetPhysicsObjectNum(i)
+					
+					if bone and bone:IsValid() then
+						local bonepos, boneang = ply:GetBonePosition(ragdoll:TranslatePhysBoneToBone(i))
+						
+						if bonepos and boneang then
+							bone:SetPos(bonepos)
+							bone:SetAngles(boneang)
+							bone:SetVelocity(plyvel)
+						end
+					end
+				end
+				
+				timer.Simple(0, function()
+					local bones = ragdoll:GetPhysicsObjectCount()
+					for bone = 1, bones - 1 do
+						
+						local constr = constraint.Weld( ragdoll, ragdoll, 0, bone, 0 )
+						local effectdata = EffectData()
+						effectdata:SetOrigin( ragdoll:GetPhysicsObjectNum( bone ):GetPos() )
+						effectdata:SetScale( 1 )
+						effectdata:SetMagnitude( 1 )
+						util.Effect( "GlassImpact", effectdata, true, true )
+
+					end
+				end)
+				
+				ragdoll:EmitSound("lobotomy.mp3")
+			end
+			
+            ply:KillSilent()
+			
+			ply:SpectateEntity(ragdoll)
+			ply:Spectate(OBS_MODE_CHASE)
+        end
     }
 }
 
@@ -385,18 +466,6 @@ if SERVER then
 			func = func
 		})
 	end
-	
-	--[[
-	gifts.AddPositiveEffect('die', 			-- Имя: чисто по приколу
-							"ИДИ НАХУЙ", 	-- Описание: Можно вставить просто текст, а можно строчку перевода
-							-1, 			-- Если в описании используется %i а указанное слева число равно или больше 0, то игра попробует заменить %i в описании на эту цифру.
-	function(ply) 							-- Функция когда берём подарок
-		ply:Kill()
-	end,
-	function(ply) 							-- ОПЦИОНАЛЬНО: Условие выдачи подарка (Если у игрока есть монтировка, убиваем его нахуй) (Если мы, НАПРИМЕР, выдаём игроку монтировку, то в условии надо проверять что монтировки у игрока нету, чтобы не пытаться выдать игроку ещё одну монтировку)
-		return ply:HasWeapon("weapon_crowbar")
-	end)
-	]]--
 
 	hook.Add("SetupPlayerVisibility", "fh_gift_visibility", function(ply, viewent)
 		if !table.IsEmpty(anim_visibility_users) then
@@ -410,63 +479,70 @@ if SERVER then
 end
 
 function ENT:ApplyEffect(player)
-    local isOwner = self:GetOwner() == player
-    local effects = {}
-    
-    local availablePositiveEffects = {}
-    for _, effect in ipairs(positiveEffects) do
+	local isOwner = self:GetOwner() == player
+	local effects = {}
+	
+	local availablePositiveEffects = {}
+	for _, effect in ipairs(positiveEffects) do
 		if effect.req and effect.req(player) then
 			table.insert(availablePositiveEffects, effect)
-        elseif !effect.req then
-            table.insert(availablePositiveEffects, effect)
-        end
-    end
-    
-    if isOwner then
-        effects = availablePositiveEffects
-    else
-        effects = {}
-        for _, effect in ipairs(availablePositiveEffects) do
-            table.insert(effects, effect)
-        end
-        for _, effect in ipairs(negativeEffects) do
-            table.insert(effects, effect)
-        end
-    end
-    
-    if #effects == 0 then
-        self:Remove()
-        return
-    end
-    
-    local effect = effects[math.random(#effects)]
-    effect.func(player)
-    
-    local isPositive = false
-    for _, posEffect in ipairs(availablePositiveEffects) do
-        if posEffect.name == effect.name then
-            isPositive = true
-            break
-        end
-    end
-    
-    if isPositive then
-        self:EmitSound("orch_hit_csharp_short.wav")
-        
-        net.Start('fh_net_display')
-        net.WriteString('fazhunt.gifts.positive')
-        net.WriteString(effect.desc or "")
-        net.WriteFloat(effect.num or -1)
-        net.WriteFloat(5)
-        net.Send(player)
-    else
-        self:EmitSound("ahuitebe.mp3")
-        
-        net.Start('fh_net_display')
-        net.WriteString('fazhunt.gifts.negative')
-        net.WriteString(effect.desc or "")
-        net.WriteFloat(effect.num or -1)
-        net.WriteFloat(5)
-        net.Send(player)
-    end
+		elseif !effect.req then
+			table.insert(availablePositiveEffects, effect)
+		end
+	end
+	
+	if isOwner then
+		effects = availablePositiveEffects
+	else
+		local negativeForce = math.random(1,2) == 2
+		if negativeForce then
+			for _, effect in ipairs(negativeEffects) do
+				table.insert(effects, effect)
+			end
+		else
+			for _, effect in ipairs(availablePositiveEffects) do
+				table.insert(effects, effect)
+			end
+		end
+	end
+	
+	if #effects == 0 then
+		self:Remove()
+		return
+	end
+	
+	local effect = effects[math.random(#effects)]
+	effect.func(player)
+	
+	local isPositive = false
+	for _, posEffect in ipairs(availablePositiveEffects) do
+		if posEffect.name == effect.name then
+			isPositive = true
+			break
+		end
+	end
+	
+	if isPositive then
+		if !effect.silent then
+			self:EmitSound("orch_hit_csharp_short.wav")
+		end
+		
+		net.Start('fh_net_display')
+		net.WriteString('fazhunt.gifts.positive')
+		net.WriteString(effect.desc or "")
+		net.WriteFloat(effect.num or -1)
+		net.WriteFloat(5)
+		net.Send(player)
+	else
+		if !effect.silent then
+			self:EmitSound("ahuitebe.mp3")
+		end
+		
+		net.Start('fh_net_display')
+		net.WriteString('fazhunt.gifts.negative')
+		net.WriteString(effect.desc or "")
+		net.WriteFloat(effect.num or -1)
+		net.WriteFloat(5)
+		net.Send(player)
+	end
 end

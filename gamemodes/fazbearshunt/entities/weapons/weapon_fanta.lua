@@ -4,7 +4,7 @@ local timer_Remove = timer.Remove
 
 SWEP.Base = "weapon_base"
 
-SWEP.PrintName = "Fanta"
+SWEP.PrintName = "#weapon_fanta"
 
 SWEP.DrawWeaponInfoBox	= false
 SWEP.BounceWeaponIcon	= false 
@@ -27,7 +27,6 @@ SWEP.Primary.Ammo = "none"
 SWEP.Secondary.Automatic = false
 SWEP.Secondary.Ammo = "none"
 
-SWEP.HealAmount = 10
 SWEP.Skin = 4
 SWEP.SubMaterial = "models/johnmason/food/fanta_can"
 
@@ -99,7 +98,7 @@ function SWEP:OnDrink()
 	
 	ply:SetJumpPower(ply:GetJumpPower() * 2)
 	
-	timer.Simple(15, function()
+	timer.Simple(12, function()
 		if IsValid(ply) then
 			ply:SetJumpPower(math.max(ply:GetJumpPower() / 2, 200))
 		end

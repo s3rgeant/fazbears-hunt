@@ -366,6 +366,10 @@ function SWEP:OnDrop()
 	self:Holster()
 end
 
+local blockedReviveWeapons = {
+	["weapon_killer_axe"] = true,
+}
+
 local function SetDefibAttributes(ply)
 	ply.LastDeathTime = CurTime()
 	
@@ -375,6 +379,9 @@ local function SetDefibAttributes(ply)
 	
 	ply.ReviveWeapons = {}
 	for k, v in pairs( ply:GetWeapons() ) do
+		local class = v:GetClass()
+		if blockedReviveWeapons[class] then continue end
+		
 		table.insert( ply.ReviveWeapons, v:GetClass() )
 	end
 	

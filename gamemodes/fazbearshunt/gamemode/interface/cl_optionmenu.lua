@@ -16,6 +16,17 @@ function sel_menu_add_option(text, func)
     menuData.visible = true
 end
 
+function sel_menu_remove_option(text)
+    for k,v in pairs(menuData.options) do
+		if text ~= v then continue end
+		menuData.options[k] = {}
+	end
+	
+	if #menuData.options == 0 then
+		menuData.visible = false
+	end
+end
+
 function sel_menu_close()
     menuData.text = {}
     menuData.options = {}

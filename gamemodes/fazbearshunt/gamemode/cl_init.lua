@@ -58,7 +58,7 @@ hook.Add("HUDDrawTargetID", "HidePlayerNames", function()
 	
 	if IsValid(lp) and !lp:IsSuperAdmin() then return false end
 	
-	if !lp:KeyDown( IN_USE ) then
+	if !input.IsButtonDown( KEY_LALT ) or !input.IsButtonDown( KEY_E ) then
 		return false
 	end
 end)
@@ -272,4 +272,19 @@ hook.Add("OnPlayerChat", "fh_chat_message", function(ply, text, team, dead)
     )
 
     return true
+end)
+
+local halloweenColorCorrection = {
+	["$pp_colour_addr"] = 8 * 0.02,
+	["$pp_colour_addg"] = 5 * 0.02,
+	["$pp_colour_addb"] = 0,
+	["$pp_colour_brightness"] = -0.15,
+	["$pp_colour_contrast"] = 1.01,
+	["$pp_colour_colour"] = 1.0,
+	["$pp_colour_mulr"] = 0,
+	["$pp_colour_mulg"] = 0,
+	["$pp_colour_mulb"] = 0
+}
+hook.Add("RenderScreenspaceEffects", "Halloween_Effect", function()
+	DrawColorModify(halloweenColorCorrection)
 end)

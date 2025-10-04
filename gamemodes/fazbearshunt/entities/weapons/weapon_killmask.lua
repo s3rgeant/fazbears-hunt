@@ -1,0 +1,191 @@
+
+AddCSLuaFile()
+
+SWEP.PrintName = "#weapon_killmask"
+SWEP.DrawWeaponInfoBox = false
+
+SWEP.Slot = 1
+SWEP.SlotPos = 1
+
+SWEP.ViewModel = Model( "models/fh/items/v_springbonnie_mask.mdl" )
+SWEP.WorldModel = Model( "models/fh/items/w_springbonnie_mask_hand.mdl" )
+SWEP.ViewModelFOV = 75
+SWEP.UseHands = true
+SWEP.DrawCrosshair = false
+
+SWEP.Primary.ClipSize = 15
+SWEP.Primary.DefaultClip = SWEP.Primary.ClipSize
+SWEP.Primary.Automatic = false
+SWEP.Primary.Ammo = ""
+
+SWEP.Secondary.ClipSize = -1
+SWEP.Secondary.DefaultClip = -1
+SWEP.Secondary.Automatic = false
+SWEP.Secondary.Ammo = ""
+
+SWEP.HoldType = "slam"
+
+if SERVER then
+	--resource.AddFile( "materials/weapons/bonnie_mask.vmt" )
+else
+	--SWEP.WepSelectIcon = surface.GetTextureID( "weapons/bonnie_mask" )
+	SWEP.BounceWeaponIcon = false
+end
+
+function SWEP:Initialize()
+
+	self:SetHoldType( self.HoldType )
+
+end
+
+function SWEP:SetupDataTables()
+
+	self:NetworkVar( "Float", 1, "NextIdle" )
+	self:NetworkVar( "Bool", false, "BlockSwap" )
+end
+
+
+function SWEP:Holster()
+	if self:GetBlockSwap() then
+		return false
+	end
+	
+	return true
+
+end
+
+function SWEP:PrimaryAttack()
+	if self:GetBlockSwap() then return end
+    self:SetNextIdle(0)
+
+	self:SendWeaponAnim(ACT_VM_RELEASE)
+	
+	self:GetOwner():DoAnimationEvent( ACT_GMOD_GESTURE_ITEM_PLACE )
+	
+	self:SetBlockSwap(true)
+	
+	timer.Simple(1, function()
+		if IsValid(self) and IsValid(self.Owner) then
+			self:SpringLock()
+		end
+	end)
+end
+
+function SWEP:SpringLock()
+	local ply = self.Owner
+	
+	ply:SetNWBool("KillerMaskEquiped", true)
+	
+	if CLIENT then
+		surface.PlaySound("weapons/killermask_equip.wav")
+		
+		timer.Simple(8.7, function()
+			if !IsValid(ply) or !ply:Alive() then return end
+			ply:ScreenFade( SCREENFADE.OUT, Color( 255, 0, 0, 255 ), 0.1, 4 )
+			util.ScreenShake( Vector(0, 0, 0), 2, 40, 1, 2 )
+			timer.Simple(4, function()
+				if !IsValid(ply) or !ply:Alive() then return end
+				ply:ScreenFade( SCREENFADE.IN, Color( 255, 0, 0, 255 ), 5, 0.5 )
+			end)
+		end)
+	end
+	
+	if SERVER then
+		timer.Simple(8.7, function()
+			if !IsValid(ply) or !ply:Alive() then return end
+			local edata = EffectData()
+			edata:SetOrigin(ply:EyePos())
+			edata:SetEntity(ply)
+			util.Effect("BloodImpact", edata, true, true)
+			
+			ply:SetDSP(25)
+			ply:Freeze(true)
+			ply:SetNWBool("KillerObsessed", true)
+			ply:SetGFreddyImmune(true)
+			
+			ply:AllowFlashlight(false)
+		end)
+	
+		timer.Simple(11, function()
+			if !IsValid(ply) or !ply:Alive() then return end
+			ply:StripWeapons()
+			
+			ply:SetSuppressPickupNotices(true)
+			ply:Give("weapon_killer_axe")
+			ply:SetSuppressPickupNotices(false)
+		end)
+	
+		timer.Simple(13, function()
+			if !IsValid(ply) or !ply:Alive() then return end
+	
+			ply:Freeze(false)
+			ply:SetRunSpeed(475)
+			ply:SetJumpBoostMultiplier(0.4)
+			ply:AllowFlashlight(true)
+		end)
+	end
+end
+
+function SWEP:SecondaryAttack()
+	return
+end
+
+function SWEP:Reload()
+	return
+end
+
+function SWEP:Think()
+    if self:GetNextIdle() > 0 and CurTime() >= self:GetNextIdle() then
+        self:SendWeaponAnim(ACT_VM_IDLE)
+        self:SetNextIdle(0)
+    end
+end
+
+if SERVER then return end
+
+local model = ClientsideModel( "models/fh/items/w_springbonnie_mask.mdl" )
+model:SetNoDraw( true )
+
+hook.Add("PostPlayerDraw", "fh_draw_killmask", function(ply)
+	if not IsValid(ply) or not ply:Alive() then return end
+	if not ply:GetNWBool("KillerMaskEquiped") then return end
+
+	if not IsValid(model) then return end
+
+	local boneID = ply:LookupBone("ValveBiped.Bip01_Head1")
+	or ply:LookupBone("ValveBiped.forward")
+	or ply:LookupBone("ValveBiped.Bip01_Neck1") 
+	or ply:LookupBone("ValveBiped.Bip01_Spine4")
+	or ply:LookupBone("ValveBiped.Bip01_Spine2")
+	or ply:LookupBone("ValveBiped.Bip01_Spine1")
+	or ply:LookupBone("ValveBiped.Bip01_Spine")
+	or ply:LookupBone("ValveBiped.Bip01_Pelvis")
+	
+	if not boneID then return end
+
+	local bonePos, boneAng = ply:GetBonePosition(boneID)
+	if not bonePos or not boneAng then return end
+
+	local pos = bonePos
+	local ang = boneAng
+
+	ang:RotateAroundAxis(ang:Right(), -90)
+	ang:RotateAroundAxis(ang:Up(), -90)
+
+	pos = pos + ang:Forward() * 0 + ang:Up() * -5 + ang:Right() * 0
+
+	model:SetModelScale(1, 0)
+	model:SetRenderOrigin(pos)
+	model:SetRenderAngles(ang)
+	model:SetupBones()
+	model:DrawModel()
+	model:SetRenderOrigin()
+	model:SetRenderAngles()
+end)
+
+function SWEP:DrawWorldModel( flags )
+	local ply = self.Owner
+	if !ply:GetNWBool("KillerMaskEquiped") then
+		self:DrawModel( flags )
+	end
+end

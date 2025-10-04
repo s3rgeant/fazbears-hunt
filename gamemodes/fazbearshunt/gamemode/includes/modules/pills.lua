@@ -126,6 +126,14 @@ function getMappedEnt(ply)
     return ply.pk_pill_ent
 end
 
+local PLAYER = FindMetaTable("Player")
+
+if PLAYER then
+	function PLAYER:GetPill()
+		return self.pk_pill_ent
+	end
+end
+
 -- Concommands, Convars, etc.
 if SERVER then
     concommand.Add("pk_pill_apply", function(ply, cmd, args, str)

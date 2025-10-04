@@ -1,0 +1,18 @@
+"VertexlitGeneric"
+{
+$basetexture "models\ufmp\fnaf3\springbonnie\SB2"
+$bumpmap "models\ufmp\fnaf3\springbonnie\SBbump"
+$surfaceprop metal
+$color "[0.6235294	0.6509804	0.7647059	1.000]"
+$color2 "[1 0.925 0.92]"
+$phong "1"
+$phongexponent "8"
+$phongboost "0.3"
+$phongfresnelranges "[0.05 0.5 1]"
+$halflambert "1"
+$basetexturetransform "1"
+$nodecal "1"
+$model "1"
+$diffuseexp "1.5"
+$nocull 1
+}

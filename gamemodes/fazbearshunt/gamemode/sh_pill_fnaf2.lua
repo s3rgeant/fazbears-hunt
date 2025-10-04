@@ -166,14 +166,15 @@ pills.register("pill_wfreddy2",{
 		func=function(ply,ent)
 			if IsValid(ply:GetEntityInUse()) then return end
 			local target = FindNearestPlayer(ent:GetPos(), 130, ply, 90)
-			if !IsValid(target) then 
-				AnimatronicBreakProp(ply, ent)
-				return 
-			end
 			
 			if stalkTarget and target ~= stalkTarget then return end
 			
-			performJumpscare(ply, ent, target, 1.6, "freddy", 50, "v_freddy")
+			local jumpscare = performJumpscare(ply, ent, target, 1.6, "freddy", 50, "v_freddy")
+			
+			if !IsValid(target) or !jumpscare then 
+				AnimatronicBreakProp(ply, ent)
+				return 
+			end
 		end
     },
 	
@@ -600,12 +601,13 @@ pills.register("pill_wbonnie2",{
 			if IsValid(ply:GetEntityInUse()) then return end
 			
 			local target = FindNearestPlayer(ent:GetPos(), 130, ply, 90)
-			if !IsValid(target) then 
+			
+			local success = performJumpscare(ply, ent, target, 1.6, "bonnie", 52, "v_bonnie")
+			
+			if !IsValid(target) or !success then 
 				AnimatronicBreakProp(ply, ent)
 				return 
 			end
-			
-			local success = performJumpscare(ply, ent, target, 1.6, "bonnie", 52, "v_bonnie")
 			
 			timer.Simple(1.5, function()
 				if !IsValid(target) or !success then return end
@@ -847,12 +849,12 @@ pills.register("pill_wchica2",{
 			
 			local target = FindNearestPlayer(ent:GetPos(), 130, ply, 90)
 			
-			if !IsValid(target) then 
+			local jumpscare = performJumpscare(ply, ent, target, 1.6, "chica", 50)
+			
+			if !IsValid(target) or !jumpscare then 
 				AnimatronicBreakProp(ply, ent)
 				return 
 			end
-			
-			performJumpscare(ply, ent, target, 1.6, "chica", 50)
 		end
     },
 	
@@ -1050,12 +1052,13 @@ pills.register("pill_wfoxy2",{
 			
 			local target = FindNearestPlayer(ent:GetPos(), 130, ply, 90)
 			
-			if !IsValid(target) then 
+			local jumpscare = performJumpscare(ply, ent, target, 1.6, "foxy", 75, "v_foxy")
+			
+			if !IsValid(target) or !jumpscare then 
 				AnimatronicBreakProp(ply, ent)
 				return 
 			end
 			
-			performJumpscare(ply, ent, target, 1.6, "foxy", 75, "v_foxy")
 		end
     },
 	
@@ -1230,9 +1233,13 @@ pills.register("pill_sfreddy2",{
 			if IsValid(ply:GetEntityInUse()) then return end
 			
 			local target = FindNearestPlayer(ent:GetPos(), 130, ply, 90)
-			if !IsValid(target) then return end
 			
-			performJumpscare(ply, ent, target, 1.6, "sfreddy", 52, "v_freddy")
+			local jumpscare = performJumpscare(ply, ent, target, 1.6, "sfreddy", 52, "v_freddy")
+			
+			if !IsValid(target) or !jumpscare then 
+				AnimatronicBreakProp(ply, ent)
+				return 
+			end
 		end
     },
 	 
@@ -1476,12 +1483,12 @@ pills.register("pill_endo02",{
 			
 			local target = FindNearestPlayer(ent:GetPos(), 130, ply, 90)
 			
-			if !IsValid(target) then 
+			local jumpscare = performJumpscare(ply, ent, target, 1.6, "endo", 52, "v_endo")
+			
+			if !IsValid(target) or !jumpscare then 
 				AnimatronicBreakProp(ply, ent)
 				return 
 			end
-			
-			performJumpscare(ply, ent, target, 1.6, "endo", 52, "v_endo")
 		end
     },
 	
@@ -2045,7 +2052,7 @@ function performJumpscare(ply, ent, target, killDelay, voiceCharacter, jumpscare
 	
 	if target:HasGodMode() then return false end
 	
-	if hook.Run("FH_PlayerShouldJumpscare", ply, ent, target) == false then return end
+	if hook.Run("FH_PlayerShouldJumpscare", ply, ent, target) == false then return false end
 
 	hook.Run("FH_AnimatronicJumpscare", ply, ent, target, 
 		{delay = killDelay, char = voiceCharacter, dist = jumpscareDistance, wep = wepClass}
@@ -2629,7 +2636,7 @@ function AnimatronicBreakProp(ply, ent, cooldown)
 		start = ply:GetShootPos(),
 		endpos = ply:GetShootPos() + ply:GetAimVector() * 150,
 		filter = ply,
-		mask = MASK_SHOT_HULL
+		mask = MASK_SHOT
 	} )
 	debugoverlay.Line(ply:EyePos(), tr.HitPos, 5, Color(255, 0, 0), true)
 	

@@ -1,0 +1,21 @@
+"VertexlitGeneric"
+{
+$basetexture "models\ufmp\fnaf3\springbonnie\endo1spec"
+$bumpmap "models\UFMP/Flat"
+$phongexponenttexture "models\ufmp\fnaf3\springbonnie\endo1spec"
+$surfaceprop metal
+$color "0"
+$phong "1"
+$phongexponent "0"
+$phongboost "1.5"
+$phongfresnelranges "[0.05 0.5 1]"
+$halflambert "1"
+$ambientocclusion "0"
+$nodecal "1"
+$model "1"
+$diffuseexp "1.5"
+$normalmapalphaenvmapmask   "1"
+$rimlight               1
+$rimlightexponent       2
+$rimlightboost          .2
+}

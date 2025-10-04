@@ -603,6 +603,18 @@ concommand.Add( "fh_grant_gift", function( ply, cmd, args )
 	end)
 end )
 
+concommand.Add( "fh_grant_gift_bots", function( ply, cmd, args )
+	timer.Simple(2, function()
+		for _, ply in player.Iterator() do
+			if !ply:IsBot() then continue end
+			local gift = ents.Create("fh_gift")
+			gift:SetPos(ply:GetPos() + Vector(0, 0, 10))
+			gift:SetOwner(ply)
+			gift:Spawn()
+		end
+	end)
+end )
+
 function disableGiftSpawning()
 	game.ConsoleCommand("fh_gifts_spawning 0\n")
 	
@@ -751,6 +763,7 @@ hook.Add("PlayerSpawn", "fh_spawn", function( ply, transiton )
 	player_manager.SetPlayerClass( ply, "player_sandbox" )
 	ply:SetShouldServerRagdoll(true)
 	
+	ply:SetDSP(0)
 	ply:SetMaterial("")
 	ply:DrawShadow(true)
 	
@@ -762,17 +775,22 @@ hook.Add("PlayerSpawn", "fh_spawn", function( ply, transiton )
 	
 	net.Start('nv_off')
 	net.Send(ply)
-	
-	if IsValid(ply.DeathRagdoll) then
-		ply.DeathRagdoll:Remove()
-	end
 end)
+
+
+if PLAYER then
+	function PLAYER:RemoveRagdoll()
+		if IsValid(self.DeathRagdoll) then
+			self.DeathRagdoll:Remove()
+		end
+	end
+end
 
 hook.Add("EntityTakeDamage", "fh_anti_animatronic_death", function(target, dmginfo)
 	if conVars.fh_respawn_dead_animatronics:GetBool() then
 		if IsValid(target) and target:IsPlayer() and target:IsAnimatronic() then
 			
-			if hook.Run("fh_should_animatronic_respawn", target) == false then return end
+			if hook.Run("fh_should_animatronic_respawn", target, dmginfo) == false then return end
 
 			local damage = dmginfo:GetDamage()
 			local healthAfterDamage = target:Health() - damage
@@ -790,6 +808,12 @@ hook.Add("EntityTakeDamage", "fh_anti_animatronic_death", function(target, dmgin
 				return true
 			end
 		end
+	end
+end)
+
+hook.Add("ShouldSpawnRagdoll", "fh_no_anim_ragdolls", function(ply)
+	if ply:Team() == 2701 then
+		return false
 	end
 end)
 
@@ -839,7 +863,7 @@ hook.Add("EntityTakeDamage", "fh_anims_only_breakable_props", function(ent, dmgi
 	end
 end)
 
-hook.Add("PlayerDeath", "fh_deaths", function( victim, inflictor, attacker )
+local function fh_death_hook(victim)
 	if survivors[victim] then
 		survivors[victim] = nil
 		
@@ -871,13 +895,10 @@ hook.Add("PlayerDeath", "fh_deaths", function( victim, inflictor, attacker )
 		net.Start('DeadHUDEnable')
 		net.Send(victim)
 	end
-	
-    --local ent = pills.getMappedEnt(attacker)
-	
-	if IsValid(victim:GetRagdollEntity()) then
-		victim:GetRagdollEntity():Remove()
-	end
-end)
+end
+
+hook.Add("PlayerDeath", "fh_deaths", fh_death_hook)
+hook.Add("PlayerSilentDeath", "fh_deaths_silent", fh_death_hook)
 
 function fh_get_plytable_nicknames(tbl)
 	tbl = tlb or {}
@@ -1000,12 +1021,25 @@ end )
 hook.Add( "PlayerShouldTakeDamage", "fh_shouldtakedamage", function( ply, attacker )
 	if ply:IsPlayer() and attacker:IsPlayer() then
 	
+		local custom_cond = hook.Run("CustomPlayerTakeDamageConditions", ply, attacker)
+		
+		if custom_cond ~= nil then
+			return custom_cond
+		end
+	
+		if fh.GetRoundType() == 3 then
+			if ply:Team() ~= attacker:Team() then
+				return true
+			end
+		end
+	
 		if IsValid(attacker) and 
-		(ply:Team() == attacker:Team() or 
-		 ply:IsAnimatronic() and attacker:IsAnimatronic() or
-		ply:Team() == 2701 and conVars.fh_animatronic_immortal:GetBool()
-		or attacker:Team() == TEAM_SPECTATOR 
-		or !roundActive or roundEnding) then
+			(ply:Team() == attacker:Team() or 
+			ply:IsAnimatronic() and attacker:IsAnimatronic() or
+			ply:Team() == 2701 and conVars.fh_animatronic_immortal:GetBool()
+			or attacker:Team() == TEAM_SPECTATOR 
+			or !roundActive or roundEnding)
+		then
 		
 			return false
 		end

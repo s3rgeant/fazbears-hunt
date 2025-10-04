@@ -873,7 +873,7 @@ function ENT:Draw()
 	if ply == LocalPlayer() 
 	and ply:GetViewEntity() == ply
 	and !pills.convars.cl_thirdperson:GetBool() 
-	and !ply.fh_target_player then
+	and !ply.fh_target_player or self:GetMaterial() == "models/null" then
 		self.IsDrawn = false
 		self:DrawShadow(false)
 		return
@@ -907,6 +907,14 @@ hook.Add("PrePlayerDraw", "fh_pill_costume_mirrors", function(ply)
             m:AddEffects(EF_BONEMERGE)
             m:SetNoDraw(true)
             ent.mirrorPill = m
+			
+			if ent.formTable.bodyGroups then
+				for _, v in pairs(ent.formTable.bodyGroups) do
+					if v then
+						m:SetBodygroup(v, 1)
+					end
+				end
+			end
         end
     end
 

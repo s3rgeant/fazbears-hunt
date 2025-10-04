@@ -6,6 +6,8 @@ if not meta then return end
 
 function meta:CreateRagdoll()
 	if !(self || self:IsValid() || self:IsPlayer()) then return end
+	
+	if hook.Run("ShouldSpawnRagdoll", self) == false then return end
 
 	self.DeathRagdoll = self.DeathRagdoll or false
 
@@ -21,6 +23,8 @@ function meta:CreateRagdoll()
 	local ply_skn = self:GetSkin()
 	local ply_col = self:GetColor()
 	local ply_mat = self:GetMaterial()
+	
+	if ply_mat == "models/null" then return end
 	
 	local playerModelIsRagdoll = self:GetBoneCount() > 1
 

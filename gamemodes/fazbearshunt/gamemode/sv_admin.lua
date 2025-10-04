@@ -14,6 +14,7 @@ function GiveAnimatronic(ply, killer)
 	end
 	giveKiller(ply, killer, true)
 	ply:ReturnToSpawn()
+	ply:RemoveRagdoll()
 end
 
 function RevivePlayer(ply)
@@ -36,6 +37,7 @@ function RevivePlayer(ply)
 	end
 	ply:SetTeam(TEAM_UNASSIGNED)
     ply:Spawn()
+	ply:RemoveRagdoll()
 end
 
 function highlightSelected(targets, owner)
@@ -266,15 +268,6 @@ addAction( "fh_auto_map_save", function()
 		}
 		
 	)
-end)
-addAction( "fh_gifts_spawning", function()
-	local bool = net.ReadBool()
-	if !bool then
-		disableGiftSpawning()
-	else
-		game.ConsoleCommand("fh_gifts_spawning 1\n")
-		doGiftSpawning()
-	end
 end)
 addAction( "fh_gifts_spawning", function()
 	local bool = net.ReadBool()
