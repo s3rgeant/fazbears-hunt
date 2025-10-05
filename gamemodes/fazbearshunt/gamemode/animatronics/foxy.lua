@@ -299,12 +299,11 @@ hook.Add("FinishMove", "BlightPredictionFinish", function(ply, mv)
 			end
 		end
 		
-		if CLIENT then 
+		ply:SendLua([[
 			if getAbilityTokens("charge") > 0 then
 				RMBHint(2)
 			end
-			return 
-		end
+		]])
 		
 		ply:SetNWBool("isBlightRushing", false)
 		ply:SetNWBool("isBlightBouncing", true)

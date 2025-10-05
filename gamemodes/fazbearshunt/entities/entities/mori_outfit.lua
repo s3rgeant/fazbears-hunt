@@ -25,7 +25,7 @@ function ENT:BoneItUp(boneCount)
         local boneName = self:GetBoneName(i)
         if not isFingerBone(boneName) then continue end
 
-        local matrix = Matrix()
-        self:SetBoneMatrix(i, matrix)
+		--local matrix = Matrix()
+        --self:SetBoneMatrix(i, matrix)
     end
 end

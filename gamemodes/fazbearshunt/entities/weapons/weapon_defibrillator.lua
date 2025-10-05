@@ -143,6 +143,7 @@ function SWEP:Think()
                 if IsValid(ply) then
                     ply.BeingRevived = true
                     ply:Spawn()
+					ply:RemoveRagdoll()
                     ply:SetPos(oldpos)
 					ply:SetTeam(TEAM_UNASSIGNED)
 					

@@ -11,14 +11,11 @@ $color2 "[ 0 0 0 ]"
 $phongtint "[ 0.238398 0.03434 0.03434 ]"
 $basetexturetransform "[9.2 0 0 0 0 9.2 0 0 0 0 1 0 0 0 0 1]"
 $phongfresnelranges "[0.05 0.5 1]"
-$phongalbedotint "1"
 $halflambert "1"
-$phongalbedotint "1"
 $nodecal "1"
 $model "1"
 $diffuseexp "1.5"
 $normalmapalphaenvmapmask   "1"
-$nocull 1
 }
 
 

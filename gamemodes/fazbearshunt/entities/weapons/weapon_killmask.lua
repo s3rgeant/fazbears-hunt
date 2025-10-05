@@ -64,7 +64,7 @@ function SWEP:PrimaryAttack()
 	
 	self:SetBlockSwap(true)
 	
-	timer.Simple(1, function()
+	timer.Simple(1.2, function()
 		if IsValid(self) and IsValid(self.Owner) then
 			self:SpringLock()
 		end
@@ -76,14 +76,16 @@ function SWEP:SpringLock()
 	
 	ply:SetNWBool("KillerMaskEquiped", true)
 	
+	self:EmitSound("weapons/AudioEvent_K06_Status_Start.mp3")
+	
 	if CLIENT then
 		surface.PlaySound("weapons/killermask_equip.wav")
 		
-		timer.Simple(8.7, function()
+		timer.Simple(8.5, function()
 			if !IsValid(ply) or !ply:Alive() then return end
 			ply:ScreenFade( SCREENFADE.OUT, Color( 255, 0, 0, 255 ), 0.1, 4 )
 			util.ScreenShake( Vector(0, 0, 0), 2, 40, 1, 2 )
-			timer.Simple(4, function()
+			timer.Simple(3.8, function()
 				if !IsValid(ply) or !ply:Alive() then return end
 				ply:ScreenFade( SCREENFADE.IN, Color( 255, 0, 0, 255 ), 5, 0.5 )
 			end)
@@ -91,12 +93,18 @@ function SWEP:SpringLock()
 	end
 	
 	if SERVER then
-		timer.Simple(8.7, function()
+		timer.Simple(8.5, function()
 			if !IsValid(ply) or !ply:Alive() then return end
 			local edata = EffectData()
 			edata:SetOrigin(ply:EyePos())
 			edata:SetEntity(ply)
 			util.Effect("BloodImpact", edata, true, true)
+			
+			local rf = RecipientFilter()
+			rf:AddAllPlayers()
+			rf:RemovePlayer(ply)
+			
+			self:EmitSound("weapons/springlock.mp3", 65, 100, 0.2, CHAN_AUTO, 0, 1, rf)
 			
 			ply:SetDSP(25)
 			ply:Freeze(true)

@@ -241,25 +241,23 @@ end
 local function MangleHookUpCheck(ply, mv)
 	local velocity = ply:GetVelocity()
 
-	local eyeDir = ply:EyeAngles():Forward()
-
 	local speedDir = velocity:GetNormalized()
+	local traceDist = 40
 
-	local traceDist = 20
-	
 	local startPos = ply:EyePos()
-	local endPos = startPos + (speedDir * traceDist) + (eyeDir * traceDist)
-	
-	local tr = util.TraceLine( {
+	local endPos = startPos + (speedDir * traceDist)
+
+	local tr = util.TraceLine({
 		start = startPos,
 		endpos = endPos,
 		filter = ply
-	} )
+	})
+
 	tr.startPos = startPos
 	tr.endPos = endPos
-	
-	--debugoverlay.Line( startPos, endPos )
-	
+
+	--debugoverlay.Line(startPos, endPos, 1, Color(255, 255, 0))
+
 	return tr
 end
 
@@ -323,7 +321,7 @@ hook.Add("FinishMove", "mangle_hook_ready", function( ply, mv )
 			end
 		end
 	
-		if ply:OnGround() then
+		if ply:OnGround() or ply:WaterLevel() > 0 then
 			ply:SetNWBool("_MangleHookReady", false)
 			ply:SetNWString("_MangleLastHookType", "")
 			return

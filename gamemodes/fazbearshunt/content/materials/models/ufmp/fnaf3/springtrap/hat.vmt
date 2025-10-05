@@ -10,12 +10,9 @@ $phongexponent "54"
 $phongboost "2"
 $phongtint "[0.9 0.4 1]"
 $phongfresnelranges "[0.05 0.5 1]"
-$phongalbedotint "1"
 $halflambert "1"
-$phongalbedotint "1"
 $basetexturetransform "1"
 $nodecal "1"
 $model "1"
 $diffuseexp "1.5"
-$nocull 1
 }

@@ -16,7 +16,7 @@ hook.Add("fh_startgame", "spawn_wgfreddy", function(roundType)
 		return
 	end
 	
-	if math.random(1,7) == 1 or GetConVar( "developer" ):GetBool() then
+	if math.random(1,8) == 1 or GetConVar( "developer" ):GetBool() then
 		if roundType == 0 then
 			local players = team.GetPlayers(TEAM_UNASSIGNED)
 			local count = table.Count(players)
@@ -94,9 +94,15 @@ function fh_spawnPlushies(ply)
 	local placed = 0
 	local usedPositions = {}
 	
-	local function isWithinStrictRange(pos)
-		local distSqr = origin:DistToSqr(pos)
-		return distSqr >= minDistFromPlayer^2 and distSqr <= maxDistFromPlayerStrict^2
+	local function spawnPlushAt(pos)
+		local ent = ents.Create("fh_plushie")
+		if IsValid(ent) then
+			ent:Spawn()
+            ent:SetPos(pos)
+			ent.owner = ply
+			table.insert(usedPositions, pos)
+			placed = placed + 1
+		end
 	end
 	
 	local function isFarFromOthers(pos, minimumSpacing)
@@ -107,21 +113,6 @@ function fh_spawnPlushies(ply)
 			end
 		end
 		return true
-	end
-	
-	local function isLooseCandidate(pos)
-		return origin:DistToSqr(pos) <= maxDistFromPlayerLoose^2
-	end
-	
-	local function spawnPlushAt(pos)
-		local ent = ents.Create("fh_plushie")
-		if IsValid(ent) then
-			ent:Spawn()
-            ent:SetPos(pos)
-			ent.owner = ply
-			table.insert(usedPositions, pos)
-			placed = placed + 1
-		end
 	end
 	
 	local areas = navmesh.GetAllNavAreas()
@@ -137,8 +128,9 @@ function fh_spawnPlushies(ply)
 		if area:HasAttributes(NAV_MESH_CROUCH) or area:HasAttributes(NAV_MESH_AVOID) or area:IsUnderwater() then continue end
 	
 		local pos = area:GetCenter()
+		local distSqr = origin:DistToSqr(pos)
 		
-		if isWithinStrictRange(pos) and isFarFromOthers(pos) and math.abs(origin.z - pos.z) < sameFloorDist then
+		if distSqr >= minDistFromPlayer^2 and distSqr <= maxDistFromPlayerStrict^2 and isFarFromOthers(pos) and math.abs(origin.z - pos.z) < sameFloorDist then
 			spawnPlushAt(pos)
 		end
 	end
@@ -149,7 +141,7 @@ function fh_spawnPlushies(ply)
 			if area:HasAttributes(NAV_MESH_CROUCH) or area:HasAttributes(NAV_MESH_AVOID) or area:IsUnderwater() then continue end
 	
 			local pos = area:GetCenter()
-			if isLooseCandidate(pos) and isFarFromOthers(pos, 800) and math.abs(origin.z - pos.z) < sameFloorDistMax then
+			if origin:DistToSqr(pos) <= maxDistFromPlayerLoose^2 and isFarFromOthers(pos, 800) and math.abs(origin.z - pos.z) < sameFloorDistMax then
 				spawnPlushAt(pos)
 			end
 		end

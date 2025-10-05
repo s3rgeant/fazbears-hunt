@@ -4,7 +4,7 @@ ENT.Type = "anim"
 ENT.AutomaticFrameAdvance = true
 
 function ENT:Initialize()
-    self:SetModel("models/humans/group01/male_07.mdl")
+    self:SetModel("models/humans/group01/male_mori_helper.mdl")
 	self:SetAngles(Angle(0, 0, 0))
 	self:ResetSequence("test01")
 	self:SetCycle(0)

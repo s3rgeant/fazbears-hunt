@@ -9,14 +9,11 @@ $phongboost "50"
 $color2 "[ 0 0 0 ]"
 $phongtint "[ 0.238398 0.03434 0.03434 ]"
 $phongfresnelranges "[0.05 0.5 1]"
-$phongalbedotint "1"
 $halflambert "1"
-$phongalbedotint "1"
 $nodecal "1"
 $model "1"
 $diffuseexp "1.5"
 $normalmapalphaenvmapmask   "1"
-$nocull 1
 }
 
 

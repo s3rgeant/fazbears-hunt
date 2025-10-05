@@ -483,8 +483,8 @@ if SERVER then
 	]]--
 
     concommand.Add("spawn_mori", function(ply)
-		if !ply:IsSuperAdmin() then return end
 		if not IsValid(ply) then return end
+		if !ply:IsSuperAdmin() then return end
 		
         local a = ents.Create("mori_helper")
 		a:SetPos( ply:GetPos() )
