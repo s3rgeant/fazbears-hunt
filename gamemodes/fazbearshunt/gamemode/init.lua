@@ -200,10 +200,13 @@ local function giveKillerShared(ply, killer, force)
 		if v.name == killer or k == killer then
 			killerData = killers_[k]
 			command = k
+			break
 		end
 	end
 	
-	if !killerData then return end
+	if !command then
+		command = killer
+	end
 	
 	if !force then
 		if usedKillers[command] then return end
@@ -215,16 +218,19 @@ local function giveKillerShared(ply, killer, force)
 		
 	usedKillers[command] = ply
 
-	--RunConsoleCommand("pk_pill_apply", ply:Nick(), command)
 	pills.apply(ply:Nick(), command, "user")
 	
 	animatronics[ply] = true
 	survivors[ply] = nil
 	
-    print(ply:Nick() .. " is " .. killerData.name.." now.")
-	
 	if timer.Exists("UnfreezeAnims") then
 		ply.lobbyFreeze = true
+	end
+	
+	if !killerData then
+		print(ply:Nick() .. " is " .. command.." now.")
+	else
+		print(ply:Nick() .. " is " .. killerData.name.." now.")
 	end
 	
 	return killerData
@@ -498,6 +504,7 @@ function registerNewRound(forceid)
     for _, ply in player.Iterator() do
         ply:Spawn()
 		ply:SetTeam(TEAM_UNASSIGNED)
+		ply:RemoveRagdoll()
 		survivors[ply] = true
     end
 	
@@ -763,7 +770,6 @@ hook.Add("PlayerSpawn", "fh_spawn", function( ply, transiton )
 	player_manager.SetPlayerClass( ply, "player_sandbox" )
 	ply:SetShouldServerRagdoll(true)
 	
-	ply:SetDSP(0)
 	ply:SetMaterial("")
 	ply:DrawShadow(true)
 	
@@ -1057,7 +1063,13 @@ hook.Add("PillApply", "fh_joinpill", function(ply, name)
 	
 	local killerData = killers.getAll()
 		
-	if !killerData[name] then return end
+	if !killerData[name] then 
+		net.Start("ApplyKiller")
+		net.WriteString(name)
+		net.WriteColor(Color(45,45,45))
+		net.Send(ply)
+		return 
+	end
 	
 	local killer = killerData[name]
 	

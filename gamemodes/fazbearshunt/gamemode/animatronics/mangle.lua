@@ -45,7 +45,7 @@ pills.register("pill_mangle",{
 		dist = 120
     },
 	hull=Vector(32,32,76),
-	duckBy=60,
+	duckBy=50,
 	
 	bloodType=BLOOD_COLOR_MECH,
 
@@ -63,15 +63,17 @@ pills.register("pill_mangle",{
 		mode="trigger",
 		func=function(ply,ent)
 			if IsValid(ply:GetEntityInUse()) then return end
-			local target = FindNearestPlayer(ent:GetPos(), 130, ply, 90)
-			if !IsValid(target) then 
-				AnimatronicBreakProp(ply, ent)
-				return 
-			end
 			
 			if ply:GetNWBool("_MangleHooked") or ply:GetNWBool("_MangleHookReady") then return end
 			
-			performJumpscare(ply, ent, target, 1.6, "mangle", 70)
+			local target = FindNearestPlayer(ent:GetPos(), 130, ply, 90)
+			
+			local jumpscare = performJumpscare(ply, ent, target, 1.6, "mangle", 70)
+			
+			if !IsValid(target) or !jumpscare then 
+				AnimatronicBreakProp(ply, ent)
+				return 
+			end
 		end
     },
 	 

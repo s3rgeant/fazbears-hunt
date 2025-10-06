@@ -299,19 +299,23 @@ hook.Add("FinishMove", "BlightPredictionFinish", function(ply, mv)
 			end
 		end
 		
-		ply:SendLua([[
-			if getAbilityTokens("charge") > 0 then
-				RMBHint(2)
-			end
-		]])
+		if SERVER then
+			ply:SendLua([[
+				if getAbilityTokens("charge") > 0 then
+					RMBHint(2)
+				end
+			]])
+		end
 		
 		ply:SetNWBool("isBlightRushing", false)
 		ply:SetNWBool("isBlightBouncing", true)
 	
-		net.Start("fh_net_killer_change")
-		net.WriteString("charge")
-		net.WriteFloat(2)
-		net.Send(ply)
+		if SERVER then
+			net.Start("fh_net_killer_change")
+			net.WriteString("charge")
+			net.WriteFloat(2)
+			net.Send(ply)
+		end
 						
 		ply.blightBounceStart = CurTime()
 
@@ -321,15 +325,17 @@ hook.Add("FinishMove", "BlightPredictionFinish", function(ply, mv)
 		ply.blightBounceDir = normal
 		ply.blightBounceSpeed = 80
 				
-		if IsValid(ply.puppet) then
+		if SERVER and IsValid(ply.puppet) then
 			ply.puppet:SetPlaybackRate(1)
 			ply.puppet:PillGesture("chargestun", 1, 0.8, 0.1, 0.3)
 		end
 		
 		ply:EmitSound("blight/impact.wav")
 		
-		net.Start("BlightRush_End")
-		net.Send(ply)
+		if SERVER then
+			net.Start("BlightRush_End")
+			net.Send(ply)
+		end
 		
 		local effectData = EffectData()
 		effectData:SetOrigin(tr.HitPos + Vector(0,0,32))
@@ -347,6 +353,8 @@ hook.Add("FinishMove", "BlightPredictionFinish", function(ply, mv)
 			EndRush(ply)
 			return
 		end
+		
+		if CLIENT then return end
 
 		ply.blightTimeoutTimer = "BlightTimeout_" .. ply:SteamID()
 		timer.Create(ply.blightTimeoutTimer, 2, 1, function()

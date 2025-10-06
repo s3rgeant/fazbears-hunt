@@ -91,6 +91,10 @@ function getPillTable(typ)
     return table.Copy(forms[typ])
 end
 
+function getAllPills()
+    return table.Copy(forms)
+end
+
 function getFormCount()
     return table.Count(forms)
 end

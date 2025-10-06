@@ -961,7 +961,7 @@ function start_outworld(ply, ent, target)
 	
 	-- никто не видит их
 	for _, player in player.Iterator() do
-		if player ~= ply and player ~= target and player:Team() != TEAM_SPECTATOR and player:Alive() then
+		if player ~= ply and player ~= target and player:Team() ~= TEAM_SPECTATOR and player:Alive() then
 			net.Start("fh_dontdraw_player")
 			net.WritePlayer(target)
 			net.Send(player)

@@ -25,7 +25,8 @@ function highlight.ByDistance(ply, ent)
 		for _, player in player.Iterator() do
 			if player ~= ply and player:IsPlayer() 
 							and player:IsSurvivor()
-							and !outworlded[player] then
+							and !outworlded[player]
+							and hook.Run("FH_ShouldHighlightPlayer", player, ply, ent) == false then
 				local distance = ply:GetPos():Distance(player:GetPos())
 				
 				local isAffected = distance <= conVars.halo_radius:GetInt()
@@ -65,7 +66,7 @@ concommand.Add("fh_show_halo_radius", function(ply, cmd, args)
 	end
 end)
 
-local function GetMapHalfSize()
+local function getMapHalfSize()
     local mins, maxs = Vector(math.huge, math.huge, math.huge), Vector(-math.huge, -math.huge, -math.huge)
 
     for _, ent in ents.Iterator() do
@@ -90,7 +91,7 @@ end
 concommand.Add("fh_test_auto_halo_radius", function(ply, cmd, args)
 	if IsValid(ply) and ply:IsSuperAdmin() then
 	
-		local halfDiagonal = GetMapHalfSize()
+		local halfDiagonal = getMapHalfSize()
 		print("Auto Halo Radius: ", halfDiagonal / 2, conVars.halo_radius:GetInt())
 
 		debugoverlay.Sphere( ply:GetPos(), conVars.halo_radius:GetInt(), 8, Color( 255, 0, 0, 120 ), true )

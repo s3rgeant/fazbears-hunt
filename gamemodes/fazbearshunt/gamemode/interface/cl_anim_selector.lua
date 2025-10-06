@@ -112,7 +112,11 @@ function draw_killer_selector()
 	local killerData = killers.getAll()
 
     for i, animName in ipairs(animatronics) do
-        local imagePath = "vgui/bars/" .. killerData[animName].name .. ".png"
+		local animImage = nil
+		local storedAvatar = killers.GetAvatar(animName)
+		if storedAvatar then
+			animImage = storedAvatar
+		end
 
         local box = vgui.Create("DImageButton")
         box:SetSize(140, 140)
@@ -141,8 +145,8 @@ function draw_killer_selector()
             net.SendToServer()
         end
 
-        if file.Exists("materials/" .. imagePath, "GAME") then
-            box:SetImage(imagePath)
+        if animImage then
+            box:SetMaterial(animImage)
         else
             box.Paint = function(self, w, h)
                 draw.RoundedBox(4, 0, 0, w, h, Color(0, 0, 0))

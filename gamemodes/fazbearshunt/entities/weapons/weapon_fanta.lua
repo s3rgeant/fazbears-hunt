@@ -107,7 +107,7 @@ end
 
 function SWEP:FireAnimationEvent( pos, ang, event, options )
 	if event == 49 then
-	self.FlexWeight = 1
+		self.FlexWeight = 1
 	end
 end
 

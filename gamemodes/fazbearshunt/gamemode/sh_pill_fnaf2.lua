@@ -517,6 +517,7 @@ pills.register("pill_wbonnie2",{
 	printName="Withered Bonnie",
 	model="models/speps/pill/phantombonnie.mdl",
 	--bodyGroups={math.random(1,1000) == 2 and 0 or 10},		-- рофлянка лицо бонни
+	bodyGroups={0},		-- рофлянка лицо бонни на хеллоуин
 	anims={
 		default={
 			idle="idle",
@@ -1141,7 +1142,7 @@ pills.register("pill_sfreddy2",{
 	model="models/speps/pill/oldgoldenfreddy.mdl",
 
 	options=function() return {
-		{skin=1}
+		{skin=2}
 	} end,
 	bodyGroups={12},
 	anims={
@@ -1165,13 +1166,6 @@ pills.register("pill_sfreddy2",{
 	},
 	sounds={
 		jump="sfreddylunge.mp3",
-		gs="fnaf2/shfreddy_laugh.wav",
-		stare={"fnaf2/garble1.wav",
-		"fnaf2/garble2.wav",
-		"fnaf2/garble3.wav"},
-	//	scream="fnaf2/bonniescream.wav",
-		melee=pills.helpers.makeList("fnaf2/sxscream.wav",2),
-		step=pills.helpers.makeList("fnaf2/none.wav",1)
 	},
 	type="ply",
     camera = {
@@ -1183,7 +1177,7 @@ pills.register("pill_sfreddy2",{
 	
 	viewmodel={
 		weapon="v_freddy",
-		skin=2
+		skin=4
 	},
 	
 	cloak={

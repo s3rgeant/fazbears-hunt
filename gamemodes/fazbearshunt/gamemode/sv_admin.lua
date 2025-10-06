@@ -279,14 +279,21 @@ addAction( "fh_gifts_spawning", function()
 	end
 end)
 
-local function setCCFloat(action)
+local function setCCFloat(ply, action)
 	local num = net.ReadFloat()
 	
 	game.ConsoleCommand(action .. " " .. math.floor(num) .. "\n")
 end
 
+local function morphGuy(ply, action)
+	local anim = net.ReadString()
+
+	pills.apply(ply:Nick(), anim, "user")
+end
+
 addAction( "fh_max_cupcakes", setCCFloat )
 addAction( "fh_round_duration", setCCFloat )
+addAction( "morph_myself", morphGuy)
 
 net.Receive("AdminAction", function(len, ply)
     if not ply:IsAdmin() then return end
@@ -335,7 +342,7 @@ net.Receive("AdminAction", function(len, ply)
 		net.Broadcast()
     else
 		if actions[action] then
-			actions[action](action)
+			actions[action](ply, action)
 		else
 			local bool = net.ReadBool() and 1 or 0
 			

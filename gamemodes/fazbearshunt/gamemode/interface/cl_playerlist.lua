@@ -381,8 +381,6 @@ end
 local showAnimTooltip = false
 local animTooltipText = ""
 
-local animatronicsAvatars = {}
-
 local function CreateAnimatronicPanel(scrollbar, ply, killerData)
 	local ent = pills.getMappedEnt(ply)
 	
@@ -401,34 +399,31 @@ local function CreateAnimatronicPanel(scrollbar, ply, killerData)
 
 	if IsValid(ent) then
 		animName = ent.formTable.name
-		animFullName = killerData[animName].fullname
-	
-		local panelColor = killerData[animName] and killerData[animName].color or Color(255, 255, 255, 0)
+		if killerData[animName] then
+			animFullName = killerData[animName].fullname
 		
-		panelColor.a = 120
-		
-		plyPanel.Paint = function(self, w, h)
-			draw.RoundedBox(8, 0, 0, w, h, Color(0, 0, 0, 255))
-		
-			surface.SetDrawColor(panelColor)
-			surface.SetMaterial(plypanel_mat)
-			surface.DrawTexturedRect(0, 0, w, h)
+			local panelColor = killerData[animName] and killerData[animName].color or Color(255, 255, 255, 0)
+			
+			panelColor.a = 120
+			
+			plyPanel.Paint = function(self, w, h)
+				draw.RoundedBox(8, 0, 0, w, h, Color(0, 0, 0, 255))
+			
+				surface.SetDrawColor(panelColor)
+				surface.SetMaterial(plypanel_mat)
+				surface.DrawTexturedRect(0, 0, w, h)
+			end
+			
+			imagePath = "vgui/bars/" .. killerData[animName].name .. ".png"
 		end
-		
-		imagePath = "vgui/bars/" .. killerData[animName].name .. ".png"
 	end
 		
 	local animImage = nil
 		
-    if file.Exists("materials/" .. imagePath, "GAME") and IsValid(ent) then
-		if animatronicsAvatars[imagePath] then
-			animImage = animatronicsAvatars[imagePath]
-		else
-			animImage = Material(imagePath, "mips") 
-		end
-		
-		if !animatronicsAvatars[imagePath] and !animImage:IsError() then
-			animatronicsAvatars[imagePath] = animImage
+    if file.Exists("materials/" .. imagePath, "GAME") and IsValid(ent) and killerData[animName] then
+		local storedAvatar = killers.GetAvatar(animName)
+		if storedAvatar then
+			animImage = storedAvatar
 		end
 
         local box = vgui.Create("DImageButton", plyPanel)
@@ -509,7 +504,7 @@ local function CreateAnimatronicPanel(scrollbar, ply, killerData)
 			end
 		end
 
-        if file.Exists("materials/" .. imagePath, "GAME") then
+        if animImage then
             box:SetMaterial(animImage)
         else
             box.Paint = function(self, w, h)

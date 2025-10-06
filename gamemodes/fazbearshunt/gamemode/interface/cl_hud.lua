@@ -539,7 +539,8 @@ hook.Add("OnContextMenuOpen", "fh_contextmenu", function()
 	local playeredit_button = contextmenu_options:AddOption( language.GetPhrase("fazhunt.context.player_editor"), openPlayerEditor )
 	playeredit_button:SetIcon("icon16/user.png")
 	
-	local button = contextmenu_options:AddCVar( language.GetPhrase("fazhunt.context.mute_spectators"), "proximity_hear_spectators", "1", "0" )
+	local button = contextmenu_options:AddCVar( language.GetPhrase("fazhunt.context.mute_spectators"), "proximity_hear_spectators", "0", "1" )
+	local button = contextmenu_options:AddCVar( "Halloween Color Correction", "fh_halloween_cc", "1", "0" )
 	
 	local panel = vgui.Create( "DPanel", contextmenu_options )
 	panel:SetSize( 55, 25 )

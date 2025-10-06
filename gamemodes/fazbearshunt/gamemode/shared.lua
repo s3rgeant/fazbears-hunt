@@ -55,10 +55,11 @@ local colors = {
     Golden = Color(255, 210, 0),
 	
     PFreddy = Color(67, 83, 50),
-    PBonnie = Color(51, 34, 76),
+    PBonnie = Color(79, 54, 104),
     PEndo = Color(255, 255, 255),
     PChica = Color(50, 62, 36),
     PFoxy = Color(57, 30, 11),
+    HShadow = Color(70, 100, 62), 
     HSpringtrap = Color(150, 129, 61)
 }
 
@@ -68,7 +69,7 @@ local killerData = killerData or {
     ["pill_wchica2"] = {name = "chica", fullname = "fazhunt.animatronics.chica", color = colors.PChica},
     ["pill_wfoxy2"] = {name = "foxy", fullname = "fazhunt.animatronics.foxy", color = colors.PFoxy},
     ["pill_endo02"] = {name = "endo", fullname = "fazhunt.animatronics.endo", color = colors.PEndo},
-    ["pill_sfreddy2"] = {name = "sfreddy", fullname = "fazhunt.animatronics.sfreddy", color = colors.Shadow},
+    ["pill_sfreddy2"] = {name = "sfreddy", fullname = "fazhunt.animatronics.sfreddy", color = colors.HShadow},
     ["pill_wgfreddy2"] = {name = "gfreddy", fullname = "fazhunt.animatronics.gfreddy", color = colors.Golden},
     ["pill_clown"] = {name = "clown", fullname = "fazhunt.animatronics.clown", color = colors.Clown},
 	
@@ -141,14 +142,34 @@ killerAbilities = {
     }
 }
 
+killers = killers or {}
+
+local killerAvatars = {}
+for name,v in pairs(killerData) do
+	local imagePath = "vgui/bars/" .. v.name .. ".png"
+	local animImage = nil
+	
+    if file.Exists("materials/" .. imagePath, "GAME") then
+		animImage = Material(imagePath, "mips")
+		if !animImage:IsError() then
+			killerAvatars[name] = animImage
+		end
+	end
+end
+
+function killers.GetAvatar(killer)
+	if killerAvatars[killer] then
+		return killerAvatars[killer]
+	end
+	return nil
+end
+
 local function IsNavmesh()
 	if CLIENT then
 		return true
 	end
 	return navmesh.IsLoaded() and navmesh.GetNavAreaCount() >= 5
 end
-
-killers = killers or {}
 
 function killers.getAll()
 	local tablo = table.Copy(killerData)

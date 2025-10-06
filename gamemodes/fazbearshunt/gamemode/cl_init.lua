@@ -285,6 +285,11 @@ local halloweenColorCorrection = {
 	["$pp_colour_mulg"] = 0,
 	["$pp_colour_mulb"] = 0
 }
+
+local fh_halloween_cc = CreateClientConVar("fh_halloween_cc", "1", true, true, "Toggle Halloween Themed Color Correction", 0, 1)
+
 hook.Add("RenderScreenspaceEffects", "Halloween_Effect", function()
-	DrawColorModify(halloweenColorCorrection)
+	if fh_halloween_cc:GetBool() then
+		DrawColorModify(halloweenColorCorrection)
+	end
 end)

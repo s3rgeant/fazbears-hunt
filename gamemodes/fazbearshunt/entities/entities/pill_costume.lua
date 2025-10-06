@@ -858,9 +858,18 @@ function ENT:Draw()
 	
 	ply:RemoveAllDecals()
 	
+	if self:GetNoDraw() then
+		self.IsDrawn = false
+		self:DrawShadow(false)
+	end
+	
 	if hook.Run("ForceDrawPill", ply, self) == true then
 		self:DrawModel()
 		self.IsDrawn = true
+		return
+	else
+		self.IsDrawn = false
+		self:DrawShadow(false)
 		return
 	end
 	

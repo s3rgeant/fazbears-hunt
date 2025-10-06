@@ -23,7 +23,7 @@ function ToggleNightVision()
                 ["$pp_colour_addg"] = 0.05,
                 ["$pp_colour_addb"] = 0.05,
                 ["$pp_colour_brightness"] = 0,
-                ["$pp_colour_contrast"] = 0.8,
+                ["$pp_colour_contrast"] = 1,
                 ["$pp_colour_colour"] = 0.65,
                 ["$pp_colour_mulr"] = 0,
                 ["$pp_colour_mulg"] = 0,

@@ -75,7 +75,7 @@ function SWEP:PrimaryAttack()
 				owner:SetRunSpeed(owner:GetRunSpeed() * 1.2)
 				owner:SetCrouchedWalkSpeed(owner:GetCrouchedWalkSpeed() * 1.4)
 				
-				local trail = util.SpriteTrail(owner, owner:LookupAttachment( "chest" ), Color(0, 169, 255, 255), true, 32, 0, 1, 1 / ( ( 32 + 0 ) * 0.5 ), "trails/physbeam")
+				local trail = util.SpriteTrail(owner, owner:LookupAttachment( "chest" ), Color(0, 169, 255, 200), true, 32, 0, 1, 1 / ( ( 32 + 0 ) * 0.5 ), "trails/physbeam")
 				
 				owner._adrenTrail = trail
 			end

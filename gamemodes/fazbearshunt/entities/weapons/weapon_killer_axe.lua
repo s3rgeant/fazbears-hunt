@@ -259,7 +259,7 @@ end
 hook.Add("fh_should_animatronic_respawn", "fh_no_escape_from_axe", function(ply, dmginfo)
 	local attacker = dmginfo:GetAttacker()
 	
-	if IsValid(attacker) and attacker:IsPlayer() and attacker:GetActiveWeapon():GetClass() == "weapon_killer_axe" then
+	if IsValid(attacker) and attacker:IsPlayer() and IsValid(attacker:GetActiveWeapon()) and attacker:GetActiveWeapon():GetClass() == "weapon_killer_axe" then
 		return false
 	end
 end)
@@ -308,10 +308,10 @@ if CLIENT then
 end
 
 hook.Add( "CustomPlayerTakeDamageConditions", "fh_axe_shouldtakedamage", function( ply, attacker )
-	if ply:IsAnimatronic() and IsValid(attacker) and attacker:IsPlayer() and attacker:GetActiveWeapon():GetClass() == "weapon_killer_axe" then
+	if ply:IsAnimatronic() and IsValid(attacker) and attacker:IsPlayer() and IsValid(attacker:GetActiveWeapon()) and attacker:GetActiveWeapon():GetClass() == "weapon_killer_axe" then
 		return true
 	end
-	if  IsValid(attacker) and attacker:IsPlayer() and attacker:IsAnimatronic() and ply:GetActiveWeapon():GetClass() == "weapon_killer_axe" then
+	if  IsValid(attacker) and attacker:IsPlayer() and attacker:IsAnimatronic() and IsValid(attacker:GetActiveWeapon()) and ply:GetActiveWeapon():GetClass() == "weapon_killer_axe" then
 		return true
 	end
 end)
@@ -354,6 +354,7 @@ end)
 hook.Add( "PlayerSpawn", "fh_axe_anim_spawn", function( ply )
 	if ply:GetNWBool("KillerObsessed") then
 		ply:SetNWBool("KillerObsessed", false)
+		ply:SetDSP(0)
 	end
 	if ply:GetNWBool("KillerMaskEquiped") then
 		ply:SetNWBool("KillerMaskEquiped", false)
@@ -367,6 +368,7 @@ end)
 hook.Add("PillApply", "fh_axe_joinpill", function(ply, name)
 	if ply:GetNWBool("KillerObsessed") then
 		ply:SetNWBool("KillerObsessed", false)
+		ply:SetDSP(0)
 	end
 	if ply:GetNWBool("KillerMaskEquiped") then
 		ply:SetNWBool("KillerMaskEquiped", false)
@@ -376,6 +378,7 @@ end)
 hook.Add( "PlayerDeath", "fh_axe_anim_death", function( ply, inflictor, attacker )
 	if ply:GetNWBool("KillerObsessed") then
 		ply:SetNWBool("KillerObsessed", false)
+		ply:SetDSP(0)
 	end
 	if ply:GetNWBool("KillerMaskEquiped") then
 		ply:SetNWBool("KillerMaskEquiped", false)

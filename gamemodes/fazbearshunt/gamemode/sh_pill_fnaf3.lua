@@ -742,7 +742,7 @@ end )
 function plushtrap_request_complete(springtrap, ply)
 	if IsValid(request_plushtrap) or !IsValid(pt_request_springtrap_ply) then return end
 	
-	if request_plushtrap:Alive() then return end -- на а хули?
+	if ply:Alive() then return end -- на а хули?
 	
 	if timer.Exists("pt_waiting" .. springtrap:EntIndex()) then
 		timer.Remove("pt_waiting" .. springtrap:EntIndex())

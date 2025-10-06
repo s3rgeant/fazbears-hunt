@@ -1,4 +1,4 @@
-fh_admin_panel = nil
+fh_admin_panel = fh_admin_panel or nil
 local PlayerList, AnimatronicList
 local lastSelectedTab = 1
 
@@ -221,7 +221,7 @@ local function OpenAdminPanel()
 
     sheet:AddSheet(language.GetPhrase("fazhunt.adminpanel.round"), roundPanel, "icon16/joystick.png")
 
-    -- === Панель событий === --
+    -- === Панель ивенты === --
     local eventsPanel = vgui.Create("DPanel")
     eventsPanel:Dock(FILL)
 
@@ -268,6 +268,94 @@ local function OpenAdminPanel()
 	DermaList:AddItem( lblExp )
 
     sheet:AddSheet(language.GetPhrase("fazhunt.adminpanel.experiments"), expPanel, "icon16/chart_line.png")
+	
+    local animPanel = vgui.Create("DPanel")
+    animPanel:Dock(FILL)
+	
+	local anim_avatar = vgui.Create("DImage", animPanel)
+	anim_avatar:SetPos(10, 20)
+	anim_avatar:SetSize(125, 125)
+	anim_avatar:SetImage("tools/toolsblack.vmt")
+	
+	local currentAnimatronic = nil
+	
+	AddNetActionButton(animPanel, 10, 150, 125, 30, language.GetPhrase("fazhunt.adminpanel.morph_myself"), "morph_myself", function()
+		if !currentAnimatronic or currentAnimatronic:len() < 1 then
+			chat.AddText(Color(255, 0, 0), language.GetPhrase("fazhunt.adminpanel.error_give"))
+			return
+		end
+	
+		net.Start("AdminAction")
+		net.WriteString("morph_myself")
+		net.WriteString(currentAnimatronic or "")
+		net.SendToServer()
+		
+		updatePlayer(LocalPlayer(), "give_animatronic")
+	end)
+
+	local w, h = fh_admin_panel:GetSize()
+	local CatList = vgui.Create( "DCategoryList", animPanel )
+	CatList:SetSize(200, h - 120)
+	CatList:SetPos(w - 230, 20)
+	
+	--[[
+		категории для ёбанных аниматроников
+	]]
+	local entiretyOfPills = pills.getAllPills()
+	local registeredPills = killers.getAll()
+	
+	local list = {}
+	local categories = {}
+	
+	if not table.IsEmpty(entiretyOfPills) then
+		for k, v in pairs(entiretyOfPills) do
+			if registeredPills[k] then
+				list[k] = registeredPills[k]
+				list[k].registered = true
+
+				local ctgry = list[k].category or "Uncategorized"
+
+				categories[ctgry] = categories[ctgry] or {}
+
+				table.insert(categories[ctgry], {
+					name = k,
+					fh_data = list[k],
+					pill_data = v
+				})
+			else
+				list[k] = {}
+
+				local ctgry = list[k].category or "Unlisted"
+
+				categories[ctgry] = categories[ctgry] or {}
+
+				table.insert(categories[ctgry], {
+					name = k,
+					fh_data = list[k]
+				})
+			end
+		end
+	end
+
+	for categoryName, animList in pairs(categories) do
+		local cat = CatList:Add(categoryName)
+
+		for _, animData in pairs(animList) do
+			local button = cat:Add(animData.name)
+			button.DoClick = function()
+				currentAnimatronic = animData.name
+				
+				local image = killers.GetAvatar(animData.name)
+				if image then
+					anim_avatar:SetMaterial(image)
+				else
+					anim_avatar:SetImage("tools/toolsblack.vmt")
+				end
+			end
+		end
+	end
+
+    sheet:AddSheet(language.GetPhrase("fazhunt.animatronics_team"), animPanel, "icon16/freddy.png")
 
     if IsValid(sheet) and sheet.Items[lastSelectedTab] then
         sheet:SetActiveTab(sheet.Items[lastSelectedTab].Tab)
