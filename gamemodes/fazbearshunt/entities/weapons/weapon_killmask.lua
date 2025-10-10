@@ -74,7 +74,9 @@ end
 function SWEP:SpringLock()
 	local ply = self.Owner
 	
-	ply:SetNWBool("KillerMaskEquiped", true)
+	ply:SetNW2Bool("KillerMaskEquiped", true)
+
+	self:SetHoldType( "normal" )
 	
 	self:EmitSound("weapons/AudioEvent_K06_Status_Start.mp3")
 	
@@ -108,7 +110,7 @@ function SWEP:SpringLock()
 			
 			ply:SetDSP(25)
 			ply:Freeze(true)
-			ply:SetNWBool("KillerObsessed", true)
+			ply:SetNW2Bool("KillerObsessed", true)
 			ply:SetGFreddyImmune(true)
 			
 			ply:AllowFlashlight(false)
@@ -128,6 +130,8 @@ function SWEP:SpringLock()
 	
 			ply:Freeze(false)
 			ply:SetRunSpeed(475)
+			ply:SetRunSpeed(475)
+			ply:SetCrouchedWalkSpeed( 0.5 )
 			ply:SetJumpBoostMultiplier(0.4)
 			ply:AllowFlashlight(true)
 		end)
@@ -156,7 +160,7 @@ model:SetNoDraw( true )
 
 hook.Add("PostPlayerDraw", "fh_draw_killmask", function(ply)
 	if not IsValid(ply) or not ply:Alive() then return end
-	if not ply:GetNWBool("KillerMaskEquiped") then return end
+	if not ply:GetNW2Bool("KillerMaskEquiped") then return end
 
 	if not IsValid(model) then return end
 
@@ -193,7 +197,7 @@ end)
 
 function SWEP:DrawWorldModel( flags )
 	local ply = self.Owner
-	if !ply:GetNWBool("KillerMaskEquiped") then
+	if !ply:GetNW2Bool("KillerMaskEquiped") then
 		self:DrawModel( flags )
 	end
 end

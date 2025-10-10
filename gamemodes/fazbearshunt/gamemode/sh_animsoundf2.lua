@@ -2,7 +2,7 @@
 //wfreddy
 sound.Add({
 	name = 			"freddy.foot1",
-	channel = 		CHAN_BODY,
+	channel = 		CHAN_STATIC,
 	level = 		90,
 	volume = 		1.0,
 	sound = 			{"2footstep1.mp3"
@@ -12,7 +12,7 @@ sound.Add({
 })
 sound.Add({
 	name = 			"freddy.stalkfoot1",
-	channel = 		CHAN_BODY,
+	channel = 		CHAN_STATIC,
 	level = 		90,
 	volume = 		1.0,
 	sound = 			{"bigstep1.mp3"
@@ -25,7 +25,7 @@ sound.Add({
 
 sound.Add({
 	name = 			"mangle.foot1",
-	channel = 		CHAN_BODY,
+	channel = 		CHAN_STATIC,
 	level = 		90,
 	volume = 		1.0,
 	sound = 			{"2metalstep1.mp3"
@@ -36,7 +36,7 @@ sound.Add({
 
 sound.Add({
 	name = 			"mangle.foot2",
-	channel = 		CHAN_BODY,
+	channel = 		CHAN_STATIC,
 	level = 		90,
 	volume = 		1.0,
 	sound = 			{"2metalstep1.mp3"
@@ -48,7 +48,7 @@ sound.Add({
 //springtrap
 sound.Add({
 	name = 			"springtrap.foot1",
-	channel = 		CHAN_BODY,
+	channel = 		CHAN_STATIC,
 	level = 		90,
 	volume = 		1.0,
 	sound = 			{"fnaf3/sprstep1.mp3"
@@ -57,7 +57,7 @@ sound.Add({
 })
 sound.Add({
 	name = 			"plushtrap.foot1",
-	channel = 		CHAN_BODY,
+	channel = 		CHAN_STATIC,
 	level = 		60,
 	volume = 		1.0,
 	sound = 			{"fnaf3/plushtrap/ptrun1.wav"
@@ -67,7 +67,7 @@ sound.Add({
 })
 sound.Add({
 	name = 			"plushtrap.crouch1",
-	channel = 		CHAN_BODY,
+	channel = 		CHAN_STATIC,
 	level = 		60,
 	volume = 		1.0,
 	sound = 			{"fnaf3/plushtrap/ptcrawl1.wav"
@@ -146,4 +146,11 @@ sound.Add({
 	sound = 			{"fnaf2/gfreddy/gfreddy_laugh1.mp3",
 						 "fnaf2/gfreddy/gfreddy_laugh2.mp3",
 						 "fnaf2/gfreddy/gfreddy_laugh3.mp3"}
+})
+sound.Add({
+	name = 			"sb_mask.unlock",
+	channel = 		CHAN_WEAPON,
+	level = 		60,
+	volume = 		1.0,
+	sound = 			{"weapons/killermask_unlock.wav"}
 })

@@ -69,8 +69,8 @@ pills.packStart("FUPPR 2 WE","FUPPR 2 WE","icon/fnafur2we.png")
 local stalker
 local stalkTarget
 
-local wfreddy_default_movement = {150, 490, 65, 250} -- обычное передвижение
-local wfreddy_stalk_movement = {150, 600, 70, 255} -- сталкер дохуя
+local wfreddy_default_movement = {150, 490, 70, 250} -- обычное передвижение
+local wfreddy_stalk_movement = {150, 600, 75, 255} -- сталкер дохуя
 
 pills.register("pill_wfreddy2",{
 	printName="Withered Freddy",
@@ -862,7 +862,8 @@ pills.register("pill_wchica2",{
 	attack2={
 		mode="trigger",
 		func = function(ply,ent)
-			if table.Count(cupcakes) < conVars.fh_max_cupcakes:GetInt() and !cooldown.Exists(ply, "deploycake") then
+			if !cupcakes[ply] then cupcakes[ply] = 0 end
+			if cupcakes[ply] < conVars.fh_max_cupcakes:GetInt() and !cooldown.Exists(ply, "deploycake") then
 				cooldown.Set(ply, "deploycake", 15)
 				
 				local playerPos = ply:GetPos()
@@ -876,14 +877,14 @@ pills.register("pill_wchica2",{
 				if math.random(1, 10) > 4 then playVoiceline('chica', 'plant', ply, 0.1) end
 				
 				cupcake:SetPos(spawnPos)
+				cupcake:SetAngles(ply:GetAngles())
 				cupcake:SetOwner(ply)
 				cupcake:Spawn()
 				cupcake:Activate()
 				
 				hook.Run("FH_MinePlanted", ply, ent, cupcake)
 				
-				cupcakes[cupcake:EntIndex()] = true
-				--table.insert(cupcakes, cupcake:EntIndex())
+				cupcakes[ply] = cupcakes[ply] + 1
 			
 				net.Start("fh_net_killer_change")
 				net.WriteString("mine")
@@ -1077,6 +1078,8 @@ pills.register("pill_wfoxy2",{
 	},
 	
 	land=function(ply,ent, iw)
+		if ply:GetNWBool("isBlightRushing") or ply:GetNWBool("isBlightBouncing") or ply:GetNWBool("blightRushing") then return end
+
 		if ply.lobbyFreeze != nil and ply.lobbyFreeze then return end
 		if ply:WaterLevel() < 2 and ply:GetVelocity().z < -160 and !ply.isBlightRushing then
 			ent:PillAnim("land",true)
@@ -1166,6 +1169,7 @@ pills.register("pill_sfreddy2",{
 	},
 	sounds={
 		jump="sfreddylunge.mp3",
+		melee=pills.helpers.makeList("fnaf2/sxscream.wav",2),
 	},
 	type="ply",
     camera = {
@@ -1242,6 +1246,8 @@ pills.register("pill_sfreddy2",{
 		func = function(ply,ent)
 			
 			if cooldown.Exists(ply, 'noclip') then return end
+			
+			ply:LagCompensation( false )
 
 			if !ply:KeyDown(IN_USE) then
 			
@@ -1370,6 +1376,7 @@ pills.register("pill_sfreddy2",{
 					end)
 				end
 			end
+			ply:LagCompensation( true )
 		end
 	},
  
@@ -1711,6 +1718,8 @@ pills.register("pill_wgfreddy2",{
 			
 			if ply:GetNWBool("wgfreddy_enraged") then return end
 			
+			ply:LagCompensation( false )
+			
 			if !ent.cloaked then
 				if !ply:OnGround() and ply:WaterLevel() == 0 then return end
 				if !IsValid(ent) then return end
@@ -1777,6 +1786,7 @@ pills.register("pill_wgfreddy2",{
 							
 				ent.cloaked=false
 			end
+			ply:LagCompensation( true )
 			
 		end
 	},
@@ -2062,8 +2072,10 @@ function performJumpscare(ply, ent, target, killDelay, voiceCharacter, jumpscare
 	target.jumpscared = true
 	ply.jumpscaring = target
 
+	ply:LagCompensation(false)
 	jumpscareEvent(ply, ent, target, jumpscareDistance or 50)
 	ent:PillAnim("scare", true)
+	ply:LagCompensation(true)
 
 	net.Start("fh_net_killer_change")
 	net.WriteString("kill")
@@ -2076,6 +2088,9 @@ function performJumpscare(ply, ent, target, killDelay, voiceCharacter, jumpscare
 	end
 
 	timer.Create("FH_JumpscareKill_" .. ply:EntIndex(), killDelay, 1, function()
+		if IsValid(ent) then
+			ent:SetUseForceAngles(false)
+		end
 		if IsValid(ply) then 
 			ply:Freeze(false)
 			ply.jumpscaring = nil
@@ -2175,15 +2190,21 @@ function jumpscareEvent(ply, ent, target, dist)
 		target:SetPos(teleportTargetPos)
 	end
 
-	local directionToTarget = (ply:GetPos() - target:GetPos()):Angle()
-	target:SetEyeAngles(directionToTarget)
+	local directionToTarget = (target:GetPos() - ply:GetPos()):Angle()
+	local entAngle = directionToTarget
+	entAngle.p = 0
+	ply:SetEyeAngles(directionToTarget)
+	ent:SetForceAngles(entAngle)
+	ent:SetUseForceAngles(true)
 
-	local directionToAttacker = (target:GetPos() - ply:GetPos()):Angle()
-	ply:SetEyeAngles(directionToAttacker)
+	local directionToAttacker = (ply:GetPos() - target:GetPos()):Angle()
+	target:SetEyeAngles(directionToAttacker)
 
+	--[[
 	net.Start("SetKillerAngle")
 	net.WriteEntity(ent)
 	net.Broadcast()
+	]]--
 end
 
 local takenPlayers = {}
@@ -2297,7 +2318,6 @@ function endoRelease(ply)
 		local trace = util.TraceEntity(traceData, target)
 
 		if trace.Hit then
-			print('mne pizda')
 			target:SetPos(newPos)
 		end
 	
@@ -2562,21 +2582,27 @@ if SERVER then
 		if outworld_victims[ply] then
 			cancel_outworld(ply)
 		end
+		killCupcakes(ply)
 	end)
 	
 	function killCupcakes(ply)
-		if table.IsEmpty(cupcakes) then return end
-		for index, _ in pairs(cupcakes) do
-			if ents.GetByIndex(index):GetOwner() == ply then
-				ents.GetByIndex(index):Remove()
-				cupcakes[index] = nil
+		if table.IsEmpty(cupcakes) or !cupcakes[ply] then return end
+		for _, ent in ipairs( ents.FindByClass( "cakemine" ) ) do
+			if ent:GetOwner() == ply then
+				ent:Remove()
 			end
 		end
+		cupcakes[ply] = nil
 	end
 	
 	hook.Add("EntityRemoved", "RemoveKilledCupcake", function(ent)
-		if cupcakes[ent:EntIndex()] then
-			cupcakes[ent:EntIndex()] = nil
+		if ent:GetClass() == "cakemine" then
+			local owner = ent:GetOwner() 
+			if IsValid(owner) then
+				if cupcakes[owner] then
+					cupcakes[owner] = math.max(0, cupcakes[owner] - 1)
+				end
+			end
 		end
 	end)
 	
@@ -2614,7 +2640,7 @@ else
 	]]--
 end
 	
-hook.Add("PlayerNoClip", "BlockNoClipForHeldPlayer", function(ply, desiredState)
+hook.Add("PlayerNoClip", "endo_targets_noclip_handle", function(ply, desiredState)
 	if noClipBlockedPlayers[ply] then
 		return false
 	end
@@ -2626,12 +2652,49 @@ function AnimatronicBreakProp(ply, ent, cooldown)
 		return
 	end
 
+	local startPos = ply:GetShootPos()
+	local endPos = startPos + ply:GetAimVector() * 130
+
 	local tr = util.TraceLine( {
-		start = ply:GetShootPos(),
-		endpos = ply:GetShootPos() + ply:GetAimVector() * 150,
+		start = startPos,
+		endpos = endPos,
 		filter = ply,
 		mask = MASK_SHOT
-	} )
+	})
+
+	if !IsValid(tr.Entity) then
+		local mins = Vector(-4, -4, -3)
+		local maxs = Vector(4, 4, 3)
+
+		local boxTr = util.TraceHull({
+			start = startPos,
+			endpos = endPos,
+			mins = mins,
+			maxs = maxs,
+			filter = ply,
+			mask = MASK_SHOT
+		})
+		debugoverlay.Line(ply:EyePos(), tr.HitPos, 5, Color(255, 115, 0), true)
+		debugoverlay.Box( boxTr.HitPos, mins, maxs, 5, Color( 255,0,0) )
+
+		if boxTr.Hit and IsValid(boxTr.Entity) then
+			tr = boxTr
+
+			local ent = boxTr.Entity
+			local entMins, entMaxs = ent:WorldSpaceAABB()
+
+			local function ClosestPointToAABB(point, mins, maxs)
+				return Vector(
+					math.Clamp(point.x, mins.x, maxs.x),
+					math.Clamp(point.y, mins.y, maxs.y),
+					math.Clamp(point.z, mins.z, maxs.z)
+				)
+			end
+
+			local nearestPos = ClosestPointToAABB(startPos, entMins, entMaxs)
+			tr.HitPos = nearestPos
+		end
+	end
 	debugoverlay.Line(ply:EyePos(), tr.HitPos, 5, Color(255, 0, 0), true)
 	
 	local target = tr.Entity
@@ -2710,8 +2773,12 @@ function chaseCheck(ply, name, ent)
 		if target:IsNPC() then return end
 		
 		if target:IsSprinting() and target:GetVelocity():LengthSqr() > target:GetWalkSpeed() then
-			
-			playVoiceline(name, 'chase', ply, 1)
+			local vc = "chase"
+			if target:GetNW2Bool("KillerObsessed") then
+				vc = "negative"
+			end
+
+			playVoiceline(name, vc, ply, 1)
 			
 			timer.Create("ChaseCheck"..ply:EntIndex(), 15, 1, function() end) -- шобы войслайны не играли очень часто
 			

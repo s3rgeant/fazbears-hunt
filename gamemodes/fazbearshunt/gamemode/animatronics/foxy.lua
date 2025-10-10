@@ -330,11 +330,11 @@ hook.Add("FinishMove", "BlightPredictionFinish", function(ply, mv)
 			ply.puppet:PillGesture("chargestun", 1, 0.8, 0.1, 0.3)
 		end
 		
-		ply:EmitSound("blight/impact.wav")
-		
 		if SERVER then
 			net.Start("BlightRush_End")
 			net.Send(ply)
+		
+			ply:EmitSound("blight/impact.wav")
 		end
 		
 		local effectData = EffectData()

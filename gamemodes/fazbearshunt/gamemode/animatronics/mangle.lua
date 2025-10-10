@@ -3,10 +3,10 @@ AddCSLuaFile()
 pills.packStart("FH MANGLE", "FH MANGLE", "icon16/pill.png")
 
 local man_speed = {
-	[1] = {66, 475, 70, 250},
-	[2] = {66, 485, 70, 252},
-	[3] = {66, 495, 70, 254},
-	[4] = {66, 505, 70, 256}
+	[1] = {66, 475, 80, 250},
+	[2] = {66, 485, 80, 252},
+	[3] = {66, 495, 80, 254},
+	[4] = {66, 505, 80, 256}
 }
 
 pills.register("pill_mangle",{
@@ -27,6 +27,8 @@ pills.register("pill_mangle",{
 			hook_ceiling="hook_ceiling",
 			land="land",
 			land_hard="land_hard",
+			crouch="crouch",
+			crouch_walk="crouchwalk",
 		},
 	},
 	moveSpeed={
@@ -86,7 +88,7 @@ pills.register("pill_mangle",{
 			local addVelocity = Vector(0,0,0)
 			if !ply:GetNWBool("_MangleHooked") then
 				if !ply:OnGround() or ply:Crouching() then return end
-				if eyeAng.p > -10 then return end
+				if eyeAng.p > 0 then return end
 			else
 				velocityPower = 800
 				if eyeAng.p > 40 then
@@ -115,8 +117,14 @@ pills.register("pill_mangle",{
 			if eyeAng.p > -24 then
 				addVelocity = Vector(0,0,200)
 			end
+
+			local initVelVector = ply:EyeAngles():Forward() + (ply:EyeAngles():Up() * 0.2)
+
+			if ply:GetNWBool("_MangleHooked") then
+				initVelVector = ply:EyeAngles():Forward()
+			end
 			
-			ply:SetVelocity( (ply:EyeAngles():Forward() * velocityPower) + addVelocity )
+			ply:SetVelocity( ((initVelVector) * velocityPower) + addVelocity )
 			
 			ply:SetNWBool("_MangleHooked", false)
 			ply:SetNWBool("_MangleHookReady", true)
@@ -146,7 +154,6 @@ pills.register("pill_mangle",{
 			end
 		end
 		
-		--[[
 		timer.Create("CheckConditions"..ply:EntIndex(), 2, 0, function()
 			if !IsValid(ent) then
 				if timer.Exists( "CheckConditions"..ply:EntIndex()) then
@@ -160,7 +167,6 @@ pills.register("pill_mangle",{
 			
 			chaseCheck(ply, 'mangle')
 		end)
-		]]--
 	end,
 
 	noFallDamage=true,
@@ -247,11 +253,20 @@ local function MangleHookUpCheck(ply, mv)
 	local traceDist = 40
 
 	local startPos = ply:EyePos()
-	local endPos = startPos + (speedDir * traceDist)
+	
+	local ang = speedDir:Angle()
+	
+	ang.yaw = math.Round(ang.yaw / 45) * 45
+	ang.pitch = math.Round(ang.pitch / 45) * 45
 
+	local snappedDir = ang:Forward()
+	
+	local endPos = startPos + (snappedDir * traceDist)
+	
 	local tr = util.TraceLine({
 		start = startPos,
 		endpos = endPos,
+		mask = MASK_VISIBLE,
 		filter = ply
 	})
 
@@ -308,6 +323,7 @@ hook.Add("FinishMove", "mangle_hook_ready", function( ply, mv )
 	if ply:GetNWBool("_MangleHookReady") then
 		local hooktype = ply:GetNWString("_MangleLastHookType")
 		if SERVER and hooktype == "ceiling" then
+			ply:LagCompensation(true)
 			if ply:GetGroundEntity():IsPlayer() and ply:GetGroundEntity():IsSurvivor() then
 				local victim = ply:GetGroundEntity()
 				victim:TakeDamage(100, ply)
@@ -321,6 +337,7 @@ hook.Add("FinishMove", "mangle_hook_ready", function( ply, mv )
 				
 				tierUp(ply)
 			end
+			ply:LagCompensation(false)
 		end
 	
 		if ply:OnGround() or ply:WaterLevel() > 0 then
@@ -329,7 +346,9 @@ hook.Add("FinishMove", "mangle_hook_ready", function( ply, mv )
 			return
 		end
 		
+		ply:LagCompensation(true)
 		local tr = MangleHookUpCheck(ply, mv)
+		ply:LagCompensation(false)
 		
 		if !tr.HitSky and tr.Hit and tr.Entity == game.GetWorld() and tr.HitNormal.z <= 0 then
 			local ent = pills.getMappedEnt(ply)

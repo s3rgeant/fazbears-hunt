@@ -27,7 +27,8 @@ SWEP.Primary.Automatic = false
 SWEP.Primary.Sound = Sound("weapons/adren/adrenuse.wav")
 SWEP.Primary.Delay = 0.2
 
-SWEP.Description = "Grants a temporary speed boost and heals a small amount of health."
+SWEP.Secondary.Automatic = false
+SWEP.Secondary.Ammo = "none"
 
 function SWEP:Initialize()
     self:SetHoldType(self.HoldType)

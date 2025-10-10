@@ -126,10 +126,8 @@ if CLIENT then
     function SWEP:CalcViewModelView(ViewModel, OldEyePos, OldEyeAng, EyePos, EyeAng)
         local ply = self.Owner
         if not IsValid(ply) then return EyePos, EyeAng end
-		
-		if !ply:OnGround() then return end
 
-        local target = ply:Crouching() and 1 or 0
+        local target = (ply:Crouching() and ply:OnGround()) and 1 or 0
         crouchFactor = Lerp(FrameTime() * 5, crouchFactor, target)
 
         local newPitch = Lerp(crouchFactor, EyeAng.p, 0)

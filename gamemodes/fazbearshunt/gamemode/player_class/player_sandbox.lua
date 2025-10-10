@@ -108,13 +108,34 @@ end
 local JUMPING
 
 function PLAYER:StartMove( move )
+	
+	local ply = self.Player
 
 	-- Only apply the jump boost in FinishMove if the player has jumped during this frame
 	-- Using a global variable is safe here because nothing else happens between SetupMove and FinishMove
-	if bit.band( move:GetButtons(), IN_JUMP ) ~= 0 and bit.band( move:GetOldButtons(), IN_JUMP ) == 0 and self.Player:OnGround() then
+	if bit.band( move:GetButtons(), IN_JUMP ) ~= 0 and bit.band( move:GetOldButtons(), IN_JUMP ) == 0 and ply:OnGround() then
 		JUMPING = true
 	end
 
+    if ply:Crouching() and ply:OnGround() then
+        local targetSpeed = ply:GetWalkSpeed() * ply:GetCrouchedWalkSpeed()
+        move:SetMaxSpeed(targetSpeed)
+    end
+end
+
+function PLAYER:Move( move )
+
+	local ply = self.Player
+	
+	if bit.band( move:GetButtons(), IN_JUMP ) ~= 0 and bit.band( move:GetOldButtons(), IN_JUMP ) == 0 and ply:OnGround() then
+		JUMPING = true
+	end
+	
+    if ply:Crouching() and ply:OnGround() then
+        local targetSpeed = ply:GetWalkSpeed() * ply:GetCrouchedWalkSpeed()
+        move:SetMaxClientSpeed(targetSpeed)
+        move:SetMaxSpeed(targetSpeed)
+    end
 end
 
 local meta = FindMetaTable("Player")

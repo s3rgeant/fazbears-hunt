@@ -30,7 +30,7 @@ function addAffected(ply, duration)
 	end
 	
 	timer.Create( "RemoveAffectedPlayer"..ply:SteamID64(), duration, 1, function()
-		if target == ply then return end
+		if ply == target then return end
 		table.RemoveByValue(affectedPlayers, ply)
 	end)
 end

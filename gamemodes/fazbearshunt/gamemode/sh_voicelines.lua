@@ -49,6 +49,7 @@ local voicelines = {
         chase = generateVoicelines("bonnie_chase", 6),
         spotted = generateVoicelines("bonnie_spotted", 3),
         trip = generateVoicelines("bonnie_trip", 5),
+        negative = generateVoicelines("bonnie_negative", 3),
         tasered = generateVoicelines("bonnie_tasered", 4),
     },
     chica = {
@@ -57,6 +58,7 @@ local voicelines = {
         chase = generateVoicelines("chica_chase", 5),
         plant = generateVoicelines("chica_placecake", 3),
         trip = generateVoicelines("chica_trip", 5),
+        negative = generateVoicelines("chica_negative", 3),
         tasered = generateVoicelines("chica_tasered", 4),
     },
     foxy = {
@@ -64,6 +66,7 @@ local voicelines = {
         lastkill = generateVoicelines("foxy_lastkill", 4),
         chase = generateVoicelines("foxy_chase", 3),
         trip = generateVoicelines("foxy_trip", 5),
+        negative = generateVoicelines("foxy_negative", 3),
         tasered = generateVoicelines("foxy_tasered", 4),
     },
     endo = {
@@ -73,6 +76,7 @@ local voicelines = {
         grab = generateVoicelines("endo_grab", 4),
         throw = generateVoicelines("endo_throw", 3),
         trip = generateVoicelines("endo_trip", 6),
+        negative = generateVoicelines("endo_negative", 3),
         tasered = generateVoicelines("endo_tasered", 4),
     },
     sfreddy = {
@@ -92,6 +96,15 @@ local voicelines = {
         start = generateVoicelines("plushtrap_start", 13),
         trip = generateVoicelines("plushtrap_trip", 7),
         tasered = generateVoicelines("plushtrap_tasered", 4),
+    },
+    mangle = {
+        kill = generateVoicelines("mangle_kill", 5),
+        lastkill = generateVoicelines("mangle_lastkill", 1),
+        chase = generateVoicelines("mangle_chase", 3),
+        negative = generateVoicelines("mangle_negative", 3),
+        positive = generateVoicelines("mangle_positive", 3),
+        trip = generateVoicelines("mangle_trip", 3),
+        tasered = generateVoicelines("mangle_tasered", 3),
     }
 }
 

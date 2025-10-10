@@ -26,7 +26,7 @@ function highlight.ByDistance(ply, ent)
 			if player ~= ply and player:IsPlayer() 
 							and player:IsSurvivor()
 							and !outworlded[player]
-							and hook.Run("FH_ShouldHighlightPlayer", player, ply, ent) == false then
+							and hook.Run("FH_ShouldHighlightPlayer", player, ply, ent) ~= false then
 				local distance = ply:GetPos():Distance(player:GetPos())
 				
 				local isAffected = distance <= conVars.halo_radius:GetInt()

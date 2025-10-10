@@ -276,6 +276,30 @@ local function OpenAdminPanel()
 	anim_avatar:SetPos(10, 20)
 	anim_avatar:SetSize(125, 125)
 	anim_avatar:SetImage("tools/toolsblack.vmt")
+
+    local runTxt = vgui.Create("DLabel", animPanel)
+	runTxt:SetPos( 10, 190 )
+	runTxt:SetSize( 120, 25 )
+    runTxt:SetText("Run Speed: ???")
+    runTxt:SetDark(true)
+    runTxt:SetAutoStretchVertical(true)
+    runTxt:SetWrap(true)
+
+    local walkTxt = vgui.Create("DLabel", animPanel)
+	walkTxt:SetPos( 10, 210 )
+	walkTxt:SetSize( 120, 25 )
+    walkTxt:SetText("Walk Speed: ???")
+    walkTxt:SetDark(true)
+    walkTxt:SetAutoStretchVertical(true)
+    walkTxt:SetWrap(true)
+
+    local crouchTxt = vgui.Create("DLabel", animPanel)
+	crouchTxt:SetPos( 10, 230 )
+	crouchTxt:SetSize( 120, 25 )
+    crouchTxt:SetText("Crouched Speed: ???")
+    crouchTxt:SetDark(true)
+    crouchTxt:SetAutoStretchVertical(true)
+    crouchTxt:SetWrap(true)
 	
 	local currentAnimatronic = nil
 	
@@ -331,7 +355,8 @@ local function OpenAdminPanel()
 
 				table.insert(categories[ctgry], {
 					name = k,
-					fh_data = list[k]
+					fh_data = list[k],
+					pill_data = v
 				})
 			end
 		end
@@ -350,6 +375,32 @@ local function OpenAdminPanel()
 					anim_avatar:SetMaterial(image)
 				else
 					anim_avatar:SetImage("tools/toolsblack.vmt")
+				end
+				
+				if animData.pill_data then
+					local speed = animData.pill_data.moveSpeed
+					
+					if speed then
+						if speed.walk then
+							walkTxt:SetText("Walk Speed: " .. speed.walk)
+						else
+							walkTxt:SetText("Walk Speed: ???")
+						end
+						if speed.run then
+							runTxt:SetText("Run Speed: " .. speed.run)
+						else
+							runTxt:SetText("Run Speed: ???")
+						end
+						if speed.ducked then
+							crouchTxt:SetText("Crouched Speed: " .. speed.ducked)
+						else
+							crouchTxt:SetText("Crouched Speed: ???")
+						end
+					end
+				else
+					walkTxt:SetText("Walk Speed: ???")
+					runTxt:SetText("Run Speed: ???")
+					crouchTxt:SetText("Crouched Speed: ???")
 				end
 			end
 		end
@@ -383,9 +434,11 @@ function createListPlayers()
 end
 
 function updatePlayer(ply, team)
-    for _, line in ipairs(PlayerList:GetLines()) do
-        if line.Player == ply then
-            line:SetValue(2, getTeam(team))
+    if IsValid(PlayerList) then
+        for _, line in ipairs(PlayerList:GetLines()) do
+            if line.Player == ply then
+                line:SetValue(2, getTeam(team))
+            end
         end
     end
 end

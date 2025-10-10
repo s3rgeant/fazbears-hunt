@@ -293,3 +293,33 @@ hook.Add("RenderScreenspaceEffects", "Halloween_Effect", function()
 		DrawColorModify(halloweenColorCorrection)
 	end
 end)
+
+hook.Add("EntityNetworkedVarChanged","fh_gamestatus_update", function(entity, name, old, new)
+    if entity == game.GetWorld() then
+        if name == 'gameOn' then
+            if new == true then
+                hook.Run("fh_prestartgame")
+            end
+        end
+        if name == 'roundActive' then
+            if new == true then
+                hook.Run("fh_poststartgame")
+            end
+        end
+        if name == 'roundEnding' then
+            if new == true then
+                hook.Run("fh_postendgame")
+            end
+        end
+    end
+
+    if entity:IsPlayer() then
+        if name == 'KillerObsessed' then
+            if new == true then
+                hook.Run("FH_KillerObsessed", entity)
+            elseif new == false then
+                hook.Run("FH_KillerLostObsession", entity)
+            end
+        end
+    end
+end)

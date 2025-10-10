@@ -39,6 +39,8 @@ function ENT:Initialize()
 	ply:DrawShadow(false)
     --Do this so weapon equips are not blocked
     pills.mapEnt(ply, nil)
+		
+	hook.Run("PillApply", ply, self.formTable.name)
 	
 	if CLIENT then
 		ply:SetRenderBounds(-Vector(hull.x / 2, hull.y / 2, 0), Vector(hull.x / 2, hull.y / 2, hull.z + 30))
@@ -277,6 +279,8 @@ function ENT:OnRemove()
 
     if newType ~= "ply" and IsValid(ply) then
         ply:ResetHull()
+			
+		hook.Run("PillRestore", ply)
 
         if SERVER then
             ply:SetViewOffset(Vector(0, 0, 64))
@@ -290,8 +294,6 @@ function ENT:OnRemove()
 
 				ply:SetNotSolid(false)
             end
-			
-			hook.Run("PillRestore", ply)
 
             if ply:Alive() then
                 -- Just respawn the player to reset most stuff.
@@ -480,12 +482,12 @@ function ENT:Think()
             end
         end
 
+        self.touchingWater = ply:WaterLevel() > 1
         if not ply:IsOnGround() and ply:WaterLevel() == 0 and self.formTable.glideThink then
             self.formTable.glideThink(ply, self)
-        elseif not ply:IsOnGround() and not self.touchingWater and ply:WaterLevel() > 0 and self.formTable.land and not ply:IsFrozen() then
-            self.formTable.land(ply, self)
+        --elseif not ply:OnGround() and not self.touchingWater and ply:WaterLevel() > 0 and self.formTable.land and not ply:IsFrozen() then
+			--self.formTable.land(ply, self)
         end
-        self.touchingWater = ply:WaterLevel() > 1
 
         if self.formTable.damageFromWater and self.touchingWater then
             if self.formTable.damageFromWater == -1 then
@@ -863,11 +865,13 @@ function ENT:Draw()
 		self:DrawShadow(false)
 	end
 	
-	if hook.Run("ForceDrawPill", ply, self) == true then
+    local drawHook = hook.Run("ForceDrawPill", ply, self)
+
+	if drawHook == true then
 		self:DrawModel()
 		self.IsDrawn = true
 		return
-	else
+    elseif drawHook == false then
 		self.IsDrawn = false
 		self:DrawShadow(false)
 		return

@@ -72,6 +72,8 @@ function SWEP:PrimaryAttack()
 	self:SendWeaponAnim(ACT_MELEE_ATTACK1)
 	self.Owner:SetAnimation(PLAYER_ATTACK1)
 	
+	self.Owner:ViewPunch(Angle(-2,4,0))
+	
 	self:SetNextMeleeAttack( CurTime() + self.HitDelay )
 end
 
@@ -81,62 +83,67 @@ local PushSound_pills = {
 }
 
 function SWEP:DealDamage()
-    local ply = self.Owner
+	local ply = self.Owner
 
-    ply:LagCompensation(true)
+	ply:LagCompensation(true)
+		
+	self.Owner:ViewPunch(Angle(1,-3,0))
 
-    local tr = util.TraceLine({
-        start = ply:GetShootPos(),
-        endpos = ply:GetShootPos() + ply:GetAimVector() * 70,
-        filter = ply,
-        mask = MASK_SHOT_HULL
-    })
+	local tr = util.TraceLine({
+		start = ply:GetShootPos(),
+		endpos = ply:GetShootPos() + ply:GetAimVector() * 85,
+		filter = ply,
+		mask = MASK_SHOT_HULL
+	})
 
-    if not IsValid(tr.Entity) then
-        tr = util.TraceHull({
-            start = ply:GetShootPos(),
-            endpos = ply:GetShootPos() + ply:GetAimVector() * 70,
-            filter = ply,
-            mins = self.HitSize.Min,
-            maxs = self.HitSize.Max,
-            mask = MASK_SHOT_HULL
-        })
-    end
+	if not IsValid(tr.Entity) then
+		tr = util.TraceHull({
+			start = ply:GetShootPos(),
+			endpos = ply:GetShootPos() + ply:GetAimVector() * 85,
+			filter = ply,
+			mins = self.HitSize.Min,
+			maxs = self.HitSize.Max,
+			mask = MASK_SHOT_HULL
+		})
+	end
 
-    local target = tr.Entity
-    if not IsValid(target) then
-        ply:LagCompensation(false)
-        return
-    end
-	
-    if CLIENT then
-        ply:LagCompensation(false)
-        return
-    end
+	local target = tr.Entity
+	if not IsValid(target) then
+		ply:LagCompensation(false)
+		return
+	end
+		
+	if CLIENT then
+		ply:LagCompensation(false)
+		return
+	end
 
-    local class = target:GetClass()
-    if class == "func_breakable" or class == "func_breakable_surf" then
-        target:Fire("Shatter", "0", 0)
-    end
+	local class = target:GetClass()
+	if class == "func_breakable" or class == "func_breakable_surf" then
+		target:Fire("Shatter", "0", 0)
+	end
 
-    if target:GetMoveType() == MOVETYPE_VPHYSICS then
-        local owner = target:GetOwner()
-        if (not IsValid(owner)) or (IsValid(owner) and not owner:IsAnimatronic()) then
-            local phys = target:GetPhysicsObject()
-            if IsValid(phys) then
-                local dir = ply:GetAimVector()
-                phys:ApplyForceCenter(dir * 10000)
-            end
-        end
-    end
-	
+	if target:GetMoveType() == MOVETYPE_VPHYSICS then
+		local owner = target:GetOwner()
+		if (not IsValid(owner)) or (IsValid(owner) and not owner:IsAnimatronic()) then
+			local phys = target:GetPhysicsObject()
+			if IsValid(phys) then
+				local dir = ply:GetAimVector()
+				phys:ApplyForceCenter(dir * 10000)
+			end
+		end
+	end
+		
 	local targetIsAnimatronic = (target:IsPlayer() and target:IsAnimatronic())
+	local targetIsSurv = (target:IsPlayer() and target:IsSurvivor())
 	local ent = pills.getMappedEnt(target)
-	
+	local animsCount = team.NumPlayers( TEAM_PILLS )
+		
 	if targetIsAnimatronic and ent.cloaked then return end
-	
-	local damage = targetIsAnimatronic and math.random(480, 585) or 70
-	
+		
+	-- мы увеличиваем урон по аниматроникам если их больше одного
+	local damage = targetIsAnimatronic and math.random(510, 625) * 1 +((math.max(1, animsCount-1))/4) or math.random(20,30)
+		
 	if targetIsAnimatronic then
 		target:EmitSound(PushSound_pills[math.random(#PushSound_pills)])
 		
@@ -146,32 +153,39 @@ function SWEP:DealDamage()
 		util.Effect("cball_explode", fx, true, true)
 	end
 
-    local dmginfo = DamageInfo()
-    dmginfo:SetAttacker(ply)
-    dmginfo:SetInflictor(self)
-    dmginfo:SetDamage(damage)
+	if targetIsSurv then
+		local edata = EffectData()
+		edata:SetOrigin(tr.HitPos)
+		edata:SetEntity(target)
+		util.Effect("BloodImpact", edata, true, true)
+	end
 
-    SuppressHostEvents(NULL)
-    target:TakeDamageInfo(dmginfo)
-    SuppressHostEvents(ply)
+	local dmginfo = DamageInfo()
+	dmginfo:SetAttacker(ply)
+	dmginfo:SetInflictor(self)
+	dmginfo:SetDamage(damage)
 
-    local effectData = EffectData()
-    effectData:SetOrigin(tr.HitPos)
-    effectData:SetStart(ply:GetShootPos())
-    effectData:SetEntity(tr.Entity or ply)
-    effectData:SetNormal(tr.HitNormal)
-    effectData:SetSurfaceProp(tr.SurfaceProps or 0)
-    effectData:SetDamageType(DMG_CLUB)
-    effectData:SetHitBox(tr.HitBox or 0)
-    effectData:SetScale(1)
-    util.Effect("Impact_GMOD", effectData, true, true)
+	SuppressHostEvents(NULL)
+	target:TakeDamageInfo(dmginfo)
+	SuppressHostEvents(ply)
 
-    ply:LagCompensation(false)
+	local effectData = EffectData()
+	effectData:SetOrigin(tr.HitPos)
+	effectData:SetStart(ply:GetShootPos())
+	effectData:SetEntity(tr.Entity or ply)
+	effectData:SetNormal(tr.HitNormal)
+	effectData:SetSurfaceProp(tr.SurfaceProps or 0)
+	effectData:SetDamageType(DMG_CLUB)
+	effectData:SetHitBox(tr.HitBox or 0)
+	effectData:SetScale(1)
+	util.Effect("Impact_GMOD", effectData, true, true)
 
-    if target:IsNPC() then
-        target:TakeDamage(99999, ply)
-        return
-    end
+	ply:LagCompensation(false)
+
+	if target:IsNPC() then
+		target:TakeDamage(99999, ply)
+		return
+	end
 end
 
 function SWEP:Think()
@@ -308,16 +322,16 @@ if CLIENT then
 end
 
 hook.Add( "CustomPlayerTakeDamageConditions", "fh_axe_shouldtakedamage", function( ply, attacker )
-	if ply:IsAnimatronic() and IsValid(attacker) and attacker:IsPlayer() and IsValid(attacker:GetActiveWeapon()) and attacker:GetActiveWeapon():GetClass() == "weapon_killer_axe" then
+	if IsValid(attacker) and attacker:IsPlayer() and IsValid(attacker:GetActiveWeapon()) and attacker:GetActiveWeapon():GetClass() == "weapon_killer_axe" then
 		return true
 	end
-	if  IsValid(attacker) and attacker:IsPlayer() and attacker:IsAnimatronic() and IsValid(attacker:GetActiveWeapon()) and ply:GetActiveWeapon():GetClass() == "weapon_killer_axe" then
+	if  IsValid(attacker) and attacker:IsPlayer() and attacker:IsAnimatronic() and IsValid(ply:GetActiveWeapon()) and ply:GetActiveWeapon():GetClass() == "weapon_killer_axe" then
 		return true
 	end
 end)
 
 hook.Add( "FH_PlayerShouldJumpscare", "fh_axe_owner_no_jumpscare", function( ply, ent, target )
-	if ply:IsAnimatronic() and IsValid(target) and target:GetNWBool("KillerObsessed") then
+	if ply:IsAnimatronic() and IsValid(target) and target:GetNW2Bool("KillerObsessed") then
 		return false
 	end
 end)
@@ -325,7 +339,7 @@ end)
 hook.Add( "fh_animatronic_post_break_prop", "fh_anims_fight_axe_owner", function( ply, ent, tr )
 	local target = tr.Entity
 	
-	if target:IsPlayer() and target:GetNWBool("KillerObsessed") then
+	if target:IsPlayer() and target:GetNW2Bool("KillerObsessed") then
 		local wep = ply:GetActiveWeapon()
 
 		ply:EmitSound("bonnie_punch.mp3")
@@ -347,17 +361,17 @@ hook.Add( "fh_animatronic_post_break_prop", "fh_anims_fight_axe_owner", function
         edata:SetEntity(target)
         util.Effect("BloodImpact", edata, true, true)
 		
-		ply._breakPropAsAnimTime = CurTime() + 0.6
+		ply._breakPropAsAnimTime = CurTime() + 0.8
 	end
 end)
 
 hook.Add( "PlayerSpawn", "fh_axe_anim_spawn", function( ply )
-	if ply:GetNWBool("KillerObsessed") then
-		ply:SetNWBool("KillerObsessed", false)
+	if ply:GetNW2Bool("KillerObsessed") then
+		ply:SetNW2Bool("KillerObsessed", false)
 		ply:SetDSP(0)
 	end
-	if ply:GetNWBool("KillerMaskEquiped") then
-		ply:SetNWBool("KillerMaskEquiped", false)
+	if ply:GetNW2Bool("KillerMaskEquiped") then
+		ply:SetNW2Bool("KillerMaskEquiped", false)
 	end
 	
 	if ply:HasWeapon("weapon_killer_axe") then
@@ -366,22 +380,22 @@ hook.Add( "PlayerSpawn", "fh_axe_anim_spawn", function( ply )
 end)
 
 hook.Add("PillApply", "fh_axe_joinpill", function(ply, name)
-	if ply:GetNWBool("KillerObsessed") then
-		ply:SetNWBool("KillerObsessed", false)
+	if ply:GetNW2Bool("KillerObsessed") then
+		ply:SetNW2Bool("KillerObsessed", false)
 		ply:SetDSP(0)
 	end
-	if ply:GetNWBool("KillerMaskEquiped") then
-		ply:SetNWBool("KillerMaskEquiped", false)
+	if ply:GetNW2Bool("KillerMaskEquiped") then
+		ply:SetNW2Bool("KillerMaskEquiped", false)
 	end
 end)
 
 hook.Add( "PlayerDeath", "fh_axe_anim_death", function( ply, inflictor, attacker )
-	if ply:GetNWBool("KillerObsessed") then
-		ply:SetNWBool("KillerObsessed", false)
+	if ply:GetNW2Bool("KillerObsessed") then
+		ply:SetNW2Bool("KillerObsessed", false)
 		ply:SetDSP(0)
 	end
-	if ply:GetNWBool("KillerMaskEquiped") then
-		ply:SetNWBool("KillerMaskEquiped", false)
+	if ply:GetNW2Bool("KillerMaskEquiped") then
+		ply:SetNW2Bool("KillerMaskEquiped", false)
 	end
 	if ply:IsAnimatronic() and IsValid(attacker) and attacker:IsPlayer() and inflictor:GetClass() == "weapon_killer_axe" then
 		local effectdata = EffectData()
@@ -400,7 +414,10 @@ hook.Add( "PlayerDeath", "fh_axe_anim_death", function( ply, inflictor, attacker
 end)
 
 hook.Add( "EntityTakeDamage", "EntityDamageExample", function( target, dmginfo )
-	if ( target:IsPlayer() and target:GetNWBool("KillerObsessed") and IsValid(dmginfo:GetAttacker()) ) then
-		dmginfo:SetDamage( math.min(dmginfo:GetDamage(), 6) )
+	if target:IsPlayer() and target:GetNW2Bool("KillerObsessed") then
+		dmginfo:SetDamage( math.random(4,6) )
+	end
+	if target:IsPlayer() and target:IsSurvivor() and IsValid(dmginfo:GetAttacker()) and dmginfo:GetAttacker():GetNW2Bool("KillerObsessed") then
+		dmginfo:SetDamage( math.min(dmginfo:GetDamage(), 30) )
 	end
 end )

@@ -302,8 +302,6 @@ if SERVER then
 		e:Activate()
 		
 		ply:SetTeam(TEAM_PILLS)
-		
-		hook.Run("PillApply", ply, name)
 
 		--if mode=="user" then
 		if t.type == "phys" then
@@ -459,7 +457,7 @@ if SERVER then
         local ent = getMappedEnt(ply)
 
         if IsValid(ent) then
-            if ent.formTable.land and (!ply.lobbyFreeze or ply.lobbyFreeze == nil) then
+            if ent.formTable.land and !ply:IsFlagSet(FL_FROZEN) then
                 ent.formTable.land(ply, ent)
                 ent:PillSound("land", false)
             end
@@ -624,7 +622,6 @@ hook.Add("SetupMove", "pk_pill_movemod", function(ply, mv, cmd)
             local vel = mv:GetVelocity()
 
             if ent:GetChargeTime() + .1 < CurTime() and vel:Length() < charge.vel * .8 then
-                print("uncharge")
                 ent:SetChargeTime(0)
                 ent:PillLoopStop("charge")
             else

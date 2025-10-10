@@ -182,6 +182,7 @@ end
 
 function EndPostRound()
 	if !roundActive and !roundEnding and isGameOn then
+		game.GetWorld():SetNW2Bool("roundActive", true)
 		roundActive = true
 		endgame_shared()
 	

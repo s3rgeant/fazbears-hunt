@@ -46,7 +46,7 @@ local function fh_default_check_scarysound()
                             start = eyePos,
                             endpos = plyPos,
                             filter = {localPlayer,ply},
-                            mask = MASK_VISIBLE_AND_NPCS
+                            mask = MASK_VISIBLE
                         })
 
                         local canSee = false

@@ -74,11 +74,13 @@ hook.Add("FH_HandlePlayerGrab", "gf_victim_nograb", function(endo, ply)
 	end
 end)
 
-hook.Add("PillApply", "gf_joinpill", function(ply, name)
-	if name == "pill_wgfreddy2" then
-		ply:SetTeam(27)
-	end
-end)
+if SERVER then
+	hook.Add("PillApply", "gf_joinpill", function(ply, name)
+		if name == "pill_wgfreddy2" then
+			ply:SetTeam(27)
+		end
+	end)
+end
 
 function fh_spawnPlushies(ply)
 	if !IsValid(ply) then return -1 end

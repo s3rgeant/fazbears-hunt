@@ -305,7 +305,7 @@ function CanMangleLunge()
 	local eyeAng = ply:EyeAngles()
 	
 	if !ply:GetNWBool("_MangleHooked") then
-		if !ply:OnGround() or ply:Crouching() or eyeAng.p > -10 then
+		if !ply:OnGround() or ply:Crouching() or eyeAng.p > 0 then
 			return Color(200, 32, 32, 200)
 		end
 	end
@@ -525,6 +525,11 @@ net.Receive("fh_net_thinkfast", function()
 	end)
 end)
 
+local function askServerFhEditor()
+	net.Start("fh_client_asks_editor")
+	net.SendToServer()
+end
+
 local contextmenu_options = contextmenu_options or nil
 
 hook.Add("OnContextMenuOpen", "fh_contextmenu", function()
@@ -556,6 +561,24 @@ hook.Add("OnContextMenuOpen", "fh_contextmenu", function()
 	
 	local button = contextmenu_options:AddCVar( language.GetPhrase("fazhunt.context.halo_teammates"), "fh_halo_teammates", "1", "0" )
 	local button = contextmenu_options:AddCVar( language.GetPhrase("fazhunt.context.thirperson"), "fh_thirdperson", "1", "0" )
+	
+	local myself = LocalPlayer()
+	
+	/*
+	if myself and myself:IsSuperAdmin() then
+		
+		local panel = vgui.Create( "DPanel", contextmenu_options )
+		panel:SetSize( 55, 25 )
+		panel:SetBackgroundColor( Color( 255, 255, 255 ) )
+		local dlable = vgui.Create( "DLabel", panel )
+		dlable:SetSize( 200, 25 )
+		dlable:SetText( "Super Admin Only" )
+		dlable:SetPos( 12, 0 )
+		dlable:SetTextColor( Color(0,0,0) )
+	
+		contextmenu_options:AddOption( "FH Editor", askServerFhEditor )
+	end
+	*/
 	
 	contextmenu_options:Open()
 	contextmenu_options:SetPos(0, (ScrH() / 2))

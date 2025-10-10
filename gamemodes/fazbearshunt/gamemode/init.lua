@@ -12,6 +12,8 @@ local function recursive_include(path)
     for _, file_name in ipairs(files) do
         local full_path = path .. file_name
 
+		if !file_name:EndsWith(".lua") then continue end
+
         if file_name:StartWith("sv_") then
             include(full_path)
 
@@ -177,6 +179,7 @@ function freezeAnimatronics(duration)
 		for ply, _ in pairs( animatronics ) do
 			ply.lobbyFreeze = false
 		end
+		game.GetWorld():SetNW2Bool("roundActive", true)
 		roundActive = true
 		
 		hook.Run("fh_poststartgame", roundType, animatronics)
@@ -284,6 +287,7 @@ function endGame(killerVictory)
 	killerVictory = killerVictory or false
 
 	roundEnding = true
+	game.GetWorld():SetNW2Bool("roundEnding", true)
 	
 	RunConsoleCommand("proximity_enabled", 0)
 	
@@ -376,7 +380,9 @@ function endGame(killerVictory)
 		net.WriteString('freddy_raged2_looped.wav')
 		net.Broadcast()
 		
+		game.GetWorld():SetNW2Bool("gameOn", false)
 		isGameOn = false
+		game.GetWorld():SetNW2Bool("roundActive", false)
 		roundActive = false
 		
 		table.Empty(usedKillers)
@@ -396,6 +402,7 @@ function endGame(killerVictory)
         timer.Create("GameStartTimer", lobbyDuration, 1, function()
             registerNewRound()
 			roundEnding = false
+			game.GetWorld():SetNW2Bool("roundEnding", false)
         end)
 		
 		RunConsoleCommand("proximity_enabled", 1)
@@ -496,7 +503,9 @@ function registerNewRound(forceid)
 	end
 	roundCount = roundCount + 1
 	
+	game.GetWorld():SetNW2Bool("gameOn", true)
 	isGameOn = true
+	game.GetWorld():SetNW2Bool("roundEnding", false)
 	roundEnding = false
 	table.Empty(survivors)
 	table.Empty(animatronics)

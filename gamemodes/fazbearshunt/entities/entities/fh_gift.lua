@@ -23,10 +23,10 @@ function ENT:Initialize()
     if SERVER then
         self:SetModel("models/props_halloween/" .. giftModel .. ".mdl")
 		self:SetModelScale(modelScale)
-        self:SetMoveType(MOVETYPE_NONE)
-        self:SetSolid(SOLID_BBOX)
-        self:SetCollisionGroup(COLLISION_GROUP_DEBRIS_TRIGGER)
-        self:SetTrigger(true)
+		self:SetMoveType(MOVETYPE_NONE)
+		self:SetSolid(SOLID_BBOX)
+		self:SetCollisionGroup(COLLISION_GROUP_IN_VEHICLE)
+		self:SetTrigger(true)
         self:SetCollisionBounds(Vector(-16, -16, 0), Vector(16, 16, 32))
         self:EmitSound("items/battery_pickup.wav")
         self.IsUsed = false
@@ -246,7 +246,7 @@ local positiveEffects = {
 				return false
 			end
 		
-			if team.NumPlayers(2701) > 1 and math.random(1,5) == 5 then
+			if team.NumPlayers(2701) > 1 and math.random(1,5) == 1 then
 				if !ply:HasWeapon("weapon_killmask") then
 					return true
 				end
