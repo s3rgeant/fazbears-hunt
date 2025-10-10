@@ -18,6 +18,7 @@ net.Receive("NotifySpectators", function()
 	chat:AddText(Color( 255, 0, 0 ), player, Color( 180, 20, 20 ), ' ', language.GetPhrase("fuppr.highlight_specs"), ': ', Color( 170, 55, 50 ), table.concat(players, ", "))
 end)
 
+local target
 function addAffected(ply, duration)
 	local duration = duration or conVars.halo_time:GetFloat()
 	
@@ -48,7 +49,6 @@ net.Receive("AddAffectedPlayers", function()
 	end
 end)
 
-local target
 function fh_addpermanent_affected_freddy(ply)
 	if !table.HasValue(affectedPlayers, ply) then
 		table.insert(affectedPlayers, ply)

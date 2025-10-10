@@ -2620,24 +2620,6 @@ if SERVER then
 
 else
 	local fh_voicelines = CreateClientConVar("fh_voicelines", "1", true, true, "Should play any animatronic voicelines?", 0, 1)
-	
-	--[[
-	net.Receive("fh_play_voiceline", function()
-		if !fh_voicelines:GetBool() then return end
-		
-		local character = net.ReadString()
-		local line = net.ReadString()
-		local who = net.ReadPlayer()
-		
-		local ent = pills.getMappedEnt(who)
-		
-		if IsValid(ent) and ent.dontdraw then return end
-		
-		if IsValid(who) then
-			who:EmitSound( character .. "." .. line)
-		end
-	end)
-	]]--
 end
 	
 hook.Add("PlayerNoClip", "endo_targets_noclip_handle", function(ply, desiredState)
@@ -2791,4 +2773,5 @@ hook.Add( "PostCleanupMap", "fh_pill_fnaf2_reset", function( name )
 	stalkTarget = nil
 	
 	table.Empty(takenPlayers)
+	table.Empty(cupcakes)
 end)
