@@ -1,49 +1,78 @@
-local nightVision = nightVision or false
-local normalFlash = normalFlash or false
+local flashMode = "off"
+local Flash = nil
 
-local function ValidPlayer()
-    local ply = LocalPlayer()
-    return IsValid(ply) and ply:Alive()
-end
+hook.Add( "PreDrawTranslucentRenderables", "FixEyePos", function()
+	EyePos()
+end )
 
-local function UpdateFlashPos(light)
-    if not IsValid(light) or not ValidPlayer() then return end
-    local ang = RenderAngles()
-    local pos = LocalPlayer():EyePos() + ang:Forward() * 1
-    light:SetPos(pos)
-    light:SetAngles(ang)
-    light:Update()
-end
-
-local function CreateProjTexture(mat, fov, nearz, farz, bright, shadows)
+local function CreateFlashlight(params)
     local lt = ProjectedTexture()
-    lt:SetTexture(mat or "effects/flashlight001")
-    lt:SetFOV(fov or 60)
-    lt:SetNearZ(nearz or 4)
-    lt:SetFarZ(farz or 1000)
-    lt:SetBrightness(bright or 1)
-    lt:SetEnableShadows(not not shadows)
-    lt:SetColor(Color(255,255,255))
+    lt:SetTexture(params.mat)
+    lt:SetFOV(params.fov)
+    lt:SetNearZ(params.nearz)
+    lt:SetFarZ(params.farz)
+    lt:SetBrightness(params.brightness)
+    lt:SetEnableShadows(params.shadows)
+    lt:SetColor(params.color)
     lt:Update()
     return lt
 end
 
-local function ToggleNightVision()
-    if not ValidPlayer() then return end
-    surface.PlaySound("items/flashlight1.wav")
-    nightVision = not nightVision
+local function UpdateFlashPos()
+    if not IsValid(Flash) then return end
+    local ply = LocalPlayer()
+    if not IsValid(ply) then return end
 
-    -- выключаем нормальный если включаем NV, и наоборот
-    if nightVision and normalFlash then
-        normalFlash = false
-        if IsValid(LocalPlayer().NormalFlash) then
-            LocalPlayer().NormalFlash:Remove()
-            LocalPlayer().NormalFlash = nil
-        end
-        hook.Remove("Think", "UpdateNormalFlash")
+    local pos = EyePos()
+    local ang = RenderAngles()
+
+    pos = pos + ang:Forward() * 2
+
+    Flash:SetPos(pos)
+    Flash:SetAngles(ang)
+    Flash:Update()
+end
+
+local function ApplyFlashMode()
+    if IsValid(Flash) then
+        Flash:Remove()
+        Flash = nil
     end
 
-    if nightVision then
+    if flashMode == "off" then
+        hook.Remove("Think", "FH_UpdateFlash")
+        hook.Remove("RenderScreenspaceEffects", "FH_NightVisionCC")
+        return
+    end
+
+    local cfg = {}
+    if flashMode == "normal" then
+        cfg = {
+            mat = "effects/flashlight001",
+            fov = 60,
+            nearz = 4,
+            farz = 1000,
+            brightness = 1,
+            shadows = false,
+            color = Color(255,255,255)
+        }
+    elseif flashMode == "nv" then
+        cfg = {
+            mat = "effects/flashlight001_infected",
+            fov = 75,
+            nearz = 1,
+            farz = 1200,
+            brightness = 3,
+            shadows = false,
+            color = Color(200,255,200)
+        }
+    end
+
+    Flash = CreateFlashlight(cfg)
+
+    hook.Add("Think", "FH_UpdateFlash", UpdateFlashPos)
+
+    if flashMode == "nv" then
         hook.Add("RenderScreenspaceEffects", "FH_NightVisionCC", function()
             DrawColorModify({
                 ["$pp_colour_addr"] = 0,
@@ -57,83 +86,58 @@ local function ToggleNightVision()
                 ["$pp_colour_mulb"] = 0
             })
         end)
-
-        if not IsValid(LocalPlayer().HiddenFlash) then
-            LocalPlayer().HiddenFlash = CreateProjTexture("effects/flashlight001_infected", 75, 1, 1200, 3, false)
-        end
-
-        hook.Add("Think", "UpdateNVFlash", function()
-            UpdateFlashPos(LocalPlayer().HiddenFlash)
-        end)
     else
         hook.Remove("RenderScreenspaceEffects", "FH_NightVisionCC")
-        hook.Remove("Think", "UpdateNVFlash")
-        if IsValid(LocalPlayer().HiddenFlash) then
-            LocalPlayer().HiddenFlash:Remove()
-            LocalPlayer().HiddenFlash = nil
-        end
     end
 end
 
-local function ToggleNormalFlashlight()
-    if not ValidPlayer() then return end
+local function ToggleFlashMode()
+    local ply = LocalPlayer()
+    if not IsValid(ply) then return end
     surface.PlaySound("items/flashlight1.wav")
-    normalFlash = not normalFlash
 
-    if normalFlash and nightVision then
-        nightVision = false
-        hook.Remove("RenderScreenspaceEffects", "FH_NightVisionCC")
-        if IsValid(LocalPlayer().HiddenFlash) then
-            LocalPlayer().HiddenFlash:Remove()
-            LocalPlayer().HiddenFlash = nil
+    if flashMode == "off" then
+        if ply:IsAnimatronic() or ply:Team() == TEAM_SPECTATOR then
+            flashMode = "nv"
+        else
+            flashMode = "normal"
         end
-        hook.Remove("Think", "UpdateNVFlash")
+    elseif flashMode == "normal" then
+        flashMode = "off"
+    elseif flashMode == "nv" then
+        flashMode = "off"
     end
 
-    if normalFlash then
-        if not IsValid(LocalPlayer().NormalFlash) then
-            LocalPlayer().NormalFlash = CreateProjTexture("effects/flashlight001", 60, 4, 1000, 1, false)
-        end
-
-        hook.Add("Think", "UpdateNormalFlash", function()
-            UpdateFlashPos(LocalPlayer().NormalFlash)
-        end)
-    else
-        hook.Remove("Think", "UpdateNormalFlash")
-        if IsValid(LocalPlayer().NormalFlash) then
-            LocalPlayer().NormalFlash:Remove()
-            LocalPlayer().NormalFlash = nil
-        end
-    end
+    ApplyFlashMode()
 end
 
-gameevent.Listen( "player_spawn" )
-hook.Add( "player_spawn", "fh_player_spawn_flashlight", function( data )
-	local ply = Player(data.userid)
-	local myself = LocalPlayer()
-	
-	if IsValid(ply) and IsValid(myself) and ply == myself then
-		if nightVision then ToggleNightVision() end
-		if normalFlash then ToggleNormalFlashlight() end
-	end
-end )
+hook.Add("PlayerBindPress", "fh_flash_nv_normal", function(ply, bind, pressed)
+    if pressed and string.find(bind, "impulse 100") then
+        ToggleFlashMode()
+        return true
+    end
+end)
+
+gameevent.Listen("player_spawn")
+hook.Add("player_spawn", "fh_player_spawn_flashlight", function(data)
+    local ply = Player(data.userid)
+    if IsValid(ply) and ply == LocalPlayer() then
+        if flashMode ~= "off" then
+            ApplyFlashMode()
+        end
+    end
+end)
 
 hook.Add("PillApply", "fh_flashlight_pillapply", function(ply)
 	local myself = LocalPlayer()
 	if IsValid(myself) and ply == myself then
-		if nightVision then ToggleNightVision() end
-		if normalFlash then ToggleNormalFlashlight() end
+		if flashMode ~= "off" then ToggleFlashMode() end
 	end
 end)
 
-hook.Add("PlayerBindPress", "fh_flash_nv_normal", function(ply, bind, pressed)
-    if not pressed then return end
-    if string.find(bind, "impulse 100") then
-        if ply:IsAnimatronic() or ply:Team() == TEAM_SPECTATOR then
-            ToggleNightVision()
-        else
-            ToggleNormalFlashlight()
-        end
-        return true
-    end
+hook.Add("PillRestore", "fh_flashlight_pillapply", function(ply)
+	local myself = LocalPlayer()
+	if IsValid(myself) and ply == myself then
+		if flashMode ~= "off" then ToggleFlashMode() end
+	end
 end)

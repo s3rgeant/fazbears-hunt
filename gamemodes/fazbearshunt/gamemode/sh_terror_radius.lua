@@ -1,7 +1,11 @@
 if SERVER then return end
 
 local currentKillers = currentKillers or {}
-local stealthKillers = {}
+
+local stealthKillers = stealthKillers or {} -- стелс. террор не включается пока персик не бегает
+local stealthKillers2 = stealthKillers2 or {} -- стелс, но пока персик двигается, террор всё равно играет
+
+local everyoneKillers = everyoneKillers or {}
 local trUpdating = false
 local availableThemes = availableThemes or {}
 local loadedMusic = loadedMusic or {}
@@ -9,8 +13,8 @@ local isChasing = {}
 local chaseTimers = {}
 
 --НАСТРОЙКИ ДИСТАНЦИЙ
-local tr_Far = 2600
-local tr_Approach = 1400
+local tr_Far = 2700
+local tr_Approach = 1500
 local tr_Close = 800
 
 local function loadThemes()
@@ -167,6 +171,9 @@ function checkChase(ply, killer)
     end
 end
 
+local stealthDelay = 2 -- чтобы террор быстро не пропадал если аниматроник резко застелсил
+local stealthLastActive = {}
+
 if !timer.Exists("tr_update") then
     timer.Create("tr_update", 0.5, 0, function()
         local myself = LocalPlayer()
@@ -181,7 +188,7 @@ if !timer.Exists("tr_update") then
         if !table.IsEmpty(currentKillers) and myself:Alive() then
             if currentKillers[myself] then
                 for _, ply in player.Iterator() do
-                    if !ply:Alive() or ply:Team() == myself:Team() then continue end
+                    if !ply:Alive() or (!everyoneKillers[myself] and ply:Team() == myself:Team()) then continue end
 
 		            local distance = myself:GetPos():Distance(ply:GetPos())
 
@@ -205,11 +212,11 @@ if !timer.Exists("tr_update") then
                 end
             end
             for killer, theme in pairs(currentKillers) do
-                if !theme or !killer then continue end 
+                if !theme or !IsValid(killer) then continue end 
 
                 if myself:IsSurvivor() and currentKillers[myself] then break end
 
-                if killer == myself or !killer:Alive() or killer:Team() == myself:Team() then continue end
+                if killer == myself or !killer:Alive() or (!everyoneKillers[killer] and killer:Team() == myself:Team()) then continue end
 
 		        local distance = myself:GetPos():Distance(killer:GetPos())
 
@@ -217,11 +224,21 @@ if !timer.Exists("tr_update") then
                 
                 if distance > tr_Far then continue end
 
-                if stealthKillers[killer] then
-                    if !isPlayerRunning(killer) and !isChasing[myself] then
-                        continue
-                    end
-                end
+				if stealthKillers[killer] then
+					if isPlayerRunning(killer) or isChasing[myself] then
+						stealthLastActive[killer] = CurTime()
+					elseif stealthLastActive[killer] and (CurTime() - stealthLastActive[killer]) < stealthDelay then
+					else
+						continue
+					end
+				elseif stealthKillers2[killer] then
+					if isPlayerMoving(killer) or isChasing[myself] then
+						stealthLastActive[killer] = CurTime()
+					elseif stealthLastActive[killer] and (CurTime() - stealthLastActive[killer]) < stealthDelay then
+					else
+						continue
+					end
+				end
 
                 foundNoOne = false
 
@@ -289,7 +306,10 @@ local animatronicThemes = {
 }
 
 local stealthAnims = {
-    ["pill_springtrap"] = true,
+    ["pill_springtrap"] = true
+}
+
+local stealth2Anims = {
     ["pill_mangle"] = true
 }
 
@@ -311,6 +331,8 @@ hook.Add("PillApply", "tr_apply_chase", function(ply, name)
             currentKillers[ply] = selectedTheme
             if stealthAnims[name] then
                 stealthKillers[ply] = true
+			elseif stealth2Anims[name] then
+                stealthKillers2[ply] = true
             end
         end
     end
@@ -322,24 +344,25 @@ hook.Add("FH_KillerObsessed", "tr_apply_chase_maskkiller", function(ply)
         if selectedTheme then
             currentKillers[ply] = selectedTheme
         end
+        everyoneKillers[ply] = true
     end
 end)
 
 hook.Add("FH_KillerLostObsession", "tr_restore_chase_maskkiller", function(ply)
     if currentKillers[ply] then
         currentKillers[ply] = nil
-        if stealthKillers[ply] then
-            stealthKillers[ply] = false
-        end
+        stealthKillers[ply] = false
+        everyoneKillers[ply] = false
+        stealthKillers2[ply] = false
     end
 end)
 
 hook.Add("PillRestore", "tr_restore_chase", function(ply)
     if currentKillers[ply] then
         currentKillers[ply] = nil
-        if stealthKillers[ply] then
-            stealthKillers[ply] = false
-        end
+        stealthKillers[ply] = false
+        everyoneKillers[ply] = false
+        stealthKillers2[ply] = false
     end
 end)
 

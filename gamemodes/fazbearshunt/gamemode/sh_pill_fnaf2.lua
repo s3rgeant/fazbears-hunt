@@ -2199,12 +2199,6 @@ function jumpscareEvent(ply, ent, target, dist)
 
 	local directionToAttacker = (ply:GetPos() - target:GetPos()):Angle()
 	target:SetEyeAngles(directionToAttacker)
-
-	--[[
-	net.Start("SetKillerAngle")
-	net.WriteEntity(ent)
-	net.Broadcast()
-	]]--
 end
 
 local takenPlayers = {}
@@ -2479,12 +2473,10 @@ end
 
 if SERVER then
 	hook.Add("SetupPlayerVisibility", "fh_pill_fnaf2_visibility", function(ply, viewent)
-		if !conVars.fh_less_steps:GetBool() then
-			if table.Count(team.GetPlayers(2701)) > 0 then
-				for _, player in ipairs(team.GetPlayers(2701)) do
-					if player ~= ply then
-						AddOriginToPVS(player:GetPos())
-					end
+		if table.Count(team.GetPlayers(2701)) > 0 then
+			for _, player in ipairs(team.GetPlayers(2701)) do
+				if player ~= ply then
+					AddOriginToPVS(player:GetPos())
 				end
 			end
 		end

@@ -365,6 +365,14 @@ hook.Add( "fh_animatronic_post_break_prop", "fh_anims_fight_axe_owner", function
 	end
 end)
 
+hook.Add( "SetupPlayerVisibility", "fh_axe_visibility", function( ply, viewent )
+	for _, sex in player.Iterator() do
+		if sex ~= ply and sex:GetNW2Bool("KillerObsessed") then
+			AddOriginToPVS(sex:GetPos())
+		end
+	end
+end)
+
 hook.Add( "PlayerSpawn", "fh_axe_anim_spawn", function( ply )
 	if ply:GetNW2Bool("KillerObsessed") then
 		ply:SetNW2Bool("KillerObsessed", false)

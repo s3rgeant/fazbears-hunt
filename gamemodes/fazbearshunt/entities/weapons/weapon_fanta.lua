@@ -106,7 +106,7 @@ function SWEP:OnDrink()
 end
 
 function SWEP:FireAnimationEvent( pos, ang, event, options )
-	if event == 49 then
+	if event == 5001 then
 		self.FlexWeight = 1
 	end
 end
@@ -160,6 +160,8 @@ end
 SWEP.FlexWeightLerp = 0
 
 function SWEP:Think()
+	if SERVER then return end
+
 	local vm = self.Owner:GetViewModel()
 
 	local FlexNum = vm:GetFlexNum()

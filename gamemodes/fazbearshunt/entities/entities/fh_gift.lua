@@ -188,7 +188,13 @@ local positiveEffects = {
             ply:Give("weapon_defibrillator")
         end,
         req = function(ply)
-			return !ply:HasWeapon("weapon_defibrillator")
+			if team.NumPlayers(TEAM_SPECTATOR) ~= 0 then
+				if !ply:HasWeapon("weapon_defibrillator") then
+					return true
+				end
+				return false
+			end
+			return false
         end
     },
     {
