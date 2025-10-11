@@ -287,7 +287,7 @@ hook.Add( "PreDrawHalos", "HaloDo", function()
 		for _, ply in player.Iterator() do
 			if !ply:Alive() then continue end
 		
-			local ent = pills.getMappedEnt(ply)
+			local ent = ply:GetPill()
 			
 			--[[ 
 				ЗАМЕТОЧКА:
@@ -298,7 +298,7 @@ hook.Add( "PreDrawHalos", "HaloDo", function()
 			
 			if !IsValid(ent) and (ply:GetNoDraw() or ply:GetMaterial() == "models/null") then
 				table.insert(spectateTargets, ply)
-			elseif IsValid(ent) and (ent:GetNoDraw() or ent.dontdraw or ent:GetMaterial() == "models/null") then
+			elseif IsValid(ent) and (ent:GetNoDraw() or ent:GetMaterial() == "models/null") then
 				table.insert(spectateTargets, ent)
 			end
 		end

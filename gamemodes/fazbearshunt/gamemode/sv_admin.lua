@@ -229,6 +229,35 @@ local function addAction(name, func)
 	end
 end
 
+-- игра не успевает подсасывать SpawnGifts из init.lua, так как грузится первее него
+local function spawnGifts()
+	local fh_prespawngifts = hook.Run("fh_prespawngifts")
+	
+	if fh_prespawngifts != nil and fh_prespawngifts == false then 
+		return 
+	end
+	
+	for ply, _ in pairs(survivors) do
+		if math.random(1, 100) <= GetGiftSpawnChance() and (ply:Alive() and ply:Team() != TEAM_SPECTATOR) then
+			local FH_ShouldPlayerReceiveGifts = hook.Run("FH_ShouldPlayerReceiveGifts", ply)
+			
+			if FH_ShouldPlayerReceiveGifts == false then continue end
+			
+			if ply:GetGiftOwnership() then continue end
+			
+			timer.Simple(util.SharedRandom( math.random(-100,100), 1, 12 ), function()
+				if !IsValid(ply) or !ply:IsSurvivor() then return end
+				local gift = ents.Create("fh_gift")
+				gift:SetPos(ply:GetPos() + Vector(0, 0, 10))
+				gift:SetOwner(ply)
+				gift:Spawn()
+				
+				ply:SetGiftOwnership(true)
+			end)
+		end
+	end
+end
+
 addAction( "start_round", StartRound )
 addAction( "highlight_all", HighlightAll )
 addAction( "end_round", EndRound )
@@ -246,7 +275,7 @@ addAction( "set_highlight_distance", function()
 end)
 addAction( "end_post_round", EndPostRound )
 addAction( "end_lobby_timer", EndLobbyTimer )
-addAction( "fh_spawn_gifts", SpawnGifts )
+addAction( "fh_spawn_gifts", spawnGifts )
 addAction( "fh_auto_map_hl", function()
 	local mapInfo = fh.GetMapData()
 	

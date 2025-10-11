@@ -220,7 +220,7 @@ if !timer.Exists("tr_update") then
 
 		        local distance = myself:GetPos():Distance(killer:GetPos())
 
-                if closestGuyPos and closestGuyPos > distance then continue end
+                if closestGuyPos and distance > closestGuyPos then continue end
                 
                 if distance > tr_Far then continue end
 

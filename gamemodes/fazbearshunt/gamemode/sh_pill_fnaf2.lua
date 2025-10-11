@@ -335,22 +335,7 @@ pills.register("pill_wfreddy2",{
 			ent:PillAnim("land",true)
 			return
 		end
-		
-		if ply:WaterLevel() > 0 then return end
-		if !fh_get_nearest_props(ply:GetPos(), 50) then return end
-		
-		if ent.landTimes != nil then
-			ent.landTimes = 1 + ent.landTimes
-			if ent.landTimes == 5 then
-				playVoiceline('freddy', 'trip', ply, 0.1)
-			end
-		else
-			ent.landTimes = 1
-		end
-		timer.Simple(3,function()
-			if ent.landTimes == 0 or !IsValid(ent) then return end
-			ent.landTimes = ent.landTimes - 1
-		end)
+		landTripCheck(ply, ent, "freddy")
 	end,
 	jump=function(ply,ent)
 		ent:PillSound("jump",false)
@@ -718,21 +703,7 @@ pills.register("pill_wbonnie2",{
 			return
 		end
 		
-		if ply:WaterLevel() > 0 then return end
-		if !fh_get_nearest_props(ply:GetPos(), 50) then return end
-		
-		if ent.landTimes != nil then
-			ent.landTimes = 1 + ent.landTimes
-			if ent.landTimes == 5 then
-				playVoiceline('bonnie', 'trip', ply, 0.1)
-			end
-		else
-			ent.landTimes = 1
-		end
-		timer.Simple(3,function()
-			if ent.landTimes == 0 or !IsValid(ent) then return end
-			ent.landTimes = ent.landTimes - 1
-		end)
+		landTripCheck(ply, ent, "bonnie")
 	end,
 
 	noragdoll=true,
@@ -906,21 +877,7 @@ pills.register("pill_wchica2",{
 			return
 		end
 		
-		if ply:WaterLevel() > 0 then return end
-		if !fh_get_nearest_props(ply:GetPos(), 50) then return end
-		
-		if ent.landTimes != nil then
-			ent.landTimes = 1 + ent.landTimes
-			if ent.landTimes == 5 then
-				playVoiceline('chica', 'trip', ply, 0.1)
-			end
-		else
-			ent.landTimes = 1
-		end
-		timer.Simple(3,function()
-			if ent.landTimes == 0 or !IsValid(ent) then return end
-			ent.landTimes = ent.landTimes - 1
-		end)
+		landTripCheck(ply, ent, "chica")
 	end,
 	
 	noragdoll=true,
@@ -972,7 +929,7 @@ pills.register("pill_wfoxy2",{
 			jump="jump",
 			glide="air",
 			run="run",
-			cloak="taunt",
+			laugh="taunt",
 			teleport="zombie_leap_mid",
 			land="land",
 			scare="scare",
@@ -1068,39 +1025,31 @@ pills.register("pill_wfoxy2",{
 		mode="trigger",
 		func = function(ply,ent)
 			foxyRush(ply, ent)
-			--[[
+		end
+	},
+
+	taunt=function(ply,ent,act)
+		if act == ACT_GMOD_TAUNT_LAUGH then
+			if !ply:OnGround() then return end
+
+			ent:PillAnim("laugh", true)
+			ent:PillSound("taunt",false)
+
 			local wep = ply:GetActiveWeapon()
 			if IsValid(wep) and wep:GetClass() == "v_foxy" then
 				wep:PlayCustomAnimation("ACT_GMOD_TAUNT_LAUGH", 1.9)
 			end
-			]]--
 		end
-	},
+	end,
 	
 	land=function(ply,ent, iw)
 		if ply:GetNWBool("isBlightRushing") or ply:GetNWBool("isBlightBouncing") or ply:GetNWBool("blightRushing") then return end
 
-		if ply.lobbyFreeze != nil and ply.lobbyFreeze then return end
 		if ply:WaterLevel() < 2 and ply:GetVelocity().z < -160 and !ply.isBlightRushing then
 			ent:PillAnim("land",true)
 			return
 		end
-		
-		if ply:WaterLevel() > 0 then return end
-		if !fh_get_nearest_props(ply:GetPos(), 50) then return end
-		
-		if ent.landTimes != nil then
-			ent.landTimes = 1 + ent.landTimes
-			if ent.landTimes == 5 then
-				playVoiceline('foxy', 'trip', ply, 0.1)
-			end
-		else
-			ent.landTimes = 1
-		end
-		timer.Simple(3,function()
-			if ent.landTimes == 0 or !IsValid(ent) then return end
-			ent.landTimes = ent.landTimes - 1
-		end)
+		landTripCheck(ply, ent, "foxy")
 	end,
 
 	noragdoll=true,
@@ -1508,21 +1457,7 @@ pills.register("pill_endo02",{
 			return
 		end
 		
-		if ply:WaterLevel() > 0 then return end
-		if !fh_get_nearest_props(ply:GetPos(), 50) then return end
-		
-		if ent.landTimes != nil then
-			ent.landTimes = 1 + ent.landTimes
-			if ent.landTimes == 5 then
-				playVoiceline("endo", 'trip', ply, 0.1)
-			end
-		else
-			ent.landTimes = 1
-		end
-		timer.Simple(3,function()
-			if ent.landTimes == 0 or !IsValid(ent) then return end
-			ent.landTimes = ent.landTimes - 1
-		end)
+		landTripCheck(ply, ent, "endo")
 	end,
 	
 	noragdoll=true,
@@ -2585,6 +2520,24 @@ if SERVER then
 			end
 		end
 		cupcakes[ply] = nil
+	end
+
+	function landTripCheck(ply, ent, name)
+		if ply:WaterLevel() > 0 then return end
+		if !fh_get_nearest_props(ply:GetPos(), 50) then return end
+		
+		if ent.landTimes != nil then
+			ent.landTimes = 1 + ent.landTimes
+			if ent.landTimes == 5 then
+				playVoiceline(name, 'trip', ply, 0.1)
+			end
+		else
+			ent.landTimes = 1
+		end
+		timer.Simple(3,function()
+			if ent.landTimes == 0 or !IsValid(ent) then return end
+			ent.landTimes = ent.landTimes - 1
+		end)
 	end
 	
 	hook.Add("EntityRemoved", "RemoveKilledCupcake", function(ent)

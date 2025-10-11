@@ -1019,16 +1019,10 @@ hook.Add( "CreateEntityRagdoll", "fh_ragdoll_handle", function( ply, ragdoll )
 end )
 
 hook.Add( "CanPlayerSuicide", "fh_suicide", function( ply )
-	if ply:Team() == 2701 or ply.jumpscared then
+	if ply:IsAnimatronic() or ply.jumpscared then
 		return false
 	end
 	if timer.Exists("EndGameTimer") and timer.TimeLeft( "EndGameTimer" ) > fh.GetGameDuration() then
-		return false
-	end
-end )
-
-hook.Add( "PlayerShouldTaunt", "fh_allow_taunt", function( ply )
-	if ply:Team() == 2701 then
 		return false
 	end
 end )

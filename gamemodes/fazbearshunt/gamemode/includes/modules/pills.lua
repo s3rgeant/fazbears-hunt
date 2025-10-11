@@ -303,6 +303,8 @@ if SERVER then
 		
 		ply:SetTeam(TEAM_PILLS)
 
+        hook.Run("PillServerApply", ply, e.formTable.name)
+
 		--if mode=="user" then
 		if t.type == "phys" then
 			--ply:SetLocalVelocity(oldvel)
@@ -519,6 +521,16 @@ if SERVER then
 			return false
 		end
 	end)
+
+    hook.Add( "PlayerShouldTaunt", "fh_allow_taunt", function( ply, act )
+        local ent = getMappedEnt(ply)
+		if IsValid(getMappedEnt(ply)) then
+            if ent.formTable.taunt and !ply:IsFlagSet(FL_FROZEN) and !ent:GetFrozen() then
+                ent.formTable.taunt(ply, ent, act)
+            end
+            return false
+        end
+    end )
 
 --	hook.Add("PlayerStepSoundTime", "pk_pill_step_time", function(ply,type,walking)
 --		local ent = playerMap[ply]

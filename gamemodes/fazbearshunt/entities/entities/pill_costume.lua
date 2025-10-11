@@ -886,16 +886,22 @@ function ENT:Draw()
 	if ply == LocalPlayer() 
 	and ply:GetViewEntity() == ply
 	and !pills.convars.cl_thirdperson:GetBool() 
-	and !ply.fh_target_player or self:GetMaterial() == "models/null" then
+	and !ply.fh_target_player then
 		self.IsDrawn = false
 		self:DrawShadow(false)
 		return
 	end
-	
+
+    local invisible = self:GetMaterial() == "models/null"
+
+    if invisible then
+		self:DrawShadow(false)
+    end
+
 	self:DrawModel()
 	self.IsDrawn = true
 	
-	if ply == LocalPlayer() then
+	if ply == LocalPlayer() and !invisible then
 		self:DrawShadow(true)
 	end
 end

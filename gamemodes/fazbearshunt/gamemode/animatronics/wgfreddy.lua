@@ -75,7 +75,7 @@ hook.Add("FH_HandlePlayerGrab", "gf_victim_nograb", function(endo, ply)
 end)
 
 if SERVER then
-	hook.Add("PillApply", "gf_joinpill", function(ply, name)
+	hook.Add("PillServerApply", "gf_joinpill", function(ply, name)
 		if name == "pill_wgfreddy2" then
 			ply:SetTeam(27)
 		end
@@ -599,7 +599,7 @@ if CLIENT then
 				local ent = pills.getMappedEnt(ply)
 				
 				if IsValid(ent) then
-					ent.dontdraw = true
+					dontdrawanim[ent] = true
 				end
 			end
 		end
@@ -649,9 +649,9 @@ if CLIENT then
             end
 			
 			local ent = pills.getMappedEnt(ply)
-			
+				
 			if IsValid(ent) then
-				ent.dontdraw = false
+				dontdrawanim[ent] = false
 			end
 		end
 		
@@ -677,10 +677,13 @@ if CLIENT then
 		end
 	end)
 	
+	local dontdrawanim = {}
 	net.Receive("fh_dontdraw_anim", function()
 		local ent = net.ReadEntity()
-		
-		ent:SetNoDraw(true)
+
+		if IsValid(ent) then
+			dontdrawanim[ent] = true
+		end
 	end)
 	
 	net.Receive("fh_draw_player", function()
@@ -705,7 +708,9 @@ if CLIENT then
 	net.Receive("fh_draw_anim", function()
 		local ent = net.ReadEntity()
 		
-		ent:SetNoDraw(false)
+		if IsValid(ent) then
+			dontdrawanim[ent] = nil
+		end
 	end)
 
 	hook.Add( "PostCleanupMap", "fh_pill_wgfreddy_reset", function( name )
@@ -725,6 +730,14 @@ if CLIENT then
 		fh_cl_dontdraw_plushies()
 		
 		table.Empty(outworlded_ppl)
+		table.Empty(dontdrawanim)
+	end)
+
+	hook.Add( "ForceDrawPill", "fh_pill_wgfreddy_nodraw", function( ply, ent )
+		local myself = LocalPlayer()
+		if myself:Alive() and dontdrawanim[ent] then
+			return false
+		end
 	end)
 end
 

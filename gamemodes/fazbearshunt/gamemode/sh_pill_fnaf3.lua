@@ -670,21 +670,7 @@ pills.register("pill_plushtrap",{
 			end)
 		end
 		
-		if ply:WaterLevel() > 0 then return end
-		if !fh_get_nearest_props(ply:GetPos(), 50) then return end
-		
-		if ent.landTimes != nil then
-			ent.landTimes = 1 + ent.landTimes
-			if ent.landTimes == 5 then
-				playVoiceline('plushtrap', 'trip', ply, 0.1)
-			end
-		else
-			ent.landTimes = 1
-		end
-		timer.Simple(3,function()
-			if ent.landTimes == 0 or !IsValid(ent) then return end
-			ent.landTimes = ent.landTimes - 1
-		end)
+		landTripCheck(ply, ent, "plushtrap")
 	end,
 	jump=function(ply,ent)
 		if ent.formTable.jumpPower <= 0 then return end

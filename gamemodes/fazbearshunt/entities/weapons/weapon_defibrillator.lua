@@ -90,7 +90,7 @@ function SWEP:Think()
 		self.Idle = 1
 	end
     if self.Reviving then
-        if !IsValid(self.ReviveTarget) or !self.Owner:KeyDown(IN_ATTACK) or self.Owner:GetPos():Distance(self.ReviveTarget:GetPos()) > 77 then
+        if !IsValid(self.ReviveTarget) or (IsValid(self.ReviveTarget) and IsValid(self.ReviveTarget:GetOwner()) and self.ReviveTarget:GetOwner():Alive()) or !self.Owner:KeyDown(IN_ATTACK) or self.Owner:GetPos():Distance(self.ReviveTarget:GetPos()) > 77 then
             self.Reviving = false
             self.ReviveStartTime = 0
             self.ReviveTarget = nil
@@ -220,7 +220,7 @@ function SWEP:PrimaryAttack()
 
     if IsValid(tr.Entity) then
         for k, v in pairs(ents.FindInSphere(self.Owner:GetShootPos(), 70)) do
-            if v:GetClass() == 'prop_ragdoll' and IsValid(v:GetOwner()) then
+            if v:GetClass() == 'prop_ragdoll' and IsValid(v:GetOwner()) and !v:GetOwner():Alive() then
                 self.Reviving = true
                 self.ReviveStartTime = CurTime()
                 self.ReviveTarget = v
@@ -448,7 +448,7 @@ if CLIENT then
             local corpses = {}
 
             for _, ent in pairs(ents.FindByClass("prop_ragdoll")) do
-				if !IsValid(ent:GetOwner()) then continue end
+				if !IsValid(ent:GetOwner()) or (IsValid(ent:GetOwner()) and ent:GetOwner():Alive()) then continue end
 				
                 if ent:GetPos():Distance(ply:GetPos()) <= 3064 then
                     table.insert(corpses, ent)
@@ -468,7 +468,7 @@ if CLIENT then
 	
 		if IsValid(wep) and wep:GetClass() == "weapon_defibrillator" then
 			for _, ent in pairs(ents.FindByClass("prop_ragdoll")) do
-				if !IsValid(ent:GetOwner()) then continue end
+				if !IsValid(ent:GetOwner()) or (IsValid(ent:GetOwner()) and ent:GetOwner():Alive()) then continue end
 				
 				if ent:GetPos():Distance(ply:GetPos()) <= 377 then
 					local ownerName = IsValid(ent:GetOwner()) and ent:GetOwner():Nick() or "???"

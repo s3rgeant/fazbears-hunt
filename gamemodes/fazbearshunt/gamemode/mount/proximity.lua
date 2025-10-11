@@ -58,6 +58,7 @@ if SERVER then
 			return true, false
 		end
 		
+		-- чтобы наблюдателей не слышать
 		if list_team ~= TEAM_SPECTATOR and talker_team == TEAM_SPECTATOR then
 			return false, false
 		end
@@ -87,7 +88,7 @@ else
 	local function UpdateVoiceDSP(listener, talker)
 		if not IsValid(listener) or not IsValid(talker) or listener == talker then return end
 		
-		if not proximityEnabled:GetBool() then
+		if !proximityEnabled:GetBool() then
 			talker:SetVoiceVolumeScale(1)
 			return
 		end
@@ -107,11 +108,6 @@ else
 				return ent != ply and ent != talker and not ent:IsPlayer() and not ent:IsNPC() and ent:GetClass() != "prop_physics"
 			end
 		})
-		
-		if ply:GetNoDraw() then
-			talker:SetVoiceVolumeScale(0)
-			return
-		end
 	
 		local volume = 1
 		local mute = muteVolume:GetFloat()
@@ -146,16 +142,19 @@ else
 			and !bothInSameBlockedTeam
 	end
 	
-	hook.Add("Think", "ClientVoiceFilterThink", function()
-		local listener = LocalPlayer()
-		if not IsValid(listener) then return end
-	
-		for _, talker in player.Iterator() do
-			if IsValid(talker) and ShouldProcessVoice(listener, talker) then
-				UpdateVoiceDSP(listener, talker)
+	if !timer.Exists("FH_UpdateVoiceChat") then
+		timer.Create("FH_UpdateVoiceChat", 0.25, 0, function()
+			local listener = LocalPlayer()
+
+			if !IsValid(listener) then return end
+		
+			for _, talker in player.Iterator() do
+				if IsValid(talker) and ShouldProcessVoice(listener, talker) then
+					UpdateVoiceDSP(listener, talker)
+				end
 			end
-		end
-	end)
+		end)
+	end
 	
 	hook.Add("PlayerEndVoice", "ClientVoiceFilterEnd", function(ply)
 		ply:SetVoiceVolumeScale(1)

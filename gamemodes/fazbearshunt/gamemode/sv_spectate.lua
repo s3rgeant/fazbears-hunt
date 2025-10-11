@@ -65,7 +65,7 @@ end)
 
 hook.Add('fh_createragdoll', 'fh_spectate_ragdoll', function(player, ragdoll)
 	for k, v in ipairs(team.GetPlayers(TEAM_SPECTATOR)) do
-		if v:GetObserverTarget() == player and v:GetObserverMode() != OBS_MODE_ROAMING then
+		if v:GetObserverTarget() == player and v:GetObserverMode() ~= OBS_MODE_ROAMING then
 			if ragdoll then
 				v:SpectateEntity(ragdoll)
 				v:Spectate(OBS_MODE_CHASE)

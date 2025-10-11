@@ -1,6 +1,5 @@
 "VertexlitGeneric"
 {
-	"$basetexture" "models\djebrayass\coolioart\oldbonnie\Glow"
+	"$basetexture" "models\djebrayass\coolioart\oldbonnie\h_glow"
 	"$selfillum"	"1"
-
 }
