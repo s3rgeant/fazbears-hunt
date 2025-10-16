@@ -149,6 +149,14 @@ if meta then
 	function meta:GetJumpBoostMultiplier()
 		return self:GetNWFloat("JumpBoostMult", 0)
 	end
+
+	function meta:Crouch()
+		self:AddFlags(2)
+		self:AddFlags(4)
+		
+		self:SetCollisionBounds(self:GetHullDuck())
+		self:SetCurrentViewOffset(self:GetViewOffsetDucked())
+	end
 end
 
 function PLAYER:FinishMove( move )

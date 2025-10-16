@@ -1,21 +1,35 @@
-if SERVER then return end
+local state = Persist("cl_terror_radius")
 
-local currentKillers = currentKillers or {}
+-- это хуйня нужна чтобы локальные переменные сохранялись после перезапуска скриптов
 
-local stealthKillers = stealthKillers or {} -- стелс. террор не включается пока персик не бегает
-local stealthKillers2 = stealthKillers2 or {} -- стелс, но пока персик двигается, террор всё равно играет
+state.currentKillers = state.currentKillers or {}
+state.stealthKillers = state.stealthKillers or {}
+state.stealthKillers2 = state.stealthKillers2 or {}
+state.everyoneKillers = state.everyoneKillers or {}
+state.availableThemes = state.availableThemes or {}
+state.loadedMusic = state.loadedMusic or {}
+state.isChasing = state.isChasing or {}
+state.chaseTimers = state.chaseTimers or {}
 
-local everyoneKillers = everyoneKillers or {}
-local trUpdating = false
-local availableThemes = availableThemes or {}
-local loadedMusic = loadedMusic or {}
-local isChasing = {}
-local chaseTimers = {}
+local currentKillers   = state.currentKillers
+local stealthKillers   = state.stealthKillers
+local stealthKillers2  = state.stealthKillers2
+local everyoneKillers  = state.everyoneKillers
+local availableThemes  = state.availableThemes
+local loadedMusic      = state.loadedMusic
+local isChasing        = state.isChasing
+local chaseTimers      = state.chaseTimers
 
 --НАСТРОЙКИ ДИСТАНЦИЙ
 local tr_Far = 2700
 local tr_Approach = 1500
 local tr_Close = 800
+
+local tr_ChaseKeep = 1200 -- если начался чейз, он не пропадёт пока мы не отбежим от аниматроника на это расстояние
+
+local fh_terror_enabled = CreateClientConVar("fh_terror_enabled", "1", true, false, "Should you hear terror radius at all?", 0, 1)
+local fh_terror_volume = CreateClientConVar("fh_terror_volume", "0.7", true, false, "Terror radius volume.", 0, 1)
+local fh_terror_spectators = CreateClientConVar("fh_terror_spectators", "0", true, false, "Should you hear terror radius while spectating?", 0, 1)
 
 local function loadThemes()
     availableThemes = {}
@@ -155,7 +169,7 @@ function checkChase(ply, killer)
     local distance = ply:GetPos():Distance(killer:GetPos())
     local killerMoving = isPlayerMoving(killer)
     local playerMoving = isPlayerMoving(ply)
-    if distance < tr_Close and isKillerLookingAt(ply, killer) and killerMoving and playerMoving and killer:GetMoveType() ~= MOVETYPE_NOCLIP then
+    if distance < tr_ChaseKeep and isKillerLookingAt(ply, killer) and killerMoving and playerMoving and killer:GetMoveType() ~= MOVETYPE_NOCLIP then
         isChasing[ply] = true
         if chaseTimers[ply] then
             timer.Remove(chaseTimers[ply])
@@ -185,7 +199,7 @@ if !timer.Exists("tr_update") then
         local imChasing = false
 
         hook.Run("FH_TerrorRadiusUpdate", currentKillers)
-        if !table.IsEmpty(currentKillers) and myself:Alive() then
+        if fh_terror_enabled:GetBool() and !table.IsEmpty(currentKillers) and (myself:Alive() or !myself:Alive() and fh_terror_spectators:GetBool()) then
             if currentKillers[myself] then
                 for _, ply in player.Iterator() do
                     if !ply:Alive() or (!everyoneKillers[myself] and ply:Team() == myself:Team()) then continue end
@@ -223,6 +237,8 @@ if !timer.Exists("tr_update") then
                 if closestGuyPos and distance > closestGuyPos then continue end
                 
                 if distance > tr_Far then continue end
+				
+				if IsValid(killer:GetPill()) and killer:GetPill().cloaked then continue end
 
 				if stealthKillers[killer] then
 					if isPlayerRunning(killer) or isChasing[myself] then
@@ -251,7 +267,7 @@ if !timer.Exists("tr_update") then
                         end
                     end
                 else
-                    if distance < tr_Far and distance > tr_Approach or distance < tr_Far and (killer:GetMoveType() == MOVETYPE_NOCLIP or killer:GetPill() and killer:GetPill():GetMaterial() == 'models/null') then
+                    if distance < tr_Far and distance > tr_Approach then
                         layer = "first_layer"
                     elseif distance < tr_Approach and distance > tr_Close then
                         layer = "second_layer"
@@ -277,7 +293,7 @@ if !timer.Exists("tr_update") then
 
         if (closestTheme .. layer) == lastTRMusic then return end
         
-        terrorSetVolume(closestTheme .. layer, 1, 0.5)
+        terrorSetVolume(closestTheme .. layer, fh_terror_volume:GetFloat(), 0.5)
     end)
 end
 
@@ -295,7 +311,7 @@ local animatronicThemes = {
     ["pill_wfoxy2"] = "springtrap",
     ["pill_endo02"] = "springtrap",
     ["pill_wbonnie2"] = "springtrap",
-    ["pill_wfreddy2"] = "springtrap",
+    ["pill_wfreddy2"] = "freddy",
     ["pill_wchica2"] = "springtrap",
     ["pill_sfreddy2"] = "springtrap",
     ["pill_clown"] = "springtrap",
@@ -351,28 +367,26 @@ end)
 hook.Add("FH_KillerLostObsession", "tr_restore_chase_maskkiller", function(ply)
     if currentKillers[ply] then
         currentKillers[ply] = nil
-        stealthKillers[ply] = false
-        everyoneKillers[ply] = false
-        stealthKillers2[ply] = false
+        stealthKillers[ply] = nil
+        everyoneKillers[ply] = nil
+        stealthKillers2[ply] = nil
     end
 end)
 
 hook.Add("PillRestore", "tr_restore_chase", function(ply)
     if currentKillers[ply] then
         currentKillers[ply] = nil
-        stealthKillers[ply] = false
-        everyoneKillers[ply] = false
-        stealthKillers2[ply] = false
+        stealthKillers[ply] = nil
+        everyoneKillers[ply] = nil
+        stealthKillers2[ply] = nil
     end
 end)
 
 function start_TR_Update()
-    trUpdating = true
     timer.UnPause("tr_update")
 end
 
 function stop_TR_Update()
-    trUpdating = false
     timer.Pause("tr_update")
     terrorStop(0.5)
 end

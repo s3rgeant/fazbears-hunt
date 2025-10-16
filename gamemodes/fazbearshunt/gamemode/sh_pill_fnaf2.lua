@@ -1,6 +1,9 @@
 ﻿include( "animatronics/wgfreddy.lua" )
 include( "animatronics/foxy.lua" )
 include( "animatronics/mangle.lua" )
+include( "animatronics/endo_test.lua" )
+
+local model_prefix = IsHalloween() and "phantom" or "old"
 
 if SERVER then
 	util.AddNetworkString("JumpscareLight")
@@ -12,6 +15,7 @@ if SERVER then
 	util.AddNetworkString("fh_ui_sound_play")
 	util.AddNetworkString("fh_pos_sound_play")
 	util.AddNetworkString("fh_ent_sound_play")
+	util.AddNetworkString("fh_3d_sound_play")
 	util.AddNetworkString("fh_sound_stop")
 	
 	util.AddNetworkString("fh_addaffected_stalk")
@@ -49,10 +53,10 @@ if SERVER then
 	util.AddNetworkString("fh_stalker_freddy_halo_start")
 	util.AddNetworkString("fh_stalker_freddy_halo_stop")
 	
-	util.PrecacheModel("models/speps/pill/oldfreddy.mdl")
-	util.PrecacheModel("models/speps/pill/oldbonnie.mdl")
+	util.PrecacheModel("models/speps/pill/" .. model_prefix .. "freddy.mdl")
+	util.PrecacheModel("models/speps/pill/" .. model_prefix .. "bonnie.mdl")
 	util.PrecacheModel("models/speps/pill/oldchica.mdl")
-	util.PrecacheModel("models/speps/pill/oldfoxy.mdl")
+	util.PrecacheModel("models/speps/pill/" .. model_prefix .. "foxy.mdl")
 	util.PrecacheModel("models/speps/pill/oldgoldenfreddy.mdl")
 	util.PrecacheModel("models/speps/pill/oldgoldenfreddyhead.mdl")
 	util.PrecacheModel("models/speps/pill/endo02.mdl")
@@ -62,7 +66,8 @@ end
 
 local cupcakes = {} 
 
-shadow_freddyability = CreateConVar( "fuppr_sfreddy_noclip", "1", { FCVAR_NOTIFY, FCVAR_ARCHIVE, FCVAR_REPLICATED }, "Noclip." )
+shadow_freddyability = CreateConVar( "fh_sfreddy_noclip", "1", { FCVAR_NOTIFY, FCVAR_ARCHIVE, FCVAR_REPLICATED }, 
+"Should Shadow Freddy Noclip or just slide throught objects while being invisible?." )
 
 pills.packStart("FUPPR 2 WE","FUPPR 2 WE","icon/fnafur2we.png")
 
@@ -74,11 +79,22 @@ local wfreddy_stalk_movement = {150, 600, 75, 255} -- сталкер дохуя
 
 pills.register("pill_wfreddy2",{
 	printName="Withered Freddy",
-	model="models/speps/pill/phantomfreddy.mdl",
+	model="models/speps/pill/" .. model_prefix .. "freddy.mdl",
 	options=function() return {
-		{skin=2}
+		IsHalloween() and {skin=2} or {}
 	} end,
-	--bodyGroups={0},
+	bodyGroups=!IsHalloween() and {0} or {},
+	--[[
+	-- bear5
+	boneMorphs={
+		["bip_eye_R"] = {scale = Vector(0.5,0.5,0.5)},
+		["bip_eye_L"] = {scale = Vector(0.5,0.5,0.5)},
+		["bip_EyeLid_0_R"] = {scale = Vector(0,0,0)},
+		["bip_EyeLid_1_R"] = {scale = Vector(0,0,0)},
+		["bip_EyeLid_0_L"] = {scale = Vector(0,0,0)},
+		["bip_EyeLid_1_L"] = {scale = Vector(0,0,0)},
+	},
+	]]--
 	anims={
 		default={
 			idle="idle",
@@ -119,7 +135,7 @@ pills.register("pill_wfreddy2",{
 	
 	viewmodel={
 		weapon="v_freddy",
-		skin=3
+		skin=IsHalloween() and 3 or 0
 	},
 	
 	animEvent=function(ply,ent,event)
@@ -184,6 +200,8 @@ pills.register("pill_wfreddy2",{
 			if !ply:OnGround() then return end
 			
 			if cooldown.Exists(ply, "blindrage") then return end
+	
+			if timer.Exists("fh_stalking" .. ply:EntIndex()) or ply == stalker then return end
 			
 			local target = fh_random_stalk_target(ply)
 	
@@ -202,8 +220,6 @@ pills.register("pill_wfreddy2",{
 			end
 			
 			hook.Run("FH_BlindRageStart", ply, ent, target)
-	
-			if timer.Exists("fh_stalking" .. ply:EntIndex()) or ply == stalker then return end
 			
 			local fh_stalking_timer = 'fh_stalking' .. ply:EntIndex()
 	
@@ -312,6 +328,8 @@ pills.register("pill_wfreddy2",{
 							net.WriteString("stalk")
 							net.WriteFloat(40)
 							net.Send(ply)
+
+							cooldown.Set(ply, "blindrage", 40)
 							return
 						end
 					end
@@ -375,7 +393,6 @@ function fh_random_stalk_target(ignore)
     end
 end
 
-
 function smoothLookAt(anim, targetPlayer)
     if not IsValid(anim) or not IsValid(targetPlayer) then return end
 
@@ -425,7 +442,7 @@ function successStalk(ply, ent, target)
 		
 		target:SetDSP(1)
 			
-		for _, ply in ipairs(team.GetPlayers(TEAM_UNASSIGNED)) do
+		for _, ply in ipairs(team.GetPlayers(TEAM_SURVIVOR)) do
 			if ply ~= target then
 				net.Start("fh_play_sound")
 				net.WriteString('freddy_rage_warning.wav')
@@ -437,7 +454,7 @@ function successStalk(ply, ent, target)
 		net.WritePlayer(ply)
 		net.WriteString('freddy_raged2_looped.wav')
 		net.Broadcast()
-			
+		
 		net.Start("fh_play_sound")
 		net.WriteString('freddy_target_stalked.wav')
 		net.Send(target)
@@ -470,8 +487,10 @@ function noMoreStalk(ply)
 		
 	ply:SendLua("wfreddy_stalker_door_halo_OFF()")
 	
-	ent:SetSpeed(unpack(wfreddy_default_movement))
-	ent:ReplaceAnimation("run", "run")
+	if IsValid(ent) then
+		ent:SetSpeed(unpack(wfreddy_default_movement))
+		ent:ReplaceAnimation("run", "run")
+	end
 	
 	local wep = ply:GetActiveWeapon()
 	if IsValid(wep) and wep:GetClass() == "v_freddy" then
@@ -484,10 +503,12 @@ function noMoreStalk(ply)
 	stalkerEnt = nil
 	
 	timer.Adjust('fh_stalking'..ply:EntIndex(), 80, 1)
-			
+
+	cooldown.Set(ply, "blindrage", 80)
+	
 	net.Start("fh_net_killer_change")
 	net.WriteString("stalk")
-	net.WriteFloat(80)
+	net.WriteFloat(cooldown.Get(ply, "blindrage"))
 	net.Send(ply)
 		
 	net.Start('fh_sound_stop')
@@ -500,9 +521,8 @@ end
 
 pills.register("pill_wbonnie2",{
 	printName="Withered Bonnie",
-	model="models/speps/pill/phantombonnie.mdl",
-	--bodyGroups={math.random(1,1000) == 2 and 0 or 10},		-- рофлянка лицо бонни
-	bodyGroups={0},		-- рофлянка лицо бонни на хеллоуин
+	model="models/speps/pill/" .. model_prefix .. "bonnie.mdl",
+	bodyGroups=IsHalloween() and {0} or {math.random(1,1000) == 2 and 0 or 10},		-- рофлянка лицо бонни
 	anims={
 		default={
 			idle="idle",
@@ -545,7 +565,7 @@ pills.register("pill_wbonnie2",{
 	
 	viewmodel={
 		weapon="v_bonnie",
-		skin=1
+		skin=IsHalloween() and 1 or 0
 	},
 	bloodType=BLOOD_COLOR_MECH,
 	
@@ -628,7 +648,10 @@ pills.register("pill_wbonnie2",{
 				wep:PlayCustomAnimation("ACT_VM_DEPLOY", 99999)
 			end
 			
-			ent:EmitSound( "bonnie_ability_others.wav" )
+			net.Start("fh_ent_sound_play")
+			net.WritePlayer(ply)
+			net.WriteString("bonnie_ability_others.wav")
+			net.Broadcast()
 			
 			timer.Simple(1, function()
 				hook.Run("FH_YoursMineSpectating", ply, ent, target)
@@ -741,7 +764,7 @@ pills.register("pill_wchica2",{
 	printName="Withered Chica",
 	model="models/speps/pill/oldchica.mdl",
 	options=function() return {
-		{skin=1}
+		IsHalloween() and {skin=1} or {}
 	} end,
 	anims={
 		default={
@@ -904,12 +927,6 @@ pills.register("pill_wchica2",{
 
 --foxy
 
-local foxy_movement_speed = {150, 490, 70, 400}
-
-function FoxyMovementSpeed()
-	return foxy_movement_speed
-end
-
 local stunned_foxy_movement_speed = {80, 80, 70, 100}
 
 function StunnedFoxyMovementSpeed()
@@ -918,8 +935,8 @@ end
 
 pills.register("pill_wfoxy2",{
 	printName="Withered Foxy",
-	model="models/speps/pill/phantomfoxy.mdl",
-	--bodyGroups={0},
+	model="models/speps/pill/" .. model_prefix .. "foxy.mdl",
+	bodyGroups=IsHalloween() and {} or {0},
 	anims={
 		default={
 			idle="idle",
@@ -965,7 +982,7 @@ pills.register("pill_wfoxy2",{
 	
 	viewmodel={
 		weapon="v_foxy",
-		skin=1
+		skin=IsHalloween() and 1 or 0
 	},
 	bloodType=BLOOD_COLOR_MECH,
 	
@@ -984,6 +1001,40 @@ pills.register("pill_wfoxy2",{
 
 	noFallDamage=true,
 	hideHud = true,
+	
+	--[[
+	die=function(ply,ent)
+		local model = ent:GetModel()
+		local skin = ent:GetSkin()
+		
+		local pos = ply:GetPos()
+		local ang = ply:GetAngles()
+		
+		ragdoll = ents.Create("prop_ragdoll")
+		ragdoll:SetModel(model)
+		ragdoll:SetSkin(skin)
+		ragdoll:SetPos(pos)
+		ragdoll:SetAngles(ang)
+		ragdoll:SetOwner(ply)
+		ragdoll:Spawn()
+		ragdoll:Activate()
+
+		local plyvel = ply:GetVelocity()
+		for i = 0, ragdoll:GetPhysicsObjectCount() - 1 do
+			local bone = ragdoll:GetPhysicsObjectNum(i)
+			
+			if bone and bone:IsValid() then
+				local bonepos, boneang = ent:GetBonePosition(ragdoll:TranslatePhysBoneToBone(i))
+				
+				if bonepos and boneang then
+					bone:SetPos(bonepos)
+					bone:SetAngles(boneang)
+					bone:SetVelocity(plyvel)
+				end
+			end
+		end
+	end,
+	]]--
 	
 	startFunction=function(ply,ent)
 		ply.blightRushTokens = 5
@@ -1021,7 +1072,7 @@ pills.register("pill_wfoxy2",{
 		end
     },
 	
-	attack2_sh={
+	attack2_sh_nolc={
 		mode="trigger",
 		func = function(ply,ent)
 			foxyRush(ply, ent)
@@ -1093,9 +1144,7 @@ pills.register("pill_sfreddy2",{
 	printName="Shadow Freddy",
 	model="models/speps/pill/oldgoldenfreddy.mdl",
 
-	options=function() return {
-		{skin=2}
-	} end,
+	skin=IsHalloween() and 2 or 1,
 	bodyGroups={12},
 	anims={
 		default={
@@ -1130,7 +1179,7 @@ pills.register("pill_sfreddy2",{
 	
 	viewmodel={
 		weapon="v_freddy",
-		skin=4
+		skin=IsHalloween() and 4 or 2
 	},
 	
 	cloak={
@@ -1253,7 +1302,6 @@ pills.register("pill_sfreddy2",{
 						ply:SetMoveType( MOVETYPE_WALK )
 					end
 							
-					ply:SetCustomCollisionCheck(true)
 					ply:SetCollisionGroup(COLLISION_GROUP_PLAYER)
 					
 					ent:SetSpeed( unpack(sfreddy_default_movement) )
@@ -1319,7 +1367,6 @@ pills.register("pill_sfreddy2",{
 						ent:DrawShadow(false)
 						
 						ply:SetCollisionGroup(COLLISION_GROUP_DEBRIS )
-						ply:SetCustomCollisionCheck(true)
 						
 						hook.Run("FH_SFreddySubmergePostIn", ply, ent)
 					end)
@@ -1348,7 +1395,7 @@ pills.register("pill_endo02",{
 	printName="Endo02",
 	model="models/speps/pill/endo02.mdl",
 	options=function() return {
-		{skin=1}
+		IsHalloween() and {skin=1} or {}
 	} end,
 	anims={
 		default={
@@ -1598,7 +1645,6 @@ pills.register("pill_wgfreddy2",{
 		ent:DrawShadow(false)
 		
 		ply:SetCollisionGroup( COLLISION_GROUP_DEBRIS )
-		ply:SetCustomCollisionCheck(true)
 		ply:CollisionRulesChanged()
 		
 		ply:SetAudible(false)
@@ -1679,7 +1725,6 @@ pills.register("pill_wgfreddy2",{
 				ent:DrawShadow(false)
 				
 				ply:SetCollisionGroup(COLLISION_GROUP_DEBRIS )
-				ply:SetCustomCollisionCheck(true)
 				ply:CollisionRulesChanged()
 				
 				ent.cloaked=true
@@ -1716,7 +1761,6 @@ pills.register("pill_wgfreddy2",{
 				ent:DrawShadow(true)
 					
 				ply:SetCollisionGroup(COLLISION_GROUP_PLAYER_MOVEMENT)
-				ply:SetCustomCollisionCheck(true)
 				ply:CollisionRulesChanged()
 							
 				ent.cloaked=false
@@ -1899,7 +1943,7 @@ end
 hook.Add("FH_OverrideVoiceline", "fh_lastkill_vc", function(ply, anim, line)
 	if line:match("kill") and !line:match("last") then
 		if anim ~= "sfreddy" then
-			if #team.GetPlayers(TEAM_UNASSIGNED) == 0 then
+			if #team.GetPlayers(TEAM_SURVIVOR) == 0 then
 				return "lastkill"
 			end	
 		end
@@ -2556,13 +2600,57 @@ if SERVER then
 		if !IsValid(puppet) then return end
 		name = puppet.formTable.name
 		
+		if name ~= "pill_endo02" then return end
+		
 		local phys = ent:GetPhysicsObject()
-		if IsValid(phys) and thrown and name == "pill_endo02" then
-			local dir = ply:GetAimVector()
-			phys:ApplyForceCenter(dir * 50000)
+		if IsValid(phys) then 
+			if thrown then
+				local dir = ply:GetAimVector()
+				phys:ApplyForceCenter(dir * 20000 * math.min(70, phys:GetMass()))
+			else
+				ent._lastHoldTime = CurTime()
+			end
 		end
+			
+		ply:SetNW2Entity("HeldEnt", NULL)
+	end)
+	
+	hook.Add("PlayerUse", "fh_endo_largeprop_pickup", function(ply, ent)
+		local puppet = ply:GetPill()
+		if not IsValid(puppet) or puppet.formTable.name ~= "pill_endo02" then return end
+		if not IsValid(ent) then return end
+
+		if ent._lastHoldTime and CurTime() < ent._lastHoldTime + 0.5 then return end
+
+		local phys = ent:GetPhysicsObject()
+		if not IsValid(phys) then return end
+
+		if ent:GetMoveType() ~= MOVETYPE_VPHYSICS then return end
+		if not phys:IsMoveable() then return end
+		if ent:IsPlayerHolding() then return end
+		if ent:GetParent():IsValid() then return end
+		if constraint.HasConstraints(ent) then return end
+
+		local mass = phys:GetMass()
+		if mass < 35 or mass > 800 then return end
+
+		phys:EnableMotion(true)
+		phys:Wake()
+		phys:ApplyForceCenter(VectorRand() * 5)
+
+		timer.Simple(0, function()
+			if IsValid(ply) and IsValid(ent) and not ent:IsPlayerHolding() then
+				ply:PickupObject(ent)
+			end
+		end)
 	end)
 
+	hook.Add("OnPlayerPhysicsPickup", "fh_endo_pickup", function(ply, ent)
+		local puppet = ply:GetPill()
+		if not IsValid(puppet) or puppet.formTable.name ~= "pill_endo02" then return end
+		if !IsValid(ent:GetPhysicsObject()) then return end
+		ply:SetNW2Entity("HeldEnt", ent)
+	end)
 else
 	local fh_voicelines = CreateClientConVar("fh_voicelines", "1", true, true, "Should play any animatronic voicelines?", 0, 1)
 end

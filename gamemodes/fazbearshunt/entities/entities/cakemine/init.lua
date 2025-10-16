@@ -99,8 +99,20 @@ function ENT:CheckForPlayers()
 			end)
         end
     end
-	if table.Count(totalPlayers) == 0 then return end
+	if table.IsEmpty(totalPlayers) then return end
 	self:EmitSparks()
+
+	local rf = RecipientFilter()
+	rf:AddAllPlayers()
+	if IsValid(owner) then
+		rf:RemovePlayer(owner)
+	end
+
+	for k,v in pairs(totalPlayers) do
+		rf:RemovePlayer(v)
+	end
+
+	self:EmitSound(")cupcake_triggered.wav", 75, 100, 1, CHAN_AUTO, 0, 1, rf)
 	
 	highlight.Add(owner, totalPlayers)
 			

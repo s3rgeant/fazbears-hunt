@@ -138,7 +138,6 @@ function SWEP:Invisivility(ply)
 	ply.invisible = true
 	ply:SetRenderMode(RENDERMODE_TRANSALPHA)
 	ply:SetCollisionGroup(COLLISION_GROUP_PASSABLE_DOOR)
-	ply:SetCustomCollisionCheck(true)
 	ply:CollisionRulesChanged()
 	ply:SetColor(Color(255, 255, 255, 0))
 	ply:SetMaterial("models/null")
@@ -196,7 +195,6 @@ function SWEP:Invisivility(ply)
 				timer.Create("fh_gift_collision_reset" .. ply:EntIndex(), 0.5, 0, function()
 					if IsValid(ply) and !ply:IsStuck() then
 						ply:SetCollisionGroup(COLLISION_GROUP_PLAYER)
-						ply:SetCustomCollisionCheck(false)
 						ply:CollisionRulesChanged()
 					end
 			

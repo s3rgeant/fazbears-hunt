@@ -279,7 +279,7 @@ hook.Add("fh_should_animatronic_respawn", "fh_no_escape_from_axe", function(ply,
 end)
 
 if CLIENT then
-	hook.Add( "PreDrawHalos", "pt_halo", function()
+	hook.Add( "PreDrawHalos", "kilaxe_halo", function()
 		local owner = LocalPlayer()
 		local wep = owner:GetActiveWeapon()
 		

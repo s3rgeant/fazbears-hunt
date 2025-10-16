@@ -26,7 +26,6 @@ local function DrawDeadHUD()
 			healthText = owner:Health() .. " HP"
 			
 		end
-		
 	else
 		displayName = obs_target:GetClass() -- Имя класса энтити
 		healthText = obs_target:Health() and (obs_target:Health() .. " HP") or "???"
@@ -34,8 +33,6 @@ local function DrawDeadHUD()
 
     local x = (ScrW() / 2) - (330 / 2)
     local y = ScrH() - (100 / 2) - 78
-
-    --draw.RoundedBox(24, x, y, 330, 110, Color(0, 0, 0, 200))
 	
 	surface.SetDrawColor(255, 255, 255, 250)
 	surface.SetMaterial(Material("vgui/spectator/window.png"))

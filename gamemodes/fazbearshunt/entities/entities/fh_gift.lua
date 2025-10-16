@@ -16,7 +16,7 @@ if SERVER then
     util.AddNetworkString("fh_net_thinkfast")
 end
 
-local giftModel = (os.date("%B") == "October") and "pumpkin_loot" or "halloween_gift"
+local giftModel = IsHalloween() and "pumpkin_loot" or "halloween_gift"
 local modelScale = (giftModel == "pumpkin_loot") and 1.5 or 1
 
 function ENT:Initialize()
@@ -408,6 +408,8 @@ local negativeEffects = {
 				ragdoll:SetAngles(ang)
 				ragdoll:Spawn()
 				ragdoll:Activate()
+
+				ragdoll:SetOwner(ply)
 				
 				ragdoll:SetCollisionGroup(COLLISION_GROUP_WEAPON)
 				ragdoll:SetCustomCollisionCheck( true )

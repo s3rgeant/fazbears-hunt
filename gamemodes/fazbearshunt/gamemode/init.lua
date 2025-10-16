@@ -27,6 +27,7 @@ local function recursive_include(path)
     end
 end
 
+recursive_include("fazbearshunt/gamemode/utils/")
 recursive_include("fazbearshunt/gamemode/")
 recursive_include("fazbearshunt/gamemode/interface/")
 
@@ -51,6 +52,7 @@ util.AddNetworkString("fh_update_list")
 
 util.AddNetworkString("fh_start_lobby_timer")
 util.AddNetworkString("fh_start_game_timer")
+util.AddNetworkString("fh_pause_game_timer")
 util.AddNetworkString("fh_timer_cutback")
 util.AddNetworkString("ResetTimer")
 
@@ -116,6 +118,8 @@ survivors = survivors or {}
 
 usedKillers = {}
 
+disallowTime = disallowTime or 0
+disallowTriggered = disallowTriggered or false
 function assignKillers()
     local players = player.GetAll()
     local totalPlayers = #players
@@ -133,7 +137,7 @@ function assignKillers()
         curMaxKillers = 1
     end
 	
-    local availableKillers = table.GetKeys(killers.getAllPreferables(curMaxKillers > 1))
+    local availableKillers = table.GetKeys(killers.getAllPreferables(curMaxKillers >= 1))
 	
 	if totalPlayers == 0 or !players then return end
 	
@@ -156,6 +160,9 @@ function assignKillers()
 		end
     end
 	
+	disallowTime = CurTime() + 60
+	disallowTriggered = false
+	
 	for v, _ in pairs(curKillers) do
 		local id = GetPlyID(v)
         if id and not lastKillers[id] then
@@ -167,6 +174,20 @@ function assignKillers()
 		net.Send(v)
 	end
 end
+
+hook.Add("Think", "fh_disallow_killers_choose", function()
+	if disallowTriggered then return end
+	
+	if disallowTime > 0 and CurTime() >= disallowTime then
+		disallowTriggered = true
+		
+		for ply, _ in pairs(animatronics) do
+			if IsValid(ply) and not IsValid(ply:GetPill()) then
+				giveRandomKiller(ply, true)
+			end
+		end
+	end
+end)
 
 function freezeAnimatronics(duration)
 	duration = duration or setupGameDuration
@@ -185,6 +206,12 @@ function freezeAnimatronics(duration)
 		hook.Run("fh_poststartgame", roundType, animatronics)
     end)
 end
+
+hook.Add("ShouldPlayerPush", "fh_push_management", function(pusher, victim)
+	if victim.lobbyFreeze then
+		return false
+	end
+end)
 
 hook.Add('fh_poststartgame', 'enable_scary_sound_fh', function()
 	net.Start("fh_net_scarysound")
@@ -376,10 +403,6 @@ function endGame(killerVictory)
 		
 		fh_win_coefficient()
 		
-		net.Start('fh_sound_stop')
-		net.WriteString('freddy_raged2_looped.wav')
-		net.Broadcast()
-		
 		game.GetWorld():SetNW2Bool("gameOn", false)
 		isGameOn = false
 		game.GetWorld():SetNW2Bool("roundActive", false)
@@ -388,16 +411,18 @@ function endGame(killerVictory)
 		table.Empty(usedKillers)
 		
 		for _, ply in player.Iterator() do
-			ply:SetTeam(TEAM_UNASSIGNED)
+			ply:SetTeam(TEAM_SURVIVOR)
 			ply:Spawn()
 			setupPlayerVars(ply)
 			if ply:HasWeapon("weapon_taser") then
 				ply:StripWeapon("weapon_taser")
 			end
+
+			if ply:GetPill() then
+				pills.restore(ply:Nick(), true)
+			end
 		end
 		postGameTimer()
-		
-		restoreAnimatronics()
 
         timer.Create("GameStartTimer", lobbyDuration, 1, function()
             registerNewRound()
@@ -483,13 +508,16 @@ function startGame(forceid)
 end
 
 function RandomTaser()
-	local random_taser = team.GetPlayers( TEAM_UNASSIGNED )
-	local random_taserer = fh.randomChoice( random_taser )
-	
-	if IsValid(random_taserer) then
-		random_taserer:Give("weapon_taser")
-		random_taserer:SendLua( "LocalPlayer():ChatPrint(language.GetPhrase('fazhunt.give_taser'))" )
-	end
+	-- для золотого фредди скипаем первый кадр
+	timer.Simple(0, function()
+		local random_taser = team.GetPlayers( TEAM_SURVIVOR )
+		local random_taserer = fh.randomChoice( random_taser )
+		
+		if IsValid(random_taserer) then
+			random_taserer:Give("weapon_taser")
+			random_taserer:SendLua( "LocalPlayer():ChatPrint(language.GetPhrase('fazhunt.give_taser'))" )
+		end
+	end)
 end
 
 function resetGameTimer()
@@ -512,9 +540,13 @@ function registerNewRound(forceid)
 	table.Empty(usedKillers)
     for _, ply in player.Iterator() do
         ply:Spawn()
-		ply:SetTeam(TEAM_UNASSIGNED)
+		ply:SetTeam(TEAM_SURVIVOR)
 		ply:RemoveRagdoll()
 		survivors[ply] = true
+
+		if ply:GetPill() then
+			pills.restore(ply:Nick(), true)
+		end
     end
 	
 	restoreAnimatronics()
@@ -537,34 +569,29 @@ function restoreAnimatronics()
 end
 
 function restoreAnimatronic(ply)
-	RunConsoleCommand("pk_pill_restore", ply:Nick())
+	pills.restore(ply:Nick(), true)
 	animatronics[ply] = nil
 	survivors[ply] = true
 end
 
 function GetGiftSpawnInterval()
-	local def1 = 65
-	local def2 = 80
+	local def1 = 80
+	local def2 = 98
 	
-	local count = team.NumPlayers(TEAM_UNASSIGNED) or 1
+	local count = math.min(team.NumPlayers(TEAM_SURVIVOR) or 1, 20)
 	
 	def1 = def1 + (count * ( 0.15 * count ) )
 	def2 = def2 + (count * ( 0.175 * count ) )
-	
-	if !roundActive and def1 <= 90 then
-		def1 = 90
-		def2 = 110
-	end
 	
 	return def1, def2
 end
 
 function GetGiftSpawnChance()
-	local def = 100
+	local def = 95
 	
-	local count = math.min(team.NumPlayers(TEAM_UNASSIGNED) or 1, 5)
+	local count = math.min(team.NumPlayers(TEAM_SURVIVOR) or 1, 5)
 	
-	def = def - math.min(count * 1.2, 75)
+	def = def - math.min(count * 1.2, 25)
 	
 	return def
 end
@@ -662,6 +689,8 @@ end )
 hook.Add("PlayerInitialSpawn", "fh_ply_spawn", function(ply)
 	setupPlayerVars(ply)
 	
+	ply:SetCustomCollisionCheck( true )
+	
 	if isGameOn then
 		timer.Simple(0, function()
 			if IsValid(ply) then
@@ -678,6 +707,8 @@ hook.Add("PlayerInitialSpawn", "fh_ply_spawn", function(ply)
 	
 		survivors[ply] = nil
 	end
+	
+	ply:SetTeam(TEAM_SURVIVOR)
 end)
 
 hook.Add( "AllowPlayerPickup", "fh_allow_pickup", function( ply, ent )
@@ -723,6 +754,12 @@ hook.Add("SetupPlayerVisibility", "fh_speak_pvs", function(ply, viewent)
 		end
 	end
 end)
+
+hook.Add( "PlayerCanPickupWeapon", "no_double_pickup", function( ply, weapon )
+    if ply:HasWeapon( weapon:GetClass() ) then
+		return false
+	end
+end )
 
 hook.Add("PlayerDisconnected", "fh_playerleft", function(ply)
 	survivors[ply] = nil
@@ -778,13 +815,15 @@ end
 hook.Add("PlayerSpawn", "fh_spawn", function( ply, transiton )
 	player_manager.SetPlayerClass( ply, "player_sandbox" )
 	ply:SetShouldServerRagdoll(true)
-	
+
 	ply:SetMaterial("")
 	ply:DrawShadow(true)
 	
 	ply:SendLua( 'if !system.HasFocus() then system.FlashWindow() end' )
 	
-	--ply:SetTeam(TEAM_UNASSIGNED)
+	if !isGameOn then
+		ply:SetTeam(TEAM_SURVIVOR)
+	end
 	net.Start('DeadHUDDisable')
 	net.Send(ply)
 	
@@ -1063,32 +1102,9 @@ hook.Add("PillApply", "fh_joinpill", function(ply, name)
 		net.Start("fh_hl_teammates")
 		net.Broadcast()
 	end)
-	
-	local killerData = killers.getAll()
-		
-	if !killerData[name] then 
-		net.Start("ApplyKiller")
-		net.WriteString(name)
-		net.WriteColor(Color(45,45,45))
-		net.Send(ply)
-		return 
-	end
-	
-	local killer = killerData[name]
-	
-	name = killer.name
-	local color = killer.color
-	
-	net.Start("ApplyKiller")
-	net.WriteString(name)
-	net.WriteColor(color)
-	net.Send(ply)
 end)
 
 hook.Add("PillRestore", "fh_restorepill", function(ply)
-	net.Start("RemoveKiller")
-	net.Send(ply)
-	
 	net.Start("fh_uhl_teammates")
 	net.Send(ply)
 end)
@@ -1179,7 +1195,7 @@ local tm = nil
 hook.Add("Tick", "fh_tick", function()
 	for _, ply in player.Iterator() do
 		tm = ply:Team()
-		if tm == TEAM_UNASSIGNED and ply:Alive() then
+		if tm == TEAM_SURVIVOR and ply:Alive() then
 			if ply:WaterLevel() == 3 then
 				if ply:IsOnFire() then
 					ply:Extinguish()

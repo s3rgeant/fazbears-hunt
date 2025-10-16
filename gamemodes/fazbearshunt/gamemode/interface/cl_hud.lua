@@ -338,13 +338,39 @@ function setTokens(name, tkns)
     end
 end
 
-net.Receive("ApplyKiller", function()
+function hud_ApplyKiller(name, color)
 	table.Empty(currentAbilities)
 	hook.Add("HUDPaint", "DrawKillerInterface", DrawKillerInterface)
-    currentKiller = net.ReadString()
-    fh_hud_color = net.ReadColor()
+    currentKiller = name
+    fh_hud_color = color
 	updateAnimHudHeader(currentKiller)
 	assignAbilitiesByKiller(currentKiller)
+end
+
+hook.Add("PillApply", "fh_applyhudkiller", function(ply, name)
+	local myself = LocalPlayer()
+	
+	if IsValid(myself) and ply == myself then
+		local killerData = killers.getAll()
+
+		local clr = Color(45,45,45)
+			
+		if killerData[name] then 
+			local killer = killerData[name]
+
+			clr = killer.color
+			name = killer.name
+		end
+
+		hud_ApplyKiller(name, clr)
+	end
+end)
+
+net.Receive("ApplyKiller", function() 
+	local anim = net.ReadString()
+	local clr = net.ReadColor()
+
+	hud_ApplyKiller(anim, clr)
 end)
 
 net.Receive("fh_remove_hud_mine", function()
@@ -353,13 +379,25 @@ net.Receive("fh_remove_hud_mine", function()
 	end
 end)
 
-net.Receive("RemoveKiller", function()
+function hud_RemoveKiller()
 	hook.Remove("HUDPaint", "DrawKillerInterface")
     currentKiller = ""
 	cupcakes = 0
 	table.Empty(currentAbilities)
 	table.Empty(scrollOffsets)
 	table.Empty(scrollSpeeds)
+end
+
+hook.Add("PillRestore", "fh_removehudkiller", function(ply)
+	local myself = LocalPlayer()
+	
+	if IsValid(myself) and ply == myself then
+		hud_RemoveKiller()
+	end
+end)
+
+net.Receive("RemoveKiller", function()
+	hud_RemoveKiller()
 end)
 
 net.Receive("fh_net_killer_change", function()
@@ -462,7 +500,6 @@ function fh_change_display(text1, text2, duration)
     startTime = CurTime()
     isDisplaying = true
 end
-
 
 concommand.Add("fh_test_broadcast", function(ply, cmd, args)
 	if ply:IsAdmin() then

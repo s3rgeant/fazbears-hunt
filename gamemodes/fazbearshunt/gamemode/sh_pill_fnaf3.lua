@@ -199,9 +199,21 @@ local spring_rage_movement = {210, 600, 70, 255} -- дохуя скромник
 pills.register("pill_springtrap",{
 	printName="Springtrap",
 	options=function() return {
-		{skin=2}
+		IsHalloween() and {skin=2} or {}
 	} end,
-	bodyGroups={24},
+	bodyGroups=IsHalloween() and {24} or {},
+	--[[
+	boneMorphs={
+		["bip_eyelid_0_R"] = {scale = Vector(0,0,0)},
+		["bip_eyelid_1_R"] = {scale = Vector(0,0,0)},
+		["bip_eyelid_0_L"] = {scale = Vector(0,0,0)},
+		["bip_eyelid_1_L"] = {scale = Vector(0,0,0)},
+		["bip_eyecase_L"] = {scale = Vector(0,0,0)},
+		["bip_eyecase_R"] = {scale = Vector(0,0,0)},
+		["bip_jaw"] = {scale = Vector(0,0,0)},
+		["bip_skull_jaw"] = {scale = Vector(1.5,1.5,1.5)},
+	},
+	]]--
 	modelScale="0.85",
 	model="models/UFMP/FNAF3/Springtrap.mdl",
 	anims={
@@ -244,7 +256,7 @@ pills.register("pill_springtrap",{
 	
 	viewmodel={
 		weapon="v_springtrap",
-		skin=2
+		skin=IsHalloween() and 2 or nil
 	},
 
     jumpPower=250,
@@ -554,7 +566,8 @@ function noMoreRage(ply, ent)
 end
 
 
-
+plushtrap_visionrange = CreateConVar( "fh_plushtrap_highlight_range", "2200", { FCVAR_ARCHIVE, FCVAR_REPLICATED }, 
+"Distance, on which plushtrap will highlight everyone for himself." )
 
 --PLUSHTRAP
 
@@ -641,13 +654,11 @@ pills.register("pill_plushtrap",{
 	
 	startFunction=function(ply,ent)
 		ply:SetCollisionGroup(COLLISION_GROUP_PASSABLE_DOOR)
-		ply:SetCustomCollisionCheck(true)
 		--request_plushtrap = ply
 	end,
 	
 	restore=function(ply,ent, formtable)
 		ply:SetCollisionGroup(COLLISION_GROUP_NONE)
-		ply:SetCustomCollisionCheck(false)
 	end,
 
 	noFallDamage=true,
@@ -738,7 +749,7 @@ function plushtrap_request_complete(springtrap, ply)
 	
 	ply:Spawn()
 	setupPlayerVars(ply)
-	ply:SetTeam(TEAM_UNASSIGNED)
+	ply:SetTeam(TEAM_SURVIVOR)
 	
 	local pt_lastpos = nil
 	local pt_found = false
@@ -754,7 +765,7 @@ function plushtrap_request_complete(springtrap, ply)
 		break
 	end
 	
-	RunConsoleCommand("pk_pill_apply", ply:Nick(), "pill_plushtrap")
+	pills.apply(ply:Nick(), "pill_plushtrap", "user")
 	
 	timer.Simple(1, function()
 		if timer.Exists("pt_kill_timer" .. springtrap:EntIndex()) then
@@ -805,7 +816,6 @@ net.Receive("pt_request_complete", function(len, springtrap)
 end)
 
 if SERVER then
-	local plushtrap_vision_range = 2200
 	hook.Add("SetupPlayerVisibility", "fh_pill_fnaf3_visibility", function(ply, viewent)
 		if !conVars.fh_less_steps:GetBool() then
 			for _, ent in ipairs(ents.FindByClass("plushtrap")) do
@@ -814,8 +824,8 @@ if SERVER then
 		end
 		
 		if IsValid(request_plushtrap) then
-			for _, ent in pairs(team.GetPlayers( TEAM_UNASSIGNED )) do
-				if ent:GetPos():Distance(request_plushtrap:GetPos()) <= plushtrap_vision_range then
+			for _, ent in pairs(team.GetPlayers( TEAM_SURVIVOR )) do
+				if ent:GetPos():Distance(request_plushtrap:GetPos()) <= plushtrap_visionrange:GetInt() then
 					AddOriginToPVS(ent:GetPos())
 				end
 			end

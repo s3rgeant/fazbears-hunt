@@ -25,6 +25,7 @@ SWEP.HoldAnim = 0
 SWEP.Primary.ClipSize = -1
 SWEP.Primary.DefaultClip = -1
 SWEP.Primary.Ammo = "none"
+SWEP.Primary.Automatic = true
 
 SWEP.Secondary.ClipSize = -1
 SWEP.Secondary.DefaultClip = -1
@@ -117,6 +118,7 @@ function SWEP:DealDamage()
 	
 	if !IsValid(target) then 
 		ply:LagCompensation(false)
+        ply:EmitSound("fnaf3/hit-miss.mp3")
 		return 
 	end
 	
@@ -177,7 +179,7 @@ function SWEP:DealDamage()
 	end
 	
 	if (target:IsPlayer() and target:IsSurvivor()) or target:IsNPC() then
-		ply:EmitSound("fnaf3/spr_punch_hit.wav")
+        ply:EmitSound("fnaf3/hit.mp3")
 	end
 	
 	if target:IsPlayer() and !target:Alive() then
@@ -265,9 +267,9 @@ if CLIENT then
 		if IsValid(wep) and wep:GetClass() == "v_plushtrap" then
 			local nearPlayers = {}
 			
-			for _, ent in pairs(team.GetPlayers( TEAM_UNASSIGNED )) do
+			for _, ent in pairs(team.GetPlayers( TEAM_SURVIVOR )) do
 				if !ent:Alive() or ent:GetNoDraw() then continue end
-				if ent ~= ply and ent:GetPos():Distance(ply:GetPos()) <= 2200 then
+				if ent ~= ply and ent:GetPos():Distance(ply:GetPos()) <= plushtrap_visionrange:GetInt() then
 					table.insert(nearPlayers, ent)
 				end
 			end

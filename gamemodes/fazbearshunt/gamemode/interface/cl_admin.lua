@@ -2,9 +2,21 @@ fh_admin_panel = fh_admin_panel or nil
 local PlayerList, AnimatronicList
 local lastSelectedTab = 1
 
+admin = admin or {}
+
+local animSettings = {}
+
+function admin.AddAnimatronicSetting(name, panel_data)
+	if !animSettings[name] then animSettings[name] = {} end
+	
+	if table.HasValue(animSettings[name], panel_data) then return end
+	
+	table.insert(animSettings[name], panel_data)
+end
+
 local function AddNetActionButton(parent, x, y, w, h, text, action, onClick)
     local btn = vgui.Create("DButton", parent)
-    btn:SetPos(x, y)
+    if x and y then btn:SetPos(x, y) end
     btn:SetSize(w, h)
     btn:SetText(text)
     btn.DoClick = onClick or function()
@@ -17,7 +29,7 @@ end
 
 local function AddCheckbox(parent, x, y, text, convar, action, invert)
     local checkbox = vgui.Create("DCheckBoxLabel", parent)
-    checkbox:SetPos(x, y)
+	if x and y then checkbox:SetPos(x, y) end
     checkbox:SetText(text)
     checkbox:SetDark(true)
     local val = convar:GetBool()
@@ -75,6 +87,45 @@ local function AddNumberWang(parent, x, y, label, min, max, default, decimals, a
     return numwang
 end
 
+admin.AddAnimatronicSetting("pill_sfreddy2", {
+    class = "DCheckBoxLabel",
+    setup = function(panel)
+        panel:SetText(language.GetPhrase("fazhunt.adminpanel.sfreddy_noclip"))
+        panel:SetDark(true)
+        panel:SetChecked(shadow_freddyability:GetBool())
+        function panel:OnChange(b)
+            net.Start("AdminAction")
+            net.WriteString("fh_sfreddy_noclip")
+            net.WriteBool(b)
+            net.SendToServer()
+        end
+    end
+})
+
+admin.AddAnimatronicSetting("pill_plushtrap", {
+    class = "DNumSlider",
+    setup = function(panel)
+		panel:SetDark(true)
+		panel:SetMin(500)
+		panel:SetMax(4000)
+		panel:SetSize(90, 20)
+		panel:SetDefaultValue(plushtrap_visionrange:GetDefault())
+		panel:SetDecimals(0)
+		panel:SetValue(plushtrap_visionrange:GetInt())
+		
+		local text = panel:Find("DLabel")
+		text:Hide()
+		
+        function panel:OnValueChanged(value)
+            net.Start("AdminAction")
+            net.WriteString("fh_plushtrap_highlight_range")
+			net.WriteFloat(value)
+            net.SendToServer()
+        end
+    end,
+	description = language.GetPhrase("fazhunt.adminpanel.plushtrap_vision_range")
+})
+
 local function GetSelectedPlayers()
     local selectedLines = PlayerList:GetSelected()
     local players = {}
@@ -90,8 +141,15 @@ local function OpenAdminPanel()
     local selectedAnimatron = nil
 
     if IsValid(fh_admin_panel) then
-        fh_admin_panel:Remove()
-        gui.EnableScreenClicker(false)
+		if fh_admin_panel:IsVisible() then
+			fh_admin_panel:Hide()
+			gui.EnableScreenClicker(false)
+		else
+			fh_admin_panel:Show()
+			gui.EnableScreenClicker(true)
+			createListPlayers()
+			createListAnimatronics()
+		end
         return
     end
 
@@ -195,7 +253,8 @@ local function OpenAdminPanel()
         {"startgame", "start_round"},
         {"endgame", "end_round"},
         {"endroundstartup", "end_post_round"},
-        {"endlobbytimer", "end_lobby_timer"}
+        {"endlobbytimer", "end_lobby_timer"},
+        {"pausegame", "pause_game"},
     }
 
     local ry = 10
@@ -226,6 +285,7 @@ local function OpenAdminPanel()
     eventsPanel:Dock(FILL)
 
     AddCheckbox(eventsPanel, 10, 14, language.GetPhrase("fazhunt.adminpanel.gift_spawning"), conVars.fh_gifts_spawning, "fh_gifts_spawning")
+    AddCheckbox(eventsPanel, 180, 14, language.GetPhrase("fazhunt.adminpanel.goldenfreddy_spawning"), conVars.fh_goldenfreddy_spawning, "fh_goldenfreddy_spawning")
     AddNetActionButton(eventsPanel, 10, 40, 150, 40, language.GetPhrase("fazhunt.adminpanel.spawn_gifts"), "fh_spawn_gifts")
 
     local lbl = vgui.Create("DLabel", eventsPanel)
@@ -245,7 +305,7 @@ local function OpenAdminPanel()
 	local function justget(n) return ey + n end
 
     AddCheckbox(expPanel, 10, step(20), language.GetPhrase("fazhunt.adminpanel.damage_animatronics"), conVars.fh_animatronic_immortal, "fh_animatronic_immortal", true)
-    AddCheckbox(expPanel, 10, step(20), language.GetPhrase("fazhunt.adminpanel.sfreddy_noclip"), shadow_freddyability, "fuppr_sfreddy_noclip")
+    
     AddCheckbox(expPanel, 10, step(15), language.GetPhrase("fazhunt.adminpanel.quiet_animatronics"), conVars.fh_less_steps, "fh_less_steps")
     AddSlider(expPanel, 10, step(30), language.GetPhrase("fazhunt.adminpanel.max_cupcakes"), 3, 10, conVars.fh_max_cupcakes:GetInt(), 0, "fh_max_cupcakes")
     AddCheckbox(expPanel, 10, step(20), language.GetPhrase("fazhunt.adminpanel.silent_highlight"), conVars.fh_silent_highlight, "fh_silent_highlight")
@@ -322,6 +382,14 @@ local function OpenAdminPanel()
 	CatList:SetSize(200, h - 120)
 	CatList:SetPos(w - 230, 20)
 	
+	local background = vgui.Create( "DCategoryList", animPanel )
+	background:SetSize(210, h - 120)
+	background:SetPos(150, 20)
+	
+	local animSetList = vgui.Create( "DScrollPanel", animPanel )
+	animSetList:SetSize(210, h - 120)
+	animSetList:SetPos(150, 20)
+	
 	--[[
 		категории для ёбанных аниматроников
 	]]
@@ -370,37 +438,58 @@ local function OpenAdminPanel()
 			button.DoClick = function()
 				currentAnimatronic = animData.name
 				
-				local image = killers.GetAvatar(animData.name)
+				local image = killers.GetAvatar(currentAnimatronic)
 				if image then
 					anim_avatar:SetMaterial(image)
 				else
 					anim_avatar:SetImage("tools/toolsblack.vmt")
 				end
-				
+
 				if animData.pill_data then
 					local speed = animData.pill_data.moveSpeed
-					
 					if speed then
-						if speed.walk then
-							walkTxt:SetText("Walk Speed: " .. speed.walk)
-						else
-							walkTxt:SetText("Walk Speed: ???")
-						end
-						if speed.run then
-							runTxt:SetText("Run Speed: " .. speed.run)
-						else
-							runTxt:SetText("Run Speed: ???")
-						end
-						if speed.ducked then
-							crouchTxt:SetText("Crouched Speed: " .. speed.ducked)
-						else
-							crouchTxt:SetText("Crouched Speed: ???")
-						end
+						walkTxt:SetText("Walk Speed: " .. (speed.walk or "???"))
+						runTxt:SetText("Run Speed: " .. (speed.run or "???"))
+						crouchTxt:SetText("Crouched Speed: " .. (speed.ducked or "???"))
+					else
+						walkTxt:SetText("Walk Speed: ???")
+						runTxt:SetText("Run Speed: ???")
+						crouchTxt:SetText("Crouched Speed: ???")
 					end
 				else
 					walkTxt:SetText("Walk Speed: ???")
 					runTxt:SetText("Run Speed: ???")
 					crouchTxt:SetText("Crouched Speed: ???")
+				end
+				
+				for _, pnl in pairs(animSetList:GetCanvas():GetChildren()) do
+					pnl:SetParent(nil)
+					pnl:SetVisible(false)
+				end
+				
+				if animSettings[currentAnimatronic] then
+					for _, panelInfo in ipairs(animSettings[currentAnimatronic]) do
+						if not istable(panelInfo) then continue end
+
+						local newPanel = vgui.Create(panelInfo.class, animSetList)
+						local panelText = nil
+						if panelInfo.setup and isfunction(panelInfo.setup) then
+							panelInfo.setup(newPanel)
+						end
+						if panelInfo.description then
+							panelText = vgui.Create("DLabel", animSetList)
+						end
+						if panelText then
+							panelText:SetText(panelInfo.description)
+							panelText:SetDark(true)
+							panelText:SetTextColor(Color(66, 140, 255))
+							panelText:Dock( TOP )
+							panelText:DockMargin( 5, 0, 5, 5 )
+						end
+						newPanel:Dock( TOP )
+						newPanel:DockMargin( 5, 5, 5, 5 )
+						animSetList:AddItem(newPanel)
+					end
 				end
 			end
 		end
@@ -412,6 +501,7 @@ local function OpenAdminPanel()
         sheet:SetActiveTab(sheet.Items[lastSelectedTab].Tab)
     end
 	
+	--[[
     sheet.OnActiveTabChanged = function(p, newTab)
 		timer.Simple(0, function()
 			for i, item in ipairs(sheet.Items) do
@@ -422,14 +512,17 @@ local function OpenAdminPanel()
 			end
 		end)
     end
+	--]]
 end
 
 function createListPlayers()
     if not IsValid(fh_admin_panel) then return end
-    PlayerList:Clear()
-    for _, v in player.Iterator() do
-        local line = PlayerList:AddLine(v:Nick(), getTeam(v:Team()))
-        line.Player = v
+    if IsValid(PlayerList) then
+        PlayerList:Clear()
+        for _, v in player.Iterator() do
+            local line = PlayerList:AddLine(v:Nick(), getTeam(v:Team()))
+            line.Player = v
+        end
     end
 end
 
@@ -444,6 +537,7 @@ function updatePlayer(ply, team)
 end
 
 function createListAnimatronics()
+    if !IsValid(AnimatronicList) then return end
     AnimatronicList:Clear()
     local killers_ = killers.getAll()
     local preferred = table.GetKeys(killers.getAllPreferables(true))

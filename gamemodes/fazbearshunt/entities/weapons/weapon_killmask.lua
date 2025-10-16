@@ -71,6 +71,17 @@ function SWEP:PrimaryAttack()
 	end)
 end
 
+
+local dropWeaponry = {
+	["weapon_crowbar"] = true,
+	["weapon_pistol"] = true,
+	["weapon_mask"] = true,
+	["weapon_adrenaline"] = true,
+--	["weapon_defibrillator"] = true,
+	["weapon_fanta"] = true,
+	["weapon_fh_medkit"] = true,
+}
+
 function SWEP:SpringLock()
 	local ply = self.Owner
 	
@@ -118,6 +129,10 @@ function SWEP:SpringLock()
 	
 		timer.Simple(11, function()
 			if !IsValid(ply) or !ply:Alive() then return end
+			for _, wep in ipairs( ply:GetWeapons() ) do
+				if !dropWeaponry[wep:GetClass()] then continue end
+				ply:DropWeapon( wep, nil, Vector(0,0,0) )
+			end
 			ply:StripWeapons()
 			
 			ply:SetSuppressPickupNotices(true)
@@ -137,6 +152,12 @@ function SWEP:SpringLock()
 		end)
 	end
 end
+
+hook.Add( "PlayerCanPickupWeapon", "no_mask_puckup", function( ply, weapon )
+    if ply:HasWeapon("weapon_killer_axe") then
+		return false
+	end
+end )
 
 function SWEP:SecondaryAttack()
 	return

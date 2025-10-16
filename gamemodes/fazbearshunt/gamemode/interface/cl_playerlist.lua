@@ -35,7 +35,7 @@ function GM:ScoreboardShow()
 		if CurTime() > nextTimeUpdate then
 			nextTimeCheck = CurTime() + 5
 			
-			UpdatePlayerList(TEAM_UNASSIGNED, surv_scrollPanel)
+			UpdatePlayerList(TEAM_SURVIVOR, surv_scrollPanel)
 			UpdatePlayerList(2701, anim_scrollPanel)
 		end
 		
@@ -101,7 +101,7 @@ function GM:ScoreboardShow()
 
 	if #anim_scrollPanel:GetCanvas():GetChildren() == 0 and #surv_scrollPanel:GetCanvas():GetChildren() == 0 then
 		UpdatePlayerList(2701, anim_scrollPanel)
-		UpdatePlayerList(TEAM_UNASSIGNED, surv_scrollPanel)
+		UpdatePlayerList(TEAM_SURVIVOR, surv_scrollPanel)
 	end
 	
 	customScoreboard.Paint = function(self, w, h)
@@ -681,13 +681,13 @@ hook.Add("PostRenderVGUI", "DrawPLAnimTooltip", function()
 end)
 
 function UpdatePlayerList(teamIndex, scrollbar)
-	local teamIndex = teamIndex or TEAM_UNASSIGNED
+	local teamIndex = teamIndex or TEAM_SURVIVOR
 
     scrollbar:Clear()
 		
     local players = team.GetPlayers(teamIndex)
 	
-	if teamIndex == TEAM_UNASSIGNED then
+	if teamIndex == TEAM_SURVIVOR then
 		table.Add(players, team.GetPlayers(TEAM_SPECTATOR))
 	end
 	
@@ -718,7 +718,7 @@ gameevent.Listen( "player_connect" )
 hook.Add("player_connect", "UpdateScoreboardJoin", function()
     if IsValid(customScoreboard) then
 		timer.Simple(0.5, function()
-			UpdatePlayerList(TEAM_UNASSIGNED, surv_scrollPanel)
+			UpdatePlayerList(TEAM_SURVIVOR, surv_scrollPanel)
 			UpdatePlayerList(2701, anim_scrollPanel)
 		end)
     end
@@ -728,7 +728,7 @@ gameevent.Listen( "player_hurt" )
 hook.Add("player_hurt", "fh_playerlist_update_hurt", function()
     if IsValid(customScoreboard) then
 		timer.Simple(0.5, function()
-			UpdatePlayerList(TEAM_UNASSIGNED, surv_scrollPanel)
+			UpdatePlayerList(TEAM_SURVIVOR, surv_scrollPanel)
 			UpdatePlayerList(2701, anim_scrollPanel)
 		end)
     end
@@ -738,7 +738,7 @@ gameevent.Listen( "player_disconnect" )
 hook.Add("player_disconnect", "fh_playerlist_update_disconnect", function()
     if IsValid(customScoreboard) then
 		timer.Simple(0.5, function()
-			UpdatePlayerList(TEAM_UNASSIGNED, surv_scrollPanel)
+			UpdatePlayerList(TEAM_SURVIVOR, surv_scrollPanel)
 			UpdatePlayerList(2701, anim_scrollPanel)
 		end)
     end

@@ -123,14 +123,14 @@ hook.Add("player_spawn", "fh_player_spawn_flashlight", function(data)
     local ply = Player(data.userid)
     if IsValid(ply) and ply == LocalPlayer() then
         if flashMode ~= "off" then
-            ApplyFlashMode()
+            ToggleFlashMode()
         end
     end
 end)
 
 hook.Add("PostCleanupMap", "fh_cleanup_flashlight", function()
     if flashMode ~= "off" then
-        ApplyFlashMode()
+        ToggleFlashMode()
     end
 end)
 
@@ -141,7 +141,7 @@ hook.Add("PillApply", "fh_flashlight_pillapply", function(ply)
 	end
 end)
 
-hook.Add("PillRestore", "fh_flashlight_pillapply", function(ply)
+hook.Add("PillRestore", "fh_flashlight_pillrestore", function(ply)
 	local myself = LocalPlayer()
 	if IsValid(myself) and ply == myself then
 		if flashMode ~= "off" then ToggleFlashMode() end

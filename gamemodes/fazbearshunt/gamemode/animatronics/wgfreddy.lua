@@ -12,13 +12,15 @@ util.PrecacheSound("fnaf2/gfreddy/outworld_ambient_2.wav")
 team.SetUp( 27, "Secret Animatronics", Color(255, 0, 0), true )
 
 hook.Add("fh_startgame", "spawn_wgfreddy", function(roundType)
+	if !conVars.fh_goldenfreddy_spawning:GetBool() then return end
+
 	if !navmesh.IsLoaded() or navmesh.GetNavAreaCount() < 5 then
 		return
 	end
 	
 	if math.random(1,8) == 1 or GetConVar( "developer" ):GetBool() then
 		if roundType == 0 then
-			local players = team.GetPlayers(TEAM_UNASSIGNED)
+			local players = team.GetPlayers(TEAM_SURVIVOR)
 			local count = table.Count(players)
 			
 			if count >= 8 or ( GetConVar( "developer" ):GetBool() and count > 2 ) then
@@ -231,6 +233,7 @@ if CLIENT then
 	local outworld_ambient = outworld_ambient or nil
 	
 	local outworlded_ppl = {}
+	local dontdrawanim = {}
 	
 	local PARTICLE_TEXTURE = "particles/smokinweed"
 	local RADIUS = 1200
@@ -495,7 +498,7 @@ if CLIENT then
 			local maxRadius = 300
 		
 			for _, target in player.Iterator() do
-				if target == ply or !IsValid(target) or !target:Alive() or target:Team() != TEAM_UNASSIGNED then continue end
+				if target == ply or !IsValid(target) or !target:Alive() or target:Team() != TEAM_SURVIVOR then continue end
 				
 				if target:GetGFreddyImmune() then continue end
 		
@@ -677,7 +680,6 @@ if CLIENT then
 		end
 	end)
 	
-	local dontdrawanim = {}
 	net.Receive("fh_dontdraw_anim", function()
 		local ent = net.ReadEntity()
 
@@ -751,7 +753,7 @@ function fh_get_wgfreddy_target(ply)
 	local maxRadius = 300
 	
 	for _, target in player.Iterator() do
-		if target == ply or not IsValid(target) or !target:Alive() or target:Team() != TEAM_UNASSIGNED or target == stalkTarget then continue end
+		if target == ply or not IsValid(target) or !target:Alive() or target:Team() ~= TEAM_SURVIVOR or target == stalkTarget then continue end
 		
 		if target:GetGFreddyImmune() then continue end
 	
@@ -798,7 +800,6 @@ local function cancel_outworld_target(ply)
 	ply:SetRunSpeed(420)
 	ply:SetWalkSpeed(200)
 	ply:SetCollisionGroup(COLLISION_GROUP_PLAYER)
-	ply:SetCustomCollisionCheck(true)
 	ply:CollisionRulesChanged()
 	ply:SetDSP(0)
 	ply:SetFOV(0, 0, game.GetWorld())
@@ -877,7 +878,6 @@ local function cancel_outworld_wgfreddy(ply)
 		ply:SetPushBlocked(false)
 
 		ply:SetCollisionGroup(COLLISION_GROUP_DEBRIS)
-		ply:SetCustomCollisionCheck(true)
 		ply:CollisionRulesChanged()
 
 		ent.cloaked = true
@@ -1001,7 +1001,6 @@ function start_outworld(ply, ent, target)
 	ply:ForceListenPlayer(target)
 	
 	target:SetCollisionGroup(COLLISION_GROUP_PLAYER_MOVEMENT)
-	target:SetCustomCollisionCheck(true)
 	target:SetRunSpeed(240)
 	target:SetWalkSpeed(120)
 	target:SetJumpBoostMultiplier(0)
@@ -1220,7 +1219,6 @@ if SERVER then
 					ent:DrawShadow(true)
 						
 					ply:SetCollisionGroup(COLLISION_GROUP_PLAYER_MOVEMENT)
-					ply:SetCustomCollisionCheck(true)
 					ply:CollisionRulesChanged()
 								
 					ent.cloaked=false
@@ -1279,7 +1277,6 @@ if SERVER then
 				ent:DrawShadow(false)
 
 				wgfreddy:SetCollisionGroup(COLLISION_GROUP_DEBRIS)
-				wgfreddy:SetCustomCollisionCheck(true)
 				wgfreddy:CollisionRulesChanged()
 
 				ent.cloaked = true

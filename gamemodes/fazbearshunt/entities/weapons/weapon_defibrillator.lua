@@ -144,8 +144,12 @@ function SWEP:Think()
                     ply.BeingRevived = true
                     ply:Spawn()
 					ply:RemoveRagdoll()
-                    ply:SetPos(oldpos)
-					ply:SetTeam(TEAM_UNASSIGNED)
+                    ply:SetPos(oldpos)	
+					ply:SetTeam(TEAM_SURVIVOR)
+					
+					if ply.CrouchedBeforeDeath then
+						ply:Crouch()
+					end
 					
 					if !survivors[ply] then
 						survivors[ply] = true
@@ -373,13 +377,14 @@ local blockedReviveWeapons = {
 
 local function SetDefibAttributes(ply)
 	ply.LastDeathTime = CurTime()
+	ply.CrouchedBeforeDeath = ply:Crouching()
 	
 	if IsValid( ply:GetActiveWeapon() ) then
 		ply.ReviveActiveWeapon = ply:GetActiveWeapon():GetClass()
 	end
 	
 	ply.ReviveWeapons = {}
-	for k, v in pairs( ply:GetWeapons() ) do
+	for k, v in ipairs( ply:GetWeapons() ) do
 		local class = v:GetClass()
 		if blockedReviveWeapons[class] then continue end
 		

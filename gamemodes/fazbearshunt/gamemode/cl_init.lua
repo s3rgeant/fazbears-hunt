@@ -1,3 +1,5 @@
+fh = fh or {}
+
 include( "shared.lua" )
 
 pcall(require,"pills")
@@ -9,14 +11,13 @@ local function recursive_include(path)
 		if file_name == "cl_init.lua" then continue end
         local full_path = path .. file_name
 
-        if file_name:StartWith("cl_") then
-            include(full_path)
-        elseif file_name:StartWith("sh_") or file_name:StartWith("fh_") then
+        if file_name:StartWith("sh_") or file_name:StartWith("cl_") then
             include(full_path)
         end
     end
 end
 
+recursive_include("fazbearshunt/gamemode/utils/")
 recursive_include("fazbearshunt/gamemode/")
 recursive_include("fazbearshunt/gamemode/interface/")
 
@@ -89,7 +90,7 @@ hook.Add("PlayerStartVoice", "HideVoicePanels", function(ply)
 	if !IsValid(ply) then return end
 	
     local listenerTeam = listener:Team()
-    local speakerTeam = ply:Team() or TEAM_UNASSIGNED
+    local speakerTeam = ply:Team() or TEAM_SURVIVOR
 	
     if listenerTeam == TEAM_SPECTATOR and speakerTeam == TEAM_SPECTATOR then
         return
@@ -253,13 +254,13 @@ function GM:MouthMoveAnimation(ply)
     end
 end
 
-hook.Add("OnPlayerChat", "fh_chat_message", function(ply, text, team, dead)
+hook.Add("OnPlayerChat", "fh_chat_message", function(ply, text, p_team, dead)
     if not IsValid(ply) then return end
 	
-	local clr = teamColors[ ply:Team() ] or Color(90, 90, 90)
+	local clr = team.GetColor( ply:Team() ) or Color(90, 90, 90)
 	
-	local notDead = (team and ply:Team() ~= TEAM_SPECTATOR)
-	local dead = (team and ply:Team() == TEAM_SPECTATOR or !ply:Alive())
+	local notDead = (p_team and ply:Team() ~= TEAM_SPECTATOR)
+	local dead = (p_team and ply:Team() == TEAM_SPECTATOR or !ply:Alive())
 	
 	local team_txt = notDead and "(TEAM) " or dead and "*DEAD* " or ""
 	local team_clr = notDead and Color(0, 190, 0) or dead and Color(255,0,0)
@@ -272,6 +273,36 @@ hook.Add("OnPlayerChat", "fh_chat_message", function(ply, text, team, dead)
     )
 
     return true
+end)
+
+local lastHeld
+
+hook.Add("PreDrawEffects", "fh_endo_translucent_heldprop", function()
+    local ply = LocalPlayer()
+    if not IsValid(ply) then return end
+
+    local heldEnt = ply:GetNW2Entity("HeldEnt")
+
+    if lastHeld ~= heldEnt then
+        if IsValid(lastHeld) then
+            lastHeld.RenderOverride = nil
+        end
+
+        if IsValid(heldEnt) then
+            heldEnt.RenderOverride = function(self)
+				if heldEnt:GetRenderGroup() == 8 then
+					render.OverrideColorWriteEnable( true, false )
+					self:DrawModel()
+					render.OverrideColorWriteEnable( false, false )
+				end
+                render.SetBlend(0.5)
+                self:DrawModel()
+                render.SetBlend(1)
+            end
+        end
+
+        lastHeld = heldEnt
+    end
 end)
 
 local halloweenColorCorrection = {
@@ -312,7 +343,12 @@ hook.Add("EntityNetworkedVarChanged","fh_gamestatus_update", function(entity, na
             end
         end
     end
-
+	
+	if name == "HeldEnt" then
+		if entity:GetClass() == "prop_physics" then
+			hook.Run("HeldObjectStateChanged", entity, new)
+		end
+	end
     if entity:IsPlayer() then
         if name == 'KillerObsessed' then
             if new == true then

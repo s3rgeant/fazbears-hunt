@@ -118,12 +118,6 @@ local function scaredNear()
 		net.Start("cl_target_wgfreddy_scared")
 		net.SendToServer()
 	end)
-	
-	timer.Simple(5, function()
-		hook.Add("RenderScreenspaceEffects", "merc_videoglitch_hook", function()
-			render.DrawMercVideoGlitch(0.2)
-		end)
-	end)
 end
 
 local progressSoundChannel = nil

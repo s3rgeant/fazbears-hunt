@@ -319,9 +319,11 @@ local teammateColor = Color(0, 255, 0)
 local enemyColor = Color(255, 155, 0)
 local outlineMaterial = Material("models/debug/debugwhite")
 
-hook.Add("PostDrawOpaqueRenderables", "fh_draw_teammates", function( )
+hook.Add("PostDrawOpaqueRenderables", "fh_draw_teammates", function(depth, skybox, skybox3d )
     local ply = LocalPlayer()
     if not IsValid(ply) then return end
+	
+	if skybox then return end
 	
 	local function drawAnimatronics(tbl, color)
 		local viewEntity = ply:GetViewEntity()

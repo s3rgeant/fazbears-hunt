@@ -35,7 +35,7 @@ function RevivePlayer(ply)
 		pills.restore(ply:Nick(), true)
 		animatronics[ply] = nil
 	end
-	ply:SetTeam(TEAM_UNASSIGNED)
+	ply:SetTeam(TEAM_SURVIVOR)
     ply:Spawn()
 	ply:RemoveRagdoll()
 end
@@ -103,6 +103,48 @@ function StartRound()
         print("An Admin force-started the round. Player count: " .. player.GetCount())
 	end
 end
+
+roundPaused = roundPaused or false
+function ToggleGamePause()
+	if isGameOn then
+		if !roundPaused then
+			if timer.Exists("EndGameTimer") then
+				net.Start("fh_pause_game_timer")
+				net.WriteFloat( timer.TimeLeft("EndGameTimer") )
+				net.WriteString( "ambient/alarms/warningbell1.wav" )
+				net.Broadcast()
+				
+				timer.Pause("EndGameTimer")
+				if timer.Exists("RandomGifts") then
+					timer.Pause("RandomGifts")
+				end
+			end
+		else
+			timer.UnPause("EndGameTimer")
+			if timer.Exists("RandomGifts") then
+				timer.UnPause("RandomGifts")
+			end
+			
+			net.Start("fh_timer_cutback")
+			net.WriteFloat(timer.TimeLeft("EndGameTimer"))
+			net.WriteString("round/time_cutback.mp3")
+			net.Broadcast()
+		end
+		roundPaused = not roundPaused
+	end
+end
+
+hook.Add( "PlayerShouldTakeDamage", "fh_no_damage_paused", function( ply, attacker )
+	if roundPaused then
+		return false
+	end
+end )
+
+hook.Add( "PlayerShouldTakeDamage", "fh_no_damage_paused", function( ply, attacker )
+	if roundPaused then
+		return false
+	end
+end )
 
 if ULib then
 
@@ -261,6 +303,7 @@ end
 addAction( "start_round", StartRound )
 addAction( "highlight_all", HighlightAll )
 addAction( "end_round", EndRound )
+addAction( "pause_game", ToggleGamePause )
 addAction( "set_highlight_delay", function() 
 	local value = net.ReadFloat()
 	setConvarValue("halo_cooldown", math.floor(value))
@@ -272,6 +315,10 @@ end)
 addAction( "set_highlight_distance", function()
 	local value = net.ReadFloat()
 	setConvarValue("halo_radius", math.floor(value))
+end)
+addAction( "fh_plushtrap_highlight_range", function()
+	local value = net.ReadFloat()
+	setConvarValue("fh_plushtrap_highlight_range", math.floor(value))
 end)
 addAction( "end_post_round", EndPostRound )
 addAction( "end_lobby_timer", EndLobbyTimer )

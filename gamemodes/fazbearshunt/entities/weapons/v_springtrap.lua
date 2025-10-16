@@ -25,6 +25,7 @@ SWEP.HoldAnim = 0
 SWEP.Primary.ClipSize = -1
 SWEP.Primary.DefaultClip = -1
 SWEP.Primary.Ammo = "none"
+SWEP.Primary.Automatic = true
 
 SWEP.Secondary.ClipSize = -1
 SWEP.Secondary.DefaultClip = -1
@@ -69,7 +70,7 @@ function SWEP:PrimaryAttack()
 		if !ply:Crouching() then
 			ent:PillGesture('swing', 2, 1, 0.1, 0.3)
 		end
-        ply:EmitSound("fnaf3/sprhit_ready.wav")
+        ply:EmitSound("fnaf3/pre-hit.mp3")
 
         -- сервер решает руку
         local arm = (math.random(1,2))
@@ -148,6 +149,7 @@ function SWEP:DealDamage()
     local target = tr.Entity
     if not IsValid(target) then
         ply:LagCompensation(false)
+        ply:EmitSound("fnaf3/hit-miss.mp3")
         return
     end
 
@@ -207,7 +209,7 @@ function SWEP:DealDamage()
     end
 
     if (target:IsPlayer() and target:IsSurvivor()) or target:IsNPC() then
-        ply:EmitSound("fnaf3/spr_punch_hit.wav")
+        ply:EmitSound("fnaf3/hit.mp3")
     end
 end
 

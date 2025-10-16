@@ -1,4 +1,13 @@
 local playerSounds = playerSounds or {}
+	
+hook.Add("PostCleanupMap", "fh_sounds_cleanup", function()
+    for name, snd in pairs(playerSounds) do
+        if snd and snd.Stop then
+            snd:Stop()
+        end
+    end
+    table.Empty(playerSounds)
+end)
 
 net.Receive("fh_adv_sound_play", function()
 	local ply = LocalPlayer()
@@ -33,7 +42,7 @@ net.Receive("fh_ent_sound_play", function()
         playerSounds[snd] = nil
     end
 	
-    local sound = CreateSound(ent, snd)
+    local sound = CreateSound(ent, ")" .. snd)
     sound:Play()
 
     playerSounds[snd] = sound
@@ -68,6 +77,21 @@ net.Receive("fh_ui_sound_play", function()
 	sound.PlayFile("sound/"..str, "noplay", function(chan, errID, errStr)
 		if IsValid(chan) then
 			chan:SetPos(LocalPlayer():GetPos())
+			chan:Play()
+		end
+	end)
+end)
+
+net.Receive("fh_3d_sound_play", function()
+	local ply = net.ReadPlayer()
+	local str = net.ReadString()
+	sound.PlayFile("sound/"..str, "noplay noblock", function(chan, errID, errStr)
+		if IsValid(chan) then
+			if IsValid(ply) then
+				chan:SetPos(ply:GetPos())
+			end
+			chan:EnableLooping(true)
+			chan:Set3DEnabled(true)
 			chan:Play()
 		end
 	end)

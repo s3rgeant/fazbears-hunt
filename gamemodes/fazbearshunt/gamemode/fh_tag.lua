@@ -17,7 +17,6 @@ fh.RegisterRoundType("bonnie_tag", 2, function()
 		
 	for _, ply in player.Iterator() do
 		ply:SetJumpBoostMultiplier( 0 )
-		ply:SetCustomCollisionCheck( true )
 	end
 	
 	freezeAnimatronics(tagSetup)
@@ -176,10 +175,9 @@ function fh_tag_end()
 			table.Empty(usedKillers)
 			
 			for _, ply in player.Iterator() do
-				ply:SetTeam(TEAM_UNASSIGNED)
+				ply:SetTeam(TEAM_SURVIVOR)
 				ply:Spawn()
 				setupPlayerVars(ply)
-				ply:SetCustomCollisionCheck( false )
 			end
 			postGameTimer()
 			

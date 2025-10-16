@@ -25,6 +25,7 @@ SWEP.HoldAnim = 0
 SWEP.Primary.ClipSize = -1
 SWEP.Primary.DefaultClip = -1
 SWEP.Primary.Ammo = "none"
+SWEP.Primary.Automatic = true
 
 SWEP.Secondary.ClipSize = -1
 SWEP.Secondary.DefaultClip = -1

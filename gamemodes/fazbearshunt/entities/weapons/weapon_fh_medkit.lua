@@ -32,7 +32,7 @@ SWEP.HoldType = "slam"
 SWEP.HealSound = Sound("HealthKit.Touch")
 SWEP.DenySound = Sound("WallHealth.Deny")
 
-SWEP.HealCooldown = 0.5
+SWEP.HealCooldown = 1
 SWEP.DenyCooldown = 1
 SWEP.HealAmount = 10
 SWEP.HealRange = 64
@@ -79,7 +79,7 @@ end
 
 function SWEP:CanHeal(ent)
     if not IsValid(ent) then return false end
-    if ent:IsPlayer() or ent:IsNPC() then
+    if ent:IsPlayer() and ent:IsSurvivor() or ent:IsNPC() then
         return ent:Health() < ent:GetMaxHealth()
     end
     return false
@@ -176,7 +176,7 @@ if CLIENT then
         if not IsValid(wep) or wep:GetClass() ~= "weapon_fh_medkit" then return end
 
         local tr = ply:GetEyeTrace()
-        if IsValid(tr.Entity) and tr.Entity:IsPlayer() and ply:GetPos():Distance(tr.Entity:GetPos()) <= wep.HealRange then
+        if IsValid(tr.Entity) and tr.Entity:IsPlayer() and tr.Entity:IsSurvivor() and ply:GetPos():Distance(tr.Entity:GetPos()) <= wep.HealRange then
             halo.Add({tr.Entity}, Color(0, 255, 0), 2, 2, 2, true, false)
         end
     end)

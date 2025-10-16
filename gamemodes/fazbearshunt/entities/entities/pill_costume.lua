@@ -23,13 +23,11 @@ function ENT:Initialize()
 
     if not self.formTable or !IsValid(ply) then
         self:Remove()
-		if ply:Team() == 2701 then
-			ply:SetTeam(TEAM_UNASSIGNED)
-		end
 
         return
     end
-	self.formTable.initMoveSpeed = self.formTable.moveSpeed
+	self.formTable.initMoveSpeed = table.Copy(self.formTable.moveSpeed)
+	self.formTable.initJumpPower = self.formTable.jumpPower
 
     local hull = self.formTable.hull or Vector(32, 32, 72)
     local duckBy = self.formTable.duckBy or (self.formTable.hull and 0 or 36)
@@ -75,6 +73,12 @@ function ENT:Initialize()
 			end
 		else
 			ply:DrawViewModel(false)
+		end
+		
+		if self.formTable.collisionGroup then
+			ply:SetCollisionGroup(self.formTable.collisionGroup)
+		else
+			ply:SetCollisionGroup(0)
 		end
 
         if ply:FlashlightIsOn() then
@@ -341,7 +345,6 @@ function ENT:Think()
     local vel = ply:GetVelocity():Length()
 
     if SERVER then
-        -- ======== АНІМАЦІЇ ========
         local anims = table.Copy(self.formTable.anims.default or {})
         local wep = ply:GetActiveWeapon()
         if IsValid(wep) then
@@ -350,12 +353,10 @@ function ENT:Think()
             table.Merge(anims, self.formTable.anims[self.forceAnimSet] or {})
         end
 
-        -- сброс при отсутствии валидной анимации
         if not self.anim or not anims[self.anim] then
             self.animFreeze, self.ignoreFreeze, self.animStart = nil, nil, nil
         end
 
-        -- состояние заморозки
         if self.animFreeze and not self:GetFrozen() then
             ply:SetWalkSpeed(5)
             ply:SetRunSpeed(5)
@@ -366,12 +367,10 @@ function ENT:Think()
             self:ResetSpeed(ply)
         end
 
-        -- сброс прыжковой анимации
         if self.anim == "jump" and ply:IsOnGround() then
             self.anim, self.animCycle = nil, nil
         end
 
-        -- выбор анимации
         local anim, overrideRate
         if self.anim and anims[self.anim] then
             anim, overrideRate = anims[self.anim], anims[self.anim .. "_rate"] or 1
@@ -792,6 +791,22 @@ function ENT:DoKeyPressShared(ply, key)
 	end
 end
 
+function ENT:DoKeyPressShared_NoLagCompensation(ply, key)
+	if self.animFreeze and !self.ignoreFreeze then return end
+
+	if key == IN_ATTACK and self.formTable.attack_sh_nolc and self.formTable.attack_sh_nolc.mode == "trigger" and !self.ignoreFreeze then
+		self.formTable.attack_sh_nolc.func(ply, self, self.formTable.attack_sh_nolc)
+	end
+
+	if key == IN_ATTACK2 and self.formTable.attack2_sh_nolc and self.formTable.attack2_sh_nolc.mode == "trigger" then
+		self.formTable.attack2_sh_nolc.func(ply, self, self.formTable.attack2_sh_nolc)
+	end
+
+	if key == IN_RELOAD and self.formTable.reload_sh_nolc then
+		self.formTable.reload_sh_nolc(ply, self)
+	end
+end
+
 function ENT:ToggleCloak()
     local ply = self:GetPillUser()
 
@@ -824,7 +839,9 @@ function ENT:SetSpeed(walk, run, duck, jump)
 	ply:SetJumpPower(jump)
 end
 
-function ENT:ResetSpeed(ply)
+function ENT:ResetSpeed()
+    local ply = self:GetPillUser()
+
     local speed = self.formTable.initMoveSpeed or {}
     ply:SetWalkSpeed(speed.walk or 200)
     ply:SetRunSpeed(speed.run or speed.walk or 500)
@@ -904,6 +921,21 @@ function ENT:Draw()
 	if ply == LocalPlayer() and !invisible then
 		self:DrawShadow(true)
 	end
+end
+
+function ENT:SetDefaultSpeed()
+    local ply = self:GetPillUser()
+	
+	self.formTable.moveSpeed = table.Copy(self.formTable.initMoveSpeed)
+	self.formTable.jumpPower = self.formTable.initJumpPower
+	
+	local speed = self.formTable.moveSpeed
+	local jump = self.formTable.jumpPower
+	
+    ply:SetWalkSpeed(speed.walk)
+    ply:SetRunSpeed(speed.run)
+    ply:SetCrouchedWalkSpeed(speed.ducked / (speed.walk or 200))
+	ply:SetJumpPower(jump)
 end
 
 function ENT:DrawTranslucent()

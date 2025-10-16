@@ -15,9 +15,7 @@ local packString = ""
 local packs = {}
 local currentPack
 
-if SERVER then
-	team.SetUp(TEAM_PILLS, 'PILLS', Color(255, 0, 0))
-end
+team.SetUp(TEAM_PILLS, 'PILLS', Color(255, 0, 0))
 
 function packStart(name, id, icon)
     currentPack = {}
@@ -88,6 +86,10 @@ function editPillTable(name, func, newfunc)
 end
 
 function getPillTable(typ)
+    if !forms[typ] then
+        Msg("Can't find Pill Table for " .. typ)
+        return
+    end
     return table.Copy(forms[typ])
 end
 
@@ -377,8 +379,6 @@ function restore(ply, breakout)
                 file.Write("pill_config/permalocked.txt", util.TableToKeyValues(locked_perma, "permalocked"))
             end
         end
-		
-		ply:SetTeam(TEAM_UNASSIGNED)
 
         return true
     end
@@ -391,6 +391,15 @@ hook.Add("KeyPress", "pk_pill_keypress_shared", function(ply, key)
 		ply:LagCompensation( true )
 		ent:DoKeyPressShared(ply, key)
 		ply:LagCompensation( false )
+	end
+end)
+
+-- Shared attack2 hook with no lag compensation
+hook.Add("KeyPress", "pk_pill_keypress_nolc_shared", function(ply, key)
+	local ent = getMappedEnt(ply)
+
+	if IsValid(ent) then
+		ent:DoKeyPressShared_NoLagCompensation(ply, key)
 	end
 end)
 
@@ -472,7 +481,6 @@ if SERVER then
         if IsValid(getMappedEnt(ply)) then
             if SERVER then
                 getMappedEnt(ply):PillDie()
-				ply:SetTeam(TEAM_UNASSIGNED)
             end
         end
     end)
@@ -663,6 +671,8 @@ hook.Add( "StartCommand", "pk_froze_movement", function( ply, cmd )
 	if IsValid(ent) then
 		if ent:GetFrozen() then
 			cmd:ClearMovement()
+			cmd:RemoveKey(IN_ATTACK)
+			cmd:RemoveKey(IN_ATTACK2)
 		end
 	end
 end )

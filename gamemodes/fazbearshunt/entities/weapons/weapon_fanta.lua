@@ -58,7 +58,7 @@ function SWEP:PrimaryAttack()
 	
 	timer.Simple(2.1, function()
 		
-		if IsValid(self.Owner) and IsValid(self) then
+		if IsValid(self) and IsValid(self.Owner) then
 			self:OnDrink()
 		end
 	end)

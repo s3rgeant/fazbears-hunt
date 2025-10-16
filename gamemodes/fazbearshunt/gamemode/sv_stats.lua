@@ -10,7 +10,7 @@ end
 stats.SetMin("saw_animatronic", 10)
 stats.SetMin("ran_meters", 2000)
 stats.SetMin("got_highlighted", 6)
-stats.SetMin("got_damaged", 100)
+stats.SetMin("got_damaged", 150)
 stats.SetMin("revived", 3)
 stats.SetMin("tasered", 5)
 stats.SetMin("got_slowed", 3)

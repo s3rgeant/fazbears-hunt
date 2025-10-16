@@ -1,18 +1,31 @@
 
 include( "player_class/player_sandbox.lua" )
-include( "editor_player.lua" )
+include( "utils/editor_player.lua" )
 
 GM.Name = "Fazbear's Hunt"
 GM.Author = "sergeant"
 GM.Email = "N/A"
 GM.Website = "N/A"
 
+local fh_version = "3.1.1"
+
+function fh.GetVersion()
+    return fh_version
+end
+
 --DeriveGamemode("sandbox")
 
-TEAM_SURVIVOR = 2700 -- UNUSED
+TEAM_SURVIVOR = 2700
 TEAM_PILLS = 2701
 TEAM_ADMIN = 2702
 TEAM_EDITOR = 2703
+
+team.SetUp(TEAM_SURVIVOR, "Survivors", Color(84, 163, 255))
+team.SetColor( TEAM_SPECTATOR, Color(117, 117, 130) )
+
+function IsHalloween()
+    return os.date("%B") == "October"
+end
 
 conVars = {
 	halo_radius = CreateConVar( "halo_radius", 2000, { FCVAR_ARCHIVE, FCVAR_REPLICATED}, "Halo radius." ),
@@ -24,9 +37,14 @@ conVars = {
 	fh_round_duration = CreateConVar( "fh_round_duration", 10, { FCVAR_ARCHIVE, FCVAR_REPLICATED}, "Round duration in minutes." ),
 	
 	--[[
-		ADMIN PANEL: EXPERIMENTS
+		ADMIN PANEL: EVENT
 	]]
 	fh_gifts_spawning = CreateConVar( "fh_gifts_spawning", 1, { FCVAR_ARCHIVE, FCVAR_REPLICATED}, "Toggle gifts spawning." ),
+	fh_goldenfreddy_spawning = CreateConVar( "fh_goldenfreddy_spawning", 1, { FCVAR_ARCHIVE, FCVAR_REPLICATED}, "Toggle Golden Freddy spawning." ),
+	
+	--[[
+		ADMIN PANEL: EXPERIMENTS
+	]]
 	fh_animatronic_immortal = CreateConVar( "fh_animatronic_immortal", 1, { FCVAR_ARCHIVE, FCVAR_REPLICATED}, "Toggle immortality for animatronic team." ),
 	
 	fh_less_steps = CreateConVar( "fh_less_steps", 0, { FCVAR_ARCHIVE, FCVAR_REPLICATED}, "Makes footsteps silent when they're not rendered." ),
@@ -73,7 +91,9 @@ local killerData = killerData or {
     ["pill_springtrap"] = {name = "springtrap", fullname = "fazhunt.animatronics.springtrap", color = colors.HSpringtrap},
     ["pill_plushtrap"] = {name = "plushtrap", fullname = "fazhunt.animatronics.plushtrap", color = colors.Plushtrap},
 	
-    ["pill_mangle"] = {name = "mangle", fullname = "fazhunt.animatronics.mangle", color = colors.Endo}
+    ["pill_mangle"] = {name = "mangle", fullname = "fazhunt.animatronics.mangle", color = colors.Endo},
+	
+    ["pill_endo02_test"] = {name = "endo", fullname = "ENDO TEST", color = colors.Endo},
 }
 
 killerAbilities = {
@@ -159,6 +179,33 @@ function killers.GetAvatar(killer)
 		return killerAvatars[killer]
 	end
 	return nil
+end
+
+function killers.Register(pill, a_name, a_fullname, a_color)
+    assert(pill, "[killers.Register] You need a pill to begin with!")
+    assert(a_name, "[killers.Register] You need a name to begin with!")
+
+    if killerData[pill] then
+        print("Can't overwrite already existing animatronic!")
+        return
+    end
+
+    a_fullname = a_fullname or a_name
+    a_color = a_color or colors.Gray
+
+    killerData[pill] = {name = a_name, fullname = a_fullname, color = a_color}
+end
+
+function killers.SetAbilities(name, abilities)
+    if not name or not abilities then return end
+    
+    if killerAbilities[name] then
+        for _, ability in ipairs(abilities) do
+            table.insert(killerAbilities[name], ability)
+        end
+    else
+        killerAbilities[name] = abilities
+    end
 end
 
 local function IsNavmesh()
@@ -355,7 +402,7 @@ teamColors = {
 	[2701] = Color(255, 25, 25),
 	[27] = Color(255, 25, 25),
 	[TEAM_SPECTATOR] = Color(117, 117, 130),
-	[TEAM_UNASSIGNED] = Color(84, 163, 255)
+	[TEAM_SURVIVOR] = Color(84, 163, 255)
 }
 
 function GetScaledPlayerValue(countMin, countMax, valueMin, valueMax)
@@ -381,14 +428,6 @@ utf8.sub = function(str, startChar, endChar)
     end
 end
 
---[[
-hook.Add("PlayerFootstep", "fh_footsteps", function(ply, pos, foot, sound, volume, filter)
-	local foot_sound = foot == 1 and "NPC_CombineS.FootstepLeft" or "NPC_CombineS.FootstepRight"
-	ply:EmitSound(foot_sound)
-	return true
-end)
-]]--
-
 hook.Add("SetupMove", "CustomNoClipSpeedControl", function(ply, mv, cmd)
     if ply:GetMoveType() == MOVETYPE_NOCLIP then
         if ply:GetMoveType() == MOVETYPE_OBSERVER then
@@ -400,7 +439,6 @@ hook.Add("SetupMove", "CustomNoClipSpeedControl", function(ply, mv, cmd)
         end
     end
 end)
-
 
 hook.Add("ShouldCollide", "fh_collisions", function(ent1, ent2)
     local cg1, cg2 = ent1:GetCollisionGroup(), ent2:GetCollisionGroup()
@@ -415,6 +453,14 @@ hook.Add("ShouldCollide", "fh_collisions", function(ent1, ent2)
 		return false
 	elseif class1 == "prop_ragdoll" and isPlayer2 then
 		return false
+	end
+	
+	if CLIENT then
+		if isPlayer1 and ent1:GetNW2Entity("HeldEnt") == ent2 then
+			return false
+		elseif isPlayer2 and ent2:GetNW2Entity("HeldEnt") == ent1 then
+			return false
+		end
 	end
 
     -- Отключаем столкновения с миром
@@ -452,7 +498,7 @@ local meta = FindMetaTable("Player")
 if meta then
 
 	function meta:IsSurvivor()
-		return self:Alive() and self:Team() == TEAM_UNASSIGNED and !IsValid(pills.getMappedEnt(self))
+		return self:Alive() and self:Team() == TEAM_SURVIVOR and !IsValid(pills.getMappedEnt(self))
 	end
 	
 	function meta:IsAnimatronic()
@@ -489,103 +535,19 @@ end
 
 
 if SERVER then
-	--[[
-    util.AddNetworkString("SpawnClientClone")
 
-    concommand.Add("spawn_client_clone", function(ply)
-		if !ply:IsSuperAdmin() then return end
-        if not IsValid(ply) then return end
-        net.Start("SpawnClientClone")
-        net.Send(ply)
-    end)
-	]]--
-
-    concommand.Add("spawn_mori", function(ply)
+	concommand.Add("spawn_mori", function(ply)
 		if not IsValid(ply) then return end
 		if !ply:IsSuperAdmin() then return end
 		
-        local a = ents.Create("mori_helper")
-		a:SetPos( ply:GetPos() )
-        a:Spawn()
+		local helper = ents.Create("mori_helper")
+		helper:SetPos( ply:GetPos() )
+		helper:Spawn()
+		helper:SetOwner(ply)
 		
-        local b = ents.Create("mori_outfit")
-        b:SetParent(a)
-        b:SetModel( ply:GetModel() )
-        b:Spawn()
-    end)
+		local b = ents.Create("mori_outfit")
+		b:SetParent(helper)
+		b:SetModel( ply:GetModel() )
+		b:Spawn()
+	end)
 end
-
---[[
-if CLIENT then
-    local baseModel, clone, hookName, endTime
-
-    net.Receive("SpawnClientClone", function()
-		local ply = LocalPlayer()
-        if IsValid(baseModel) then
-            baseModel:Remove()
-        end
-        if IsValid(clone) then
-            clone:Remove()
-        end
-        if hookName then
-            hook.Remove("Think", hookName)
-        end
-
-        baseModel = ClientsideModel("models/humans/group01/male_mori_helper.mdl", RENDERGROUP_OPAQUE)
-        baseModel:SetPos(ply:GetPos() + Vector(100, 0, 0))
-        baseModel:SetAngles(Angle(0, 0, 0))
-        baseModel:ResetSequence("test01")
-        baseModel:SetCycle(0)
-		baseModel:SetNoDraw(true)
-        baseModel:SetPlaybackRate(1)
-        baseModel:Spawn()
-
-        local seqDur = baseModel:SequenceDuration()
-        local startTime = CurTime()
-        endTime = startTime + seqDur
-
-        clone = ClientsideModel(ply:GetModel(), RENDERGROUP_OPAQUE)
-        clone:SetPos(baseModel:GetPos())
-        clone:SetAngles(baseModel:GetAngles())
-        clone:SetParent(baseModel)
-        clone:AddEffects(EF_BONEMERGE)
-        clone:Spawn()
-
-        hookName = "AnimateBaseModel_" .. baseModel:EntIndex()
-
-        hook.Add("Think", hookName, function()
-            if not IsValid(baseModel) or not IsValid(clone) then
-                hook.Remove("Think", hookName)
-                return
-            end
-
-            local elapsed = CurTime() - startTime
-            local cycle = (elapsed / seqDur) % 1
-            baseModel:SetCycle(cycle)
-
-            local attId = baseModel:LookupAttachment("camera")
-            if attId and attId > 0 then
-                local att = baseModel:GetAttachment(attId)
-                if att and att.Pos and att.Ang then
-                    local view = {
-                        origin = att.Pos,
-                        angles = att.Ang,
-                        fov = 30,
-                        drawviewer = true,
-                    }
-                    hook.Add("CalcView", "CustomView_" .. baseModel:EntIndex(), function()
-                        return view
-                    end)
-                end
-            end
-
-            if CurTime() >= endTime then
-                baseModel:Remove()
-                clone:Remove()
-                hook.Remove("Think", hookName)
-                hook.Remove("CalcView", "CustomView_" .. baseModel:EntIndex())
-            end
-        end)
-    end)
-end
-]]--

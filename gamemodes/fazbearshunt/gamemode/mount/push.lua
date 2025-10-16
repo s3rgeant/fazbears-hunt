@@ -55,7 +55,10 @@ hook.Add("KeyPress", "PushInteraction", function(ply, key)
 	if key == IN_USE and not push[ply:UserID()] then
 		local ent = ply:GetEyeTrace().Entity
 		if IsValid(ply) and IsValid(ent) then
-			if ply:IsPlayer() and ply:Team() ~= TEAM_SPECTATOR and ent:IsPlayer() and not ent.lobbyFreeze and not ent:IsPushImmune() then
+			if ply:IsPlayer() and ply:Team() ~= TEAM_SPECTATOR and ent:IsPlayer() and not ent:IsPushImmune() then
+				local allowed = hook.Run("ShouldPlayerPush", ply, ent)
+
+				if allowed == false then return end
 			
 				local pushSounds = ent:IsAnimatronic() and PushSound_pills or PushSound
 				

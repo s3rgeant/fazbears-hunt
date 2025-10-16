@@ -51,9 +51,10 @@ sound.Add({
 	channel = 		CHAN_STATIC,
 	level = 		90,
 	volume = 		1.0,
-	sound = 			{"fnaf3/sprstep1.mp3"
-						,"fnaf3/sprstep2.mp3"
-						,"fnaf3/sprstep3.mp3"}
+	sound = 			{"fnaf3/run1.mp3"
+						,"fnaf3/run2.mp3"
+						,"fnaf3/run3.mp3"
+						,"fnaf3/run4.mp3"}
 })
 sound.Add({
 	name = 			"plushtrap.foot1",
@@ -78,10 +79,10 @@ sound.Add({
 
 sound.Add({
 	name = 			"springtrap.breath",
-	channel = 		CHAN_VOICE,
-	level = 		60,
+	channel = 		CHAN_AUTO,
+	level = 		75,
 	volume = 		1.0,
-	sound = 			{"fnaf3/breathing.wav"}
+	sound = 			{")fnaf3/springbreath_looped.wav"}
 })
 
 //clown
