@@ -1,7 +1,7 @@
 ﻿include( "animatronics/wgfreddy.lua" )
 include( "animatronics/foxy.lua" )
 include( "animatronics/mangle.lua" )
-include( "animatronics/endo_test.lua" )
+--include( "animatronics/endo_test.lua" )
 
 local model_prefix = IsHalloween() and "phantom" or "old"
 
@@ -2460,8 +2460,8 @@ if SERVER then
 			end
 		end
 	end)
-
-	hook.Add( "PlayerDeath", "fh_pill_fnaf2_death_check", function( victim, inflictor, attacker )
+	
+	local function fnaf2pill_death_handle(victim, inflictor, attacker)
 		if victim.jumpscared then
 			victim.jumpscared = nil
 			if IsValid(attacker) and attacker:IsPlayer() then
@@ -2480,30 +2480,10 @@ if SERVER then
 				noMoreStalk(stalker)
 			end
 		end
-		
-		if wgfreddy_targets[victim] then
-			cancel_outworld(victim)
-		end
-		if outworld_victims[victim] then
-			cancel_outworld(victim)
-		end
-		
-		if !table.IsEmpty(wgfreddy_targets) then
-			for k,v in pairs( wgfreddy_targets ) do
-				local ent = pills.getMappedEnt(k)
-				
-				if IsValid(ent) then
-					net.Start("fh_draw_anim")
-					net.WriteEntity(ent)
-					net.Send(victim)
-				end
-				
-				net.Start("fh_draw_player")
-				net.WritePlayer(v)
-				net.Send(victim)
-			end
-		end
-	end)
+	end
+
+	hook.Add( "PlayerDeath", "fh_pill_fnaf2_death", fnaf2pill_death_handle)
+	hook.Add( "PlayerDeath", "fh_pill_fnaf2_silentdeath", fnaf2pill_death_handle)
 	
 	hook.Add("FH_OutworldStart", "cancel_freddy_rage", function(wgfreddy, victim)
 		if victim == stalkTarget then

@@ -323,7 +323,7 @@ hook.Add("PostDrawOpaqueRenderables", "fh_draw_teammates", function(depth, skybo
     local ply = LocalPlayer()
     if not IsValid(ply) then return end
 	
-	if skybox then return end
+	if skybox3d then return end
 	
 	local function drawAnimatronics(tbl, color)
 		local viewEntity = ply:GetViewEntity()

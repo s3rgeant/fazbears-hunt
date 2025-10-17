@@ -384,6 +384,7 @@ hook.Add("StartCommand", "BlightCancelJumpPress", function(ply, cmd)
 		cmd:ClearMovement()
 		cmd:RemoveKey(IN_DUCK)
 		cmd:RemoveKey(IN_JUMP)
+		cmd:AddKey(IN_SPEED)
 	end
 
 	if ply:GetNWBool("Blight_BlockM1") then

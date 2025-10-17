@@ -152,8 +152,8 @@ local function fh_gfreddy_check_scarysound()
 	local forward = eyeAngles:Forward()
 
 	if pills and pills.getMappedEnt and pills.getMappedEnt(targetPlayer) ~= nil then
-		local ent = pills.getMappedEnt(targetPlayer)
-		if ent.dontdraw or ent:GetMaterial() == "models/null" then 
+		local ent = targetPlayer:GetPill()
+		if !ent.IsDrawn or ent:GetMaterial() == "models/null" then 
 			stopScareProgress()
 			return 
 		end
@@ -224,7 +224,7 @@ local function fh_gfreddy_check_scarysound()
 					local diff = desiredAngle - currentAngle
 					diff:Normalize()
 
-					local magnetStrength = 0.05
+					local magnetStrength = 0.1
 					local newAng = currentAngle + Angle(diff.p * magnetStrength, diff.y * magnetStrength, 0)
 					cmd:SetViewAngles(newAng)
 				end)

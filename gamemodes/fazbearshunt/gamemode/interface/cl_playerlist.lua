@@ -692,7 +692,7 @@ function UpdatePlayerList(teamIndex, scrollbar)
 	end
 	
     table.sort(players, function(a, b)
-        return a:Team() < b:Team()
+        return a:Team() > b:Team()
     end)
 	
 	local killerData = killers.getAll()

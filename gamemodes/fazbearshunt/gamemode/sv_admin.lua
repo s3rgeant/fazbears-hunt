@@ -106,7 +106,7 @@ end
 
 roundPaused = roundPaused or false
 function ToggleGamePause()
-	if isGameOn then
+	if isGameOn and !roundEnding then
 		if !roundPaused then
 			if timer.Exists("EndGameTimer") then
 				net.Start("fh_pause_game_timer")
@@ -135,13 +135,7 @@ function ToggleGamePause()
 end
 
 hook.Add( "PlayerShouldTakeDamage", "fh_no_damage_paused", function( ply, attacker )
-	if roundPaused then
-		return false
-	end
-end )
-
-hook.Add( "PlayerShouldTakeDamage", "fh_no_damage_paused", function( ply, attacker )
-	if roundPaused then
+	if roundPaused and !GetConVar("developer"):GetBool() then
 		return false
 	end
 end )
@@ -153,14 +147,13 @@ if ULib then
 	local function playerPickup( ply, ent )
 		local access, tag = ULib.ucl.query( ply, "ulx physgunplayer" )
 		if ent:GetClass() == "player" and access and not ent.NoNoclip and not ent.frozen and ply:GetInfoNum( cl_cvar_pickup, 1 ) == 1 then
-			-- Extra restrictions! UCL wasn't designed to handle this sort of thing so we're putting it in by hand...
 			local restrictions = {}
 			ULib.cmds.PlayerArg.processRestrictions( restrictions, ply, {}, tag and ULib.splitArgs( tag )[ 1 ] )
 			if restrictions.restrictedTargets == false or (restrictions.restrictedTargets and not table.HasValue( restrictions.restrictedTargets, ent )) then
 				return
 			end
 
-			ent:SetMoveType( MOVETYPE_NONE ) -- So they don't bounce
+			ent:SetMoveType( MOVETYPE_NONE )
 			return true
 		end
 	end
@@ -213,7 +206,7 @@ end
 
 function EndRound()
 	if !roundEnding and isGameOn then
-		endGame(true)
+		endRound(true, 4)
 		endgame_shared()
 		
 		net.Start('fh_net_scarysound')

@@ -162,13 +162,6 @@ function SWEP:DealDamage()
 	
 		target:SetVelocity(ply:GetUp() * 249) -- чтоб он нахуй улетел
 	end
-	
-	for _, target in ipairs(targets) do
-		if !target:Alive() then
-			playVoiceline('clown', 'kill', ply, 2)
-			break
-		end
-	end
 end
 
 function SWEP:Think()

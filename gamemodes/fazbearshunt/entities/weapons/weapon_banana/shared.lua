@@ -92,15 +92,12 @@ function SWEP:PrimaryAttack()
 			self.Weapon:SendWeaponAnim(ACT_VM_THROW);
 
 			local function C()
-
 				if IsValid(self.Weapon) then
-
 					self.Weapon:SendWeaponAnim(ACT_VM_DRAW);
 				end
-
 			end
 			
-			timer.Simple(0.1,C);
+			timer.Simple(0.2,C);
 		end
 		owner:LagCompensation(false)
 		

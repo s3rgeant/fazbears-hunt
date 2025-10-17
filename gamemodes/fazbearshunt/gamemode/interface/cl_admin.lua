@@ -431,7 +431,10 @@ local function OpenAdminPanel()
 	end
 
 	for categoryName, animList in pairs(categories) do
-		local cat = CatList:Add(categoryName)
+		local localize = language.GetPhrase("fazhunt.adminpanel.categories." .. categoryName:lower())
+	
+		local bettername = localize ~= "fazhunt.adminpanel.categories." .. categoryName:lower() and localize or categoryName
+		local cat = CatList:Add(bettername)
 
 		for _, animData in pairs(animList) do
 			local button = cat:Add(animData.name)

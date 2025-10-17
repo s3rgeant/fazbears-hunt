@@ -162,34 +162,9 @@ function fh_tag_end()
 			end)
 			
 		else 
-
-			roundEnding = true
 			tag_end = false
 		
-			game.CleanUpMap( false )
-			
-			fh_win_coefficient()
-			
-			roundActive = false
-			
-			table.Empty(usedKillers)
-			
-			for _, ply in player.Iterator() do
-				ply:SetTeam(TEAM_SURVIVOR)
-				ply:Spawn()
-				setupPlayerVars(ply)
-			end
-			postGameTimer()
-			
-			restoreAnimatronics()
-
-			timer.Create("GameStartTimer", lobbyDuration, 1, function()
-				registerNewRound()
-				roundEnding = false
-			end)
-			
-			RunConsoleCommand("proximity_enabled", 1)
-	
+			endGame()
 		end
 	end)
 end

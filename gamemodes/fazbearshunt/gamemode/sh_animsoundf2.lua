@@ -91,10 +91,10 @@ sound.Add({
 	channel = 		CHAN_VOICE,
 	level = 		90,
 	volume = 		1.0,
-	sound = 			{"fnaf3/clown1.wav"
-						,"fnaf3/clown2.wav"
-						,"fnaf3/clown3.wav"
-						,"fnaf3/clown4.wav"}
+	sound = 			{")fnaf3/clown1.wav"
+						,")fnaf3/clown2.wav"
+						,")fnaf3/clown3.wav"
+						,")fnaf3/clown4.wav"}
 })
 
 sound.Add({

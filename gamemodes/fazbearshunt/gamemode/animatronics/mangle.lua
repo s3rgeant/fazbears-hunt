@@ -1,5 +1,9 @@
 AddCSLuaFile()
 
+if SERVER then
+	util.PrecacheModel("models/ufmp/fnaf2/toys/themangle.mdl")
+end
+
 pills.packStart("FH MANGLE", "FH MANGLE", "icon16/pill.png")
 
 local man_speed = {

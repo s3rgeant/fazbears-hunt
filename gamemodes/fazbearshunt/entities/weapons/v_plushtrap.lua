@@ -181,10 +181,6 @@ function SWEP:DealDamage()
 	if (target:IsPlayer() and target:IsSurvivor()) or target:IsNPC() then
         ply:EmitSound("fnaf3/hit.mp3")
 	end
-	
-	if target:IsPlayer() and !target:Alive() then
-		playVoiceline('plushtrap', 'kill', ply, 2)
-	end
 end
 
 function SWEP:Think()

@@ -13,27 +13,27 @@ if CLIENT then
 	killicon.Add("banana_peel","weapons/banana_killicon",Color(255,255,255));
 end
 
-if SERVER then
-	function ENT:Initialize()
-		self:SetModel("models/props_farm/scenes/bananana_peel.mdl")
-		self:PhysicsInitBox(self:OBBMins(), self:OBBMaxs())
-		self:SetCollisionBounds(self:OBBMins(), self:OBBMaxs())
-		self:SetMoveType(MOVETYPE_VPHYSICS)
-		self:SetSolid(SOLID_VPHYSICS)
-		self:SetCollisionGroup(COLLISION_GROUP_DEBRIS)
-	
-		local phys = self:GetPhysicsObject()
-		if phys:IsValid() then
-			phys:Wake()
-            phys:AddAngleVelocity(-phys:GetAngleVelocity() * 0.9)
-            phys:SetDamping(0, 10)
-		end
-		
-		self.Owner = self.Owner or nil
+function ENT:Initialize()
+	self:SetModel("models/props_farm/scenes/bananana_peel.mdl")
+	self:PhysicsInitBox(self:OBBMins(), self:OBBMaxs())
+	self:SetCollisionBounds(self:OBBMins(), self:OBBMaxs())
+	self:SetMoveType(MOVETYPE_VPHYSICS)
+	self:SetSolid(SOLID_VPHYSICS)
+	self:SetCollisionGroup(COLLISION_GROUP_DEBRIS)
+
+	local phys = self:GetPhysicsObject()
+	if phys:IsValid() then
+		phys:Wake()
+		phys:AddAngleVelocity(-phys:GetAngleVelocity() * 0.9)
+		phys:SetDamping(0, 10)
 	end
 	
+	self.Owner = self.Owner or nil
+end
+	
+if SERVER then
 	function ENT:SlipPlayer(ent)
-		if ent:IsNPC() or ent:IsPlayer() and (ent:Team() != TEAM_SPECTATOR and ent:Alive()) then
+		if ent:IsNPC() or ent:IsPlayer() and (!ent:GetPill() or ent:GetPill() and !ent:GetPill().cloaked) and ent:Alive() then
 			ent:EmitSound("slip_start.wav")
 			ent:SetVelocity(Vector(math.Rand(150, 250) * (math.random(2) == 1 and 1 or -1), math.Rand(150, 250) * (math.random(2) == 1 and 1 or -1), 200) + ent:GetUp() * 100)
 			local phys = self:GetPhysicsObject()

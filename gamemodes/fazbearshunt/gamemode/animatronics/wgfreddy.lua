@@ -76,6 +76,34 @@ hook.Add("FH_HandlePlayerGrab", "gf_victim_nograb", function(endo, ply)
 	end
 end)
 
+local function gfreddy_death_handle(victim, inflictor, attacker)
+	if wgfreddy_targets[victim] then
+		cancel_outworld(victim)
+	end
+	if outworld_victims[victim] then
+		cancel_outworld(victim)
+	end
+	
+	if !table.IsEmpty(wgfreddy_targets) then
+		for k,v in pairs( wgfreddy_targets ) do
+			local ent = pills.getMappedEnt(k)
+			
+			if IsValid(ent) then
+				net.Start("fh_draw_anim")
+				net.WriteEntity(ent)
+				net.Send(victim)
+			end
+			
+			net.Start("fh_draw_player")
+			net.WritePlayer(v)
+			net.Send(victim)
+		end
+	end
+end
+
+hook.Add("PlayerDeath", "gf_world_death", gfreddy_death_handle)
+hook.Add("PlayerSilentDeath", "gf_world_silentdeath", gfreddy_death_handle)
+
 if SERVER then
 	hook.Add("PillServerApply", "gf_joinpill", function(ply, name)
 		if name == "pill_wgfreddy2" then
@@ -456,8 +484,15 @@ if CLIENT then
 		myself:ScreenFade(SCREENFADE.IN, Color(0,0,0), 2, 0.5)
 		for _,ply in player.Iterator() do
 			ply:SetNoDraw(false)
-            ply:DrawShadow(true)
 			
+			local ent = IsValid(ply:GetPill())
+			
+			if !ent then
+				ply:DrawShadow(true)
+			else
+				dontdrawanim[ent] = false
+			end
+		
 			outworlded_ppl[ply] = false
 			
             for _, wep in ipairs(ply:GetWeapons()) do
@@ -467,12 +502,6 @@ if CLIENT then
                     wep:SetRenderMode(RENDERMODE_NORMAL)
                 end
             end
-			
-			local ent = pills.getMappedEnt(ply)
-			
-			if IsValid(ent) then
-				ent:SetNoDraw(false)
-			end
 		end
 		hook.Remove("PrePlayerDraw", "fh_outworld_pv")
 		hook.Remove("RenderScreenspaceEffects", "merc_grayscale_hook")
@@ -639,7 +668,14 @@ if CLIENT then
 		
 		for _,ply in player.Iterator() do
 			ply:SetNoDraw(false)
-            ply:DrawShadow(true)
+			
+			local ent = IsValid(ply:GetPill())
+			
+			if !ent then
+				ply:DrawShadow(true)
+			else
+				dontdrawanim[ent] = false
+			end
 		
 			outworlded_ppl[ply] = false
 			
@@ -650,12 +686,6 @@ if CLIENT then
                     wep:SetRenderMode(RENDERMODE_NORMAL)
                 end
             end
-			
-			local ent = pills.getMappedEnt(ply)
-				
-			if IsValid(ent) then
-				dontdrawanim[ent] = false
-			end
 		end
 		
 		fh_cl_dontdraw_plushies()

@@ -92,8 +92,6 @@ local killerData = killerData or {
     ["pill_plushtrap"] = {name = "plushtrap", fullname = "fazhunt.animatronics.plushtrap", color = colors.Plushtrap},
 	
     ["pill_mangle"] = {name = "mangle", fullname = "fazhunt.animatronics.mangle", color = colors.Endo},
-	
-    ["pill_endo02_test"] = {name = "endo", fullname = "ENDO TEST", color = colors.Endo},
 }
 
 killerAbilities = {

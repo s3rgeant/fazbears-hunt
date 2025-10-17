@@ -78,7 +78,7 @@ function ENT:Initialize()
 		if self.formTable.collisionGroup then
 			ply:SetCollisionGroup(self.formTable.collisionGroup)
 		else
-			ply:SetCollisionGroup(0)
+			ply:SetCollisionGroup(5)
 		end
 
         if ply:FlashlightIsOn() then
@@ -284,7 +284,7 @@ function ENT:OnRemove()
     if newType ~= "ply" and IsValid(ply) then
         ply:ResetHull()
 			
-		hook.Run("PillRestore", ply)
+		hook.Run("PillRestore", ply, self)
 
         if SERVER then
             ply:SetViewOffset(Vector(0, 0, 64))
@@ -870,6 +870,21 @@ function ENT:ResetAngle()
 	end
 end
 
+function ENT:SetDefaultSpeed()
+    local ply = self:GetPillUser()
+	
+	self.formTable.moveSpeed = table.Copy(self.formTable.initMoveSpeed)
+	self.formTable.jumpPower = self.formTable.initJumpPower
+	
+	local speed = self.formTable.moveSpeed
+	local jump = self.formTable.jumpPower
+	
+    ply:SetWalkSpeed(speed.walk)
+    ply:SetRunSpeed(speed.run)
+    ply:SetCrouchedWalkSpeed(speed.ducked / (speed.walk or 200))
+	ply:SetJumpPower(jump)
+end
+
 ENT.IsDrawn = true
 
 function ENT:Draw()
@@ -921,21 +936,6 @@ function ENT:Draw()
 	if ply == LocalPlayer() and !invisible then
 		self:DrawShadow(true)
 	end
-end
-
-function ENT:SetDefaultSpeed()
-    local ply = self:GetPillUser()
-	
-	self.formTable.moveSpeed = table.Copy(self.formTable.initMoveSpeed)
-	self.formTable.jumpPower = self.formTable.initJumpPower
-	
-	local speed = self.formTable.moveSpeed
-	local jump = self.formTable.jumpPower
-	
-    ply:SetWalkSpeed(speed.walk)
-    ply:SetRunSpeed(speed.run)
-    ply:SetCrouchedWalkSpeed(speed.ducked / (speed.walk or 200))
-	ply:SetJumpPower(jump)
 end
 
 function ENT:DrawTranslucent()

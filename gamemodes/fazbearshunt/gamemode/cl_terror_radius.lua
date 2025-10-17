@@ -169,7 +169,8 @@ function checkChase(ply, killer)
     local distance = ply:GetPos():Distance(killer:GetPos())
     local killerMoving = isPlayerMoving(killer)
     local playerMoving = isPlayerMoving(ply)
-    if distance < tr_ChaseKeep and isKillerLookingAt(ply, killer) and killerMoving and playerMoving and killer:GetMoveType() ~= MOVETYPE_NOCLIP then
+    local playerVisible = !ply:GetNoDraw() and ply:GetMaterial() ~= "models/null" and !IsValid(ply:GetPill())
+    if distance < tr_ChaseKeep and isKillerLookingAt(ply, killer) and killerMoving and playerMoving and playerVisible and killer:GetMoveType() ~= MOVETYPE_NOCLIP then
         isChasing[ply] = true
         if chaseTimers[ply] then
             timer.Remove(chaseTimers[ply])
@@ -237,6 +238,8 @@ if !timer.Exists("tr_update") then
                 if closestGuyPos and distance > closestGuyPos then continue end
                 
                 if distance > tr_Far then continue end
+				
+				if killer:GetMoveType() == MOVETYPE_NOCLIP then continue end
 				
 				if IsValid(killer:GetPill()) and killer:GetPill().cloaked then continue end
 

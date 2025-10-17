@@ -92,11 +92,11 @@ local function RemoveKillerID(id)
     lastKillers[id] = nil
 end
 
-lobbyDuration = 120
+local lobbyDuration = 120
 local gameDuration = 600
-setupGameDuration = 60
+local setupGameDuration = 60
 
-curMaxKillers = 1
+local curMaxKillers = 1
 
 local animatronics_win_count = 0
 local survivors_win_count = 0
@@ -110,6 +110,7 @@ roundEnding = roundEnding or false -- концовка раунда
 --[[
 	0 - обыкновенный раунд
 	1 - спрингтрап
+	2 - бонни-тэг
 ]]--
 local roundType = roundType or 0
 
@@ -119,7 +120,6 @@ survivors = survivors or {}
 usedKillers = {}
 
 disallowTime = disallowTime or 0
-disallowTriggered = disallowTriggered or false
 function assignKillers()
     local players = player.GetAll()
     local totalPlayers = #players
@@ -137,7 +137,7 @@ function assignKillers()
         curMaxKillers = 1
     end
 	
-    local availableKillers = table.GetKeys(killers.getAllPreferables(curMaxKillers >= 1))
+    local availableKillers = table.GetKeys(killers.getAllPreferables(curMaxKillers > 1))
 	
 	if totalPlayers == 0 or !players then return end
 	
@@ -161,7 +161,6 @@ function assignKillers()
     end
 	
 	disallowTime = CurTime() + 60
-	disallowTriggered = false
 	
 	for v, _ in pairs(curKillers) do
 		local id = GetPlyID(v)
@@ -176,14 +175,11 @@ function assignKillers()
 end
 
 hook.Add("Think", "fh_disallow_killers_choose", function()
-	if disallowTriggered then return end
-	
-	if disallowTime > 0 and CurTime() >= disallowTime then
-		disallowTriggered = true
-		
+	if disallowTime > 0 and CurTime() >= disallowTime and isGameOn then
 		for ply, _ in pairs(animatronics) do
 			if IsValid(ply) and not IsValid(ply:GetPill()) then
 				giveRandomKiller(ply, true)
+				disallowTime = 0
 			end
 		end
 	end
@@ -288,9 +284,11 @@ function giveKillerSilent(ply, killer, force)
 end
 
 function setupPlayerVars(ply)
+	local class = baseclass.Get("player_sandbox")
+
 	ply:AllowFlashlight(true)
-	ply:SetRunSpeed(420)
-	ply:SetWalkSpeed(200)
+	ply:SetRunSpeed(class.RunSpeed)
+	ply:SetWalkSpeed(class.WalkSpeed)
 	ply:SetJumpPower(200)
 	ply:SetDuckSpeed(0.1)
 	ply:SetUnDuckSpeed(0.1)
@@ -299,7 +297,7 @@ function setupPlayerVars(ply)
 	ply:SetFOV(0, 0, game.GetWorld())
 	ply:SetViewEntity(ply)
 	
-	ply:SetJumpBoostMultiplier( GetScaledPlayerValue(7, 18, 0.5, 0.9) )
+	ply:SetJumpBoostMultiplier( 0.5 )
 end
 
 hook.Add("PlayerCanSeePlayersChat", "fh_chat", function(text, teamOnly, listener, speaker)
@@ -310,8 +308,9 @@ hook.Add("PlayerCanSeePlayersChat", "fh_chat", function(text, teamOnly, listener
 	end
 end)
 
-function endGame(killerVictory)
+function endRound(killerVictory, duration)
 	killerVictory = killerVictory or false
+	duration = duration or 10
 
 	roundEnding = true
 	game.GetWorld():SetNW2Bool("roundEnding", true)
@@ -398,47 +397,45 @@ function endGame(killerVictory)
 	
 	hook.Run("fh_postendgame", killerVictory, animatronics)
 	
-	timer.Create("endGameWait", 10, 1, function() 
-		game.CleanUpMap( false )
-		
-		fh_win_coefficient()
-		
-		game.GetWorld():SetNW2Bool("gameOn", false)
-		isGameOn = false
-		game.GetWorld():SetNW2Bool("roundActive", false)
-		roundActive = false
-		
-		table.Empty(usedKillers)
-		
-		for _, ply in player.Iterator() do
-			ply:SetTeam(TEAM_SURVIVOR)
-			ply:Spawn()
-			setupPlayerVars(ply)
-			if ply:HasWeapon("weapon_taser") then
-				ply:StripWeapon("weapon_taser")
-			end
-
-			if ply:GetPill() then
-				pills.restore(ply:Nick(), true)
-			end
-		end
-		postGameTimer()
-
-        timer.Create("GameStartTimer", lobbyDuration, 1, function()
-            registerNewRound()
-			roundEnding = false
-			game.GetWorld():SetNW2Bool("roundEnding", false)
-        end)
-		
-		RunConsoleCommand("proximity_enabled", 1)
-		
+	timer.Create("endGameWait", duration, 1, function() 
+		endGame()
 	end )
 end
 
-function postGameTimer()
+function endGame()
+	game.CleanUpMap( false )
+	
+	game.GetWorld():SetNW2Bool("gameOn", false)
+	isGameOn = false
+	game.GetWorld():SetNW2Bool("roundActive", false)
+	roundActive = false
+	
+	disallowTime = 0
+	table.Empty(usedKillers)
+	
+	for _, ply in player.Iterator() do
+		ply:SetTeam(TEAM_SURVIVOR)
+		ply:Spawn()
+		setupPlayerVars(ply)
+		if ply:HasWeapon("weapon_taser") then
+			ply:StripWeapon("weapon_taser")
+		end
+
+		if ply:GetPill() then
+			pills.restore(ply:Nick(), true)
+		end
+	end
     net.Start("fh_start_lobby_timer")
 	net.WriteFloat(lobbyDuration)
     net.Broadcast()
+
+	timer.Create("GameStartTimer", lobbyDuration, 1, function()
+		registerNewRound()
+		roundEnding = false
+		game.GetWorld():SetNW2Bool("roundEnding", false)
+	end)
+	
+	RunConsoleCommand("proximity_enabled", 1)
 end
 
 function getScaledJumpBoost()
@@ -447,9 +444,9 @@ function getScaledJumpBoost()
 	if count < 8 then
 		return 0.3
 	elseif count < 18 then
-		return 0.6
+		return 0.5
 	end
-	return 0.8
+	return 0.7
 end
 
 function GM:fh_prestartgame()
@@ -463,6 +460,7 @@ end
 
 function startGame(forceid)
 	RunConsoleCommand("proximity_enabled", 1)
+	lobbyDuration = 30
 	
 	if timer.Exists("endGameWait") then
 		timer.Remove("endGameWait")
@@ -508,7 +506,7 @@ function startGame(forceid)
 end
 
 function RandomTaser()
-	-- для золотого фредди скипаем первый кадр
+	-- для золотого фредди скипаем первый тик
 	timer.Simple(0, function()
 		local random_taser = team.GetPlayers( TEAM_SURVIVOR )
 		local random_taserer = fh.randomChoice( random_taser )
@@ -772,9 +770,7 @@ hook.Add("PlayerDisconnected", "fh_playerleft", function(ply)
 		end
 	end
 	
-	if isGameOn then
-		animatronicsLeft_check()
-	end
+	winConditions(ply)
 	
     if player.GetCount() == 1 and isGameOn then
         resetGameTimer()
@@ -900,7 +896,7 @@ hook.Add("EntityTakeDamage", "fh_anims_only_breakable_props", function(ent, dmgi
 	
 	if IsValid(attacker) and attacker:IsPlayer() and attacker:IsAnimatronic() then
 		local phys = ent:GetPhysicsObject()
-		if ent.PropHealth and phys:IsMotionEnabled() then
+		if ent.PropHealth and IsValid(phys) and phys:IsMotionEnabled() then
 			ent.PropHealth = ent.PropHealth - dmginfo:GetDamage()
 			if ent.PropHealth <= 0 then
             local effectdata = EffectData()
@@ -935,14 +931,12 @@ local function fh_death_hook(victim)
 			
 			timer.Adjust("EndGameTimer", 180)
 		end
-		
-		animatronicsVictory_check(victim)
 	end
 	animatronics[victim] = nil
 	
+	winConditions(victim)
+	
 	if isGameOn then
-		animatronicsDied_check()
-		
 		victim:Spectate(OBS_MODE_CHASE)
 		victim:SetTeam(TEAM_SPECTATOR)
 		
@@ -974,63 +968,21 @@ function fh_win_coefficient()
 	return totalWins, survivorsPercentage, animatronicsPercentage
 end
 
-function animatronicsVictory_check(last_ply)
-	if table.IsEmpty(survivors) and !roundEnding then
+local function animatronicsVictory(ply)
+	local nickname = IsValid(ply) and ply:Nick() or "?"
+	local timeleft = timer.TimeLeft("EndGameTimer") or 0
+
+	net.Start("AnimatronicsWin")
+	net.WriteString(nickname)
+	net.WriteInt(fh.GetGameDuration() - timeleft, 16)
+	net.Broadcast()
 	
-		net.Start("AnimatronicsWin")
-		net.WriteString(last_ply:Nick())
-		net.WriteInt(fh.GetGameDuration() - timer.TimeLeft("EndGameTimer"), 16)
-		net.Broadcast()
-		
-		endGame(true)
-		
-		animatronics_win_count = animatronics_win_count + 1
-		
-		if timer.Exists("EndGameTimer") then
-			timer.Remove("EndGameTimer")
-		end
-	end
-end
-
-function animatronicsDied_check()
-	if table.IsEmpty(animatronics) and isGameOn and !roundEnding then
-		local plys = {}
-		for ply, _ in pairs(survivors) do
-			table.insert(plys, ply:Nick())
-		end
-		
-		net.Start('fh_net_scarysound')
-		net.WriteBool(false)
-		net.Broadcast()
-		
-		net.Start("SurvivorsWin")
-		net.WriteTable(plys)
-		net.Broadcast()
-			
-		survivors_win_count = survivors_win_count + 1
-			
-		endGame()
-	end
-end
-
-function animatronicsLeft_check()
-	if table.IsEmpty(animatronics) and isGameOn and !roundEnding then
-		local plys = {}
-		for ply, _ in pairs(survivors) do
-			table.insert(plys, ply:Nick())
-		end
-		
-		net.Start('fh_net_scarysound')
-		net.WriteBool(false)
-		net.Broadcast()
-		
-		net.Start("SurvivorsWin")
-		net.WriteTable(plys)
-		net.Broadcast()
-			
-		survivors_win_count = survivors_win_count + 1
-			
-		endGame()
+	endRound(true)
+	
+	animatronics_win_count = animatronics_win_count + 1
+	
+	if timer.Exists("EndGameTimer") then
+		timer.Remove("EndGameTimer")
 	end
 end
 
@@ -1050,12 +1002,21 @@ function survivorsWin()
 		
 	survivors_win_count = survivors_win_count + 1
 		
-	endGame()
+	endRound()
 end
 
-hook.Add( "CreateEntityRagdoll", "fh_ragdoll_handle", function( ply, ragdoll )
-	ragdoll:Remove()
-end )
+function winConditions(ply)
+	if isGameOn and !roundEnding then
+		if table.IsEmpty(survivors) then
+			animatronicsVictory(ply)
+			return
+		end
+		if table.IsEmpty(animatronics) then
+			survivorsWin()
+			return
+		end
+	end
+end
 
 hook.Add( "CanPlayerSuicide", "fh_suicide", function( ply )
 	if ply:IsAnimatronic() or ply.jumpscared then
@@ -1104,9 +1065,13 @@ hook.Add("PillApply", "fh_joinpill", function(ply, name)
 	end)
 end)
 
-hook.Add("PillRestore", "fh_restorepill", function(ply)
+hook.Add("PillRestore", "fh_restorepill", function(ply, ent)
 	net.Start("fh_uhl_teammates")
 	net.Send(ply)
+	
+	if usedKillers[ent.formTable.name] then
+		usedKillers[ent.formTable.name] = nil
+	end
 end)
 
 hook.Add( "GetFallDamage", "FH_FallDamage", function(ply, speed)
@@ -1177,13 +1142,13 @@ net.Receive("fh_initpostentity", function(len, ply)
 		net.Send(ply)
 	end
 	if player.GetCount() >= 2 and not isGameOn and !timer.Exists("GameStartTimer") then
-		postGameTimer()
+		net.Start("fh_start_lobby_timer")
+		net.WriteFloat(lobbyDuration)
+		net.Broadcast()
 	
 		timer.Create("GameStartTimer", lobbyDuration, 1, function()
 			registerNewRound()
 		end)
-		
-		lobbyDuration = 30
 	end
 	
 	net.Start("fh_share_notprefered")
