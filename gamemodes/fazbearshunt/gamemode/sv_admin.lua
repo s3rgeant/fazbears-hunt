@@ -25,13 +25,7 @@ function RevivePlayer(ply)
 		survivors[ply] = true
 	end
 	
-	for k,v in pairs(usedKillers) do
-		if usedKillers[k] == ply then
-			usedKillers[k] = nil
-		end
-	end
-	
-	if ply:Team() == 2701 or animatronics[ply] or IsValid(pills.getMappedEnt(ply)) then
+	if ply:Team() == 2701 or animatronics[ply] or IsValid(ply:GetPill()) then
 		pills.restore(ply:Nick(), true)
 		animatronics[ply] = nil
 	end
@@ -79,21 +73,9 @@ end
 
 function KillPlayer(ply)
 	if ply:Alive() then
-		if animatronics[ply] then
-			animatronics[ply] = nil
-		end
-		if survivors[ply] then
-			survivors[ply] = nil
-		end
-		
 		ply:Kill()
-		ply:SetTeam(TEAM_SPECTATOR)
 		
         print("An Admin killed " .. ply:Nick())
-		
-		if !roundEnding and isGameOn then
-			animatronicsVictory_check(ply)
-		end
 	end
 end
 

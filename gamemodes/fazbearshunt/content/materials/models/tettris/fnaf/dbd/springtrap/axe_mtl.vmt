@@ -5,13 +5,10 @@
 
 	"$phongexponenttexture" "models\tetTris\FNaF\DbD\Springtrap\Axe_E"
 
-	"$color2"			"[0.1 0.1 0.1]"
 	"$translucent"		"1"
 
 	"$phong" "1"
-	"$phongboost"	"19.986979"
+	"$phongboost"	"1.986979"
 
 	"$phongfresnelranges"	"[0.87 0.9 1]"
-
-	"$ambientocclusion"	"0.7"
 }

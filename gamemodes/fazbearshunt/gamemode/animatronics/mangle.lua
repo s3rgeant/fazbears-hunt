@@ -174,7 +174,6 @@ pills.register("pill_mangle",{
 	end,
 
 	noFallDamage=true,
-	hideHud = true,
 
 	noragdoll=true,
 	reload=function(ply,ent)

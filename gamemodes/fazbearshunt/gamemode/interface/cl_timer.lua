@@ -109,7 +109,6 @@ net.Receive("fh_timer_cutback", function()
 	
     timerEnd = CurTime() + timerDuration
     timerSetupEnd = CurTime()
-	timerTotal = timerDuration
     hook.Add("HUDPaint", "DrawGameTimer", DrawTimer)
 	
     surface.PlaySound(soundtoplay)

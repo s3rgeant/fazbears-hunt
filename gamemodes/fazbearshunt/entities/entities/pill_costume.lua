@@ -285,56 +285,6 @@ function ENT:OnRemove()
         ply:ResetHull()
 			
 		hook.Run("PillRestore", ply, self)
-
-        if SERVER then
-            ply:SetViewOffset(Vector(0, 0, 64))
-            ply:SetViewOffsetDucked(Vector(0, 0, 28))
-            ply:SetStepSize(18)
-            -- Not sure if this chunk is needed... leaving it for now.
-            ply:Freeze(false)
-
-            if ply:Alive() then
-                ply:SetMoveType(MOVETYPE_WALK)
-
-				ply:SetNotSolid(false)
-            end
-
-            if ply:Alive() then
-                -- Just respawn the player to reset most stuff.
-                local angs = ply:EyeAngles()
-                local pos = ply:GetPos()
-                local vel = ply:GetVelocity()
-                local hp = ply:Health()
-				local wasCrouching = ply:Crouching()
-                ply:StripWeapons()
-                ply:StripAmmo()
-                ply:Spawn()
-                ply:SetEyeAngles(angs)
-				ply:SetMaterial("")
-				ply:DrawShadow(true)
-                ply:SetPos(pos)
-                ply:SetVelocity(vel)
-                ply:SetHealth(hp)
-				if wasCrouching then
-					ply:ConCommand("+duck")
-					timer.Simple(0.1, function()
-						ply:ConCommand("-duck")
-					end)
-				end
-            end
-
-            if not newType then
-                ply:SetRenderMode(RENDERMODE_NORMAL)
-            end
-        elseif not newType then
-            if ply == LocalPlayer() then
-                if ply.pk_pill_gmpEnabled then
-                    ply.pk_pill_gmpEnabled = nil
-                    --RunConsoleCommand("gmp_enabled","1")
-                end
-                --ply.ShouldDisableLegs=nil
-            end
-        end
     end
 end
 
@@ -697,13 +647,6 @@ if SERVER then
         else
             doStart()
         end
-    end
-
-    function ENT:PillFilterCam(ent)
-        net.Start("pk_pill_filtercam")
-        net.WriteEntity(self)
-        net.WriteEntity(ent)
-        net.Send(self:GetPillUser())
     end
 	
 	function ENT:HandleAnimEvent( event, eventTime, cycle, type, options )

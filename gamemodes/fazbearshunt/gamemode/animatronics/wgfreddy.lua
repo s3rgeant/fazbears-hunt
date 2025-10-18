@@ -490,7 +490,7 @@ if CLIENT then
 			if !ent then
 				ply:DrawShadow(true)
 			else
-				dontdrawanim[ent] = false
+				dontdrawanim[ent] = nil
 			end
 		
 			outworlded_ppl[ply] = false
@@ -674,7 +674,7 @@ if CLIENT then
 			if !ent then
 				ply:DrawShadow(true)
 			else
-				dontdrawanim[ent] = false
+				dontdrawanim[ent] = nil
 			end
 		
 			outworlded_ppl[ply] = false

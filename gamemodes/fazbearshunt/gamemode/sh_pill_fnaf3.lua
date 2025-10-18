@@ -136,7 +136,6 @@ pills.register("pill_clown",{
 	end,
 
 	noFallDamage=true,
-	hideHud = true,
 	
 	attack2={
 		mode="trigger",
@@ -158,7 +157,6 @@ pills.register("pill_clown",{
 		end
 	end,
 
-	noragdoll=true,
 	reload=function(ply,ent)
 		if ply.lobbyFreeze != nil and ply.lobbyFreeze then return end
 		highlight.ByDistance(ply, ent)
@@ -347,7 +345,6 @@ pills.register("pill_springtrap",{
 	end,
 
 	noFallDamage=true,
-	hideHud = true,
 	
 	restore=function(ply,ent)
 		table.Empty(spring_rage)
@@ -464,7 +461,6 @@ pills.register("pill_springtrap",{
 		end
     },
 
-	noragdoll=true,
 	reload=function(ply,ent)
 		if ply.lobbyFreeze != nil and ply.lobbyFreeze then return end
 		highlight.ByDistance(ply, ent)
@@ -662,9 +658,6 @@ pills.register("pill_plushtrap",{
 	end,
 
 	noFallDamage=true,
-	hideHud = true,
-
-	noragdoll=true,
 	
 	land=function(ply,ent)
 		if ply.lobbyFreeze != nil and ply.lobbyFreeze then return end

@@ -3,12 +3,6 @@ AddCSLuaFile()
 module("pills", package.seeall)
 -- Load files
 file.CreateDir("pill_config")
-local locked_perma = {}
-local locked_game = {}
-
-for k, v in pairs(util.KeyValuesToTable(file.Read("pill_config/permalocked.txt") or "")) do
-    locked_perma[string.upper(k)] = v
-end
 
 -- Pack Registration
 local packString = ""
@@ -61,26 +55,6 @@ function register(name, t)
     forms[name] = t
 end
 
-local function fixParent(name)
-    local t = forms[name]
-    if t.parent == name then return end
-    local t_parent = forms[t.parent]
-
-    if t_parent.parent then
-        fixParent(t.parent)
-    end
-
-    t_parent = forms[t.parent]
-
-    if t_parent then
-        t_parent = table.Copy(t_parent)
-        forms[name] = table.Merge(t_parent, t)
-        t.parent = nil
-    else
-        print("Tried to inherit pill from non-existant '" .. t.parent .. "'. Make sure you register the parent first.")
-    end
-end
-
 function editPillTable(name, func, newfunc)
 	forms[name][func] = newfunc
 end
@@ -106,14 +80,6 @@ function getRandomForm()
 
     return k
 end
-
-hook.Add("Initialize", "pk_pill_finalize", function()
-    for n, t in pairs(forms) do
-        if t.parent then
-            fixParent(n)
-        end
-    end
-end)
 
 -- Player to Pill Entity Mapping
 function mapEnt(ply, ent)
@@ -160,19 +126,8 @@ end
 
 -- NW Strings
 if SERVER then
-    util.AddNetworkString("pk_pill_filtercam")
     util.AddNetworkString("pk_pill_morphsound")
-    --util.AddNetworkString("pk_pill_init_darkrp")
 else
-    net.Receive("pk_pill_filtercam", function(len, pl)
-        local pill = net.ReadEntity()
-        local filtered = net.ReadEntity()
-
-        if IsValid(pill) and IsValid(filtered) then
-            table.insert(pill.camTraceFilter, filtered)
-        end
-    end)
-
     local snd_pillSet = Sound("Friends/friend_online.wav")
     local snd_pillFail = Sound("buttons/button2.wav")
 
@@ -194,9 +149,6 @@ if SERVER then
 		DEFAULT - Force, but don't change locking settings
 		user - Obey restrictions
 		force - force, change locking settings
-		lock-life - force until death
-		lock-map - force until map restart
-		lock-perma - force forever
 	]]
     function apply(ply, name, mode, option)
         if CLIENT then return end
@@ -222,7 +174,6 @@ if SERVER then
 
         local old = getMappedEnt(ply)
 
-        local locked
         local overridePos
         local overrideAng
 
@@ -235,41 +186,10 @@ if SERVER then
                 success = false
             end
 
-            if IsValid(old) and old.locked then
-                if locked_perma[ply:SteamID()] then
-                    ply:ChatPrint("You are locked in your current pill -- FOREVER!")
-                elseif locked_game[ply:SteamID()] then
-                    ply:ChatPrint("You are locked in your current pill until the map changes.")
-                else
-                    ply:ChatPrint("You are locked in your current pill until you die.")
-                end
-
-                success = false
-            end
-
             net.Start("pk_pill_morphsound")
             net.WriteBit(success)
             net.Send(ply)
             if not success then return end
-        elseif mode ~= nil then
-            --anything that can change locks
-            if mode == "lock-map" then
-                locked_game[ply:SteamID()] = name
-            else
-                locked_game[ply:SteamID()] = nil
-            end
-
-            if mode == "lock-perma" then
-                locked_perma[ply:SteamID()] = name
-            else
-                locked_perma[ply:SteamID()] = nil
-            end
-
-            file.Write("pill_config/permalocked.txt", util.TableToKeyValues(locked_perma, "permalocked"))
-
-            if mode ~= "force" then
-                locked = true
-            end
         end
 
         local e
@@ -298,7 +218,6 @@ if SERVER then
 
 		e:SetPillForm(name)
 		e:SetPillUser(ply)
-		e.locked = locked
 		e.option = option
 		e:Spawn()
 		e:Activate()
@@ -307,10 +226,7 @@ if SERVER then
 
         hook.Run("PillServerApply", ply, e.formTable.name)
 
-		--if mode=="user" then
 		if t.type == "phys" then
-			--ply:SetLocalVelocity(oldvel)
-			--else
 			local phys = e:GetPhysicsObject()
 
 			if IsValid(phys) then
@@ -324,16 +240,6 @@ if SERVER then
 		end
 
 		return e
-    end
-
-    local driveModes = {}
-
-    function getDrive(typ)
-        return driveModes[typ]
-    end
-
-    function registerDrive(name, t)
-        driveModes[name] = t
     end
 end
 
@@ -355,28 +261,53 @@ function restore(ply, breakout)
     local ent = getMappedEnt(ply)
 
     if IsValid(ent) then
+		unmapEnt(ply, ent)
+		
         if SERVER then
-            if ent.locked and not breakout then
-                if locked_perma[ply:SteamID()] then
-                    ply:ChatPrint("You are locked in your current pill -- FOREVER!")
-                elseif locked_game[ply:SteamID()] then
-                    ply:ChatPrint("You are locked in your current pill until the map changes.")
-                else
-                    ply:ChatPrint("You are locked in your current pill until you die.")
-                end
-            else
-                ent.notDead = true
-                ent:Remove()
+			ent.notDead = true
+			ent:Remove()
+			
+            ply:SetViewOffset(Vector(0, 0, 64))
+            ply:SetViewOffsetDucked(Vector(0, 0, 28))
+            ply:SetStepSize(18)
+            -- Not sure if this chunk is needed... leaving it for now.
+            ply:Freeze(false)
+
+            if ply:Alive() then
+                ply:SetMoveType(MOVETYPE_WALK)
+
+				ply:SetNotSolid(false)
+            end
+            ply:SetRenderMode(RENDERMODE_NORMAL)
+
+            if ply:Alive() then
+				-- Just respawn the player to reset most stuff.
+				local angs = ply:EyeAngles()
+				local pos = ply:GetPos()
+				local vel = ply:GetVelocity()
+				local hp = ply:Health()
+				local wasCrouching = ply:Crouching()
+				ply:StripWeapons()
+				ply:StripAmmo()
+				ply:Spawn()
+				ply:SetEyeAngles(angs)
+				ply:SetMaterial("")
+				ply:DrawShadow(true)
+				ply:SetPos(pos)
+				ply:SetVelocity(vel)
+				ply:SetHealth(hp)
+				if wasCrouching then
+					ply:ConCommand("+duck")
+					timer.Simple(0.1, function()
+						ply:ConCommand("-duck")
+					end)
+				end
             end
 
             if not breakout then
                 net.Start("pk_pill_morphsound")
                 net.WriteBit(ent.notDead)
                 net.Send(ply)
-            else
-                locked_game[ply:SteamID()] = nil
-                locked_perma[ply:SteamID()] = nil
-                file.Write("pill_config/permalocked.txt", util.TableToKeyValues(locked_perma, "permalocked"))
             end
         end
 
@@ -498,17 +429,6 @@ if SERVER then
     end)
 
     hook.Add("PlayerSpawn", "pk_pill_force_on_spawn", function(ply)
-        local forcedType = locked_perma[ply:SteamID()] or locked_game[ply:SteamID()]
-
-        if forcedType then
-            local e = apply(ply, forcedType)
-
-            if IsValid(e) then
-                e.locked = true
-            end
-
-            return
-        end
 		local ent = pills.getMappedEnt(ply)
 		if IsValid(ent) then
 			ent:ResetSpeed(ply)
@@ -539,95 +459,17 @@ if SERVER then
             return false
         end
     end )
-
---	hook.Add("PlayerStepSoundTime", "pk_pill_step_time", function(ply,type,walking)
---		local ent = playerMap[ply]
---		if IsValid(ent) then
---			//if ent.formTable.stepSize then
---				
---			//end
---			return 100
---		end
---	end)
 else -- CLIENT HOOKS
-    hook.Add("HUDPaint", "pk_pill_hud", function()
-        if pills.convars.cl_hidehud:GetBool() then return end
-        local ent = getMappedEnt(LocalPlayer())
-
-        if IsValid(ent) and GetConVar("cl_drawhud"):GetBool() then
-            if (ent.formTable.health) and !ent.formTable.hideHud then
-                local hpMax = ent.formTable.health
-                local hpCurrent = ent:GetPillHealth()
-                surface.SetDrawColor(Color(0, 0, 0))
-                surface.DrawRect(40, ScrH() - 80, 300, 40)
-
-                if not ent.formTable.onlyTakesExplosiveDamage then
-                    surface.SetDrawColor(Color(255, 60, 40))
-                    surface.DrawRect(42, ScrH() - 78, 296 * math.min(hpCurrent / hpMax, 1), 36)
-                    draw.SimpleText("Health: " .. math.Round(hpCurrent) .. "/" .. hpMax, "ChatFont", 190, ScrH() - 52, Color(255, 255, 255, 255), TEXT_ALIGN_CENTER, TEXT_ALIGN_BOTTOM)
-                else
-                    surface.SetDrawColor(Color(255, 100, 40))
-                    surface.DrawRect(42, ScrH() - 78, 296 * math.min(hpCurrent / hpMax, 1), 36)
-                    draw.SimpleText("Hits Left: " .. math.Round(hpCurrent) .. "/" .. hpMax, "ChatFont", 190, ScrH() - 52, Color(255, 255, 255, 255), TEXT_ALIGN_CENTER, TEXT_ALIGN_BOTTOM)
-                end
-            end
-
-            if ent.formTable.cloak and ent.formTable.cloak.max ~= -1 then
-                surface.SetDrawColor(Color(0, 0, 0))
-                surface.DrawRect(ScrW() - 370, ScrH() - 110, 300, 30)
-                surface.SetDrawColor(Color(130, 130, 255))
-                surface.DrawRect(ScrW() - 368, ScrH() - 108, 296 * math.min(ent:GetCloakLeft() / ent.formTable.cloak.max, 1), 26)
-                draw.SimpleText("Cloak: " .. string.format("%.3f", ent:GetCloakLeft()) .. " Seconds", "ChatFont", ScrW() - 200, ScrH() - 86, Color(255, 255, 255, 255), TEXT_ALIGN_CENTER, TEXT_ALIGN_BOTTOM)
-            end
-        end
-
-        -- nametags
-        if IsValid(LocalPlayer()) then
-            local trent = LocalPlayer():GetEyeTraceNoCursor().Entity
-
-            if (IsValid(trent) and trent:GetClass() == "pill_ent_phys") then
-                local pillowner = trent:GetPillUser()
-
-                if IsValid(pillowner) and pillowner ~= LocalPlayer() then
-                    draw.SimpleText(pillowner:GetName(), "ChatFont", ScrW() / 2, ScrH() / 2, team.GetColor(pillowner:Team()), TEXT_ALIGN_CENTER, TEXT_ALIGN_CENTER)
-
-                    if trent:GetPillHealth() > 0 then
-                        draw.SimpleText(trent:GetPillHealth() .. " HP", "ChatFont", ScrW() / 2, ScrH() / 2 + 20, team.GetColor(pillowner:Team()), TEXT_ALIGN_CENTER, TEXT_ALIGN_CENTER)
-                    end
-                end
-            end
-        end
-    end)
+	-- чтобы скачанные базы пилл паков не конфликтовали
+    hook.Remove("HUDPaint", "pk_pill_hud")
 
     -- IGNORE THIS NONSENSE: Just use the default HUD from now on
     hook.Add("HUDShouldDraw", "pk_pill_hideHud", function(name)
         if (getMappedEnt(LocalPlayer()) and name == "CHudHealth") then return false end
     end)
-    --[[
-	--Causes issues with other players being drawn over their puppets
-	hook.Add("ShouldDrawLocalPlayer","pk_pill_thirdperson",function() //only really used for viewmodel... betr ways?
-		if getMappedEnt(LocalPlayer()) then
-			return true
-		end
-	end)
-	hook.Add("CalcViewModelView","pk_pill_thirdperson",function(wep,mdl,oldpos,oldang,pos,ang)
-		if playerMap[LocalPlayer()] && var_thirdperson:GetBool() then
-			return pos-Vector(0,0,100),ang
-		end
-	end)]]
 end
 
 -- Shared hooks
-hook.Add("PhysgunPickup", "pk_pill_nograb", function(ply, ent)
-    if ent:GetClass() == "pill_ent_phys" then
-        if ply:IsAdmin() then
-            return true
-        else
-            return false
-        end
-    end
-end)
-
 hook.Add("SetupMove", "pk_pill_movemod", function(ply, mv, cmd)
     local ent = getMappedEnt(ply)
 

@@ -359,3 +359,9 @@ hook.Add("EntityNetworkedVarChanged","fh_gamestatus_update", function(entity, na
         end
     end
 end)
+
+hook.Add("PreDrawViewModel", "fix_flying_viewmodels", function(vm, ply, weapon)
+	if ply:GetObserverMode() ~= OBS_MODE_NONE and ply:GetObserverMode() ~= OBS_MODE_IN_EYE then
+		return true
+	end
+end)

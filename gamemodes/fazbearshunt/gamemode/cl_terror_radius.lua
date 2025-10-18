@@ -169,7 +169,8 @@ function checkChase(ply, killer)
     local distance = ply:GetPos():Distance(killer:GetPos())
     local killerMoving = isPlayerMoving(killer)
     local playerMoving = isPlayerMoving(ply)
-    local playerVisible = !ply:GetNoDraw() and ply:GetMaterial() ~= "models/null" and !IsValid(ply:GetPill())
+    local playerVisible = !ply:GetNoDraw() and ply:GetMaterial() ~= "models/null" and !IsValid(ply:GetPill()) 
+		or IsValid(ply:GetPill()) and ply:GetPill():GetMaterial() ~= "models/null" and !ply:GetPill():GetNoDraw()
     if distance < tr_ChaseKeep and isKillerLookingAt(ply, killer) and killerMoving and playerMoving and playerVisible and killer:GetMoveType() ~= MOVETYPE_NOCLIP then
         isChasing[ply] = true
         if chaseTimers[ply] then
@@ -241,7 +242,7 @@ if !timer.Exists("tr_update") then
 				
 				if killer:GetMoveType() == MOVETYPE_NOCLIP then continue end
 				
-				if IsValid(killer:GetPill()) and killer:GetPill().cloaked then continue end
+				if IsValid(killer:GetPill()) and killer:GetPill():GetMaterial() == "models/null" then continue end
 
 				if stealthKillers[killer] then
 					if isPlayerRunning(killer) or isChasing[myself] then
@@ -314,7 +315,7 @@ local animatronicThemes = {
     ["pill_wfoxy2"] = "springtrap",
     ["pill_endo02"] = "springtrap",
     ["pill_wbonnie2"] = "springtrap",
-    ["pill_wfreddy2"] = "freddy",
+    ["pill_wfreddy2"] = "springtrap",
     ["pill_wchica2"] = "springtrap",
     ["pill_sfreddy2"] = "springtrap",
     ["pill_clown"] = "springtrap",

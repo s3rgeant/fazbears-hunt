@@ -147,3 +147,9 @@ hook.Add("PillRestore", "fh_flashlight_pillrestore", function(ply)
 		if flashMode ~= "off" then ToggleFlashMode() end
 	end
 end)
+
+net.Receive("nv_off", function()
+    if flashMode ~= "off" then
+        ToggleFlashMode()
+    end
+end)

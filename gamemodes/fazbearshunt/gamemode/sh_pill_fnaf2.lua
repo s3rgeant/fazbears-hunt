@@ -175,7 +175,6 @@ pills.register("pill_wfreddy2",{
 	end,
 
 	noFallDamage=true,
-	hideHud = true,
 	
 	attack={
 		mode="trigger",
@@ -340,7 +339,6 @@ pills.register("pill_wfreddy2",{
 		end
 	}, 
 
-	noragdoll=true,
 	reload=function(ply,ent)
 		if ply ~= stalker then
 			highlight.ByDistance(ply, ent)
@@ -583,7 +581,6 @@ pills.register("pill_wbonnie2",{
 	end,
 
 	noFallDamage=true,
-	hideHud = true,
 	
 	startFunction=function(ply,ent)
 		timer.Create("CheckConditions"..ply:EntIndex(), 2, 0, function()
@@ -729,7 +726,6 @@ pills.register("pill_wbonnie2",{
 		landTripCheck(ply, ent, "bonnie")
 	end,
 
-	noragdoll=true,
 	reload=function(ply,ent)
 		highlight.ByDistance(ply, ent)
 	end,
@@ -819,7 +815,6 @@ pills.register("pill_wchica2",{
 	end,
 
 	noFallDamage=true,
-	hideHud = true,
 	
 	startFunction=function(ply,ent)
 		timer.Create("CheckConditions"..ply:EntIndex(), 2, 0, function()
@@ -903,7 +898,6 @@ pills.register("pill_wchica2",{
 		landTripCheck(ply, ent, "chica")
 	end,
 	
-	noragdoll=true,
 	reload=function(ply,ent)
 		highlight.ByDistance(ply, ent)
 	end,
@@ -1000,7 +994,6 @@ pills.register("pill_wfoxy2",{
 	end,
 
 	noFallDamage=true,
-	hideHud = true,
 	
 	--[[
 	die=function(ply,ent)
@@ -1103,7 +1096,6 @@ pills.register("pill_wfoxy2",{
 		landTripCheck(ply, ent, "foxy")
 	end,
 
-	noragdoll=true,
 	reload=function(ply,ent)
 		highlight.ByDistance(ply, ent)
 	end,
@@ -1200,7 +1192,6 @@ pills.register("pill_sfreddy2",{
 	muteSteps = true,
 
 	noFallDamage=true,
-	hideHud = true,
 	restore=function(ply,ent)
 		ply:SetPushBlocked(false)
 	end,
@@ -1376,7 +1367,6 @@ pills.register("pill_sfreddy2",{
 		end
 	},
  
-	noragdoll=true,
 	reload=function(ply,ent)
 		highlight.ByDistance(ply, ent)
 	end,
@@ -1455,7 +1445,6 @@ pills.register("pill_endo02",{
 	muteSteps = true,
 
 	noFallDamage=true,
-	hideHud = true,
 	
 	startFunction=function(ply,ent)
 		timer.Create("CheckConditions"..ply:EntIndex(), 2, 0, function()
@@ -1506,8 +1495,6 @@ pills.register("pill_endo02",{
 		
 		landTripCheck(ply, ent, "endo")
 	end,
-	
-	noragdoll=true,
 
 	reload=function(ply,ent)
 		highlight.ByDistance(ply, ent)
@@ -1636,7 +1623,6 @@ pills.register("pill_wgfreddy2",{
 	end,
 
 	noFallDamage=true,
-	hideHud = true,
 	
 	startFunction=function(ply,ent)
 		ply:DrawViewModel(false)
@@ -1770,7 +1756,6 @@ pills.register("pill_wgfreddy2",{
 		end
 	},
 	
-	noragdoll=true,
 	reload=function(ply,ent)
 		if wgfreddy_targets[ply] then return end
 
@@ -1843,8 +1828,7 @@ pills.register("pill_wgfreddyhead2",{
 		return ent.active
 	end,
 	
-	noFallDamage=true,	
-	hideHud = true,
+	noFallDamage=true,
 	
 	attack={
 		mode="trigger",
@@ -1862,8 +1846,6 @@ pills.register("pill_wgfreddyhead2",{
 			if !ply:OnGround() then return end
 		end
 	},
-
-	noragdoll=true,
 	
 	flashlight=function(ply,ent)
 		if !ply:OnGround() then return end
@@ -2656,40 +2638,7 @@ function AnimatronicBreakProp(ply, ent, cooldown)
 		filter = ply,
 		mask = MASK_SHOT
 	})
-
-	if !IsValid(tr.Entity) then
-		local mins = Vector(-4, -4, -3)
-		local maxs = Vector(4, 4, 3)
-
-		local boxTr = util.TraceHull({
-			start = startPos,
-			endpos = endPos,
-			mins = mins,
-			maxs = maxs,
-			filter = ply,
-			mask = MASK_SHOT
-		})
-		debugoverlay.Line(ply:EyePos(), tr.HitPos, 5, Color(255, 115, 0), true)
-		debugoverlay.Box( boxTr.HitPos, mins, maxs, 5, Color( 255,0,0) )
-
-		if boxTr.Hit and IsValid(boxTr.Entity) then
-			tr = boxTr
-
-			local ent = boxTr.Entity
-			local entMins, entMaxs = ent:WorldSpaceAABB()
-
-			local function ClosestPointToAABB(point, mins, maxs)
-				return Vector(
-					math.Clamp(point.x, mins.x, maxs.x),
-					math.Clamp(point.y, mins.y, maxs.y),
-					math.Clamp(point.z, mins.z, maxs.z)
-				)
-			end
-
-			local nearestPos = ClosestPointToAABB(startPos, entMins, entMaxs)
-			tr.HitPos = nearestPos
-		end
-	end
+	
 	debugoverlay.Line(ply:EyePos(), tr.HitPos, 5, Color(255, 0, 0), true)
 	
 	local target = tr.Entity
@@ -2767,7 +2716,7 @@ function chaseCheck(ply, name, ent)
 		if !IsValid(target) or outworld_victims[target] then return end
 		if target:IsNPC() then return end
 		
-		if target:IsSprinting() and target:GetVelocity():LengthSqr() > target:GetWalkSpeed() then
+		if target:IsSprinting() and target:GetVelocity():LengthSqr() > target:GetWalkSpeed() and target:GetMaterial() ~= "models/null" and !target:GetNoDraw() then
 			local vc = "chase"
 			if target:GetNW2Bool("KillerObsessed") then
 				vc = "negative"

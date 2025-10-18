@@ -98,9 +98,6 @@ local setupGameDuration = 60
 
 local curMaxKillers = 1
 
-local animatronics_win_count = 0
-local survivors_win_count = 0
-
 local roundCount = 0
 
 roundActive = roundActive or false -- когда аниматроники разморожены и идёт раунд
@@ -403,8 +400,6 @@ function endRound(killerVictory, duration)
 end
 
 function endGame()
-	game.CleanUpMap( false )
-	
 	game.GetWorld():SetNW2Bool("gameOn", false)
 	isGameOn = false
 	game.GetWorld():SetNW2Bool("roundActive", false)
@@ -428,6 +423,8 @@ function endGame()
     net.Start("fh_start_lobby_timer")
 	net.WriteFloat(lobbyDuration)
     net.Broadcast()
+	
+	game.CleanUpMap( false )
 
 	timer.Create("GameStartTimer", lobbyDuration, 1, function()
 		registerNewRound()
@@ -706,7 +703,7 @@ hook.Add("PlayerInitialSpawn", "fh_ply_spawn", function(ply)
 		survivors[ply] = nil
 	end
 	
-	ply:SetTeam(TEAM_SURVIVOR)
+	ply:SetTeam(TEAM_SURVIVOR) -- это чё бля?
 end)
 
 hook.Add( "AllowPlayerPickup", "fh_allow_pickup", function( ply, ent )
@@ -718,26 +715,26 @@ hook.Add( "PlayerSwitchFlashlight", "fh_no_flashlight", function( ply, on )
 end )
 
 hook.Add("SetupMove", "fh_lock_position", function(ply, mv, cmd)
-	if (ply:Team() == 2701 or animatronics[ply]) and !roundActive and isGameOn then
-		mv:SetVelocity(vector_origin)
+	if ply:IsAnimatronic() and !roundActive and isGameOn then
+		mv:SetVelocity(Vector(0,0,0))
 		mv:SetOrigin(ply:GetPos())
 	end
 end)
 
 hook.Add("PlayerPostThink", "fh_zero_physics", function(ply)
-	if (ply:Team() == 2701 or animatronics[ply]) and !roundActive and isGameOn then
+	if ply:IsAnimatronic() and !roundActive and isGameOn then
 		ply:SetVelocity(-ply:GetVelocity())
 	end
 end)
 
 hook.Add("FinishMove", "fh_canmove", function(ply)
-	if (ply:Team() == 2701 or animatronics[ply]) and !roundActive and isGameOn then
+	if ply:IsAnimatronic() and !roundActive and isGameOn then
 		return true
 	end
 end)
 
 hook.Add( "StartCommand", "fh_cantattack", function( ply, cmd )
-	if (ply:Team() == 2701 or animatronics[ply]) and !roundActive and isGameOn then
+	if ply:IsAnimatronic() and !roundActive and isGameOn then
 		cmd:RemoveKey(IN_ATTACK)
 		cmd:RemoveKey(IN_ATTACK2)
 		cmd:RemoveKey(IN_RELOAD)
@@ -812,8 +809,10 @@ hook.Add("PlayerSpawn", "fh_spawn", function( ply, transiton )
 	player_manager.SetPlayerClass( ply, "player_sandbox" )
 	ply:SetShouldServerRagdoll(true)
 
-	ply:SetMaterial("")
-	ply:DrawShadow(true)
+	if !IsValid(ply:GetPill()) then
+		ply:SetMaterial("")
+		ply:DrawShadow(true)
+	end
 	
 	ply:SendLua( 'if !system.HasFocus() then system.FlashWindow() end' )
 	
@@ -933,7 +932,11 @@ local function fh_death_hook(victim)
 		end
 	end
 	animatronics[victim] = nil
-	
+end
+
+hook.Add("PlayerDeath", "fh_deaths", fh_death_hook)
+hook.Add("PlayerSilentDeath", "fh_deaths_silent", fh_death_hook)
+hook.Add("PostPlayerDeath", "fh_deaths_post", function(victim)
 	winConditions(victim)
 	
 	if isGameOn then
@@ -943,10 +946,7 @@ local function fh_death_hook(victim)
 		net.Start('DeadHUDEnable')
 		net.Send(victim)
 	end
-end
-
-hook.Add("PlayerDeath", "fh_deaths", fh_death_hook)
-hook.Add("PlayerSilentDeath", "fh_deaths_silent", fh_death_hook)
+end)
 
 function fh_get_plytable_nicknames(tbl)
 	tbl = tlb or {}
@@ -958,6 +958,8 @@ function fh_get_plytable_nicknames(tbl)
 	return ret_tbl
 end
 
+local animatronics_win_count = 0
+local survivors_win_count = 0
 function fh_win_coefficient()
     local totalWins = survivors_win_count + animatronics_win_count
     if totalWins == 0 then return end
