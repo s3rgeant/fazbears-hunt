@@ -293,6 +293,9 @@ function setupPlayerVars(ply)
 	ply:UnLock()
 	ply:SetFOV(0, 0, game.GetWorld())
 	ply:SetViewEntity(ply)
+
+	ply:SetViewOffset(Vector(0, 0, 64))
+	ply:SetViewOffsetDucked(Vector(0, 0, 28))
 	
 	ply:SetJumpBoostMultiplier( 0.5 )
 end
@@ -1019,6 +1022,13 @@ function winConditions(ply)
 		end
 	end
 end
+
+-- нахуя оно создаёт второй НЕВИДИМЫЙ регдолл?
+hook.Add( "CreateEntityRagdoll", "fh_ragdoll_bullshit", function( ply, rag )
+	if ply:IsPlayer() then
+		rag:Remove()
+	end
+end )
 
 hook.Add( "CanPlayerSuicide", "fh_suicide", function( ply )
 	if ply:IsAnimatronic() or ply.jumpscared then

@@ -550,20 +550,10 @@ if SERVER then
         end
 
         self:PillSound("die")
-
-        self:Remove()
+		
+		pills.restore(ply:Nick(), true)
     end
 
-    --[[function ENT:PillDie()
-		if self.dead then return end
-		self:GetPillUser():KillSilent()
-		if self.formTable.die then
-			self.formTable.die(self:GetPillUser(),self)
-		end
-		self:PillSound("die")
-		self:Remove()
-		self.dead=true
-	end]]
     function ENT:PillAnim(name, freeze)
         self.anim = name
         self.animStart = true
@@ -785,7 +775,7 @@ end
 function ENT:ResetSpeed()
     local ply = self:GetPillUser()
 
-    local speed = self.formTable.initMoveSpeed or {}
+    local speed = self.formTable.moveSpeed or {}
     ply:SetWalkSpeed(speed.walk or 200)
     ply:SetRunSpeed(speed.run or speed.walk or 500)
 	ply:SetJumpPower(self.formTable.jumpPower or 200)

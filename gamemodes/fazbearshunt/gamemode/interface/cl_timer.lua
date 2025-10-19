@@ -149,6 +149,8 @@ net.Receive("fh_pause_game_timer", function()
     
     timerSubtitle = formatTime(timeStamp)
 	
+	timer.Remove('fh_timer_round_start')
+	
 	timerMode = "paused"
 	roundtimer_alpha = 150
 	roundtimer_y_target = 58

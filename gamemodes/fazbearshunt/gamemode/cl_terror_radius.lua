@@ -195,6 +195,12 @@ if !timer.Exists("tr_update") then
         local myself = LocalPlayer()
 
         if !IsValid(myself) then return end
+		
+		local observertarget = myself:GetObserverTarget()
+		
+		if IsValid(observertarget) and observertarget:IsPlayer() then
+			myself = observertarget
+		end
 
         local closestGuyPos, closestTheme, layer = nil, nil, nil
         local foundNoOne = true
@@ -202,91 +208,95 @@ if !timer.Exists("tr_update") then
 
         hook.Run("FH_TerrorRadiusUpdate", currentKillers)
         if fh_terror_enabled:GetBool() and !table.IsEmpty(currentKillers) and (myself:Alive() or !myself:Alive() and fh_terror_spectators:GetBool()) then
-            if currentKillers[myself] then
-                for _, ply in player.Iterator() do
-                    if !ply:Alive() or (!everyoneKillers[myself] and ply:Team() == myself:Team()) then continue end
+			local shouldProccess = hook.Run("FH_HandleTerrorRadius")
+			
+			if shouldProccess ~= false then
+				if currentKillers[myself] then
+					for _, ply in player.Iterator() do
+						if !ply:Alive() or (!everyoneKillers[myself] and ply:Team() == myself:Team()) then continue end
 
-		            local distance = myself:GetPos():Distance(ply:GetPos())
+						local distance = myself:GetPos():Distance(ply:GetPos())
 
-                    local theme = currentKillers[myself]
-                    
-                    if distance < tr_Close then
-                        checkChase(ply, myself)
+						local theme = currentKillers[myself]
+						
+						if distance < tr_Close then
+							checkChase(ply, myself)
 
-                        if isChasing[ply] then
-                            layer = "chase"
-                            imChasing = true
-                            if availableThemes[theme] and availableThemes[theme]["chase_low"] then
-                                if ply:Health() <= ply:GetMaxHealth() / 2 then
-                                    layer = "chase_low"
-                                end
-                            end
-							closestTheme = currentKillers[myself]
-							break
-                        end
-                    end
-                end
-            end
-            for killer, theme in pairs(currentKillers) do
-                if !theme or !IsValid(killer) then continue end 
-
-                if myself:IsSurvivor() and currentKillers[myself] then break end
-
-                if killer == myself or !killer:Alive() or (!everyoneKillers[killer] and killer:Team() == myself:Team()) then continue end
-
-		        local distance = myself:GetPos():Distance(killer:GetPos())
-
-                if closestGuyPos and distance > closestGuyPos then continue end
-                
-                if distance > tr_Far then continue end
-				
-				if killer:GetMoveType() == MOVETYPE_NOCLIP then continue end
-				
-				if IsValid(killer:GetPill()) and killer:GetPill():GetMaterial() == "models/null" then continue end
-
-				if stealthKillers[killer] then
-					if isPlayerRunning(killer) or isChasing[myself] then
-						stealthLastActive[killer] = CurTime()
-					elseif stealthLastActive[killer] and (CurTime() - stealthLastActive[killer]) < stealthDelay then
-					else
-						continue
-					end
-				elseif stealthKillers2[killer] then
-					if isPlayerMoving(killer) or isChasing[myself] then
-						stealthLastActive[killer] = CurTime()
-					elseif stealthLastActive[killer] and (CurTime() - stealthLastActive[killer]) < stealthDelay then
-					else
-						continue
+							if isChasing[ply] then
+								layer = "chase"
+								imChasing = true
+								if availableThemes[theme] and availableThemes[theme]["chase_low"] then
+									if ply:Health() <= ply:GetMaxHealth() / 2 then
+										layer = "chase_low"
+									end
+								end
+								closestTheme = currentKillers[myself]
+								break
+							end
+						end
 					end
 				end
+				for killer, theme in pairs(currentKillers) do
+					if !theme or !IsValid(killer) then continue end 
 
-                foundNoOne = false
+					if myself:IsSurvivor() and currentKillers[myself] then break end
 
-                if isChasing[myself] then
-                    checkChase(myself, killer)
-                    layer = "chase"
-                    if availableThemes[theme] and availableThemes[theme]["chase_low"] then
-                        if myself:Health() <= myself:GetMaxHealth() / 2 then
-                            layer = "chase_low"
-                        end
-                    end
-                else
-                    if distance < tr_Far and distance > tr_Approach then
-                        layer = "first_layer"
-                    elseif distance < tr_Approach and distance > tr_Close then
-                        layer = "second_layer"
-                    elseif distance < tr_Close then
-                        layer = "third_layer"
-                    end
-                end
+					if killer == myself or !killer:Alive() or (!everyoneKillers[killer] and killer:Team() == myself:Team()) then continue end
 
-                if layer == "third_layer" then
-                    checkChase(myself, killer)
-                end
+					local distance = myself:GetPos():Distance(killer:GetPos())
 
-                closestGuyPos = distance
-                closestTheme = theme
-            end
+					if closestGuyPos and distance > closestGuyPos then continue end
+					
+					if distance > tr_Far then continue end
+					
+					if killer:GetMoveType() == MOVETYPE_NOCLIP then continue end
+					
+					if IsValid(killer:GetPill()) and killer:GetPill():GetMaterial() == "models/null" then continue end
+
+					if stealthKillers[killer] then
+						if isPlayerRunning(killer) or isChasing[myself] then
+							stealthLastActive[killer] = CurTime()
+						elseif stealthLastActive[killer] and (CurTime() - stealthLastActive[killer]) < stealthDelay then
+						else
+							continue
+						end
+					elseif stealthKillers2[killer] then
+						if isPlayerMoving(killer) or isChasing[myself] then
+							stealthLastActive[killer] = CurTime()
+						elseif stealthLastActive[killer] and (CurTime() - stealthLastActive[killer]) < stealthDelay then
+						else
+							continue
+						end
+					end
+
+					foundNoOne = false
+
+					if isChasing[myself] then
+						checkChase(myself, killer)
+						layer = "chase"
+						if availableThemes[theme] and availableThemes[theme]["chase_low"] then
+							if myself:Health() <= myself:GetMaxHealth() / 2 then
+								layer = "chase_low"
+							end
+						end
+					else
+						if distance < tr_Far and distance > tr_Approach then
+							layer = "first_layer"
+						elseif distance < tr_Approach and distance > tr_Close then
+							layer = "second_layer"
+						elseif distance < tr_Close then
+							layer = "third_layer"
+						end
+					end
+
+					if layer == "third_layer" then
+						checkChase(myself, killer)
+					end
+
+					closestGuyPos = distance
+					closestTheme = theme
+				end
+			end
         end
 
         if foundNoOne and !imChasing then

@@ -411,6 +411,7 @@ if SERVER then
     hook.Add("DoPlayerDeath", "pk_pill_death", function(ply)
         if IsValid(getMappedEnt(ply)) then
             if SERVER then
+				ply:SuppressRagdollSpawn()
                 getMappedEnt(ply):PillDie()
             end
         end

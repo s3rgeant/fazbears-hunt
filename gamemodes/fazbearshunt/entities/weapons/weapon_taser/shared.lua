@@ -186,6 +186,7 @@ function TaseAnimatronic(ent)
 					ent.jumpscaring = nil
 				end
 				
+				puppet:SetUseForceAngles(false)
 				timer.Remove("FH_JumpscareKill_" .. ent:EntIndex())
 			end
 		end

@@ -202,6 +202,8 @@ function EndPostRound()
 		game.GetWorld():SetNW2Bool("roundActive", true)
 		roundActive = true
 		endgame_shared()
+		
+		disallowTime = 0
 	
 		net.Start('fh_net_scarysound')
 		net.WriteBool(true)

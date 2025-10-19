@@ -162,8 +162,8 @@ function SWEP:Invisivility(ply)
 		if IsValid(ply) then
 			ply:SetColor(Color(255, 255, 255, 255))
 			ply:SetMaterial("")
-			
 			ply:DrawShadow(true)
+			
 			ply.invisible = false
 			if CLIENT then
 				surface.PlaySound( "weapons/bonnie_mask_end.wav" )

@@ -2509,12 +2509,6 @@ if SERVER then
 				noMoreStalk(stalker)
 			end
 		end
-		if wgfreddy_targets[ply] then
-			cancel_outworld(ply)
-		end
-		if outworld_victims[ply] then
-			cancel_outworld(ply)
-		end
 		killCupcakes(ply)
 	end)
 	

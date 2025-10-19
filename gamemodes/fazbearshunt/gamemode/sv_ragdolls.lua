@@ -10,6 +10,11 @@ function meta:CreateRagdoll()
 	if hook.Run("ShouldSpawnRagdoll", self) == false then return end
 
 	self.DeathRagdoll = self.DeathRagdoll or false
+	
+	if self._suppressragdollspawn then
+		self._suppressragdollspawn = nil
+		return
+	end
 
 	if self.DeathRagdoll then
 		if self.DeathRagdoll:IsValid() then
@@ -23,8 +28,6 @@ function meta:CreateRagdoll()
 	local ply_skn = self:GetSkin()
 	local ply_col = self:GetColor()
 	local ply_mat = self:GetMaterial()
-	
-	if ply_mat == "models/null" then return end
 	
 	local playerModelIsRagdoll = self:GetBoneCount() > 1
 
@@ -94,8 +97,6 @@ function meta:CreateRagdoll()
 	hook.Run("fh_createragdoll", self, ent)
 end
 
-hook.Add("RM_CanRagdoll", "fh_block_ragmod", function(ply)
-    if ply:IsAnimatronic() or ply.jumpscared then
-        return false 
-    end
-end)
+function meta:SuppressRagdollSpawn(bool)
+	self._suppressragdollspawn = bool or true
+end
