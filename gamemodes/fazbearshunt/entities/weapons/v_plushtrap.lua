@@ -123,12 +123,10 @@ function SWEP:DealDamage()
 	end
 	
 	if target:IsPlayer() and target:IsSurvivor() then
-	
-		local edata = EffectData()
-		edata:SetOrigin(tr.HitPos)
+        local edata = EffectData()
+        edata:SetOrigin(tr.HitPos)
         edata:SetEntity(target)
-		util.Effect("BloodImpact", edata)
-		
+        util.Effect("BloodImpact", edata, true, true)
 	end
 	
 	if CLIENT then return end

@@ -301,7 +301,7 @@ if CLIENT then
 	hook.Add("PrePlayerDraw", "fh_dontdraw_outworlded" , function(ply)
 		local myself = LocalPlayer()
 		
-		if !IsValid(myself) then return end
+		if !IsValid(myself) or !myself:Alive() then return end
 		
 		if ply:GetNW2Bool("_OUTWORLD_target") and !myself:GetNW2Bool("_OUTWORLD_gfreddy") or myself:GetNW2Bool("_OUTWORLD_target") and ply ~= myself or myself:GetNW2Bool("_OUTWORLD_gfreddy") and !ply:GetNW2Bool("_OUTWORLD_target") then
 			ply:DestroyShadow()
@@ -609,7 +609,6 @@ if CLIENT then
 		myself.outworld = false
 		myself:ScreenFade(SCREENFADE.IN, Color(0,0,0), 2, 0.5)
 		
-		hook.Remove("PrePlayerDraw", "fh_outworld_pv")
 		hook.Remove("RenderScreenspaceEffects", "merc_grayscale_hook")
 		hook.Remove("NeedsDepthPass", "merc_grayscale_depth")
 		hook.Remove("SetupWorldFog", "WhiteFogEffect")
@@ -683,7 +682,6 @@ if CLIENT then
         hook.Remove("NeedsDepthPass", "merc_grayscale_depth")
 		hook.Remove( "PreDrawHalos", "fh_wgfreddy_halo")
 		hook.Remove("HUDPaint", "fh_draw_wgfreddy_target_orb")
-		hook.Remove("PrePlayerDraw", "fh_gfreddy_outworld_pv")
 		
 		fh_cl_dontdraw_plushies()
 	end)
@@ -729,10 +727,8 @@ if CLIENT then
         hook.Remove("NeedsDepthPass", "merc_grayscale_depth")
 		hook.Remove( "PreDrawHalos", "fh_wgfreddy_halo")
 		hook.Remove("HUDPaint", "fh_draw_wgfreddy_target_orb")
-		hook.Remove("PrePlayerDraw", "fh_gfreddy_outworld_pv")
 		hook.Remove("PreDrawHalos", "fh_wgfreddy_draw_halo")
 		hook.Remove("PostDrawTranslucentRenderables", "fh_draw_gfreddy_target_text")
-		hook.Remove("PrePlayerDraw", "fh_outworld_pv")
 		hook.Remove("SetupWorldFog", "WhiteFogEffect")
 		hook.Remove("SetupSkyboxFog", "WhiteFogEffectSkybox")
 		hook.Remove("RenderScreenspaceEffects", "merc_videoglitch_hook")
@@ -837,8 +833,12 @@ local function cancel_outworld_target(ply)
 	net.Send(ply)
 end
 
-hook.Add("PlayerSpawn", "wgfreddy_noimmune", function(ply)
+hook.Add("PlayerSpawn", "wgfreddy_spawn", function(ply)
 	ply:SetGFreddyImmune(false)
+	
+	if wgfreddy_targets[ply] or outworld_victims[ply] then
+		cancel_outworld(ply)
+	end
 end)
 
 local sfreddy_noclip_movement = {500, 600, 500, 250}

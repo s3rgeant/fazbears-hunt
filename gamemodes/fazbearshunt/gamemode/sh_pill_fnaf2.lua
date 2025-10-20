@@ -1495,6 +1495,37 @@ pills.register("pill_endo02",{
 		
 		landTripCheck(ply, ent, "endo")
 	end,
+	die=function(ply,ent)
+		local model = ent:GetModel()
+		local skin = ent:GetSkin()
+		
+		local pos = ply:GetPos()
+		local ang = ply:GetAngles()
+		
+		ragdoll = ents.Create("prop_ragdoll")
+		ragdoll:SetModel(model)
+		ragdoll:SetSkin(skin)
+		ragdoll:SetPos(pos)
+		ragdoll:SetAngles(ang)
+		ragdoll:SetOwner(ply)
+		ragdoll:Spawn()
+		ragdoll:Activate()
+
+		local plyvel = ply:GetVelocity()
+		for i = 0, ragdoll:GetPhysicsObjectCount() - 1 do
+			local bone = ragdoll:GetPhysicsObjectNum(i)
+			
+			if bone and bone:IsValid() then
+				local bonepos, boneang = ent:GetBonePosition(ragdoll:TranslatePhysBoneToBone(i))
+				
+				if bonepos and boneang then
+					bone:SetPos(bonepos)
+					bone:SetAngles(boneang)
+					bone:SetVelocity(plyvel)
+				end
+			end
+		end
+	end,
 
 	reload=function(ply,ent)
 		highlight.ByDistance(ply, ent)
@@ -2730,4 +2761,7 @@ hook.Add( "PostCleanupMap", "fh_pill_fnaf2_reset", function( name )
 	
 	table.Empty(takenPlayers)
 	table.Empty(cupcakes)
+	table.Empty(outworld_victims)
+	table.Empty(outworld_victims_count)
+	table.Empty(wgfreddy_targets)
 end)

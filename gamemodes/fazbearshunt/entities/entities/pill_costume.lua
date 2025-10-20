@@ -277,6 +277,11 @@ function ENT:OnRemove()
 		if self.formTable.restore then
 			self.formTable.restore(ply, self, self.formTable)
 		end
+	
+		-- compatibility
+		if self.formTable.onRemove then
+			self.formTable.onRemove(self, self.formTable)
+		end
     end
 
     local newType = pills.unmapEnt(self:GetPillUser(), self)
@@ -594,6 +599,11 @@ if SERVER then
 		
     end
 	
+	-- для совместимости с сторонними пилл паками
+	function ENT:GetPuppet()
+		return self
+	end
+	
     function ENT:PillStopGesture(name)
         local ply = self:GetPillUser()
         if not IsValid(self) then return end
@@ -638,17 +648,22 @@ if SERVER then
             doStart()
         end
     end
-	
-	function ENT:HandleAnimEvent( event, eventTime, cycle, type, options )
-        if self.formTable.animEvent then
-            self.formTable.animEvent(self:GetPillUser(), self, event, eventTime, cycle, type, options)
-			return true
-        end
-	end
 else
     function ENT:GetPillHealth()
         return self:GetPillUser():Health()
     end
+end
+	
+function ENT:HandleAnimEvent( event, eventTime, cycle, type, options )
+	if self.formTable.animEvent then
+	
+		-- gentoi bullshit compatibility :pray:
+		local eventName = util.GetAnimEventNameByID( event )
+		if eventName:len() <= 0 then eventName = "Step" end
+		
+		self.formTable.animEvent(self:GetPillUser(), self, eventName, eventTime, cycle, type, options)
+		return true
+	end
 end
 
 --The "bulk" parameter should only be used if you plan to play a ton of sounds in quick succession.

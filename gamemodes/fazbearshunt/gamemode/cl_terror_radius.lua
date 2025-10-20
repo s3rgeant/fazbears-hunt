@@ -195,12 +195,6 @@ if !timer.Exists("tr_update") then
         local myself = LocalPlayer()
 
         if !IsValid(myself) then return end
-		
-		local observertarget = myself:GetObserverTarget()
-		
-		if IsValid(observertarget) and observertarget:IsPlayer() then
-			myself = observertarget
-		end
 
         local closestGuyPos, closestTheme, layer = nil, nil, nil
         local foundNoOne = true
@@ -209,6 +203,12 @@ if !timer.Exists("tr_update") then
         hook.Run("FH_TerrorRadiusUpdate", currentKillers)
         if fh_terror_enabled:GetBool() and !table.IsEmpty(currentKillers) and (myself:Alive() or !myself:Alive() and fh_terror_spectators:GetBool()) then
 			local shouldProccess = hook.Run("FH_HandleTerrorRadius")
+		
+			local observertarget = myself:GetObserverTarget()
+			
+			if IsValid(observertarget) and observertarget:IsPlayer() then
+				myself = observertarget
+			end
 			
 			if shouldProccess ~= false then
 				if currentKillers[myself] then

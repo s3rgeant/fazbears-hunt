@@ -86,11 +86,11 @@ pills.register("pill_clown",{
 	bloodType=BLOOD_COLOR_MECH,
 	
 	animEvent=function(ply,ent,event)
-		if util.GetAnimEventNameByID( event ) == "CLOWN_HIDE_HAMMER" then
+		if event == "CLOWN_HIDE_HAMMER" then
 			if ent:LookupBone( "Hammer_Bn" ) then
 				ent:ManipulateBoneScale(ent:LookupBone( "Hammer_Bn" ), Vector(0,0,0) )
 			end
-		elseif util.GetAnimEventNameByID( event ) == "CLOWN_SHOW_HAMMER" then
+		elseif event == "CLOWN_SHOW_HAMMER" then
 			if ent:LookupBone( "Hammer_Bn" ) then
 				ent:ManipulateBoneScale(ent:LookupBone( "Hammer_Bn" ), Vector(1,1,1) )
 			end

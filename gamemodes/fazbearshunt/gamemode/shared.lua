@@ -491,6 +491,65 @@ hook.Add("ShouldCollide", "fh_collisions", function(ent1, ent2)
     end
 end)
 
+-- это как по мне очень ненадёжный способ пиздить пилл паки в режим,
+-- но делая эту хуйню мне как то гордо на душе
+
+hook.Add("PreGamemodeLoaded", "FH_pk_pill_support", function()
+	if pk_pills then
+		if pk_pills.getPillTable and pk_pills.packStart then
+			
+			local toRegister = {}
+		
+			local name, packs = debug.getupvalue(pk_pills.packStart, 2)
+			for _,pack in ipairs(packs) do
+				if pack.name == "Fun" or pack.name == "Jake" or pack.name == "Half-Life 2" then
+					continue
+				end
+				if pack.items then
+					for _, item in pairs(pack.items) do
+						if !item.name then continue end
+						toRegister[item.name] = {}
+					end
+				end
+			end
+		
+			local name, forms = debug.getupvalue(pk_pills.getPillTable, 1)
+			for name,data in pairs(forms) do
+				if toRegister[name] and !killerData[name] then
+					toRegister[name] = data
+				end
+			end
+			
+			for name, data in pairs(toRegister) do
+				local betterName = name:lower()
+				if file.Exists("materials/pills/" .. betterName .. ".png", "GAME") then
+					local animImage = Material("pills/" .. betterName .. ".png", "mips")
+					if !animImage:IsError() then
+						killerAvatars[betterName] = animImage
+					end
+				end
+			
+				-- repairing various pill packs
+				if data.HandleAnimEvent_gen then
+					local olddata = data.HandleAnimEvent_gen
+					
+					data.animEvent = olddata
+					data.HandleAnimEvent_gen = nil
+				end
+				if data.init then
+					local olddata = data.init
+					
+					data.startFunction = olddata
+					data.init = nil
+				end
+			
+				pills.register(betterName, data)
+			end
+			
+		end
+	end
+end)
+
 local meta = FindMetaTable("Player")
 
 if meta then

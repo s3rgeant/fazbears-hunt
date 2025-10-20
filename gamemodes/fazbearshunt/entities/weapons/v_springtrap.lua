@@ -157,7 +157,7 @@ function SWEP:DealDamage()
         local edata = EffectData()
         edata:SetOrigin(tr.HitPos)
         edata:SetEntity(target)
-        util.Effect("BloodImpact", edata)
+        util.Effect("BloodImpact", edata, true, true)
     end
 
     if CLIENT then
