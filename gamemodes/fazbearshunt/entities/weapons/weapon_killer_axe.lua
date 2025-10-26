@@ -151,6 +151,19 @@ function SWEP:DealDamage()
 		fx:SetOrigin(tr.HitPos)
 		fx:SetStart(tr.HitPos)
 		util.Effect("cball_explode", fx, true, true)
+		
+		if ent.formTable.name == "pill_endo02" then
+			if target._endoHoldingPlayer == ply then
+				endoRelease(target)
+	
+				cooldown.Set(target, 'grab', 6)
+			
+				net.Start("fh_net_killer_change")
+				net.WriteString("grab")
+				net.WriteFloat(6)
+				net.Send(target)
+			end
+		end
 	end
 
 	if targetIsSurv then

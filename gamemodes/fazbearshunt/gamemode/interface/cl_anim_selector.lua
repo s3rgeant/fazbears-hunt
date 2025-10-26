@@ -171,16 +171,38 @@ function draw_killer_selector()
 							end
 						end
 			
-						if v.skin then
-							ent:SetSkin(v.skin)
-						elseif v.options then
-							local options = v.options()
-							
-							local pickedOption = table.Random(options)
-							
-							if pickedOption.skin then
-								ent:SetSkin(pickedOption.skin)
+						local bodyGroups = ent.formTable.bodyGroups
+
+						if ent.formTable.options then
+							local options = ent.formTable.options()
+							local pickedOption
+
+							if ent.formTable.option and options[ent.formTable.option] then
+								pickedOption = options[ent.formTable.option]
+							else
+								pickedOption = table.Random(options)
 							end
+
+							if pickedOption and pickedOption.bodyGroups then
+								bodyGroups = pickedOption.bodyGroups
+							end
+						end
+
+						if bodyGroups then
+							for k, v in pairs(bodyGroups) do
+								if isnumber(k) then
+									m:SetBodygroup(k, v)
+								elseif isstring(k) then
+									local id = m:FindBodygroupByName(k)
+									if id >= 0 then
+										m:SetBodygroup(id, v)
+									end
+								elseif isnumber(v) then
+									m:SetBodygroup(v, 1)
+								end
+							end
+						elseif v.skin then
+							ent:SetSkin(v.skin)
 						end
 						
 						local mn, mx = ent:GetModelBounds()

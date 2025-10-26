@@ -38,7 +38,7 @@ function ENT:Initialize()
     --Do this so weapon equips are not blocked
     pills.mapEnt(ply, nil)
 		
-	hook.Run("PillApply", ply, self.formTable.name)
+	hook.Run("PillApply", ply, self)
 	
 	if CLIENT then
 		ply:SetRenderBounds(-Vector(hull.x / 2, hull.y / 2, 0), Vector(hull.x / 2, hull.y / 2, hull.z + 30))
@@ -171,40 +171,49 @@ function ENT:Initialize()
         local model = self.formTable.model
         local skin = self.formTable.skin
         local attachments = self.formTable.attachments
+		local bodyGroups = self.formTable.bodyGroups
 
         if self.formTable.options then
-            local options = self.formTable.options()
+			local options = self.formTable.options()
 
-            if self.option and options[self.option] then
-                local pickedOption = options[self.option]
+			if self.formTable.option and options[self.formTable.option] then
+				local pickedOption = options[self.formTable.option]
 
-                if pickedOption.model then
-                    model = pickedOption.model
-                end
+				if pickedOption.model then
+					model = pickedOption.model
+				end
 
-                if pickedOption.skin then
-                    skin = pickedOption.skin
-                end
+				if pickedOption.skin then
+					skin = pickedOption.skin
+				end
 
-                if pickedOption.attachments then
-                    attachments = pickedOption.attachments
-                end
-            else
-                local pickedOption = table.Random(options)
+				if pickedOption.attachments then
+					attachments = pickedOption.attachments
+				end
 
-                if not model then
-                    model = pickedOption.model
-                end
+				if pickedOption.bodyGroups then
+					bodyGroups = pickedOption.bodyGroups
+				end
+			else
+				local pickedOption = table.Random(options)
 
-                if not skin then
-                    skin = pickedOption.skin
-                end
+				if not model then
+					model = pickedOption.model
+				end
 
-                if not attachments then
-                    attachments = pickedOption.attachments
-                end
-            end
-        end
+				if not skin then
+					skin = pickedOption.skin
+				end
+
+				if not attachments then
+					attachments = pickedOption.attachments
+				end
+
+				if not bodyGroups then
+					bodyGroups = pickedOption.bodyGroups
+				end
+			end
+		end
 
         self:SetModel(model or "models/Humans/corpse1.mdl")
 
@@ -222,13 +231,20 @@ function ENT:Initialize()
             self:SetMaterial(self.formTable.visMat)
         end
 
-        if self.formTable.bodyGroups then
-            for _, v in pairs(self.formTable.bodyGroups) do
-                if v then
-                    self:SetBodygroup(v, 1)
-                end
-            end
-        end
+        if bodyGroups then
+			for k, v in pairs(bodyGroups) do
+				if isnumber(k) then
+					self:SetBodygroup(k, v)
+				elseif isstring(k) then
+					local id = self:FindBodygroupByName(k)
+					if id >= 0 then
+						self:SetBodygroup(id, v)
+					end
+				elseif isnumber(v) then
+					self:SetBodygroup(v, 1)
+				end
+			end
+		end
 
         if self.formTable.modelScale then
             self:SetModelScale(self.formTable.modelScale, 0)
@@ -892,34 +908,57 @@ end
 
 hook.Add("PrePlayerDraw", "fh_pill_costume_mirrors", function(ply)
     if ply ~= LocalPlayer() then return end
-    
+
     local ent = pills.getMappedEnt(ply)
     if not IsValid(ent) then return end
-	
-	if ent.IsDrawn or ent:GetNoDraw() or ent:GetMaterial() == "models/null" then return end
-    
+    if ent.IsDrawn or ent:GetNoDraw() or ent:GetMaterial() == "models/null" then return end
+
     if not IsValid(ent.mirrorPill) then
         local m = ClientsideModel(ent:GetModel(), RENDERGROUP_OPAQUE)
         if IsValid(m) then
             m:SetParent(ent)
-			m:SetSkin(ent:GetSkin())
+            m:SetSkin(ent:GetSkin())
             m:AddEffects(EF_BONEMERGE)
             m:SetNoDraw(true)
             ent.mirrorPill = m
-			
-			if ent.formTable.bodyGroups then
-				for _, v in pairs(ent.formTable.bodyGroups) do
-					if v then
-						m:SetBodygroup(v, 1)
-					end
-				end
-			end
+
+            local bodyGroups = ent.formTable.bodyGroups
+
+            if ent.formTable.options then
+                local options = ent.formTable.options()
+                local pickedOption
+
+                if ent.formTable.option and options[ent.formTable.option] then
+                    pickedOption = options[ent.formTable.option]
+                else
+                    pickedOption = table.Random(options)
+                end
+
+                if pickedOption and pickedOption.bodyGroups then
+                    bodyGroups = pickedOption.bodyGroups
+                end
+            end
+
+            if bodyGroups then
+                for k, v in pairs(bodyGroups) do
+                    if isnumber(k) then
+                        m:SetBodygroup(k, v)
+                    elseif isstring(k) then
+                        local id = m:FindBodygroupByName(k)
+                        if id >= 0 then
+                            m:SetBodygroup(id, v)
+                        end
+                    elseif isnumber(v) then
+                        m:SetBodygroup(v, 1)
+                    end
+                end
+            end
         end
     end
 
     local cm = ent.mirrorPill
     if IsValid(cm) then
-        cm:SetModel(ent:GetModel()) -- на всякий
+        cm:SetModel(ent:GetModel())
         cm:DrawModel()
     end
 end)

@@ -3,9 +3,11 @@ AddCSLuaFile()
 ENT.Base            = "base_nextbot"
 ENT.PrintName       = "Plushtrap"
 
-local PT_DEFAULT_SPEED = 540
+local PT_DEFAULT_SPEED = 460
 local PT_BOOST_SPEED = 600
 local PT_ACCEL_SPEED = 1000
+
+ENT.CurrentSpeed = PT_DEFAULT_SPEED
 
 function ENT:Initialize()
     self:SetModel("models/tetTris/FNaF/HW/Plushtrap.mdl")
@@ -16,25 +18,28 @@ function ENT:Initialize()
 	self:SetCollisionBounds( Vector(-12,-12,0), Vector(12,12,32) )
     
 	if SERVER then
-		self:SetCollisionBounds( Vector( -8, -8, 0 ), Vector( 12, 8, 32 ) )
-		--self:SetSolid(SOLID_NONE)
-		self:SetCollisionGroup(COLLISION_GROUP_PASSABLE_DOOR)
 		self:SetHealth(2000)
+		self.loco:SetStepHeight(35)
+		self.loco:SetClimbAllowed(true)
 		
 		self.loco:SetJumpHeight( 50 )
-		self.loco:SetDesiredSpeed(PT_DEFAULT_SPEED)
+		self.loco:SetDesiredSpeed(self.CurrentSpeed)
 		self.loco:SetAcceleration(PT_ACCEL_SPEED)
-		self.loco:SetDeceleration(200)
+		self.loco:SetDeceleration(PT_ACCEL_SPEED/4)
 	end
 	
 	self:PlaySequenceNoWait('summon')
 	self:SetMaterial("null")
+	self:DrawShadow(false)
 	
 	timer.Simple(0.5, function()
 		if IsValid(self) then
 			self:SetMaterial()
+			self:DrawShadow(true)
 			timer.Simple(1.5, function()
-				self.Active = true
+				if IsValid(self) then
+					self.Active = true
+				end
 			end)
 		end
 	end)
@@ -53,6 +58,9 @@ end
 function ENT:RunBehaviour()
     while (true) do
         local target = self:FindNearestPlayer()
+		
+		self.loco:SetDesiredSpeed( self.CurrentSpeed )
+		
         if IsValid(target) and self.Active then
 			self:PlaySequenceNoWait( 'run' )
 			self:StartActivity( ACT_RUN )
@@ -68,13 +76,12 @@ function ENT:RunBehaviour()
     end
 end
 
--- Функция поиска ближайшего игрока
 function ENT:FindNearestPlayer()
     local nearestPly
     local minDistSqr = math.huge
 
     for _, ply in player.Iterator() do
-        if ply:Alive() and ply:Team() != TEAM_SPECTATOR and ply:Team() != 2701 then
+        if ply:Alive() and ply:IsSurvivor() then
             local distSqr = self:GetPos():DistToSqr(ply:GetPos())
             if distSqr < minDistSqr then
                 minDistSqr = distSqr
@@ -87,58 +94,35 @@ function ENT:FindNearestPlayer()
 end
 
 function ENT:ChaseTarget(ply)
-    local path = Path("Follow")
-    path:SetMinLookAheadDistance(300)
-    path:SetGoalTolerance(20)
-
-    path:Compute(self, ply:GetPos())
-    if not path:IsValid() then return end
-
-    local stuckTime = CurTime()
-    
-    while path:IsValid() and IsValid(ply) and self.Active do
-        if path:GetAge() > 0.2 then
-            path:Compute(self, ply:GetPos())
-        end
-
-        path:Update(self)
-
-        if self.loco:IsStuck() then
-            self:HandleStuck()
-            return
-        end
-
-        if CurTime() - stuckTime > 5 then
-            self:HandleStuck()
-            return
-        end
-
-        coroutine.yield()
-    end
+	local path = Path("Follow")
+	path:SetMinLookAheadDistance(300)
+	path:SetGoalTolerance(20)
+	
+	path:Compute(self, ply:GetPos())
+	if not path:IsValid() then return end
+	
+	while path:IsValid() and IsValid(ply) and self.Active do
+		if path:GetAge() > 1 then
+			path:Compute(self, ply:GetPos())
+		end
+	
+		path:Update(self)
+	
+		if self.loco:IsStuck() then
+			self:HandleStuck()
+			return
+		end
+	
+		coroutine.yield()
+	end
 end
 
 function ENT:HandleStuck()
-    if not self.LastPos then self.LastPos = self:GetPos() end
-    if self.LastStuckCheck and CurTime() - self.LastStuckCheck < 2 or not self.Active then return end
-    self.LastStuckCheck = CurTime()
-
-    if self:GetPos():DistToSqr(self.LastPos) < 10 then
-        local navArea = navmesh.GetNearestNavArea(self:GetPos(), true, 100)
-        if IsValid(navArea) then
-            local newPos = navArea:GetRandomPoint()
-            if newPos then
-                self:SetPos(newPos)
-            end
-        else
-            self:SetPos(self:GetPos() + Vector(math.random(-100, 100), math.random(-100, 100), 10))
-        end
-
-        if self:IsOnGround() then
-            self.loco:Jump()
-        end
+    self.loco:ClearStuck()
+    local nav = navmesh.GetNearestNavArea(self:GetPos(), false, 150, false, true)
+    if IsValid(nav) then
+        self:SetPos(nav:GetCenter() + Vector(0,0,5))
     end
-
-    self.LastPos = self:GetPos()
 end
 
 function ENT:Think()
@@ -148,26 +132,30 @@ function ENT:Think()
 			or self.Target and (self.Target:GetPos().z > self:GetPos().z and self:GetPos():Distance(self.Target:GetPos()) < 250)) then
 				if self:IsOnGround() then
 					self.loco:Jump()
-					self.loco:SetAcceleration(50)
-					self.loco:SetDesiredSpeed(PT_BOOST_SPEED)
+					self.CurrentSpeed = PT_BOOST_SPEED
 				end
 				
 				timer.Create("pt_jump_delay".. self:EntIndex(), 2, 1, function() end)
 			end
 			for _, ply in player.Iterator() do
-				if ply:Alive() and ply:Team() != 2701 and self:GetPos():DistToSqr(ply:GetPos()) <= (75 * 75) then
+				if ply:Alive() and ply:IsSurvivor() and self:GetPos():DistToSqr(ply:GetPos()) <= (75 * 75) then
+				
+					local successHit = math.random(1,100) > 8
+				
 					local dmgInfo = DamageInfo()
-					dmgInfo:SetDamage(self.AttackDamage)
+					dmgInfo:SetDamage(self.AttackDamage + math.random(-1,1))
 					dmgInfo:SetAttacker(self)
 					dmgInfo:SetInflictor(self)
 					dmgInfo:SetDamageType(DMG_CLUB)
 	
-					ply:TakeDamageInfo(dmgInfo)
+					if successHit then
+						ply:TakeDamageInfo(dmgInfo)
+					end
 	
 					self.NextAttackTime = CurTime() + self.AttackDelay
 					
 					self:PillGesture('bite'.. (math.random(1,2) == 1 and "1" or "2"), 1, 1, 0, 1)
-					self:EmitSound("fnaf3/spr_punch_hit.wav")
+					self:EmitSound("fnaf3/" .. (successHit and "hit" or "hit-miss") ..".mp3")
 					break
 				end
 			end
@@ -195,8 +183,7 @@ function ENT:CheckDoorBreak()
 end
 
 function ENT:OnLandOnGround( ent )
-	self.loco:SetDesiredSpeed(PT_DEFAULT_SPEED)
-	self.loco:SetAcceleration(PT_ACCEL_SPEED)
+	self.CurrentSpeed = PT_DEFAULT_SPEED
 	
 	if self.Target then
 		self:StartActivity( ACT_RUN )

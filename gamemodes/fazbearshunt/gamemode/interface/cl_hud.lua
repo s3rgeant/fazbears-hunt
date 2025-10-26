@@ -105,12 +105,15 @@ function DrawKillerInterface()
 			local ability_button_x = 0
 
 			if abilityData.text then
-				if abilityData.keyboard then
+			
+				local singleButton = abilityData.text:len() <= 1
+			
+				if singleButton then
 					ability_button_x = abilityX + (205 * uiScale)
 					surface.SetMaterial(button_ability_mat)
 					surface.SetDrawColor(clr or Color(255,255,255,255))
 					surface.DrawTexturedRect(ability_button_x, abilityY + (abil_bg_height/2 - button_ability_height/2), button_ability_width, button_ability_height)
-				elseif abilityData.keyboard != nil then
+				elseif singleButton ~= nil then
 					ability_button_x = abilityX + (168 * uiScale)
 					surface.SetMaterial(mouse_ability_mat)
 					surface.SetDrawColor(clr or Color(255,255,255,255))
@@ -128,7 +131,7 @@ function DrawKillerInterface()
 				draw.SimpleText(
 					translatable_key,
 					"fh_hud_ability_button",
-					ability_button_x + (abilityData.keyboard and (button_ability_width/2) or (mouse_ability_width/2)),
+					ability_button_x + (singleButton and (button_ability_width/2) or (mouse_ability_width/2)),
 					abilityY + (abil_bg_outline_height / 2 - 20 * uiScale),
 					clr,
 					TEXT_ALIGN_CENTER
@@ -142,7 +145,7 @@ function DrawKillerInterface()
 
 			surface.SetFont("fh_hud_ability_title")
 			local textWidth, textHeight = surface.GetTextSize(translated_ability)
-			local maxTextWidth = (abilityData.keyboard and 170 or 140) * uiScale
+			local maxTextWidth = (singleButton and 170 or 140) * uiScale
 			local textX = abilityX + (18 * uiScale)
 			local textY = abilityY + (10 * uiScale)
 
@@ -175,7 +178,7 @@ function DrawKillerInterface()
 			end
 
 
-			local timer_width = (abilityData.keyboard and 172 or 122) * uiScale
+			local timer_width = (singleButton and 172 or 122) * uiScale
 			local timer_x = 13 * uiScale
 			local timer_y = 51 * uiScale
 			local max_timer_width = timer_width - (6 * uiScale)
@@ -245,7 +248,11 @@ function getAbilityTokens(name)
 	return currentAbilities[name].tokens
 end
 
-local function updateAnimHudHeader(name)
+local function updateAnimHudHeader(name, ent)
+	if ent.formTable.option == "halloween" then
+		name = "h_" .. name
+	end
+
 	killerIconPath = "vgui/animatronics_hud/heads/"..name..".png"
 	killerIcon = Material( killerIconPath, "smooth" )
 end
@@ -259,7 +266,6 @@ function assignAbilitiesByKiller(name)
             ability.name,
             ability.key,
             ability.duration or 0,
-            ability.keyboard,
             ability.tokens or -1,
             ability.hidden or false
         )
@@ -269,7 +275,7 @@ function assignAbilitiesByKiller(name)
     end
 end
 
-function addAbility(name, text, duration, keyboard, tokens, hidden)
+function addAbility(name, text, duration, tokens, hidden)
     if currentAbilities[name] then
         return
     end
@@ -277,7 +283,6 @@ function addAbility(name, text, duration, keyboard, tokens, hidden)
     currentAbilities[name] = {
         text = text,
         timeleft = duration,
-        keyboard = keyboard or false,
 		tokens = tokens or -1,
 		maxtokens = tokens or -1,
         hidden = hidden or false
@@ -338,19 +343,21 @@ function setTokens(name, tkns)
     end
 end
 
-function hud_ApplyKiller(name, color)
+function hud_ApplyKiller(name, ent, color)
 	table.Empty(currentAbilities)
 	hook.Add("HUDPaint", "DrawKillerInterface", DrawKillerInterface)
     currentKiller = name
     fh_hud_color = color
-	updateAnimHudHeader(currentKiller)
+	updateAnimHudHeader(currentKiller, ent)
 	assignAbilitiesByKiller(currentKiller)
 end
 
-hook.Add("PillApply", "fh_applyhudkiller", function(ply, name)
+hook.Add("PillApply", "fh_applyhudkiller", function(ply, ent)
 	local myself = LocalPlayer()
 	
 	if IsValid(myself) and ply == myself then
+		local name = ent.formTable.name
+	
 		local killerData = killers.getAll()
 
 		local clr = Color(45,45,45)
@@ -362,7 +369,7 @@ hook.Add("PillApply", "fh_applyhudkiller", function(ply, name)
 			name = killer.name
 		end
 
-		hud_ApplyKiller(name, clr)
+		hud_ApplyKiller(name, ent, clr)
 	end
 end)
 

@@ -42,7 +42,6 @@ end)
 
 pills.register("pill_clown",{
 	printName="Clown",
-	bodyGroups={0},
 	modelScale="1.2",
 	model="models/tettris/FNaF/SD/springtrap_clown.mdl",
 	anims={
@@ -197,10 +196,17 @@ local spring_rage_movement = {210, 600, 70, 255} -- дохуя скромник
 pills.register("pill_springtrap",{
 	printName="Springtrap",
 	options=function() return {
-		IsHalloween() and {skin=2} or {}
+		["default"] = {
+			-- скин без ничего
+		},
+		["halloween"] = {
+			skin=2,
+			bodyGroups = { [24] = 1 },
+		}
 	} end,
-	bodyGroups=IsHalloween() and {24} or {},
+	option=IsHalloween() and "halloween" or "default",
 	--[[
+	bodyGroups=IsHalloween() and {[24] = 1} or {},
 	boneMorphs={
 		["bip_eyelid_0_R"] = {scale = Vector(0,0,0)},
 		["bip_eyelid_1_R"] = {scale = Vector(0,0,0)},
@@ -572,7 +578,6 @@ local pt_speed_slowed = {410,150,0}
 
 pills.register("pill_plushtrap",{
 	printName="Plushtrap",
-	bodyGroups={0},
 	modelScale="1.24",
 	model="models/tetTris/FNaF/HW/Plushtrap.mdl",
 	anims={
@@ -789,7 +794,7 @@ function plushtrap_request_complete(springtrap, ply)
 			springtrap:SendLua( "LocalPlayer():ChatPrint( language.GetPhrase('fazhunt.springtrap.plushdead') )" )
 		end)
 	end
-							
+	
 	spectators = team.GetPlayers(TEAM_SPECTATOR)
 	
 	if !table.IsEmpty(spectators) then

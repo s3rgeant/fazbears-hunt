@@ -84,6 +84,8 @@ function render.DrawMercVideoGlitch(strength)
     render.DrawScreenQuad()
 end
 
+local magnetStrength = 0.1
+
 local function scaredNear()
     _G.fh_is_scared_lock = true
 
@@ -114,6 +116,7 @@ local function scaredNear()
 		hook.Remove("InputMouseApply", "fh_scared_no_mouse")
 		hook.Remove("StartCommand", "fh_lock_view")
         _G.fh_is_scared_lock = false
+		magnetStrength = 0.1
 		
 		net.Start("cl_target_wgfreddy_scared")
 		net.SendToServer()
@@ -126,13 +129,15 @@ local progressDuration = 2.0
 local scareImmunityUntil = 0
 
 local function stopScareProgress()
-	if IsValid(progressSoundChannel) then
-		progressSoundChannel:Stop()
-	end
+	if not IsValid(progressSoundChannel) then return end
+	
+	progressSoundChannel:Stop()
 	progressSoundChannel = nil
 	progressStartTime = 0
 	
 	scareImmunityUntil = CurTime() + 0.2
+	
+	magnetStrength = magnetStrength + 0.05
 	
 	hook.Remove("CreateMove", "fh_gfreddy_magnet_view")
 end
@@ -224,7 +229,6 @@ local function fh_gfreddy_check_scarysound()
 					local diff = desiredAngle - currentAngle
 					diff:Normalize()
 
-					local magnetStrength = 0.1
 					local newAng = currentAngle + Angle(diff.p * magnetStrength, diff.y * magnetStrength, 0)
 					cmd:SetViewAngles(newAng)
 				end)
@@ -244,6 +248,8 @@ local function fh_gfreddy_check_scarysound()
 				
 				net.Start("cl_target_wgfreddy_scared")
 				net.SendToServer()
+				
+				magnetStrength = 0.1
 				
 				scareImmunityUntil = CurTime() + 1
 			end

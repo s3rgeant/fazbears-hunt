@@ -76,20 +76,39 @@ function fh.randomChoice(t)
     return t[math.random(#t)]
 end
 
-lastKillers = lastKillers or {}
+LastKillers = LastKillers or {}
 
 local function GetPlyID(ply)
     if not IsValid(ply) then return nil end
-    return ply:SteamID64()
+    return tostring(ply:SteamID64())
 end
 
-local function WasKillerRecently(ply)
-    local id = GetPlyID(ply)
-    return id and lastKillers[id] ~= nil
+local function ToKey(id)
+    return "sid_" .. tostring(id)
 end
 
-local function RemoveKillerID(id)
-    lastKillers[id] = nil
+local function FromKey(key)
+    return tostring(key):gsub("^sid_", "")
+end
+
+hook.Add("Initialize", "FH_LoadLastKillers", function()
+    local raw = cookie.GetString("fh_lastkillers", "")
+    if raw and raw ~= "" then
+        local ok, data = pcall(util.JSONToTable, raw)
+        if ok and istable(data) then
+            local fixed = {}
+            for k, v in pairs(data) do
+                fixed[tostring(k)] = tonumber(v) or 0
+            end
+            LastKillers = fixed
+            print("[FH] Загружена таблица LastKillers (" .. table.Count(fixed) .. " записей)")
+        end
+    end
+end)
+
+local function SaveLastKillers()
+    local json = util.TableToJSON(LastKillers)
+    cookie.Set("fh_lastkillers", json)
 end
 
 local lobbyDuration = 120
@@ -160,11 +179,6 @@ function assignKillers()
 	disallowTime = CurTime() + 60
 	
 	for v, _ in pairs(curKillers) do
-		local id = GetPlyID(v)
-        if id and not lastKillers[id] then
-            lastKillers[id] = 0
-        end
-	
 		net.Start("fh_let_killers_choose")
 		net.WriteTable(availableKillers)
 		net.Send(v)
@@ -327,16 +341,10 @@ function endRound(killerVictory, duration)
 	if timer.Exists("RandomGifts") then
 		timer.Remove("RandomGifts")
 	end
-		
-	for id, v in pairs(lastKillers) do
-        local ply = player.GetBySteamID64(id)
-        if IsValid(ply) then
-            lastKillers[id] = v + 1
-            if lastKillers[id] > 5 then
-                RemoveKillerID(id)
-            end
-        end
-    end
+	
+	if timer.Exists("EndGameTimer") then
+		timer.Remove("EndGameTimer")
+	end
 	
 	if killerVictory then
 		local win_camera = ents.FindByClass("fh_win_camera")[1]
@@ -478,7 +486,7 @@ function startGame(forceid)
 	
 	fh.SelectRoundType(forceid or nil)
 	
-	local fh_startgame = hook.Run("fh_startgame", roundType)
+	local fh_startgame = hook.Run("fh_startgame", roundType, animatronics)
 	
 	if fh_startgame != nil and fh_startgame == false then 
 		return 
@@ -985,10 +993,6 @@ local function animatronicsVictory(ply)
 	endRound(true)
 	
 	animatronics_win_count = animatronics_win_count + 1
-	
-	if timer.Exists("EndGameTimer") then
-		timer.Remove("EndGameTimer")
-	end
 end
 
 function survivorsWin()
@@ -1067,7 +1071,7 @@ hook.Add( "PlayerShouldTakeDamage", "fh_shouldtakedamage", function( ply, attack
 	end
 end )
 
-hook.Add("PillApply", "fh_joinpill", function(ply, name)
+hook.Add("PillApply", "fh_joinpill", function(ply, ent)
 	animatronics[ply] = true
 	survivors[ply] = nil
 	
@@ -1239,43 +1243,61 @@ function fh.GetGameDuration()
 	return conVars.fh_round_duration:GetInt() * 60
 end
 
-function fh.GetEarnedKillers(players)
-    local toRemove = {}
-	for _, ply in ipairs(players) do
-		if WasKillerRecently(ply) then
-			table.insert(toRemove, ply)
+hook.Add("fh_startgame", "FH_UpdateLastKillers", function(killerVictory, anims)
+    for ply, _ in pairs(anims) do
+        if IsValid(ply) then
+			local id = GetPlyID(ply)
+			local key = ToKey(id)
+			if id then
+				LastKillers[key] = 0
+			end
 		end
 	end
-	for _, ply in ipairs(toRemove) do
-		table.RemoveByValue(players, ply)
+
+	for k,v in pairs(LastKillers) do
+		LastKillers[k] = v + 1
+
+		if LastKillers[k] > 15 then
+			LastKillers[k] = nil
+		end
 	end
-	
-    if table.IsEmpty(players) and not table.IsEmpty(lastKillers) then
-        local chosenLastKillerID = nil
-        local high = 0
 
-        for id, v in pairs(lastKillers) do
-            if v >= high then
-			
-                chosenLastKillerID = id
-                high = v
+    SaveLastKillers()
+end)
+
+function fh.GetEarnedKillers(players)
+    if not istable(players) then return {} end
+
+    local bestVal = nil
+    local bestList = {}
+
+    for _, ply in ipairs(players) do
+        if not IsValid(ply) then continue end
+        local id = GetPlyID(ply)
+        local key = ToKey(id)
+        local val = LastKillers[key]
+
+        if val == nil then
+            if bestVal ~= "__NIL__" then
+                bestList = { ply }
+                bestVal = "__NIL__"
+            else
+                table.insert(bestList, ply)
             end
-        end
-
-        if chosenLastKillerID then
-            local ply = player.GetBySteamID64(chosenLastKillerID)
-            if IsValid(ply) then
-                table.insert(players, ply)
-                lastKillers[chosenLastKillerID] = 0
+        else
+            val = tonumber(val) or 0
+            if bestVal ~= "__NIL__" then
+                if bestVal == nil or val > bestVal then
+                    bestVal = val
+                    bestList = { ply }
+                elseif val == bestVal then
+                    table.insert(bestList, ply)
+                end
             end
         end
     end
 
-    if table.IsEmpty(players) then
-        players = player.GetAll()
-    end
-
-    return players
+    return bestList
 end
 
 local round_music = {
@@ -1420,11 +1442,6 @@ fh.RegisterRoundType("springtrap", 1, function()
 		
 		chosenPlayer.lobbyFreeze = true
 		chosenPlayer:ReturnToSpawn()
-		
-		local id = GetPlyID(chosenPlayer)
-		if id and not lastKillers[id] then
-			lastKillers[id] = 0
-		end
 	end
 	
 	RandomTaser()

@@ -252,7 +252,7 @@ local positiveEffects = {
 				return false
 			end
 		
-			if team.NumPlayers(2701) > 1 and math.random(1,5) == 1 then
+			if team.NumPlayers(2701) > 1 and math.random(1,10) == 1 then
 				if !ply:HasWeapon("weapon_killmask") then
 					return true
 				end

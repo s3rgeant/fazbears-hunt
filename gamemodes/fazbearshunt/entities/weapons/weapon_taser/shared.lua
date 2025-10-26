@@ -50,7 +50,9 @@ if SERVER then
     util.AddNetworkString("StunEffect_Shake")
 end
 
-local has_tasered_vl = {"pill_wfreddy2", "pill_wbonnie2", "pill_wchica2", "pill_wfoxy2", "pill_endo02", "pill_clown", "pill_plushtrap"}
+local has_tasered_vl = {"pill_wfreddy2", "pill_wbonnie2", "pill_wchica2", 
+	"pill_wfoxy2", "pill_endo02", "pill_clown", "pill_plushtrap",
+	"pill_mangle"}
 
 function SWEP:PrimaryAttack()
 

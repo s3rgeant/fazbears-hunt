@@ -81,9 +81,14 @@ pills.register("pill_wfreddy2",{
 	printName="Withered Freddy",
 	model="models/speps/pill/" .. model_prefix .. "freddy.mdl",
 	options=function() return {
-		IsHalloween() and {skin=2} or {}
+		["default"] = {
+			bodyGroups = {[0] = 1},
+		},
+		["halloween"] = {
+			skin=2,
+		}
 	} end,
-	bodyGroups=!IsHalloween() and {0} or {},
+	option=IsHalloween() and "halloween" or "default",
 	--[[
 	-- bear5
 	boneMorphs={
@@ -520,7 +525,17 @@ end
 pills.register("pill_wbonnie2",{
 	printName="Withered Bonnie",
 	model="models/speps/pill/" .. model_prefix .. "bonnie.mdl",
-	bodyGroups=IsHalloween() and {0} or {math.random(1,1000) == 2 and 0 or 10},		-- рофлянка лицо бонни
+		
+	options=function() return {
+		["default"] = {
+			bodyGroups = math.random(1,1000) == 2 and { [0] = 1 } or { [10] = 1 }
+		},
+		["halloween"] = {
+			bodyGroups = { [0] = 1 },
+		}
+	} end,
+	option=IsHalloween() and "halloween" or "default",
+	
 	anims={
 		default={
 			idle="idle",
@@ -759,9 +774,17 @@ end
 pills.register("pill_wchica2",{
 	printName="Withered Chica",
 	model="models/speps/pill/oldchica.mdl",
+		
 	options=function() return {
-		IsHalloween() and {skin=1} or {}
+		["default"] = {
+			-- ничего
+		},
+		["halloween"] = {
+			skin = 1
+		}
 	} end,
+	option=IsHalloween() and "halloween" or "default",
+	
 	anims={
 		default={
 			idle="idle",
@@ -921,7 +944,7 @@ pills.register("pill_wchica2",{
 
 --foxy
 
-local stunned_foxy_movement_speed = {80, 80, 70, 100}
+local stunned_foxy_movement_speed = {120, 120, 70, 100}
 
 function StunnedFoxyMovementSpeed()
 	return stunned_foxy_movement_speed
@@ -930,7 +953,17 @@ end
 pills.register("pill_wfoxy2",{
 	printName="Withered Foxy",
 	model="models/speps/pill/" .. model_prefix .. "foxy.mdl",
-	bodyGroups=IsHalloween() and {} or {0},
+		
+	options=function() return {
+		["default"] = {
+			bodyGroups = { [0] = 1 }
+		},
+		["halloween"] = {
+			-- ничего
+		}
+	} end,
+	option=IsHalloween() and "halloween" or "default",
+	
 	anims={
 		default={
 			idle="idle",
@@ -1135,9 +1168,19 @@ local sfreddy_noclip_movement = {500, 600, 500, 250} -- это на случай
 pills.register("pill_sfreddy2",{
 	printName="Shadow Freddy",
 	model="models/speps/pill/oldgoldenfreddy.mdl",
+		
+	options=function() return {
+		["default"] = {
+			skin = 1,
+		},
+		["halloween"] = {
+			skin = 2,
+		}
+	} end,
+	option=IsHalloween() and "halloween" or "default",
 
-	skin=IsHalloween() and 2 or 1,
-	bodyGroups={12},
+	bodyGroups={[12] = 1},
+	
 	anims={
 		default={
 			idle="sidle",
@@ -1384,9 +1427,17 @@ pills.register("pill_sfreddy2",{
 pills.register("pill_endo02",{
 	printName="Endo02",
 	model="models/speps/pill/endo02.mdl",
+		
 	options=function() return {
-		IsHalloween() and {skin=1} or {}
+		["default"] = {
+			-- nichego
+		},
+		["halloween"] = {
+			skin = 1,
+		}
 	} end,
+	option=IsHalloween() and "halloween" or "default",
+	
 	anims={
 		default={
 			idle="idle",
@@ -1495,40 +1546,13 @@ pills.register("pill_endo02",{
 		
 		landTripCheck(ply, ent, "endo")
 	end,
-	die=function(ply,ent)
-		local model = ent:GetModel()
-		local skin = ent:GetSkin()
-		
-		local pos = ply:GetPos()
-		local ang = ply:GetAngles()
-		
-		ragdoll = ents.Create("prop_ragdoll")
-		ragdoll:SetModel(model)
-		ragdoll:SetSkin(skin)
-		ragdoll:SetPos(pos)
-		ragdoll:SetAngles(ang)
-		ragdoll:SetOwner(ply)
-		ragdoll:Spawn()
-		ragdoll:Activate()
-
-		local plyvel = ply:GetVelocity()
-		for i = 0, ragdoll:GetPhysicsObjectCount() - 1 do
-			local bone = ragdoll:GetPhysicsObjectNum(i)
-			
-			if bone and bone:IsValid() then
-				local bonepos, boneang = ent:GetBonePosition(ragdoll:TranslatePhysBoneToBone(i))
-				
-				if bonepos and boneang then
-					bone:SetPos(bonepos)
-					bone:SetAngles(boneang)
-					bone:SetVelocity(plyvel)
-				end
-			end
-		end
-	end,
 
 	reload=function(ply,ent)
 		highlight.ByDistance(ply, ent)
+	end,
+
+	restore=function(ply,ent)
+		endoRelease(ply)
 	end,
 	jump=function(ply,ent)
 		ent:PillSound("jump",false)
@@ -1599,7 +1623,7 @@ local gfreddy_movement = {130, 130, 0, 0}
 pills.register("pill_wgfreddy2",{
 	printName="Withered Golden Freddy",
 	model="models/speps/pill/oldgoldenfreddy.mdl",
-	bodyGroups={0},
+	bodyGroups={[0] = 1},
 	anims={
 		default={
 			idle="idle",
@@ -1809,7 +1833,7 @@ pills.register("pill_wgfreddy2",{
 pills.register("pill_wgfreddyhead2",{
 	printName="Withered Golden Freddy Head",
 	model="models/speps/pill/oldgoldenfreddyhead.mdl",
-	bodyGroups={0},
+	bodyGroups={[0] = 1},
 	anims={
 		default={
 			idle="idle",
@@ -2229,6 +2253,7 @@ function takePlayer(ply, ent)
         noClipBlockedPlayers[nearestPlayer] = true
 
         playersHoldingRightClick[ply] = nearestPlayer
+		ply._endoHoldingPlayer = nearestPlayer
 
         timer.Create("UpdateCameraAndPosition" .. ply:UserID(), 0.01, 0, function()
 			if !IsValid(ply) or !ply:KeyDown(IN_ATTACK2) then
@@ -2279,7 +2304,9 @@ end)
 function endoRelease(ply)
 	local target = playersHoldingRightClick[ply]
 	if IsValid(target) then
-		ply:EmitSound("throw_player.wav")
+		if ply:Alive() then
+			ply:EmitSound("throw_player.wav")
+		end
 		if math.random(1,10) > 2 then
 			playVoiceline("endo", 'throw', ply, 0.1)
 		end
@@ -2360,6 +2387,7 @@ function endoRelease(ply)
 	end
 	
 	playersHoldingRightClick[ply] = nil
+	ply._endoHoldingPlayer = nil
 	timer.Remove("UpdateCameraAndPosition" .. ply:UserID())
 end
 

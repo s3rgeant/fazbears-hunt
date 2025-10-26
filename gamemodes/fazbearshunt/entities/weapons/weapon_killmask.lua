@@ -119,6 +119,8 @@ function SWEP:SpringLock()
 			
 			self:EmitSound("weapons/springlock.mp3", 65, 100, 0.2, CHAN_AUTO, 0, 1, rf)
 			
+			ply:StripWeapon("weapon_killmask")
+			
 			ply:SetDSP(25)
 			ply:Freeze(true)
 			ply:SetNW2Bool("KillerObsessed", true)
