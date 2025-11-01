@@ -326,7 +326,7 @@ pills.register("pill_springtrap",{
 				
 							print(ply:Nick() .. " is playing Springtrap. His rage progress: ( " ..spring_rage_total .. " / 10 )")
 							
-							if spring_rage_total >= 10 then
+							if spring_rage_total >= 60 then
 							
 								local val = 0
 								local loh
