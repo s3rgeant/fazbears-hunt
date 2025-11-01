@@ -131,6 +131,7 @@ end
 local ignoredCollisionGroups = {COLLISION_GROUP_DEBRIS_TRIGGER, COLLISION_GROUP_PASSABLE_DOOR, COLLISION_GROUP_WEAPON}
 
 local function IsPlayerStuck(ply)
+    if !IsValid(ply) then return false end
     local tr = util.TraceHull({
         start = ply:GetPos(),
         endpos = ply:GetPos(),

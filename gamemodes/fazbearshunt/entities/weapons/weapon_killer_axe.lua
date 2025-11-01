@@ -154,7 +154,7 @@ function SWEP:DealDamage()
 		
 		if ent.formTable.name == "pill_endo02" then
 			if target._endoHoldingPlayer == ply then
-				endoRelease(target)
+				endoRelease(target, true)
 	
 				cooldown.Set(target, 'grab', 6)
 			
@@ -164,6 +164,12 @@ function SWEP:DealDamage()
 				net.Send(target)
 			end
 		end
+	end
+	
+	if targetIsSurv then
+		ply:EmitSound("weapons/axe/melee_axe_0" .. math.random(1,3) .. ".wav", 45, 100, 0.4, CHAN_WEAPON )
+	else
+		ply:EmitSound("weapons/axe/axe_impact_world" .. math.random(1,2) .. ".wav", 45, 100, 0.4, CHAN_WEAPON )
 	end
 
 	if targetIsSurv then
@@ -213,7 +219,6 @@ function SWEP:Think()
 	
     if self:GetNextIdle() > 0 and curtime >= self:GetNextIdle() then
         self:SendWeaponAnim(ACT_VM_IDLE)
-        self:SetNextIdle(0)
         self:SetNextIdle(0)
     end
 
@@ -299,12 +304,14 @@ if CLIENT then
 		if IsValid(wep) and wep:GetClass() == "weapon_killer_axe" then
 			local nearPlayers = {}
 			
-			for _, ply in pairs(team.GetPlayers( 2701 )) do
+			for _, ply in player.Iterator() do
 				if !ply:Alive() or ply:GetNoDraw() then continue end
 				if ply ~= owner and ply:GetPos():Distance(owner:GetPos()) <= 2600 then
 					local ent = pills.getMappedEnt(ply)
+
+					if IsValid(ent) and ent.formTable.name == "pill_wgfreddy2" and !owner:GetNW2Bool("_OUTWORLD_target") then continue end
 					
-					if !IsValid(ent) then continue end
+					if !IsValid(ent) then ent = ply end
 					table.insert(nearPlayers, ent)
 				end
 			end
@@ -380,7 +387,7 @@ end)
 
 hook.Add( "SetupPlayerVisibility", "fh_axe_visibility", function( ply, viewent )
 	for _, sex in player.Iterator() do
-		if sex ~= ply and sex:GetNW2Bool("KillerObsessed") then
+		if sex ~= ply and (sex:GetNW2Bool("KillerObsessed") or ply:GetNW2Bool("KillerObsessed"))then
 			AddOriginToPVS(sex:GetPos())
 		end
 	end
@@ -410,6 +417,18 @@ hook.Add("PillApply", "fh_axe_joinpill", function(ply, name)
 	end
 end)
 
+hook.Add("FH_HandleGiftPickup", "fh_axe_giftpickup", function(gift, ply)
+	if ply:GetNW2Bool("KillerObsessed") then
+		return false
+	end
+end)
+
+hook.Add("FH_ShouldPlayerReceiveGifts", "fh_axe_giftpickup", function(ply)
+	if ply:GetNW2Bool("KillerObsessed") then
+		return false
+	end
+end)
+
 hook.Add( "PlayerDeath", "fh_axe_anim_death", function( ply, inflictor, attacker )
 	if ply:GetNW2Bool("KillerObsessed") then
 		ply:SetNW2Bool("KillerObsessed", false)
@@ -418,19 +437,31 @@ hook.Add( "PlayerDeath", "fh_axe_anim_death", function( ply, inflictor, attacker
 	if ply:GetNW2Bool("KillerMaskEquiped") then
 		ply:SetNW2Bool("KillerMaskEquiped", false)
 	end
-	if ply:IsAnimatronic() and IsValid(attacker) and attacker:IsPlayer() and inflictor:GetClass() == "weapon_killer_axe" then
-		local effectdata = EffectData()
-		effectdata:SetOrigin(ply:GetPos())
-		effectdata:SetScale(1)
-		util.Effect("Explosion", effectdata, true, true)
-		
-		for i = 1, 45 do
-			timer.Simple(0 + i/25, function()
-				if IsValid(attacker) and attacker:Health() < 100 then
-					attacker:SetHealth(attacker:Health() + 1)
-				end
-			end) 
+	
+	if IsValid(attacker) and attacker:IsPlayer() and IsValid(inflictor) and inflictor:GetClass() == "weapon_killer_axe" then
+		if ply:IsAnimatronic() then
+			local effectdata = EffectData()
+			effectdata:SetOrigin(ply:GetPos())
+			effectdata:SetScale(1)
+			util.Effect("Explosion", effectdata, true, true)
+			
+			for i = 1, 40 do
+				timer.Simple(0 + i/25, function()
+					if IsValid(attacker) and attacker:Health() < 100 then
+						attacker:SetHealth(attacker:Health() + 1)
+					end
+				end) 
+			end
+		else
+			for i = 1, 8 do
+				timer.Simple(0 + i/8, function()
+					if IsValid(attacker) and attacker:Health() < 100 then
+						attacker:SetHealth(attacker:Health() + 1)
+					end
+				end) 
+			end
 		end
+		hook.Run("KillerAxeKilled", attacker, ply)
 	end
 end)
 

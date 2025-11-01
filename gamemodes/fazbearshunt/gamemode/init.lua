@@ -765,15 +765,22 @@ hook.Add( "PlayerCanPickupWeapon", "no_double_pickup", function( ply, weapon )
     if ply:HasWeapon( weapon:GetClass() ) then
 		return false
 	end
-end )
+end)
 
 hook.Add("PlayerDisconnected", "fh_playerleft", function(ply)
 	survivors[ply] = nil
 	if animatronics[ply] then
 		animatronics[ply] = nil
 		if isGameOn and !roundEnding then
+			local str = ply:Nick()
+			local ent = ply:GetPill()
+			if IsValid(ent) then
+				if ent.formTable.printName then
+					str = str .. " ( " .. ent.formTable.printName .. " )"
+				end
+			end
 			net.Start("fh_animatronic_left_chatmessage")
-			net.WriteString(ply:Nick())
+			net.WriteString(str)
 			net.Broadcast()
 		end
 	end
@@ -846,6 +853,23 @@ if PLAYER then
 	end
 end
 
+hook.Add("PostPlayerDeath", "fh_killmask_outworld", function()
+	if isGameOn and !roundEnding and table.Count(survivors) == 1 and table.Count(animatronics) == 1 then
+		local goldenfreddy = fh.GetActiveUsedKiller("pill_wgfreddy2")
+		local lastsurvivor
+
+		for ply, _ in pairs(survivors) do
+			lastsurvivor = ply
+		end
+
+		if !lastsurvivor:GetNW2Bool("KillerObsessed") then return end
+
+		if IsValid(goldenfreddy) and IsValid(goldenfreddy:GetPill()) then
+			start_outworld_battle(goldenfreddy, goldenfreddy:GetPill(), lastsurvivor)
+		end
+	end
+end)
+
 hook.Add("EntityTakeDamage", "fh_anti_animatronic_death", function(target, dmginfo)
 	if conVars.fh_respawn_dead_animatronics:GetBool() then
 		if IsValid(target) and target:IsPlayer() and target:IsAnimatronic() then
@@ -868,12 +892,6 @@ hook.Add("EntityTakeDamage", "fh_anti_animatronic_death", function(target, dmgin
 				return true
 			end
 		end
-	end
-end)
-
-hook.Add("ShouldSpawnRagdoll", "fh_no_anim_ragdolls", function(ply)
-	if ply:Team() == 2701 then
-		return false
 	end
 end)
 
@@ -1296,6 +1314,10 @@ function fh.GetEarnedKillers(players)
             end
         end
     end
+	
+	if table.IsEmpty(bestList) then
+		return players
+	end
 
     return bestList
 end

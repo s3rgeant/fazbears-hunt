@@ -62,7 +62,7 @@ function SWEP:PrimaryAttack()
 	
 	if !ply:GetNWBool("isBlightRushing") then return end
 	
-	ply.blightRushStart = ct + 1.5
+	ply:SetNWFloat("RushEndTime", ct + 1)
 	
 	if !IsValid(ent) then return end
 	

@@ -188,7 +188,7 @@ end
 
 function EndRound()
 	if !roundEnding and isGameOn then
-		endRound(true, 4)
+		endRound(true, 6)
 		endgame_shared()
 		
 		net.Start('fh_net_scarysound')

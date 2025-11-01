@@ -11,6 +11,8 @@ util.PrecacheSound("fnaf2/gfreddy/outworld_ambient_2.wav")
 
 team.SetUp( 27, "Secret Animatronics", Color(255, 0, 0), true )
 
+local gfreddy_enraged_movement = {130, 560, 130, 250}
+
 hook.Add("fh_startgame", "spawn_wgfreddy", function(roundType)
 	if !conVars.fh_goldenfreddy_spawning:GetBool() then return end
 
@@ -271,7 +273,9 @@ if CLIENT then
 			if ply == exceptPly then continue end
 		
 			ply:SetNoDraw(true)
-			ply:DrawShadow(false)
+			if !IsValid(ply:GetPill()) then
+				ply:DrawShadow(true)
+			end
 			
 			for _, wep in ipairs(ply:GetWeapons()) do
 				if IsValid(wep) then
@@ -286,7 +290,9 @@ if CLIENT then
 	local function startDrawingEveryone()
 		for _, ply in player.Iterator() do
 			ply:SetNoDraw(false)
-			ply:DrawShadow(true)
+			if !IsValid(ply:GetPill()) then
+				ply:DrawShadow(true)
+			end
 			
 			for _, wep in ipairs(ply:GetWeapons()) do
 				if IsValid(wep) then
@@ -303,7 +309,9 @@ if CLIENT then
 		
 		if !IsValid(myself) or !myself:Alive() then return end
 		
-		if ply:GetNW2Bool("_OUTWORLD_target") and !myself:GetNW2Bool("_OUTWORLD_gfreddy") or myself:GetNW2Bool("_OUTWORLD_target") and ply ~= myself or myself:GetNW2Bool("_OUTWORLD_gfreddy") and !ply:GetNW2Bool("_OUTWORLD_target") then
+		if ply:GetNW2Bool("_OUTWORLD_target") and !myself:GetNW2Bool("_OUTWORLD_gfreddy") 
+		or (myself:GetNW2Bool("_OUTWORLD_target") and ply ~= myself) 
+		or (myself:GetNW2Bool("_OUTWORLD_gfreddy") and !ply:GetNW2Bool("_OUTWORLD_target")) then
 			ply:DestroyShadow()
 		
 			for _, wep in ipairs(ply:GetWeapons()) do
@@ -336,7 +344,7 @@ if CLIENT then
 		local myself = LocalPlayer()
 		if myself:Alive() then
 			if myself:GetNW2Bool("_OUTWORLD_target") or myself:GetNW2Bool("_OUTWORLD_gfreddy") then
-				if t.Entity:GetClass() == "pill_costume" then
+				if IsValid(t.Entity) and t.Entity:GetClass() == "pill_costume" then
 					if t.Entity.formTable and t.Entity.formTable.name ~= "pill_wgfreddy2" then
 						return false
 					end
@@ -345,10 +353,22 @@ if CLIENT then
 		end
 	end)
 
-	hook.Add( "FH_HandleTerrorRadius", "fh_wgfreddy_tr_handler", function( t )
+	hook.Add( "FH_HandleMineTerrorRadius", "fh_wgf_target_tr_handler", function( ply, theme )
 		local myself = LocalPlayer()
 		
-		if myself:GetNW2Bool("_OUTWORLD_target") or myself:GetNW2Bool("_OUTWORLD_gfreddy") then
+		if myself:GetNW2Bool("_OUTWORLD_target") and !ply:GetNW2Bool("_OUTWORLD_gfreddy") then
+			return false
+		end
+	end)
+
+	hook.Add( "FH_HandleKillerTerrorRadius", "fh_wgf_tr_handler", function( killer, theme )
+		local myself = LocalPlayer()
+		
+		if myself:GetNW2Bool("_OUTWORLD_target") then
+			return false
+		end
+
+		if myself:GetNW2Bool("_OUTWORLD_gfreddy") and !killer:GetNW2Bool("_OUTWORLD_target") then
 			return false
 		end
 	end)
@@ -478,24 +498,26 @@ if CLIENT then
 		
 		fh_cl_draw_plushies()
 		
-		myself:SetDSP(16)
-		
-		sound.PlayFile("sound/fnaf2/gfreddy/outworld_enter.wav", "noplay", function(chan, errID, errStr)
-			if IsValid(chan) then
-				chan:SetPos(LocalPlayer():GetPos())
-				chan:Play()
-			end
-		end)
-		
-		sound.PlayFile("sound/fnaf2/gfreddy/outworld_ambient_loop.wav", "noplay noblock", function(chan, errID, errStr)
-			if IsValid(chan) then
-				outworld_ambient = chan
-				chan:SetVolume(1)
-				chan:SetPos(LocalPlayer():GetPos())
-				chan:EnableLooping(true)
-				chan:Play()
-			end
-		end)
+		if !myself:GetNW2Bool("KillerObsessed") then
+			myself:SetDSP(16)
+			
+			sound.PlayFile("sound/fnaf2/gfreddy/outworld_enter.wav", "noplay", function(chan, errID, errStr)
+				if IsValid(chan) then
+					chan:SetPos(LocalPlayer():GetPos())
+					chan:Play()
+				end
+			end)
+			
+			sound.PlayFile("sound/fnaf2/gfreddy/outworld_ambient_loop.wav", "noplay noblock", function(chan, errID, errStr)
+				if IsValid(chan) then
+					outworld_ambient = chan
+					chan:SetVolume(1)
+					chan:SetPos(LocalPlayer():GetPos())
+					chan:EnableLooping(true)
+					chan:Play()
+				end
+			end)
+		end
 		
 		myself.outworld = true
 		myself:ScreenFade(SCREENFADE.IN, Color(0,0,0), 4, 0.5)
@@ -976,10 +998,6 @@ function start_outworld(ply, ent, target)
 	net.WritePlayer(ply)
 	net.Send(target)
 	
-	if target:HasWeapon("weapon_crapvidcam") then
-		target:StripWeapon("weapon_crapvidcam")
-	end
-	
 	local timer_name = "plushie_hint_" .. ply:EntIndex()
 	
 	timer.Create(timer_name, 20, 0, function()
@@ -1028,6 +1046,63 @@ function start_outworld(ply, ent, target)
 	outworld_victims_count[target] = 0
 	
 	net.Start("fh_wgfreddy_target_outworld_start")
+	net.WritePlayer(ply)
+	net.Send(target)
+	
+	hook.Run("FH_OutworldStart", ply, target)
+end
+
+function start_outworld_battle(ply, ent, target)
+	net.Start("fh_play_sound")
+	net.WriteString('fnaf2/gfreddy/gfreddy_killermask_enter.wav')
+	net.Broadcast()
+	
+	net.Start("fh_wgfreddy_outworld_start") -- для ЗФ
+	net.WritePlayer(target)
+	net.Send(ply)
+	
+	ply:ChatPrint(target:Nick() .. " - твоя цель.")
+	
+	target:SetNWBool("can_be_gf_scared", true)
+	ply:SetNWBool("wgfreddy_enraged", true)
+	
+	ply:SetNW2Bool("_OUTWORLD_gfreddy", true)
+	target:SetNW2Bool("_OUTWORLD_target", true)
+	
+	ply:SetPushImmune(true)
+	ply:SetPushBlocked(true)
+	target:SetPushImmune(true)
+	target:SetPushBlocked(true)
+	
+	target:SetAudible(false)
+	ply:ForceListenPlayer(target)
+	
+	target:SetCollisionGroup(COLLISION_GROUP_PLAYER_MOVEMENT)
+	
+	ply:DrawViewModel(true)
+	if ent.cloaked then
+		
+		ent:SetMaterial()
+		ent:DrawShadow(true)
+			
+		ply:SetCollisionGroup(COLLISION_GROUP_PLAYER_MOVEMENT)
+		ply:CollisionRulesChanged()
+					
+		ent.cloaked=false
+		timer.Simple(0.5, function()
+			if IsValid(wgfreddy) and wgfreddy:IsStuck() then
+				wgfreddy:Unstuck()
+			end
+		end)
+	end
+	
+	ent:SetSpeed(unpack(gfreddy_enraged_movement))
+	
+	wgfreddy_targets[ply] = target
+	outworld_victims[target] = ply
+	outworld_victims_count[target] = 0
+	
+	net.Start("fh_wgfreddy_target_outworld_start") -- dlya targeta
 	net.WritePlayer(ply)
 	net.Send(target)
 	
@@ -1164,7 +1239,6 @@ function StopDelayedDamage(ply)
 end
 
 if SERVER then
-	local gfreddy_enraged_movement = {130, 560, 130, 250}
 	net.Receive("cl_target_wgfreddy_scared", function( len, ply )
 		if outworld_victims[ply] and ply:Alive() then
 			local wgfreddy = outworld_victims[ply]

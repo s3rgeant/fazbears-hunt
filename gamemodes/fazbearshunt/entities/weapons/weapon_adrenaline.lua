@@ -3,6 +3,10 @@ AddCSLuaFile()
 SWEP.PrintName = "#weapon_adrenaline"
 SWEP.Author = "Valve"
 
+if CLIENT then
+	SWEP.WepSelectIcon = surface.GetTextureID( "weapons/adrenaline" )
+end
+
 SWEP.ViewModel = "models/items/v_l4d2adren.mdl"
 SWEP.WorldModel = "models/items/w_l4d2adren.mdl"
 SWEP.UseHands = true

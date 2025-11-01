@@ -93,13 +93,13 @@ hook.Add( "InitPostEntity", "tr_create_music", function()
     end
 end )
 
-local lastTRMusic = nil
+terrorRadiusLastMusic = terrorRadiusLastMusic or nil
 
 local function terrorStop(dur)
-    if lastTRMusic and loadedMusic[lastTRMusic] then
-        loadedMusic[lastTRMusic]:ChangeVolume(0, dur)
+    if terrorRadiusLastMusic and loadedMusic[terrorRadiusLastMusic] then
+        loadedMusic[terrorRadiusLastMusic]:ChangeVolume(0, dur)
 
-        local rember = lastTRMusic
+        local rember = terrorRadiusLastMusic
 
         timer.Create("StopTRMusic_" .. rember, dur + 0.05, 1, function()
             if loadedMusic[rember] then
@@ -107,7 +107,7 @@ local function terrorStop(dur)
             end
         end)
 
-        lastTRMusic = nil
+        terrorRadiusLastMusic = nil
     end
 end
 
@@ -118,8 +118,8 @@ function terrorSetVolume(name, volume, dur)
         timer.Remove("STopTRMusic_" .. name)
     end
 
-    if lastTRMusic and name ~= lastTRMusic and loadedMusic[lastTRMusic] then
-        loadedMusic[lastTRMusic]:ChangeVolume(0, dur)
+    if terrorRadiusLastMusic and name ~= terrorRadiusLastMusic and loadedMusic[terrorRadiusLastMusic] then
+        loadedMusic[terrorRadiusLastMusic]:ChangeVolume(0, dur)
     end
 
     local soundObj = loadedMusic[name]
@@ -142,7 +142,7 @@ function terrorSetVolume(name, volume, dur)
             end
         end)
     else
-        lastTRMusic = name
+        terrorRadiusLastMusic = name
     end
 end
 
@@ -202,7 +202,7 @@ if !timer.Exists("tr_update") then
 
         hook.Run("FH_TerrorRadiusUpdate", currentKillers)
         if fh_terror_enabled:GetBool() and !table.IsEmpty(currentKillers) and (myself:Alive() or !myself:Alive() and fh_terror_spectators:GetBool()) then
-			local shouldProccess = hook.Run("FH_HandleTerrorRadius")
+			local shouldProccess = hook.Run("FH_HandleTerrorRadius", currentKillers)
 		
 			local observertarget = myself:GetObserverTarget()
 			
@@ -222,6 +222,10 @@ if !timer.Exists("tr_update") then
 						if distance < tr_Close then
 							checkChase(ply, myself)
 
+                            local shouldProccessMy = hook.Run("FH_HandleMineTerrorRadius", ply, theme)
+
+                            if shouldProccessMy == false then continue end
+
 							if isChasing[ply] then
 								layer = "chase"
 								imChasing = true
@@ -238,6 +242,10 @@ if !timer.Exists("tr_update") then
 				end
 				for killer, theme in pairs(currentKillers) do
 					if !theme or !IsValid(killer) then continue end 
+
+			        local shouldProccessKiller = hook.Run("FH_HandleKillerTerrorRadius", killer, theme)
+
+                    if shouldProccessKiller == false then continue end
 
 					if myself:IsSurvivor() and currentKillers[myself] then break end
 
@@ -305,7 +313,7 @@ if !timer.Exists("tr_update") then
 
         if !closestTheme or !layer then return end
 
-        if (closestTheme .. layer) == lastTRMusic then return end
+        if (closestTheme .. layer) == terrorRadiusLastMusic then return end
         
         terrorSetVolume(closestTheme .. layer, fh_terror_volume:GetFloat(), 0.5)
     end)
@@ -354,8 +362,10 @@ local function getThemeByName(name)
     return nil
 end
 
-hook.Add("PillApply", "tr_apply_chase", function(ply, name)
+hook.Add("PillApply", "tr_apply_chase", function(ply, ent)
     if IsValid(ply) then
+        local name = ent.formTable and ent.formTable.name
+
         local selectedTheme = getThemeByName(name)
         if selectedTheme then
             currentKillers[ply] = selectedTheme

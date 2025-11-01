@@ -278,7 +278,16 @@ end)
 
 hook.Add( "PreDrawHalos", "HaloDo", function()
 	-- ДЛЯ АНИМАТРОНИКОВ
-	halo.Add(affectedPlayers, Color(255, 0, 0, 255), 0.5, 0.5, 1, true, true)
+
+	local affectedPlayersReal = {}
+	
+	for k, v in pairs(affectedPlayers) do
+		if v ~= LocalPlayer() and v:IsValid() and v:Health() > 0 and !v:IsInvisible() then
+			table.insert(affectedPlayersReal, v)
+		end
+	end
+
+	halo.Add(affectedPlayersReal, Color(255, 0, 0, 255), 0.5, 0.5, 1, true, true)
 	
 	local lp = LocalPlayer()
 	
@@ -413,13 +422,20 @@ local maxDistance = 1650
 hook.Add("HUDPaint", "fh_draw_affected", function()
     cam.Start3D()
         for k, v in pairs(affectedPlayers) do
-            if v ~= LocalPlayer() and v:IsValid() and v:Health() > 0 then
+            if v ~= LocalPlayer() and v:IsValid() and v:Health() > 0 and !v:IsInvisible() then
                 v:DrawModel()
             end
         end
     cam.End3D()
+
+	local affectedPlayersReal = {}
 	
-	draw_orbs(affectedPlayers)
+	for k, v in pairs(affectedPlayers) do
+		if v ~= LocalPlayer() and v:IsValid() and v:Health() > 0 and !v:IsInvisible() then
+			table.insert(affectedPlayersReal, v)
+		end
+	end
+	draw_orbs(affectedPlayersReal)
 end)
 
 function draw_orbs(tbl, material)

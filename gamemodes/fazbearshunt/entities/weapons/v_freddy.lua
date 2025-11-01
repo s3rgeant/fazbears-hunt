@@ -52,6 +52,8 @@ end
 
 SWEP.run_string = "run"
 SWEP.run_act = ACT_VM_SPRINT_IDLE
+SWEP.walk_string = "walk"
+SWEP.walk_act = ACT_WALK
 function SWEP:Think()
     if SERVER then
         local ply = self.Owner
@@ -88,9 +90,9 @@ function SWEP:Think()
                     self.CurAnim = self.run_string
                 end
             elseif speed >= walkSpeed * 0.9 and speed > 5 or ply:Crouching() and speed >= crouchSpeed then
-                if self.CurAnim ~= 'walk' then
-                    self.Weapon:SendWeaponAnim(ACT_WALK)
-                    self.CurAnim = 'walk'
+                if self.CurAnim ~= self.walk_string then
+                    self.Weapon:SendWeaponAnim(self.walk_act)
+                    self.CurAnim = self.walk_string
                 end
             elseif speed <= walkSpeed * 0.5 and self.CurAnim ~= 'idle' and self.CurAnim != 'land' then
                 self.Weapon:SendWeaponAnim(ACT_IDLE)

@@ -93,20 +93,20 @@ function DrawKillerInterface()
 			surface.SetDrawColor(hud_color)
 			surface.DrawTexturedRect(abilityX, abilityY, abil_bg_width, abil_bg_height)
 
-			local abil_bg_outline_width, abil_bg_outline_height = abil_bg_outline_mat:GetInt("$realwidth") * uiScale, abil_bg_outline_mat:GetInt("$realheight") * uiScale
+			local abil_bg_outline_width, abil_bg_outline_height = (abil_bg_outline_mat:GetInt("$realwidth") or 100) * uiScale, (abil_bg_outline_mat:GetInt("$realheight") or 100) * uiScale
 
 			surface.SetMaterial(abil_bg_outline_mat)
 			surface.SetDrawColor(hud_color)
 			surface.DrawTexturedRect(abilityX, abilityY, abil_bg_outline_width, abil_bg_outline_height)
 
-			local button_ability_width, button_ability_height = button_ability_mat:GetInt("$realwidth") * uiScale, button_ability_mat:GetInt("$realheight") * uiScale
-			local mouse_ability_width, mouse_ability_height = mouse_ability_mat:GetInt("$realwidth") * uiScale, mouse_ability_mat:GetInt("$realheight") * uiScale
+			local button_ability_width, button_ability_height = (button_ability_mat:GetInt("$realwidth") or 100) * uiScale, (button_ability_mat:GetInt("$realheight") or 100) * uiScale
+			local mouse_ability_width, mouse_ability_height = (mouse_ability_mat:GetInt("$realwidth") or 100) * uiScale, (mouse_ability_mat:GetInt("$realheight") or 100) * uiScale
 
 			local ability_button_x = 0
+			
+			local singleButton = !abilityData.text or abilityData.text:len() <= 1
 
 			if abilityData.text then
-			
-				local singleButton = abilityData.text:len() <= 1
 			
 				if singleButton then
 					ability_button_x = abilityX + (205 * uiScale)
@@ -589,7 +589,9 @@ hook.Add("OnContextMenuOpen", "fh_contextmenu", function()
 	playeredit_button:SetIcon("icon16/user.png")
 	
 	local button = contextmenu_options:AddCVar( language.GetPhrase("fazhunt.context.mute_spectators"), "proximity_hear_spectators", "0", "1" )
-	local button = contextmenu_options:AddCVar( "Halloween Color Correction", "fh_halloween_cc", "1", "0" )
+	if IsHalloween() then
+		local button = contextmenu_options:AddCVar( "Halloween Color Correction", "fh_halloween_cc", "1", "0" )
+	end
 	
 	local panel = vgui.Create( "DPanel", contextmenu_options )
 	panel:SetSize( 55, 25 )
@@ -608,8 +610,7 @@ hook.Add("OnContextMenuOpen", "fh_contextmenu", function()
 	
 	local myself = LocalPlayer()
 	
-	/*
-	if myself and myself:IsSuperAdmin() then
+	if IsValid(myself) and (myself:IsSuperAdmin() and !game.SinglePlayer()) then
 		
 		local panel = vgui.Create( "DPanel", contextmenu_options )
 		panel:SetSize( 55, 25 )
@@ -620,9 +621,8 @@ hook.Add("OnContextMenuOpen", "fh_contextmenu", function()
 		dlable:SetPos( 12, 0 )
 		dlable:SetTextColor( Color(0,0,0) )
 	
-		contextmenu_options:AddOption( "FH Editor", askServerFhEditor )
+		contextmenu_options:AddOption( "FH Editor (BETA)", askServerFhEditor )
 	end
-	*/
 	
 	contextmenu_options:Open()
 	contextmenu_options:SetPos(0, (ScrH() / 2))

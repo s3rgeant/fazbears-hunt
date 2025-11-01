@@ -163,46 +163,55 @@ function draw_killer_selector()
 						ent:SetSequence(ent:LookupSequence(idleanim))
 						modelpanel:RunAnimation()
 			
-						if v.bodyGroups then
-							for _, b in pairs(v.bodyGroups) do
-								if b then
-									ent:SetBodygroup(b, 1)
-								end
-							end
-						end
-			
-						local bodyGroups = ent.formTable.bodyGroups
+						local model = v.model
+						local skin = v.skin
+						local attachments = v.attachments
+						local bodyGroups = v.bodyGroups
 
-						if ent.formTable.options then
-							local options = ent.formTable.options()
+						if v.options then
+							local options = v.options()
 							local pickedOption
 
-							if ent.formTable.option and options[ent.formTable.option] then
-								pickedOption = options[ent.formTable.option]
+							if v.option and options[v.option] then
+								pickedOption = options[v.option]
 							else
 								pickedOption = table.Random(options)
 							end
 
-							if pickedOption and pickedOption.bodyGroups then
+							if pickedOption.model then
+								model = pickedOption.model
+							end
+
+							if pickedOption.skin then
+								skin = pickedOption.skin
+							end
+
+							if pickedOption.attachments then
+								attachments = pickedOption.attachments
+							end
+
+							if pickedOption.bodyGroups then
 								bodyGroups = pickedOption.bodyGroups
 							end
+						end
+						
+						if skin then
+							ent:SetSkin(skin)
 						end
 
 						if bodyGroups then
 							for k, v in pairs(bodyGroups) do
 								if isnumber(k) then
-									m:SetBodygroup(k, v)
+									ent:SetBodygroup(k, v)
 								elseif isstring(k) then
-									local id = m:FindBodygroupByName(k)
+									local id = ent:FindBodygroupByName(k)
 									if id >= 0 then
-										m:SetBodygroup(id, v)
+										ent:SetBodygroup(id, v)
 									end
 								elseif isnumber(v) then
-									m:SetBodygroup(v, 1)
+									ent:SetBodygroup(v, 1)
 								end
 							end
-						elseif v.skin then
-							ent:SetSkin(v.skin)
 						end
 						
 						local mn, mx = ent:GetModelBounds()

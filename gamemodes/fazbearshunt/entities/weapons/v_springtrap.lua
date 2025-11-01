@@ -203,12 +203,7 @@ function SWEP:DealDamage()
 
     ply:LagCompensation(false)
 
-    if target:IsNPC() then
-        target:TakeDamage(99999, ply)
-        return
-    end
-
-    if (target:IsPlayer() and target:IsSurvivor()) or target:IsNPC() then
+    if target:IsPlayer() and !target:IsAnimatronic() or target:IsNPC() then
         ply:EmitSound("fnaf3/hit.mp3")
     end
 end

@@ -324,9 +324,9 @@ pills.register("pill_springtrap",{
 							
 							spring_rage_total = spring_rage_total + add
 				
-							print(ply:Nick() .. " is playing Springtrap. His rage progress: ( " ..spring_rage_total .. " / 60 )")
+							print(ply:Nick() .. " is playing Springtrap. His rage progress: ( " ..spring_rage_total .. " / 10 )")
 							
-							if spring_rage_total >= 60 then
+							if spring_rage_total >= 10 then
 							
 								local val = 0
 								local loh
@@ -339,6 +339,8 @@ pills.register("pill_springtrap",{
 								end
 								
 								if IsValid(loh) then
+									successRage(ply, ent, loh)
+								else
 									successRage(ply, ent, target)
 								end
 							end
@@ -750,6 +752,7 @@ function plushtrap_request_complete(springtrap, ply)
 	ply:SetTeam(TEAM_SURVIVOR)
 	
 	local pt_lastpos = nil
+	local pt_lastangle = nil
 	local pt_found = false
 	
 	if IsValid(pt_request_springtrap_ply) then
@@ -758,12 +761,13 @@ function plushtrap_request_complete(springtrap, ply)
 	
 	for k,v in ipairs(ents.FindByClass("plushtrap")) do
 		pt_lastpos = v:GetPos()
+		pt_lastangle = v:GetAngles()
 		v:Remove()
 		pt_found = true
 		break
 	end
 	
-	pills.apply(ply:Nick(), "pill_plushtrap", "user")
+	giveKillerSilent(ply, "pill_plushtrap")
 	
 	timer.Simple(1, function()
 		if timer.Exists("pt_kill_timer" .. springtrap:EntIndex()) then
@@ -776,6 +780,10 @@ function plushtrap_request_complete(springtrap, ply)
 	
 	if pt_lastpos != nil then
 		ply:SetPos(pt_lastpos)
+	end
+	
+	if pt_lastangle != nil then
+		ply:SetEyeAngles(pt_lastangle)
 	end
 	
 	request_plushtrap = ply
@@ -860,12 +868,12 @@ if SERVER then
 	
 		if not nextPingTime or curTime >= nextPingTime then
 			for _, ply in player.Iterator() do
-				if !IsValid(ply) or !ply:IsPlayer() or !ply:IsSurvivor() or ply == request_plushtrap then continue end
+				if !IsValid(ply) or !ply:IsSurvivor() or ply == request_plushtrap then continue end
 	
 				nextPingTime = curTime + 3
 	
 				local distance = ply:GetPos():Distance(request_plushtrap:GetPos())
-				if distance <= plushtrap_vision_range then
+				if distance <= plushtrap_visionrange:GetInt() then
 					net.Start("fh_plushalert_inrange")
 					net.Send(ply)
 				else

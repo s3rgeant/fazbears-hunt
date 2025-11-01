@@ -16,7 +16,11 @@ local man_speed = {
 pills.register("pill_mangle",{
 	printName="Mangle",
 	model="models/ufmp/fnaf2/toys/themangle.mdl",
-	bodyGroups={0},
+	bodyGroups={
+			[4] = math.random(1,1000) == 1 and 2 or 0, -- нормальный глаз посхалко
+			[3] = 1,
+			["EndoHeadEye[2 models]"] = 1,
+		},
 	modelScale="1.3",
 	anims={
 		default={
@@ -33,6 +37,7 @@ pills.register("pill_mangle",{
 			land_hard="land_hard",
 			crouch="crouch",
 			crouch_walk="crouchwalk",
+			stun="stun",
 		},
 	},
 	moveSpeed={
@@ -50,6 +55,11 @@ pills.register("pill_mangle",{
         offset = Vector(0, 0, 70),
 		dist = 120
     },
+	
+	viewmodel={
+		weapon="v_mangle",
+	},
+	
 	hull=Vector(32,32,76),
 	duckBy=50,
 	
@@ -74,7 +84,7 @@ pills.register("pill_mangle",{
 			
 			local target = FindNearestPlayer(ent:GetPos(), 130, ply, 90)
 			
-			local jumpscare = performJumpscare(ply, ent, target, 1.6, "mangle", 70)
+			local jumpscare = performJumpscare(ply, ent, target, 1.6, "mangle", 70, "v_mangle")
 			
 			if !IsValid(target) or !jumpscare then 
 				AnimatronicBreakProp(ply, ent)
@@ -128,10 +138,10 @@ pills.register("pill_mangle",{
 				initVelVector = ply:EyeAngles():Forward()
 			end
 			
-			ply:SetVelocity( ((initVelVector) * velocityPower) + addVelocity )
-			
 			ply:SetNWBool("_MangleHooked", false)
 			ply:SetNWBool("_MangleHookReady", true)
+			
+			ply:SetLocalVelocity( ply:GetVelocity() + ((initVelVector) * velocityPower) + addVelocity )
 			
 			ply:SetMoveType(MOVETYPE_WALK)
 		end
@@ -449,9 +459,6 @@ hook.Add("FinishMove", "mangle_hook_ready", function( ply, mv )
 				
 				ply:SetNWBool("_MangleHookReady", false)
 				ply:SetNWString("_MangleLastHookType", "")
-				
-				ply:LagCompensation(false)
-				return
 			end
 			ply:LagCompensation(false)
 		end

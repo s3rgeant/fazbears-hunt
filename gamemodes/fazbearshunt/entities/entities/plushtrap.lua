@@ -16,6 +16,7 @@ function ENT:Initialize()
 	self.Active = false
 	
 	self:SetCollisionBounds( Vector(-12,-12,0), Vector(12,12,32) )
+	self:SetCollisionGroup(COLLISION_GROUP_PASSABLE_DOOR)
     
 	if SERVER then
 		self:SetHealth(2000)
@@ -81,7 +82,7 @@ function ENT:FindNearestPlayer()
     local minDistSqr = math.huge
 
     for _, ply in player.Iterator() do
-        if ply:Alive() and ply:IsSurvivor() then
+        if ply:Alive() and ply:IsSurvivor() and !ply:IsInvisible() then
             local distSqr = self:GetPos():DistToSqr(ply:GetPos())
             if distSqr < minDistSqr then
                 minDistSqr = distSqr

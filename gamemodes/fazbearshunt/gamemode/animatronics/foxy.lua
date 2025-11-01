@@ -72,8 +72,10 @@ function foxyStun(ply)
 	
 	if !IsValid(ent) then return end
 	
+	if SERVER then
 	ent:SetSpeed(unpack(StunnedFoxyMovementSpeed()))
 	ply:SetFOV(60, 0.5)
+	end
 	
 	local wep = ply:GetActiveWeapon()
 	if IsValid(wep) and wep:GetClass() == "v_foxy" then
@@ -103,13 +105,15 @@ function foxyRush(ply, ent)
 	end
 
 	if not ply:OnGround() or ply:Crouching() then return end
+	
+	local dsp = IsHalloween() and 38 or 0
 
 	if not ply.blightRushTokens or ply.blightRushTokens == MAX_RUSH_TOKENS then
 		ply.blightRushTokens = MAX_RUSH_TOKENS
 		ply:SetNWBool("Blight_BlockM1", true)
 		
 		if SERVER then
-			ply:EmitSound("blight/first_rush.wav", 75, 100, 1, CHAN_AUTO, 0, 38)
+			ply:EmitSound("blight/first_rush.wav", 75, 100, 1, CHAN_AUTO, 0, dsp)
 		
 			local wep = ply:GetActiveWeapon()
 			if IsValid(wep) and wep:GetClass() == "v_foxy" then
@@ -118,7 +122,7 @@ function foxyRush(ply, ent)
 			end
 		end
 	elseif ply.blightRushTokens == 4 and ply:GetNWBool("blightRushing") and SERVER then
-		ply:EmitSound("blight/rushing_lethal.wav", 75, 100, 1, CHAN_AUTO, 0, 38)
+		ply:EmitSound("blight/rushing_lethal.wav", 75, 100, 1, CHAN_AUTO, 0, dsp)
 	end
 
 	if ply.blightRushTokens ~= MAX_RUSH_TOKENS and not ply:GetNWBool("blightRushing") then return end
@@ -259,6 +263,8 @@ end)
 
 hook.Add("SetupMove", "BlightPredictionBounce", function(ply, mv, cmd)
 	
+	if !IsFirstTimePredicted() then return end
+	
 	if ply:GetNWBool("isBlightBouncing") then
 		local startTime = ply:GetNWFloat("BlightBounceStart", 0)
 		local endTime = ply:GetNWFloat("BlightBounceEnd", 0)
@@ -323,12 +329,15 @@ hook.Add("FinishMove", "BlightPredictionFinish", function(ply, mv)
 		bounceDir.z = 0
 		bounceDir:Normalize()
 
-		ply:SetNWFloat("BlightBounceStart", CurTime())
-		ply:SetNWFloat("BlightBounceEnd", CurTime() + bounceDuration)
-		ply:SetNWBool("isBlightRushing", false)
-		ply:SetNWBool("isBlightBouncing", true)
-		ply.blightBounceDir = bounceDir
-		ply:SetVelocity(bounceDir * 500)
+		if IsFirstTimePredicted() then
+			ply:SetNWFloat("BlightBounceStart", CurTime())
+			ply:SetNWFloat("BlightBounceEnd", CurTime() + bounceDuration)
+		
+			ply:SetNWBool("isBlightRushing", false)
+			ply:SetNWBool("isBlightBouncing", true)
+			ply.blightBounceDir = bounceDir
+			ply:SetVelocity(bounceDir * 500)
+		end
 		
 		if CLIENT then
 			if getAbilityTokens("charge") > 0 then

@@ -6,8 +6,6 @@ ENT.Base = "base_anim"
 ENT.PrintName = "Banana Peel"
 ENT.Category = "Banana Peel"
 ENT.Author = "Froze"
-ENT.Spawnable = true
-ENT.AdminOnly = false
 
 if CLIENT then
 	killicon.Add("banana_peel","weapons/banana_killicon",Color(255,255,255));
@@ -18,8 +16,11 @@ function ENT:Initialize()
 	self:PhysicsInitBox(self:OBBMins(), self:OBBMaxs())
 	self:SetCollisionBounds(self:OBBMins(), self:OBBMaxs())
 	self:SetMoveType(MOVETYPE_VPHYSICS)
-	self:SetSolid(SOLID_VPHYSICS)
+	self:SetSolid(SOLID_BBOX)
 	self:SetCollisionGroup(COLLISION_GROUP_DEBRIS)
+	if SERVER then
+		self:SetTrigger(true)
+	end
 
 	local phys = self:GetPhysicsObject()
 	if phys:IsValid() then
@@ -28,6 +29,7 @@ function ENT:Initialize()
 		phys:SetDamping(0, 10)
 	end
 	
+    self.SpawnTime = CurTime()
 	self.Owner = self.Owner or nil
 end
 	
@@ -35,15 +37,15 @@ if SERVER then
 	function ENT:SlipPlayer(ent)
 		if ent:IsNPC() or ent:IsPlayer() and (!ent:GetPill() or ent:GetPill() and !ent:GetPill().cloaked) and ent:Alive() then
 			ent:EmitSound("slip_start.wav")
-			ent:SetVelocity(Vector(math.Rand(150, 250) * (math.random(2) == 1 and 1 or -1), math.Rand(150, 250) * (math.random(2) == 1 and 1 or -1), 200) + ent:GetUp() * 100)
+			ent:SetLocalVelocity(Vector(math.random(-300,300),math.random(-300,300),300))
 			local phys = self:GetPhysicsObject()
 			if IsValid(phys) then
-				phys:ApplyForceCenter((-ent:GetVelocity() + -ent:GetForward()) * 50)
+				phys:ApplyForceCenter((-ent:GetVelocity() + -ent:GetForward()) * 100)
 			end
-			
-			timer.Simple( 0.1, function()
-				ent:SetNWBool("banana_slipped", true)
-			end)
+
+			ent:SetNWBool("banana_slipped", true)
+			ent:SetNWFloat("banana_slipped_time", CurTime())
+
 			if ent:IsPlayer() then
 				stats.Add(ent, "slipped_on_banana", 1)
 				for i = 1, 20 do
@@ -55,19 +57,19 @@ if SERVER then
 		end 
 	end
 	
-	function ENT:Think()
-		local find_ent = ents.FindInSphere(self:GetPos(), 25)
-		for k, v in pairs(find_ent) do
-			if ( v:IsPlayer() and v:GetMoveType() != MOVETYPE_NOCLIP ) and v:GetNWBool("banana_slipped", false) == false then
-				self:SlipPlayer(v) 
-			end
+    function ENT:StartTouch(v)
+		if CurTime() - self.SpawnTime > 0.1 and v:IsPlayer() and v:GetMoveType() != MOVETYPE_NOCLIP 
+		and !v:GetNWBool("banana_slipped", false) and CurTime() - v:GetNWBool("banana_slipped_time", 0) > 0.2 then
+			
+			self:SlipPlayer(v) 
 		end
 	end
 
     hook.Add("Think", "IsBananaSlipped", function()
         for _, v in player.Iterator() do
-            if (v:IsPlayer()) and v:Team() != TEAM_SPECTATOR and v:IsOnGround() and v:GetNWBool("banana_slipped", false) then
-                v:SetNWBool("banana_slipped", false)
+            if (v:IsPlayer()) and v:Alive() and v:OnGround() 
+			and v:GetNWBool("banana_slipped", false) and CurTime() - v:GetNWBool("banana_slipped_time", 0) > 0.2 then
+                v:SetNWBool("banana_slipped", nil)
 				v:TakeDamage(math.random(1,2), self, self)
                 v:EmitSound("slip_end.wav") 
             end

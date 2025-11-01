@@ -41,7 +41,7 @@ function ENT:Initialize()
 	hook.Run("PillApply", ply, self)
 	
 	if CLIENT then
-		ply:SetRenderBounds(-Vector(hull.x / 2, hull.y / 2, 0), Vector(hull.x / 2, hull.y / 2, hull.z + 30))
+		ply:SetRenderBounds(-Vector(hull.x / 2, hull.y / 2, 0), Vector(hull.x / 2, hull.y / 2, hull.z + 25))
 	end
 
 	self:ResetAngle()
@@ -69,6 +69,13 @@ function ENT:Initialize()
 				local wep = ply:GetActiveWeapon()
 				if IsValid(wep) then
 					ply:GetViewModel():SetSkin(self.formTable.viewmodel.skin or 0)
+				end
+			end
+			
+			if self.formTable.viewmodel.func then
+				local wep = ply:GetActiveWeapon()
+				if IsValid(wep) then
+					self.formTable.viewmodel.func(wep)
 				end
 			end
 		else
@@ -284,8 +291,14 @@ function ENT:Initialize()
 	hook.Run("PillCreated", ply, self)
 end
 
+
 function ENT:OnRemove()
     local ply = self:GetPillUser()
+
+    -- compatibility
+    if self.formTable.onRemove then
+        self.formTable.onRemove(self, self.formTable)
+    end
 
     if SERVER then
         self:PillLoopStopAll()
@@ -293,18 +306,13 @@ function ENT:OnRemove()
 		if self.formTable.restore then
 			self.formTable.restore(ply, self, self.formTable)
 		end
-	
-		-- compatibility
-		if self.formTable.onRemove then
-			self.formTable.onRemove(self, self.formTable)
-		end
     end
 
     local newType = pills.unmapEnt(self:GetPillUser(), self)
 
     if newType ~= "ply" and IsValid(ply) then
         ply:ResetHull()
-			
+
 		hook.Run("PillRestore", ply, self)
     end
 end
@@ -538,12 +546,6 @@ if SERVER then
                         ply:SetNotSolid(true)
                         self.burrowed = true
                         self:DrawShadow(false)
-                        --local p=ply:GetPos()
-                        --ent:SetPos(Vector(p.x,p.y,trace.HitPos.z-options.burrow))
-                        --ent:SetMoveType(MOVETYPE_NONE)
-                        --if ent.formTable.model then ent:SetModel(ent.formTable.model) end
-                        --ent:PillSound("burrow")
-                        --ent:PillLoopStopAll()
                     end
                 else
                     self:PillAnim("burrow_out")
@@ -697,7 +699,7 @@ function ENT:PillSound(name, bulk)
         else
 			local recipients = hook.Run("PillSound", self:GetPillUser(), self, name)
 		
-            self:EmitSound(s, self.formTable.sounds[name .. "_level"] or 75, self.formTable.sounds[name .. "_pitch"] or 100, 1, CHAN_AUTO, 0, 0, recipients or nil)
+            self:GetPillUser():EmitSound(s, self.formTable.sounds[name .. "_level"] or 75, self.formTable.sounds[name .. "_pitch"] or 100, 1, CHAN_AUTO, 0, 0, recipients or nil)
         end
 
         return true
@@ -854,6 +856,8 @@ ENT.IsDrawn = true
 function ENT:Draw()
 	local ply = self:GetPillUser()
 	
+	--self:FrameAdvance()
+
 	ply:RemoveAllDecals()
 	
 	if self:GetNoDraw() then

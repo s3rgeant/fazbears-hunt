@@ -137,17 +137,17 @@ local function stopScareProgress()
 	
 	scareImmunityUntil = CurTime() + 0.2
 	
-	magnetStrength = magnetStrength + 0.05
+	magnetStrength = magnetStrength + 0.025
 	
 	hook.Remove("CreateMove", "fh_gfreddy_magnet_view")
 end
 
-local soundCooldown = 10
+local soundCooldown = 5
 local function fh_gfreddy_check_scarysound()
 	local localPlayer = LocalPlayer()
 	
 	if !localPlayer:GetNWBool("can_be_gf_scared", false) then return end
-	if not pills or not IsValid(localPlayer) or pills.getMappedEnt(localPlayer) ~= nil then return end
+	if not IsValid(localPlayer) or pills.getMappedEnt(localPlayer) ~= nil then return end
 	if not IsValid(targetPlayer) or targetPlayer == localPlayer then return end
 	if not targetPlayer:Alive() or targetPlayer:GetMoveType() == MOVETYPE_NOCLIP then return end
 	if localPlayer:Team() == TEAM_SPECTATOR or not localPlayer:Alive() then return end
@@ -184,21 +184,13 @@ local function fh_gfreddy_check_scarysound()
 		if CurTime() < scareImmunityUntil then return end
 
 		if distance <= 200 and canSee then
-			local currentTime = CurTime()
-			if lastSoundTime ~= 0 and currentTime - lastSoundTime < soundCooldown then
-				lastSoundTime = currentTime
-			end
-			if currentTime - lastSoundTime >= soundCooldown then
-				scaredNear()
-				lastSoundTime = currentTime
-				
-				scareImmunityUntil = CurTime() + 4
-			end
+			scaredNear()
+			scareImmunityUntil = CurTime() + 4
 			stopScareProgress()
 			return
 		end
 
-		if distance > 200 and distance < 1000 and canSee then
+		if distance > 200 and distance < 1100 and canSee then
 			if not IsValid(progressSoundChannel) then
 				sound.PlayFile("sound/fnaf2/gfreddy/scare_progress.wav", "noplay", function(chan)
 					if IsValid(chan) then

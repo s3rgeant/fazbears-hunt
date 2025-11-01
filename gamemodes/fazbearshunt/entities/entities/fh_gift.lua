@@ -43,6 +43,8 @@ if SERVER then
     function ENT:Touch(ent)
         if self.IsUsed then return end
         if CurTime() - self.SpawnTime > 1.5 and (ent:IsPlayer() and !ent:IsBot()) and ent:IsSurvivor() then
+			if hook.Run("FH_HandleGiftPickup", self, ent) == false then return end
+			
             self.IsUsed = true
             self:ApplyEffect(ent)
             self:Remove()
@@ -130,19 +132,6 @@ local positiveEffects = {
 			return false
 		end
     },
-	--[[
-    {
-        name = "armor",
-		desc = "fazhunt.gifts.armor",
-		num = 50,
-        func = function(ply)
-			ply:SetArmor(math.min(ply:Armor() + 50, 100))
-        end,
-        req = function(ply)
-			return ply:Armor() < 100
-        end
-    },
-	--]]
     {
         name = "invisibility",
 		desc = "fazhunt.gifts.invisibility",
@@ -150,7 +139,7 @@ local positiveEffects = {
             ply:Give("weapon_mask")
         end,
         req = function(ply)
-			return ( !timer.Exists("EndGameTimer") or timer.Exists("EndGameTimer") and timer.TimeLeft("EndGameTimer") >= 120 ) 
+			return ( !timer.Exists("EndGameTimer") or timer.Exists("EndGameTimer") and timer.TimeLeft("EndGameTimer") >= 120 )
 			and !ply:HasWeapon("weapon_mask")
         end
     },
@@ -171,14 +160,14 @@ local positiveEffects = {
             net.Start("fh_hl_animatronics")
             net.Send(ply)
 			
-			table.insert(anim_visibility_users, ply)
+			anim_visibility_users[ply] = true
 			
 			timer.Simple(30, function()
-				table.RemoveByValue(anim_visibility_users, ply)
+				anim_visibility_users[ply] = nil
 			end)
         end,
 		req = function(ply)
-			return !table.HasValue(anim_visibility_users, ply)
+			return !anim_visibility_users[ply]
 		end
     },
     {
@@ -203,8 +192,14 @@ local positiveEffects = {
 		num = 5,
         func = function(ply)
             ply:Give("weapon_banana")
+			local toGive = 4
+			
+			if ply:HasWeapon("weapon_banana") then
+				toGive = 5
+			end
+			
 			ply:SetSuppressPickupNotices(true)
-            ply:GiveAmmo(4, "ammo_banana", true)
+            ply:GiveAmmo(toGive, "ammo_banana", true)
 			ply:SetSuppressPickupNotices(false)
         end
     },
@@ -474,16 +469,6 @@ if SERVER then
 			func = func
 		})
 	end
-
-	hook.Add("SetupPlayerVisibility", "fh_gift_visibility", function(ply, viewent)
-		if !table.IsEmpty(anim_visibility_users) then
-			for _, player in ipairs( team.GetPlayers(2701) ) do
-				if IsValid(player) and player ~= ply and ply:IsSurvivor() then
-					AddOriginToPVS(player:GetPos())
-				end
-			end
-		end
-	end)
 end
 
 function ENT:ApplyEffect(player)

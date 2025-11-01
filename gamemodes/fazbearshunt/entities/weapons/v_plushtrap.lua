@@ -170,15 +170,10 @@ function SWEP:DealDamage()
 	util.Effect("Impact_GMOD", effectData, true, true)
 	
 	ply:LagCompensation(false)
-	
-	if target:IsNPC() then
-		target:TakeDamage(99999, ply)
-		return 
-	end
-	
-	if (target:IsPlayer() and target:IsSurvivor()) or target:IsNPC() then
+
+    if target:IsPlayer() and !target:IsAnimatronic() or target:IsNPC() then
         ply:EmitSound("fnaf3/hit.mp3")
-	end
+    end
 end
 
 function SWEP:Think()
@@ -256,36 +251,53 @@ end
 if CLIENT then
 	hook.Add( "PreDrawHalos", "pt_halo", function()
 		local ply = LocalPlayer()
+		local target = ply:GetObserverTarget()
+		if IsValid(target) and target:IsPlayer() then
+			ply = target
+		end
 		local wep = ply:GetActiveWeapon()
 		
 		if IsValid(wep) and wep:GetClass() == "v_plushtrap" then
 			local nearPlayers = {}
 			
 			for _, ent in pairs(team.GetPlayers( TEAM_SURVIVOR )) do
-				if !ent:Alive() or ent:GetNoDraw() then continue end
+				if !ent:Alive() or ent:GetNoDraw() or ent:IsInvisible() then continue end
 				if ent ~= ply and ent:GetPos():Distance(ply:GetPos()) <= plushtrap_visionrange:GetInt() then
 					table.insert(nearPlayers, ent)
 				end
 			end
 			halo.Add(nearPlayers, Color(255, 0, 0), 1, 1, 2, true, true)
+		end
+	end)
 			
-			hook.Add("HUDPaint", "fh_pt_draw_affected", function()
-				if !IsValid(wep) then
-					hook.Remove("HUDPaint", "fh_pt_draw_affected")
-					return
+	hook.Add("HUDPaint", "fh_pt_draw_affected", function()
+		local ply = LocalPlayer()
+		local target = ply:GetObserverTarget()
+		if IsValid(target) and target:IsPlayer() then
+			ply = target
+		end
+		local wep = ply:GetActiveWeapon()
+		
+		if IsValid(wep) and wep:GetClass() == "v_plushtrap" then
+			local nearPlayers = {}
+			
+			for _, ent in pairs(team.GetPlayers( TEAM_SURVIVOR )) do
+				if !ent:Alive() or ent:GetNoDraw() or ent:IsInvisible() then continue end
+				if ent ~= ply and ent:GetPos():Distance(ply:GetPos()) <= plushtrap_visionrange:GetInt() then
+					table.insert(nearPlayers, ent)
 				end
-			
-				cam.Start3D()
-					for k, v in pairs(nearPlayers) do
-						if v ~= LocalPlayer() and v:IsValid() and v:Health() > 0 then
-							v:DrawModel()
-						end
+			end
+	
+			cam.Start3D()
+				for k, v in pairs(nearPlayers) do
+					if v ~= LocalPlayer() and v:IsValid() and v:Health() > 0 then
+						v:DrawModel()
 					end
-				cam.End3D()
-				if IsValid(wep) and wep:GetClass() == "v_plushtrap" then
-					draw_orbs(nearPlayers)
 				end
-			end)
+			cam.End3D()
+			if IsValid(wep) and wep:GetClass() == "v_plushtrap" then
+				draw_orbs(nearPlayers)
+			end
 		end
 	end)
 end

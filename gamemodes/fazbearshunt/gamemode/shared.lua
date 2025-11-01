@@ -7,7 +7,7 @@ GM.Author = "sergeant"
 GM.Email = "N/A"
 GM.Website = "N/A"
 
-local fh_version = "3.1.1"
+local fh_version = "3.1.2"
 
 function fh.GetVersion()
     return fh_version
@@ -554,11 +554,15 @@ local meta = FindMetaTable("Player")
 if meta then
 
 	function meta:IsSurvivor()
-		return self:Alive() and self:Team() == TEAM_SURVIVOR and !IsValid(pills.getMappedEnt(self))
+		return self:Alive() and self:Team() == TEAM_SURVIVOR and !IsValid(self:GetPill())
 	end
 	
 	function meta:IsAnimatronic()
 		return self:Team() == 2701 or IsValid(pills.getMappedEnt(self))
+	end
+	
+	function meta:IsInvisible()
+		return self:GetMaterial() == "models/null" or self:GetNoDraw()
 	end
 end
 

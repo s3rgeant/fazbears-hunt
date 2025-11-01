@@ -320,7 +320,7 @@ local halloweenColorCorrection = {
 local fh_halloween_cc = CreateClientConVar("fh_halloween_cc", "1", true, true, "Toggle Halloween Themed Color Correction", 0, 1)
 
 hook.Add("RenderScreenspaceEffects", "Halloween_Effect", function()
-	if fh_halloween_cc:GetBool() then
+	if fh_halloween_cc:GetBool() and IsHalloween() then
 		DrawColorModify(halloweenColorCorrection)
 	end
 end)

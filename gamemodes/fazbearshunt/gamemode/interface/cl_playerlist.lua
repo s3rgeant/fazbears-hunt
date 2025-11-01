@@ -311,7 +311,9 @@ local function CreatePlayerPanel(scrollbar, ply)
 		end )
 		
 		frame.OnClose = function()
-			AvatarBtn:SetEnabled(true)
+			if IsValid(AvatarBtn) then
+				AvatarBtn:SetEnabled(true)
+			end
 		end
 	
 		frame.Paint = function(self, w, h)

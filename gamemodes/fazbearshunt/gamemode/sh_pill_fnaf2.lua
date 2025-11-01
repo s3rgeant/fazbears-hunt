@@ -1214,7 +1214,11 @@ pills.register("pill_sfreddy2",{
 	
 	viewmodel={
 		weapon="v_freddy",
-		skin=IsHalloween() and 4 or 2
+		skin=IsHalloween() and 4 or 2,
+		func=function(wep)
+			wep.walk_string = "slowwalk"
+			wep.walk_act = ACT_WALK_STEALTH
+		end
 	},
 	
 	cloak={
@@ -1720,9 +1724,13 @@ pills.register("pill_wgfreddy2",{
 			if !ply:GetNWBool("wgfreddy_enraged") then return end
 			
 			local target = FindNearestPlayer(ent:GetPos(), 130, ply, 90)
-			if !IsValid(target) or target ~= wgfreddy_targets[ply] then return end
+
+			local jumpscare = performJumpscare(ply, ent, target, 1.6, "freddy", 50, "v_freddy")
 			
-			performJumpscare(ply, ent, target, 1.6, "gfreddy", 52, "v_freddy")
+			if !IsValid(target) or !jumpscare then 
+				AnimatronicBreakProp(ply, ent)
+				return 
+			end
 		end
     },
 
@@ -1960,7 +1968,7 @@ function playVoiceline(character, line, who, when)
 				["endo"] = true
 			}
 			
-			local dsp = isHalloweenish[character] and 38 or 0
+			local dsp = IsHalloween() and isHalloweenish[character] and 38 or 0
 			
 			who:EmitSound(character .. "." .. line, 75, 100, 1, CHAN_VOICE, 0, dsp, rf)
 			
@@ -2301,14 +2309,17 @@ hook.Add("KeyRelease", "PlayerRightClickRelease", function(ply, key)
     end
 end)
 
-function endoRelease(ply)
+function endoRelease(ply, noVoiceline)
+	noVoiceline = noVoiceline or false
 	local target = playersHoldingRightClick[ply]
 	if IsValid(target) then
 		if ply:Alive() then
 			ply:EmitSound("throw_player.wav")
 		end
-		if math.random(1,10) > 2 then
-			playVoiceline("endo", 'throw', ply, 0.1)
+		if !noVoiceline then
+			if math.random(1,10) > 2 then
+				playVoiceline("endo", 'throw', ply, 0.1)
+			end
 		end
 	
 		target:SetMoveType(MOVETYPE_WALK)
