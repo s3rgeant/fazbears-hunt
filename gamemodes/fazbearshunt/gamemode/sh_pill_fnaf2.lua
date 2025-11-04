@@ -144,7 +144,7 @@ pills.register("pill_wfreddy2",{
 	},
 	
 	animEvent=function(ply,ent,event)
-		if util.GetAnimEventNameByID( event ) == "FREDDY_DOOR_BREAK" then
+		if event == "FREDDY_DOOR_BREAK" then
 			ply:EmitSound("physics/metal/metal_sheet_impact_hard8.wav")
 		end
 	end,
@@ -1725,7 +1725,7 @@ pills.register("pill_wgfreddy2",{
 			
 			local target = FindNearestPlayer(ent:GetPos(), 130, ply, 90)
 
-			local jumpscare = performJumpscare(ply, ent, target, 1.6, "freddy", 50, "v_freddy")
+			local jumpscare = performJumpscare(ply, ent, target, 1.6, nil, 50, "v_freddy")
 			
 			if !IsValid(target) or !jumpscare then 
 				AnimatronicBreakProp(ply, ent)
@@ -2552,24 +2552,8 @@ if SERVER then
 		local voiceCharacter = data.char
 		local vc_delay = data.delay
 		
-		playVoiceline(voiceCharacter, "kill", ply, vc_delay)
-	end)
-	
-	hook.Add("PlayerSpawn", "fh_pill_gfreddy_spawn_check", function(ply)
-		if !table.IsEmpty(wgfreddy_targets) then
-			for k,v in pairs( wgfreddy_targets ) do
-				local ent = pills.getMappedEnt(k)
-				
-				if IsValid(ent) then
-					net.Start("fh_dontdraw_anim")
-					net.WriteEntity(ent)
-					net.Send(ply)
-				end
-				
-				net.Start("fh_dontdraw_player")
-				net.WritePlayer(v)
-				net.Send(ply)
-			end
+		if voiceCharacter ~= nil then
+			playVoiceline(voiceCharacter, "kill", ply, vc_delay)
 		end
 	end)
 	

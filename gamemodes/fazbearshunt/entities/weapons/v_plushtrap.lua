@@ -252,9 +252,7 @@ if CLIENT then
 	hook.Add( "PreDrawHalos", "pt_halo", function()
 		local ply = LocalPlayer()
 		local target = ply:GetObserverTarget()
-		if IsValid(target) and target:IsPlayer() then
-			ply = target
-		end
+		if IsValid(target) and target:IsPlayer() then ply = target end
 		local wep = ply:GetActiveWeapon()
 		
 		if IsValid(wep) and wep:GetClass() == "v_plushtrap" then
@@ -273,9 +271,7 @@ if CLIENT then
 	hook.Add("HUDPaint", "fh_pt_draw_affected", function()
 		local ply = LocalPlayer()
 		local target = ply:GetObserverTarget()
-		if IsValid(target) and target:IsPlayer() then
-			ply = target
-		end
+		if IsValid(target) and target:IsPlayer() then ply = target end
 		local wep = ply:GetActiveWeapon()
 		
 		if IsValid(wep) and wep:GetClass() == "v_plushtrap" then

@@ -324,7 +324,7 @@ pills.register("pill_springtrap",{
 							
 							spring_rage_total = spring_rage_total + add
 				
-							print(ply:Nick() .. " is playing Springtrap. His rage progress: ( " ..spring_rage_total .. " / 10 )")
+							print(ply:Nick() .. " is playing Springtrap. His rage progress: ( " ..spring_rage_total .. " / 60 )")
 							
 							if spring_rage_total >= 60 then
 							

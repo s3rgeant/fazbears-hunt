@@ -65,6 +65,18 @@ if SERVER then
 		end
 	end
 
+    hook.Add("GravGunPickupAllowed", "nobananapickup", function(ply, ent)
+        if ent:GetClass() == "banana_peel" then
+			return false
+		end
+	end)
+
+    hook.Add("GravGunPunt", "nobananapunt", function(ply, ent)
+        if ent:GetClass() == "banana_peel" then
+			return false
+		end
+	end)
+
     hook.Add("Think", "IsBananaSlipped", function()
         for _, v in player.Iterator() do
             if (v:IsPlayer()) and v:Alive() and v:OnGround() 

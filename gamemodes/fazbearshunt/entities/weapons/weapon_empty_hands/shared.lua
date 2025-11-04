@@ -21,7 +21,7 @@ function SWEP:Initialize()
 	self:SetHoldType( self.HoldType )
 	
 	self.Time = 0
-	self.Range = 150
+	self.Range = 120
 end
 
 function SWEP:PrimaryAttack()
@@ -36,28 +36,27 @@ function SWEP:PrimaryAttack()
 	}
 
 	local HitEnt = Tr.Entity
+	
 	if self.Drag then
 		HitEnt = self.Drag.Entity
 	else
 		if !IsValid(HitEnt) or HitEnt:GetMoveType() ~= MOVETYPE_VPHYSICS or
 			HitEnt:IsVehicle() or HitEnt:GetNWBool("NoDrag", false) or
-			HitEnt.BlockDrag != nil or
+			HitEnt.BlockDrag ~= nil or
 			IsValid(HitEnt:GetParent()) then
 			return
 		end
 		
-		if ply:GetUseEntity() == HitEnt then
-			//return
-			//эта хуйня ебанутая
+		if HitEnt:GetVelocity():Length2D() > 100 then
+			return
+		end
+		
+		if SERVER and HitEnt:IsPlayerHolding() then
+			return
 		end
 
 		local Phys = HitEnt:GetPhysicsObject()
 		if not IsValid(Phys) then return end
-		
-		local mass = Phys:GetMass()
-		if mass > 300 then
-			//return
-		end
 		
 		if ply:GetGroundEntity() == HitEnt then
 			return

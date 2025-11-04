@@ -158,9 +158,12 @@ function assignKillers()
 	if totalPlayers == 0 or !players then return end
 	
     for i = 1, curMaxKillers do
-		players = fh.GetEarnedKillers(players)
+		if table.IsEmpty(players) then
+			players = player.GetAll()
+		end
+		local killers = fh.GetEarnedKillers(players)
 		
-		local chosenPlayer = fh.randomChoice(players)
+		local chosenPlayer = fh.randomChoice(killers)
 		table.RemoveByValue(players, chosenPlayer)
 		
 		animatronics[chosenPlayer] = true

@@ -167,9 +167,9 @@ function SWEP:DealDamage()
 	end
 	
 	if targetIsSurv then
-		ply:EmitSound("weapons/axe/melee_axe_0" .. math.random(1,3) .. ".wav", 45, 100, 0.4, CHAN_WEAPON )
+		ply:EmitSound("weapons/axe/melee_axe_0" .. math.random(1,3) .. ".wav", 45, 100, 0.4, CHAN_AUTO )
 	else
-		ply:EmitSound("weapons/axe/axe_impact_world" .. math.random(1,2) .. ".wav", 45, 100, 0.4, CHAN_WEAPON )
+		ply:EmitSound("weapons/axe/axe_impact_world" .. math.random(1,2) .. ".wav", 45, 100, 0.4, CHAN_AUTO )
 	end
 
 	if targetIsSurv then
@@ -299,6 +299,8 @@ end)
 if CLIENT then
 	hook.Add( "PreDrawHalos", "kilaxe_halo", function()
 		local owner = LocalPlayer()
+		local target = owner:GetObserverTarget()
+		if IsValid(target) and target:IsPlayer() then owner = target end
 		local wep = owner:GetActiveWeapon()
 		
 		if IsValid(wep) and wep:GetClass() == "weapon_killer_axe" then
@@ -316,16 +318,30 @@ if CLIENT then
 				end
 			end
 			halo.Add(nearPlayers, Color(255, 0, 0), 1, 1, 2, true, true)
+		end
+	end)
 			
-			hook.Add("HUDPaint", "fh_pt_draw_affected", function()
-				if !IsValid(wep) then
-					hook.Remove("HUDPaint", "fh_pt_draw_affected")
-					return
+	hook.Add("HUDPaint", "fh_kilaxe_draw_affected", function()
+		local owner = LocalPlayer()
+		local target = owner:GetObserverTarget()
+		if IsValid(target) and target:IsPlayer() then owner = target end
+		local wep = owner:GetActiveWeapon()
+
+		if IsValid(wep) and wep:GetClass() == "weapon_killer_axe" then
+			local nearPlayers = {}
+			
+			for _, ply in player.Iterator() do
+				if !ply:Alive() or ply:GetNoDraw() then continue end
+				if ply ~= owner and ply:GetPos():Distance(owner:GetPos()) <= 2600 then
+					local ent = pills.getMappedEnt(ply)
+
+					if IsValid(ent) and ent.formTable.name == "pill_wgfreddy2" and !owner:GetNW2Bool("_OUTWORLD_target") then continue end
+					
+					if !IsValid(ent) then ent = ply end
+					table.insert(nearPlayers, ent)
 				end
-				if IsValid(wep) and wep:GetClass() == "weapon_killer_axe" then
-					draw_orbs(nearPlayers)
-				end
-			end)
+			end
+			draw_orbs(nearPlayers)
 		end
 	end)
 	

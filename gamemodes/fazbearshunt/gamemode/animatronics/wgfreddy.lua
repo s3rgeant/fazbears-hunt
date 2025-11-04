@@ -861,6 +861,22 @@ hook.Add("PlayerSpawn", "wgfreddy_spawn", function(ply)
 	if wgfreddy_targets[ply] or outworld_victims[ply] then
 		cancel_outworld(ply)
 	end
+	
+	if !table.IsEmpty(wgfreddy_targets) then
+		for k,v in pairs( wgfreddy_targets ) do
+			local ent = pills.getMappedEnt(k)
+			
+			if IsValid(ent) then
+				net.Start("fh_dontdraw_anim")
+				net.WriteEntity(ent)
+				net.Send(ply)
+			end
+			
+			net.Start("fh_dontdraw_player")
+			net.WritePlayer(v)
+			net.Send(ply)
+		end
+	end
 end)
 
 local sfreddy_noclip_movement = {500, 600, 500, 250}
@@ -995,7 +1011,7 @@ function start_outworld(ply, ent, target)
 	
 	net.Start("fh_net_wgfreddy_scarysound")
 	net.WriteBool(true)
-	net.WritePlayer(ply)
+	net.WriteEntity(ply)
 	net.Send(target)
 	
 	local timer_name = "plushie_hint_" .. ply:EntIndex()
