@@ -7,7 +7,7 @@ GM.Author = "sergeant"
 GM.Email = "N/A"
 GM.Website = "N/A"
 
-local fh_version = "3.1.2"
+local fh_version = "3.2.0"
 
 function fh.GetVersion()
     return fh_version
@@ -84,6 +84,8 @@ local killerData = killerData or {
     ["pill_plushtrap"] = {name = "plushtrap", fullname = "fazhunt.animatronics.plushtrap", color = colors.Plushtrap},
 	
     ["pill_mangle"] = {name = "mangle", fullname = "fazhunt.animatronics.mangle", color = colors.Endo},
+	
+    ["pill_toychica"] = {name = "tchica", fullname = "Toy Chica", color = colors.Chica},
 }
 
 killerAbilities = {
@@ -134,7 +136,6 @@ killerAbilities = {
         { name = 'attack', key = 'LMB', duration = 0 },
         { name = 'summon', key = 'RMB', duration = 0 },
         { name = 'highlight', key = 'R', duration = 0 },
-        { name = 'plushtrap', duration = 0, hidden = true }
     },
     gfreddy = {
         { name = 'submerge', key = 'RMB', duration = 0 },
@@ -146,7 +147,12 @@ killerAbilities = {
             return CanMangleLunge()
         end },
         { name = 'highlight', key = 'R', duration = 0}
-    }
+    },
+    tchica = {
+        { name = 'kill', key = 'LMB', duration = 0, hidden = true },
+        { name = 'hold', key = 'RMB', duration = 0 },
+        { name = 'highlight', key = 'R', duration = 0}
+    },
 }
 
 killers = killers or {}
@@ -167,6 +173,26 @@ end
 function killers.GetAvatar(killer)
 	if killerAvatars[killer] then
 		return killerAvatars[killer]
+	end
+	return nil
+end
+
+local killerPortraits = {}
+for name,v in pairs(killerData) do
+	local imagePath = "vgui/animatronics_hud/heads/" .. v.name .. ".png"
+	local animImage = nil
+	
+    if file.Exists("materials/" .. imagePath, "GAME") then
+		animImage = Material(imagePath, "mips")
+		if !animImage:IsError() then
+			killerPortraits[v.name] = animImage
+		end
+	end
+end
+
+function killers.GetPortrait(killer)
+	if killerPortraits[killer] then
+		return killerPortraits[killer]
 	end
 	return nil
 end
@@ -506,6 +532,8 @@ hook.Add("PreGamemodeLoaded", "FH_pk_pill_support", function()
 				end
 				if pack.items then
 					for _, item in pairs(pack.items) do
+						if killerData[item.name] then continue end
+						
 						if !item.name then continue end
 						toRegister[item.name] = {}
 					end
@@ -514,7 +542,8 @@ hook.Add("PreGamemodeLoaded", "FH_pk_pill_support", function()
 		
 			local name, forms = debug.getupvalue(pk_pills.getPillTable, 1)
 			for name,data in pairs(forms) do
-				if toRegister[name] and !killerData[name] then
+				
+				if toRegister[name] then
 					toRegister[name] = data
 				end
 			end
@@ -560,6 +589,11 @@ if meta then
 	function meta:IsAnimatronic()
 		return self:Team() == 2701 or IsValid(pills.getMappedEnt(self))
 	end
+end
+
+local meta = FindMetaTable("Entity")
+
+if meta then
 	
 	function meta:IsInvisible()
 		return self:GetMaterial() == "models/null" or self:GetNoDraw()

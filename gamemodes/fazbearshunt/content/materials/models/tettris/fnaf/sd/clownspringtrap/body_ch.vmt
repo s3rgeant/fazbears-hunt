@@ -6,18 +6,7 @@
 	"$maskmap2" 	"models\tetTris\FNaF\SD\ClownSpringtrap\Body_CH"
 
 	"$nocull" "0"
-	"$additive" "1"
 
-	"$specularexponent"		"20"
-	"$specularscale"		 	"0"
-	"$specularcolor" 			"[1 1 1]"
-	"$rimlightcolor" 			"[1 1 1]"
-
-	"$maskenvbymetalness" "0"
-
-	"$metalnessblendtofull"	"1"
-
-	"$envmapintensity"		"0"
     "$alphatest" "1"
     "$alphatestreference" "0.3"
 }

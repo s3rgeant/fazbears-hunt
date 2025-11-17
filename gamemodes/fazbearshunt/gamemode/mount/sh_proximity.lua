@@ -54,17 +54,17 @@ if SERVER then
 		local maxDistance = GetConVar("proximity_radius"):GetInt()
 		local proximityEnabled = GetConVar("proximity_enabled"):GetInt()
 
+		-- наблюдатель не хочет слышать других наблюдателей
+		if list_team == TEAM_SPECTATOR and talker_team == TEAM_SPECTATOR and listener:GetInfoNum("proximity_hear_spectators", 1) == 0 then
+			return false, false
+		end
+
 		if proximityEnabled == 0 then
 			return true, false
 		end
 		
 		-- чтобы наблюдателей не слышать
 		if list_team ~= TEAM_SPECTATOR and talker_team == TEAM_SPECTATOR then
-			return false, false
-		end
-
-		-- наблюдатель не хочет слышать других наблюдателей
-		if (list_team == TEAM_SPECTATOR and talker_team == TEAM_SPECTATOR and listener:GetInfoNum("proximity_hear_spectators", 1) == 0) then
 			return false, false
 		end
 

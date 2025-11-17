@@ -118,8 +118,8 @@ local positiveEffects = {
 		req = function(ply)
 			if ply:HasWeapon("weapon_fh_medkit") then return false end
 			
-			if ply:Health() < 100 then
-				return true
+			if ply:Health() >= 100 then
+				return false
 			end
 		
 			local damageOnlyAnims = killers.getAllDamageOnly()
@@ -191,12 +191,13 @@ local positiveEffects = {
 		desc = "fazhunt.gifts.bananas",
 		num = 5,
         func = function(ply)
-            ply:Give("weapon_banana")
 			local toGive = 4
 			
 			if ply:HasWeapon("weapon_banana") then
 				toGive = 5
 			end
+			
+            ply:Give("weapon_banana")
 			
 			ply:SetSuppressPickupNotices(true)
             ply:GiveAmmo(toGive, "ammo_banana", true)
@@ -220,7 +221,7 @@ local positiveEffects = {
             ply:Give("weapon_fanta")
         end,
         req = function(ply)
-			if fh.GetActiveUsedKiller("pill_wfoxy2") or fh.GetActiveUsedKiller("pill_sfreddy2") then
+			if fh.GetActiveUsedKiller("pill_wfoxy2") or fh.GetActiveUsedKiller("pill_sfreddy2") or fh.GetActiveUsedKiller("pill_mangle") then
 				if !ply:HasWeapon("weapon_fanta") then
 					return true
 				end
@@ -247,7 +248,13 @@ local positiveEffects = {
 				return false
 			end
 		
-			if team.NumPlayers(2701) > 1 and math.random(1,10) == 1 then
+			local animCount = team.NumPlayers(2701)
+			
+			if fh.GetActiveUsedKiller("pill_plushtrap") then
+				animCount = math.max(animCount - 1, 1)
+			end
+		
+			if animCount > 1 and math.random(1,10) == 1 then
 				if !ply:HasWeapon("weapon_killmask") then
 					return true
 				end

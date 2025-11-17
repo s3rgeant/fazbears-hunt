@@ -148,13 +148,13 @@ end)
 
 hook.Add("PostEntityTakeDamage", "fh_stats_damage", function(target, dmginfo)
 	if target:IsPlayer() and target:Team() ~= 2701 then
-		stats.Add(target, "got_damaged", math.ceil(dmginfo:GetDamage()))
+		stats.Add(target, "got_damaged", math.min( math.ceil(dmginfo:GetDamage()), target:Health() ))
 		
 		local attacker = dmginfo:GetAttacker()
 		local inflictor = dmginfo:GetInflictor()
 		
 		if IsValid(attacker) and attacker:IsPlayer() and attacker:Team() == 2701 then
-			stats.Add(attacker, "damaged", dmginfo:GetDamage())
+			stats.Add(attacker, "damaged", math.min( dmginfo:GetDamage(), target:Health() ))
 			if IsValid(inflictor) then
 				if inflictor:GetClass() == "v_clown" then
 					stats.Add(attacker, "hitted_using_hammer", 1)

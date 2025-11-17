@@ -55,6 +55,33 @@ function register(name, t)
     forms[name] = t
 end
 
+function clone(newname, name, t)
+	if not forms[name] then return end
+	
+	local function deepCopy(orig)
+		if istable(orig) then
+			local copy = {}
+			for k, v in pairs(orig) do
+				copy[k] = deepCopy(v)
+			end
+			return copy
+		else
+			return orig
+		end
+	end
+	
+	local base = deepCopy(forms[name])
+	
+	if istable(t) then
+		for k, v in pairs(t) do
+			base[k] = v
+		end
+	end
+	
+	register(newname, base)
+end
+
+
 function editPillTable(name, func, newfunc)
 	forms[name][func] = newfunc
 end
@@ -83,42 +110,42 @@ end
 
 -- Player to Pill Entity Mapping
 function mapEnt(ply, ent)
-    ply.pk_pill_ent = ent
+    ply.fh_pill_ent = ent
 end
 
 function unmapEnt(ply, ent)
-    if ply.pk_pill_ent == ent then
-        ply.pk_pill_ent = nil
-    elseif IsValid(ply.pk_pill_ent) then
-        return ply.pk_pill_ent.formTable.type
+    if ply.fh_pill_ent == ent then
+        ply.fh_pill_ent = nil
+    elseif IsValid(ply.fh_pill_ent) then
+        return ply.fh_pill_ent.formTable.type
     end
 end
 
 function getMappedEnt(ply)
-    return ply.pk_pill_ent
+    return ply.fh_pill_ent
 end
 
 local PLAYER = FindMetaTable("Player")
 
 if PLAYER then
 	function PLAYER:GetPill()
-		return self.pk_pill_ent
+		return self.fh_pill_ent
 	end
 end
 
 -- Concommands, Convars, etc.
 if SERVER then
-    concommand.Add("pk_pill_apply", function(ply, cmd, args, str)
+    concommand.Add("pills_apply", function(ply, cmd, args, str)
 		if IsValid(ply) and !ply:IsAdmin() then return end
         apply(args[1], args[2], "user", tonumber(args[3]))
     end)
 
-    concommand.Add("pk_pill_restore", function(ply, cmd, args, str)
+    concommand.Add("pills_restore", function(ply, cmd, args, str)
 		if IsValid(ply) and !ply:IsAdmin() then return end
         restore(args[1])
     end)
 
-    concommand.Add("pk_pill_restore_force", function(ply, cmd, args, str)
+    concommand.Add("pills_restore_force", function(ply, cmd, args, str)
 		if IsValid(ply) and !ply:IsAdmin() then return end
         restore(ply, true)
     end)
@@ -466,7 +493,7 @@ else -- CLIENT HOOKS
 
     -- IGNORE THIS NONSENSE: Just use the default HUD from now on
     hook.Add("HUDShouldDraw", "pk_pill_hideHud", function(name)
-        if (getMappedEnt(LocalPlayer()) and name == "CHudHealth") then return false end
+        if (getMappedEnt(LocalPlayer()) and (name == "CHudHealth" or name == "CHudBattery")) then return false end
     end)
 end
 

@@ -146,6 +146,19 @@ local function IsPlayerStuck(ply)
     })
     return tr.Hit
 end
+	
+local function QuickIsStuck(ent)
+	if not IsValid(ent) then return false end
+
+	local trace = util.TraceEntity({
+		start = ent:GetPos(),
+		endpos = ent:GetPos(),
+		filter = ent,
+		mask = MASK_SOLID
+	}, ent)
+
+	return trace.Hit
+end
 
 local function FindSafePosition(ply)
     local startPos = ply:GetPos()
@@ -211,6 +224,21 @@ function PLAYER:Unstuck()
 		self:SetPos(safePos)
 		self:DropToFloor()
 	end
+end
+
+function PLAYER:RepeatRestoreCollision(duration)
+	duration = duration or 0.5
+	
+	timer.Create("fh_repeat_unstuck" .. self:EntIndex(), 0.5, 0, function()
+		if IsValid(self) and !QuickIsStuck(self) then
+			self:SetCollisionGroup(COLLISION_GROUP_PLAYER)
+			timer.Remove("fh_repeat_unstuck" .. self:EntIndex())
+		end
+		
+		if !IsValid(self) or !self:Alive() then
+			timer.Remove("fh_repeat_unstuck" .. self:EntIndex())
+		end
+	end)
 end
 
 hook.Add("fh_startgame", "fh_startgame_unstuck", function(roundType)

@@ -1,7 +1,7 @@
 ﻿include( "animatronics/wgfreddy.lua" )
 include( "animatronics/foxy.lua" )
 include( "animatronics/mangle.lua" )
---include( "animatronics/endo_test.lua" )
+include( "animatronics/toychica.lua" )
 
 local model_prefix = IsHalloween() and "phantom" or "old"
 
@@ -64,10 +64,28 @@ if SERVER then
 	resource.AddFile( "materials/models/null.vmt" )
 end
 
+local function chaseVoicelineChecker(ply, ent, name)
+	timer.Create("CheckConditions"..ply:EntIndex(), 2, 0, function()
+		if !IsValid(ent) then
+			if timer.Exists( "CheckConditions"..ply:EntIndex()) then
+				timer.Remove("CheckConditions"..ply:EntIndex())
+			end
+			if timer.Exists( "ChaseCheck"..ply:EntIndex()) then
+				timer.Remove("ChaseCheck"..ply:EntIndex())
+			end
+			return
+		end
+		
+		chaseCheck(ply, name, ent)
+	end)
+end
+
 local cupcakes = {} 
 
 shadow_freddyability = CreateConVar( "fh_sfreddy_noclip", "1", { FCVAR_NOTIFY, FCVAR_ARCHIVE, FCVAR_REPLICATED }, 
-"Should Shadow Freddy Noclip or just slide throught objects while being invisible?." )
+"Should Shadow Freddy Noclip or just slide throught objects while being invisible?" )
+npc_blindrage = CreateConVar( "fh_blindrage_npcs", "0", { FCVAR_NOTIFY, FCVAR_ARCHIVE, FCVAR_REPLICATED }, 
+"Should Withered Freddy be able to use Blind Rage on npcs?" )
 
 pills.packStart("FUPPR 2 WE","FUPPR 2 WE","icon/fnafur2we.png")
 
@@ -115,6 +133,7 @@ pills.register("pill_wfreddy2",{
 			stalk="stalk",
 			stun="stun",
 			doorbreak="doorbreak",
+			melee="melee",
 		},
 	},
 	moveSpeed={
@@ -164,19 +183,7 @@ pills.register("pill_wfreddy2",{
 	end,
 	
 	startFunction=function(ply,ent)
-		timer.Create("CheckConditions"..ply:EntIndex(), 2, 0, function()
-			if !IsValid(ent) then
-				if timer.Exists( "CheckConditions"..ply:EntIndex()) then
-					timer.Remove("CheckConditions"..ply:EntIndex())
-				end
-				if timer.Exists( "ChaseCheck"..ply:EntIndex()) then
-					timer.Remove("ChaseCheck"..ply:EntIndex())
-				end
-				return
-			end
-			
-			chaseCheck(ply, 'freddy')
-		end)
+		chaseVoicelineChecker(ply, ent, "freddy")
 	end,
 
 	noFallDamage=true,
@@ -187,7 +194,10 @@ pills.register("pill_wfreddy2",{
 			if IsValid(ply:GetEntityInUse()) then return end
 			local target = FindNearestPlayer(ent:GetPos(), 130, ply, 90)
 			
-			if stalkTarget and target ~= stalkTarget then return end
+			if stalkTarget and target ~= stalkTarget then 
+				AnimatronicBreakProp(ply, ent)
+				return 
+			end
 			
 			local jumpscare = performJumpscare(ply, ent, target, 1.6, "freddy", 50, "v_freddy")
 			
@@ -260,7 +270,7 @@ pills.register("pill_wfreddy2",{
 			ply._isStalkingActive = true
 
 			timer.Create(stalkTimerName, 1, 11, function()
-				if not IsValid(ply) or not IsValid(ent) or not IsValid(target) then
+				if !IsValid(ply) or !IsValid(ent) or !IsValid(target) then
 					timer.Remove(stalkTimerName)
 					ply._isStalkingActive = nil
 					return
@@ -268,10 +278,10 @@ pills.register("pill_wfreddy2",{
 
 				if not ply._isStalkingActive then return end
 
-				if timer.RepsLeft(stalkTimerName) == 8 then
+				if timer.RepsLeft(stalkTimerName) == 8 and target:IsPlayer() then
 					target:SetDSP(22)
 				end
-				if timer.RepsLeft(stalkTimerName) == 6 then
+				if timer.RepsLeft(stalkTimerName) == 6 and target:IsPlayer() then
 					target:SetDSP(25)
 				end
 
@@ -288,7 +298,7 @@ pills.register("pill_wfreddy2",{
 				end
 
 				local currentPosition = target:GetPos()
-				if not target:Crouching() then
+				if target:IsPlayer() and !target:Crouching() or target:IsNPC() and !target:IsCrouching() then
 					local distance = currentPosition:Distance(lastPosition)
 					if distance > 5 then
 						movementTime = movementTime + 1
@@ -321,7 +331,7 @@ pills.register("pill_wfreddy2",{
 								wep:PlayCustomAnimation("ACT_IDLE", 0)
 							end
 
-							if IsValid(target) then
+							if IsValid(target) and target:IsPlayer() then
 								target:SetDSP(1)
 								stats.Add(target, "evaded_blind_rage", 1)
 							end
@@ -377,11 +387,48 @@ pills.register("pill_wfreddy2",{
 	end
 })
 
+pills.clone("bear5_main", "pill_wfreddy2", {
+	printName="Bear 5",
+	
+	model="models/speps/pill/oldfreddy.mdl",
+	
+	options=function() return {
+		["default"] = {
+			bodyGroups = {[0] = 1},
+		}
+	} end,
+	option="default",
+	
+	viewmodel={
+		weapon="v_freddy",
+		skin=2,
+		func=function(wep)
+			wep.walk_string = "slowwalk"
+			wep.walk_act = ACT_WALK_STEALTH
+		end
+	},
+	
+	-- bear5
+	boneMorphs={
+		["bip_eye_R"] = {scale = Vector(0.5,0.5,0.5)},
+		["bip_eye_L"] = {scale = Vector(0.5,0.5,0.5)},
+		["bip_EyeLid_0_R"] = {scale = Vector(0,0,0)},
+		["bip_EyeLid_1_R"] = {scale = Vector(0,0,0)},
+		["bip_EyeLid_0_L"] = {scale = Vector(0,0,0)},
+		["bip_EyeLid_1_L"] = {scale = Vector(0,0,0)},
+	},
+	
+	visColor=Color(0,70,235),
+})
+
 -- сталк
 function fh_random_stalk_target(ignore)
     local candidates = {}
-    for _, ply in player.Iterator() do
-        if IsValid(ply) and ply:Alive() and ply:IsSurvivor() and ply ~= ignore and !outworld_victims[ply] then
+	
+	local iterator = npc_blindrage:GetBool() and select( 2, ents.Iterator() ) or select( 2, player.Iterator() )
+	
+    for _, ply in ipairs(iterator) do
+        if IsValid(ply) and ply:Alive() and (ply:IsPlayer() and ply:IsSurvivor() or ply:Health() > 0 and ply:IsNPC()) and ply ~= ignore and !outworld_victims[ply] then
             local speed = ply:GetVelocity():Length()
             if speed < 70 then
                 table.insert(candidates, ply)
@@ -420,7 +467,7 @@ end
 
 local stalkerEnt
 function successStalk(ply, ent, target)
-	if IsValid(target) and target:Alive() and target:IsSurvivor() then
+	if IsValid(target) and target:Alive() and (target:IsPlayer() and target:IsSurvivor() or target:IsNPC()) then
 	
 		local wep = ply:GetActiveWeapon()
 		if IsValid(wep) and wep:GetClass() == "v_freddy" then
@@ -443,10 +490,27 @@ function successStalk(ply, ent, target)
 		net.WriteEntity(target)
 		net.Send(ply)
 		
-		target:SetDSP(1)
+		if target:IsPlayer() then
+			target:SetDSP(1)
+		
+			net.Start("fh_play_sound")
+			net.WriteString('freddy_target_stalked.wav')
+			net.Send(target)
 			
-		for _, ply in ipairs(team.GetPlayers(TEAM_SURVIVOR)) do
-			if ply ~= target then
+			net.Start("fh_draw_hl_overlay")
+			net.WriteBool(false)
+			net.Send(target)
+		
+			net.Start('fh_net_display')
+			net.WriteString('fazhunt.freddy.foundrun')
+			net.WriteString('fazhunt.freddy.found')
+			net.WriteFloat(-1)
+			net.WriteFloat(6)
+			net.Send(target)
+		end
+			
+		for _, ply in player.Iterator() do
+			if ply ~= target and ply:Alive() then
 				net.Start("fh_play_sound")
 				net.WriteString('freddy_rage_warning.wav')
 				net.Send(ply)
@@ -457,31 +521,18 @@ function successStalk(ply, ent, target)
 		net.WritePlayer(ply)
 		net.WriteString('freddy_raged2_looped.wav')
 		net.Broadcast()
-		
-		net.Start("fh_play_sound")
-		net.WriteString('freddy_target_stalked.wav')
-		net.Send(target)
 			
+		--[[
 		timer.Simple(2, function()
-			if target:IsSurvivor() then
+			if target:IsPlayer() and target:IsSurvivor() then
 				net.Start("fh_adv_sound_play")
 				net.WriteString('freddy_targeted_ambience.wav')
 				net.Send(target)
 			end
 		end)
-			
-		net.Start("fh_draw_hl_overlay")
-		net.WriteBool(false)
-		net.Send(target)
+		]]--
 		
-		net.Start('fh_net_display')
-		net.WriteString('fazhunt.freddy.foundrun')
-		net.WriteString('fazhunt.freddy.found')
-		net.WriteFloat(-1)
-		net.WriteFloat(6)
-		net.Send(target)
-		
-		hook.Run("FH_BlindRageSuccess", ply, ent, victim)
+		hook.Run("FH_BlindRageSuccess", ply, ent, target)
 	end
 end
 
@@ -552,6 +603,7 @@ pills.register("pill_wbonnie2",{
 			point="point",
 			ability="yoursmine",
 			stun="stun",
+			melee="melee",
 		},
 	},
 	moveSpeed={
@@ -598,19 +650,7 @@ pills.register("pill_wbonnie2",{
 	noFallDamage=true,
 	
 	startFunction=function(ply,ent)
-		timer.Create("CheckConditions"..ply:EntIndex(), 2, 0, function()
-			if !IsValid(ent) then
-				if timer.Exists( "CheckConditions"..ply:EntIndex()) then
-					timer.Remove("CheckConditions"..ply:EntIndex())
-				end
-				if timer.Exists( "ChaseCheck"..ply:EntIndex()) then
-					timer.Remove("ChaseCheck"..ply:EntIndex())
-				end
-				return
-			end
-			
-			chaseCheck(ply, 'bonnie')
-		end)
+		chaseVoicelineChecker(ply, ent, "bonnie")
 	end,
 	
 	attack={
@@ -799,6 +839,7 @@ pills.register("pill_wchica2",{
 			land="land",
 			scare="scare",
 			stun="stun",
+			melee="melee",
 		},
 	},
 	moveSpeed={
@@ -840,19 +881,7 @@ pills.register("pill_wchica2",{
 	noFallDamage=true,
 	
 	startFunction=function(ply,ent)
-		timer.Create("CheckConditions"..ply:EntIndex(), 2, 0, function()
-			if !IsValid(ent) then
-				if timer.Exists( "CheckConditions"..ply:EntIndex()) then
-					timer.Remove("CheckConditions"..ply:EntIndex())
-				end
-				if timer.Exists( "ChaseCheck"..ply:EntIndex()) then
-					timer.Remove("ChaseCheck"..ply:EntIndex())
-				end
-				return
-			end
-			
-			chaseCheck(ply, 'chica')
-		end)
+		chaseVoicelineChecker(ply, ent, "chica")
 	end,
 	
 	attack={
@@ -980,7 +1009,7 @@ pills.register("pill_wfoxy2",{
 			stun="stun",
 			chargestun="chargestun",
 			swing="preattack",
-			attack="attack",
+			melee="melee",
 		},
 	},
 	moveSpeed={
@@ -1064,19 +1093,7 @@ pills.register("pill_wfoxy2",{
 	
 	startFunction=function(ply,ent)
 		ply.blightRushTokens = 5
-		timer.Create("CheckConditions"..ply:EntIndex(), 2, 0, function()
-			if !IsValid(ent) then
-				if timer.Exists( "CheckConditions"..ply:EntIndex()) then
-					timer.Remove("CheckConditions"..ply:EntIndex())
-				end
-				if timer.Exists( "ChaseCheck"..ply:EntIndex()) then
-					timer.Remove("ChaseCheck"..ply:EntIndex())
-				end
-				return
-			end
-			
-			chaseCheck(ply, 'foxy')
-		end)
+		chaseVoicelineChecker(ply, ent, "foxy")
 	end,
 	
 	attack={
@@ -1193,6 +1210,7 @@ pills.register("pill_sfreddy2",{
 			glide="sglide",
 			scare="sscare",
 			stun="sstun",
+			melee="melee",
 		},
 	},
 	moveSpeed={
@@ -1244,19 +1262,7 @@ pills.register("pill_sfreddy2",{
 	end,
 	
 	startFunction=function(ply,ent)
-		timer.Create("CheckConditions"..ply:EntIndex(), 2, 0, function()
-			if !IsValid(ent) then
-				if timer.Exists( "CheckConditions"..ply:EntIndex()) then
-					timer.Remove("CheckConditions"..ply:EntIndex())
-				end
-				if timer.Exists( "ChaseCheck"..ply:EntIndex()) then
-					timer.Remove("ChaseCheck"..ply:EntIndex())
-				end
-				return
-			end
-			
-			chaseCheck(ply, 'sfreddy', ent)
-		end)
+		chaseVoicelineChecker(ply, ent, "sfreddy")
 	end,
 	
 	attack={
@@ -1457,6 +1463,7 @@ pills.register("pill_endo02",{
 			land="land",
 			scare="scare",
 			stun="stun",
+			melee="melee",
 		},
 	},
 	moveSpeed={
@@ -1502,19 +1509,7 @@ pills.register("pill_endo02",{
 	noFallDamage=true,
 	
 	startFunction=function(ply,ent)
-		timer.Create("CheckConditions"..ply:EntIndex(), 2, 0, function()
-			if !IsValid(ent) then
-				if timer.Exists( "CheckConditions"..ply:EntIndex()) then
-					timer.Remove("CheckConditions"..ply:EntIndex())
-				end
-				if timer.Exists( "ChaseCheck"..ply:EntIndex()) then
-					timer.Remove("ChaseCheck"..ply:EntIndex())
-				end
-				return
-			end
-			
-			chaseCheck(ply, 'endo')
-		end)
+		chaseVoicelineChecker(ply, ent, "endo")
 	end,
 	
 	attack={
@@ -1638,6 +1633,7 @@ pills.register("pill_wgfreddy2",{
 			inn="tonormal",
 			scare="sscare",
 			rage="rage",
+			melee="melee",
 		},
 	},
 
@@ -1708,7 +1704,7 @@ pills.register("pill_wgfreddy2",{
 		net.Start("fh_wgfreddy_stop_selection_halo")
 		net.Send(ply)
 		
-		ply:SetCollisionGroup( COLLISION_GROUP_PLAYER_MOVEMENT )
+		ply:SetCollisionGroup( COLLISION_GROUP_PLAYER )
 		
 		ply:SetAudible(true)
 		ply:ResetListenPlayer()
@@ -2078,7 +2074,9 @@ resource.AddFile("sound/throw_player.wav")
 function performJumpscare(ply, ent, target, killDelay, voiceCharacter, jumpscareDistance, wepClass)
 	if not IsValid(target) then return false end
 	
-	if target:HasGodMode() then return false end
+	if target:IsPlayer() and target:HasGodMode() then return false end
+	
+	if target:Health() <= 0 then return end
 	
 	if hook.Run("FH_PlayerShouldJumpscare", ply, ent, target) == false then return false end
 
@@ -2087,11 +2085,6 @@ function performJumpscare(ply, ent, target, killDelay, voiceCharacter, jumpscare
 	)
 
 	ent:PillSound("melee", false)
-
-	if target:IsNPC() then
-		target:TakeDamage(target:Health(), ply)
-		return
-	end
 
 	target.jumpscared = true
 	ply.jumpscaring = target
@@ -2121,8 +2114,14 @@ function performJumpscare(ply, ent, target, killDelay, voiceCharacter, jumpscare
 		end
 		if IsValid(target) then 
 			target.jumpscared = false
-			target:Freeze(false)
-			target:TakeDamage(target:Health() + target:Armor(), ply)
+			
+			if target:IsPlayer() then
+				target:Freeze(false)
+			end
+			
+			local armor = target:IsPlayer() and target:Armor() or 0
+			
+			target:TakeDamage(target:Health() + armor, ply)
 		end
 	end)
 	
@@ -2186,13 +2185,17 @@ function jumpscareEvent(ply, ent, target, dist)
 
 	hook.Run("FH_JumpscareEvent", ply, ent, target, dist)
 
-	net.Start("JumpscareLight")
-	net.Send(target)
+	if target:IsPlayer() then
+		net.Start("JumpscareLight")
+		net.Send(target)
+	end
 
 	target:DropToFloor()
 	ply:DropToFloor()
 
-	target:Freeze(true)
+	if target:IsPlayer() then
+		target:Freeze(true)
+	end
 	ply:Freeze(true)
 
 	local target_phys = target:GetPhysicsObject()
@@ -2213,6 +2216,16 @@ function jumpscareEvent(ply, ent, target, dist)
 		ply:SetPos(teleportPlyPos)
 		target:SetPos(teleportTargetPos)
 	end
+	
+	if target:IsNPC() then -- я хз чё тут делать
+		target:MoveStop()
+		target:MovePause()
+		target:StopMoving()
+		target:ResetMoveCalc()
+		target:ClearGoal()
+		target:ClearSchedule()
+		target:TaskComplete()
+	end
 
 	local directionToTarget = (target:GetPos() - ply:GetPos()):Angle()
 	local entAngle = directionToTarget
@@ -2221,8 +2234,10 @@ function jumpscareEvent(ply, ent, target, dist)
 	ent:SetForceAngles(entAngle)
 	ent:SetUseForceAngles(true)
 
-	local directionToAttacker = (ply:GetPos() - target:GetPos()):Angle()
-	target:SetEyeAngles(directionToAttacker)
+	if target:IsPlayer() then
+		local directionToAttacker = (ply:GetPos() - target:GetPos()):Angle()
+		target:SetEyeAngles(directionToAttacker)
+	end
 end
 
 local takenPlayers = {}
@@ -2301,7 +2316,7 @@ function takePlayer(ply, ent)
     end
 end
 
-hook.Add("KeyRelease", "PlayerRightClickRelease", function(ply, key)
+hook.Add("KeyRelease", "endo_key_release", function(ply, key)
     if key == IN_ATTACK2 then
 		ply:LagCompensation(true)
 		endoRelease(ply)
@@ -2476,6 +2491,66 @@ hook.Add( "AcceptInput", "fh_door_input", function( ent, name, activator, caller
 	end
 end )
 
+hook.Add("FuncDoorBust", "fh_blindrage_doorbust", function(ply, door)
+	if ply ~= stalker then return end
+
+	local puppet = pills.getMappedEnt(ply)
+	if not IsValid(puppet) then return end
+
+	if puppet.formTable.name ~= "pill_wfreddy2" then return end
+
+	if not IsValid(door) then return end
+
+	local mdl = door:GetModel()
+	if not mdl then return end
+
+	local pos = door:GetPos()
+	local ang = door:GetAngles()
+	local skin = door:GetSkin()
+
+	local mins = door:OBBMins()
+	local maxs = door:OBBMaxs()
+
+	door:Fire("Unlock", "", 0)
+	door:Fire("Open", "", 0)
+
+	door:SetCollisionGroup(COLLISION_GROUP_DEBRIS)
+	
+	timer.Simple(0, function()
+		if IsValid(door) then
+			door:Remove()
+		end
+	end)
+
+	local physDoor = ents.Create("prop_physics")
+	if not IsValid(physDoor) then return end
+
+	physDoor:SetModel(mdl)
+	physDoor:SetPos(pos)
+	physDoor:SetAngles(ang)
+	physDoor:SetSkin(skin)
+	physDoor:Spawn()
+	physDoor:Activate()
+
+	physDoor:SetCollisionBounds(mins, maxs)
+
+	local phys = physDoor:GetPhysicsObject()
+	if IsValid(phys) then
+		phys:SetMass(35)
+		phys:Wake()
+	end
+
+	physDoor:SetCollisionGroup(COLLISION_GROUP_DEBRIS)
+
+	if IsValid(phys) then
+		local dir = ply:GetForward()
+		phys:ApplyForceCenter(dir * 15000)
+	end
+
+	sound.Play("Wood_Crate.Break", pos, 90, math.random(90,110))
+	util.ScreenShake(pos, 5, 5, 0.5, 200)
+end)
+
 if CLIENT then
 	local function halo_breakable_doors()
 		local ply = LocalPlayer()
@@ -2536,6 +2611,14 @@ if SERVER then
 
 	hook.Add( "PlayerDeath", "fh_pill_fnaf2_death", fnaf2pill_death_handle)
 	hook.Add( "PlayerDeath", "fh_pill_fnaf2_silentdeath", fnaf2pill_death_handle)
+	
+	hook.Add( "OnNPCKilled", "ExplosionEffectOnNPCDeath", function( npc, attacker, inflictor )
+		if npc == stalkTarget then
+			if IsValid(stalker) then
+				noMoreStalk(stalker)
+			end
+		end
+	end)
 	
 	hook.Add("FH_OutworldStart", "cancel_freddy_rage", function(wgfreddy, victim)
 		if victim == stalkTarget then
@@ -2708,7 +2791,7 @@ function AnimatronicBreakProp(ply, ent, cooldown)
 	
 	if target:GetMoveType() == MOVETYPE_VPHYSICS then
 		local owner = target:GetOwner()
-		if !IsValid(owner) or IsValid(owner) and !owner:IsAnimatronic() then
+		if !IsValid(owner) or IsValid(owner) and owner:IsPlayer() and !owner:IsAnimatronic() then
 		
 			local phys = target:GetPhysicsObject()
 			if IsValid(phys) then
@@ -2722,6 +2805,8 @@ function AnimatronicBreakProp(ply, ent, cooldown)
 		local wep = ply:GetActiveWeapon()
 	
 		ply:EmitSound("bonnie_punch.mp3")
+		
+		ent:PillGesture('melee', 2, 1, 0.1, 0.7)
 		
 		local dmginfo = DamageInfo()
 		dmginfo:SetAttacker( ply )

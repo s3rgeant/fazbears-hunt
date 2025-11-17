@@ -177,6 +177,7 @@ function highlight.AddVisionSounds(name, snd_affected, snd_unaffected)
 end
 
 highlight.AddVisionSounds("pill_springtrap", "fnaf3/spr_vision_affected.wav", "fnaf3/spr_vision_unaffected.wav")
+highlight.AddVisionSounds("pill_sfreddy2", "shadow_affected_vision.wav", "vision_unaffected.wav")
 
 function highlight.GetVisionSound(ent)
 	if IsValid(ent) then 

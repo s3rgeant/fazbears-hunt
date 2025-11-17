@@ -62,8 +62,10 @@ function ENT:Initialize()
         end
 		
 		if self.formTable.viewmodel and self.formTable.viewmodel.weapon then
+			ply:SetSuppressPickupNotices(true)
 			ply:Give(self.formTable.viewmodel.weapon)
 			ply:SelectWeapon(self.formTable.viewmodel.weapon)
+			ply:SetSuppressPickupNotices(false)
 			
 			if self.formTable.viewmodel.skin then
 				local wep = ply:GetActiveWeapon()
@@ -594,6 +596,8 @@ if SERVER then
         local anims = table.Copy(self.formTable.anims.default or {})
         table.Merge(anims, IsValid(ply:GetActiveWeapon()) and self.formTable.anims[ply:GetActiveWeapon():GetHoldType()] or {})
         local gesture = anims[name]
+		if !gesture then return end
+		
 		local seq = self:LookupSequence(gesture)
 		local id = nil
 		

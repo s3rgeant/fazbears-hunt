@@ -342,7 +342,7 @@ if CLIENT then
 
 	hook.Add( "EntityEmitSound", "fh_wgfreddy_sound_handler", function( t )
 		local myself = LocalPlayer()
-		if myself:Alive() then
+		if IsValid(myself) and myself:Alive() then
 			if myself:GetNW2Bool("_OUTWORLD_target") or myself:GetNW2Bool("_OUTWORLD_gfreddy") then
 				if IsValid(t.Entity) and t.Entity:GetClass() == "pill_costume" then
 					if t.Entity.formTable and t.Entity.formTable.name ~= "pill_wgfreddy2" then
@@ -989,6 +989,7 @@ function start_outworld(ply, ent, target)
 	StartDelayedDamage(target)
 	
 	target:SetNWBool("can_be_gf_scared", true)
+	target:SetNWEntity("_WGoldenFreddy", ply)
 	
 	ply:SetNW2Bool("_OUTWORLD_gfreddy", true)
 	target:SetNW2Bool("_OUTWORLD_target", true)
@@ -1080,6 +1081,9 @@ function start_outworld_battle(ply, ent, target)
 	ply:ChatPrint(target:Nick() .. " - твоя цель.")
 	
 	target:SetNWBool("can_be_gf_scared", true)
+	--target:SetNWEntity("_WGoldenFreddy", ply)
+	-- надо ли?
+	
 	ply:SetNWBool("wgfreddy_enraged", true)
 	
 	ply:SetNW2Bool("_OUTWORLD_gfreddy", true)
@@ -1148,6 +1152,7 @@ function cancel_outworld(ply)
 		StopDelayedDamage(victim)
 		killPlushies(victim)
 		victim:SetNWBool("can_be_gf_scared", false)
+		victim:SetNWEntity("_WGoldenFreddy", nil)
 	end
 		
 	net.Start('fh_sound_stop')
@@ -1307,11 +1312,12 @@ if SERVER then
 				
 				timer.Simple(10, function()
 					if IsValid(ent) and IsValid(ply) then
-						
-						net.Start('fh_ent_sound_play')
-						net.WritePlayer(wgfreddy)
-						net.WriteString('fnaf2/gfreddy/gfreddy_enraged.wav')
-						net.Send({ply, wgfreddy})
+						if outworld_victims[ply] and wgfreddy_targets[wgfreddy] then
+							net.Start('fh_ent_sound_play')
+							net.WritePlayer(wgfreddy)
+							net.WriteString('fnaf2/gfreddy/gfreddy_enraged.wav')
+							net.Send({ply, wgfreddy})
+						end
 					end
 				end)
 				

@@ -333,14 +333,15 @@ local animatronicThemes = {
     ["pill_wfoxy2"] = "springtrap",
     ["pill_endo02"] = "springtrap",
     ["pill_wbonnie2"] = "springtrap",
-    ["pill_wfreddy2"] = "springtrap",
+    ["pill_wfreddy2"] = "freddy",
     ["pill_wchica2"] = "springtrap",
     ["pill_sfreddy2"] = "springtrap",
     ["pill_clown"] = "springtrap",
     ["pill_springtrap"] = "springtrap",
     ["pill_plushtrap"] = "springtrap",
     ["pill_mangle"] = "springtrap",
-    ["mask"] = "mask"
+    ["mask"] = "mask",
+    ["bear5_main"] = "bear5",
 }
 
 local stealthAnims = {

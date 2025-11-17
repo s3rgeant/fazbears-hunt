@@ -1,13 +1,13 @@
 SWEP.PrintName = "Clown SWEP"
 
 if CLIENT then
-	local vfov = CreateClientConVar('cl_fov_clown', 105, true, false, 'Fov of Clown')
-	SWEP.ViewModelFOV = vfov:GetFloat() or 105
+	local vfov = CreateClientConVar('cl_fov_clown', 110, true, false, 'Fov of Clown')
+	SWEP.ViewModelFOV = vfov:GetFloat() or 110
     
     cvars.AddChangeCallback("cl_fov_clown", function(name, old_value, new_value)
 		local wep = LocalPlayer():GetActiveWeapon()
 		if IsValid(wep) and string.StartWith(wep:GetClass(), "v_") then
-			wep.ViewModelFOV = tonumber(new_value) or 105
+			wep.ViewModelFOV = tonumber(new_value) or 110
 		end
     end)
 
@@ -72,7 +72,7 @@ function SWEP:PrimaryAttack()
 		ply:EmitSound("hammer_ready.wav")
 	end
 	
-	self:PlayCustomAnimation("ACT_MELEE_ATTACK1", 1.1)
+	self:PlayCustomAnimation("ACT_MELEE_ATTACK1", 1.6)
 	
 	self:SetNextMeleeAttack( CurTime() + self.HitDelay )
 end
@@ -101,6 +101,7 @@ function SWEP:DealDamage()
 	local hitpos = trace.HitPos
 	
 	local targets = fh_get_nearest_players(hitpos, 100, ply) or (trace.Entity:IsPlayer() and trace.Entity:Team() != 2701) and {trace.Entity}
+	
 	local props = fh_get_nearest_props(hitpos, 100)
 	
 	if props then
@@ -137,8 +138,9 @@ function SWEP:DealDamage()
 	
 		local effectdata = EffectData()
 		effectdata:SetOrigin(trace.HitPos)
-		effectdata:SetScale(160)
-		util.Effect("ThumperDust", effectdata)
+		effectdata:SetStart(trace.HitPos)
+		effectdata:SetScale(120)
+		util.Effect("ThumperDust", effectdata, true, true)
 		
 		if targets then
 			ply:EmitSound("hammer_hit_success.wav")
@@ -153,14 +155,14 @@ function SWEP:DealDamage()
 	if !targets then return end
 	
 	for _, target in ipairs(targets) do
-		if target:IsNPC() then
-			target:TakeDamage(99999, ply, self)
-			return 
-		end
+		local best_damage = 36
+		local min_damage = math.random(30,32)
 		
-		target:TakeDamage(36, ply, self)
+		local distance = target:GetPos():Distance(hitpos)
+		
+		target:TakeDamage(distance < 90 and best_damage or min_damage, ply, self)
 	
-		target:SetVelocity(ply:GetUp() * 249) -- чтоб он нахуй улетел
+		target:SetVelocity(target:GetUp() * 249) -- чтоб он нахуй улетел
 	end
 end
 

@@ -126,6 +126,22 @@ admin.AddAnimatronicSetting("pill_plushtrap", {
 	description = language.GetPhrase("fazhunt.adminpanel.plushtrap_vision_range")
 })
 
+admin.AddAnimatronicSetting("pill_wfreddy2", {
+    class = "DCheckBoxLabel",
+    setup = function(panel)
+        panel:SetText(language.GetPhrase("fazhunt.adminpanel.wfreddy_blindrage_npcs"))
+        panel:SetDark(true)
+        panel:SetChecked(npc_blindrage:GetBool())
+        function panel:OnChange(b)
+            net.Start("AdminAction")
+            net.WriteString("fh_blindrage_npcs")
+            net.WriteBool(b)
+            net.SendToServer()
+        end
+    end,
+	description = language.GetPhrase("fazhunt.adminpanel.not_supported")
+})
+
 local function GetSelectedPlayers()
     local selectedLines = PlayerList:GetSelected()
     local players = {}
@@ -499,6 +515,11 @@ local function OpenAdminPanel()
 	end
 
     sheet:AddSheet(language.GetPhrase("fazhunt.animatronics_team"), animPanel, "icon16/freddy.png")
+	
+    local modPanel = vgui.Create("DPanel")
+    modPanel:Dock(FILL)
+
+    sheet:AddSheet(language.GetPhrase("fazhunt.adminpanel.modifiers"), modPanel, "icon16/lightning.png")
 
     if IsValid(sheet) and sheet.Items[lastSelectedTab] then
         sheet:SetActiveTab(sheet.Items[lastSelectedTab].Tab)

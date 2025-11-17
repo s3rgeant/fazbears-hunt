@@ -21,7 +21,7 @@ end
 
 pills.packStart("FH FNAF3", "FH FNAF3", "icon16/pill.png")
 
-hook.Add( "PostCleanupMap", "fh_pill_fnaf2_reset", function( name )
+hook.Add( "PostCleanupMap", "fh_pill_fnaf3_reset", function( name )
 	
 	if IsValid(pt_request_springtrap_ply) then
 		net.Start("fh_sel_menu_close")
@@ -37,6 +37,22 @@ hook.Add( "PostCleanupMap", "fh_pill_fnaf2_reset", function( name )
 	
 	spring_enraged = false
 end)
+
+local function chaseVoicelineChecker(ply, ent, name)
+	timer.Create("CheckConditions"..ply:EntIndex(), 2, 0, function()
+		if !IsValid(ent) then
+			if timer.Exists( "CheckConditions"..ply:EntIndex()) then
+				timer.Remove("CheckConditions"..ply:EntIndex())
+			end
+			if timer.Exists( "ChaseCheck"..ply:EntIndex()) then
+				timer.Remove("ChaseCheck"..ply:EntIndex())
+			end
+			return
+		end
+		
+		chaseCheck(ply, name)
+	end)
+end
 
 -- CLOWN
 
@@ -64,6 +80,8 @@ pills.register("pill_clown",{
 		run=420,
 		ducked=70,
 	},
+    jumpPower=250,
+	
 	sounds={
 		jump="jump.mp3",
 		land="land.mp3",
@@ -97,15 +115,17 @@ pills.register("pill_clown",{
 	end,
 	
 	startFunction=function(ply,ent)
-		ply:SetJumpBoostMultiplier( math.min( getScaledJumpBoost() + 0.2, 1) )
+		--ply:SetJumpBoostMultiplier( math.min( getScaledJumpBoost() + 0.2, 1) )
 		-- дабы он баннихопил быстрее игроков в любом случае
+		
+		chaseVoicelineChecker(ply, ent, "clown")
 	end,
 	
+	--[[
 	restore=function(ply,ent)
 		ply:SetJumpBoostMultiplier( getScaledJumpBoost() )
 	end,
-
-    jumpPower=250,
+	]]--
 	
 	muteSteps = true,
 	health=10000,
@@ -116,22 +136,6 @@ pills.register("pill_clown",{
 	},
 	canAim=function(ply,ent)
 		return ent.active
-	end,
-	
-	startFunction=function(ply,ent)
-		timer.Create("CheckConditions"..ply:EntIndex(), 2, 0, function()
-			if !IsValid(ent) then
-				if timer.Exists( "CheckConditions"..ply:EntIndex()) then
-					timer.Remove("CheckConditions"..ply:EntIndex())
-				end
-				if timer.Exists( "ChaseCheck"..ply:EntIndex()) then
-					timer.Remove("ChaseCheck"..ply:EntIndex())
-				end
-				return
-			end
-			
-			chaseCheck(ply, 'clown')
-		end)
 	end,
 
 	noFallDamage=true,
@@ -324,9 +328,9 @@ pills.register("pill_springtrap",{
 							
 							spring_rage_total = spring_rage_total + add
 				
-							print(ply:Nick() .. " is playing Springtrap. His rage progress: ( " ..spring_rage_total .. " / 60 )")
+							print(ply:Nick() .. " is playing Springtrap. His rage progress: ( " ..spring_rage_total .. " / 45 )")
 							
-							if spring_rage_total >= 60 then
+							if spring_rage_total >= 45 then
 							
 								local val = 0
 								local loh
@@ -439,15 +443,27 @@ pills.register("pill_springtrap",{
 			plushtrap:Spawn()
 			plushtrap:Activate()
 	
+			--[[
 			net.Start("fh_net_killer_change")
 			net.WriteString("plushtrap")
 			net.WriteFloat(60)
+			net.Send(ply)
+			]]--
+			
+			net.Start("ApplyKillerCompanion")
+			net.WriteString("plushtrap")
+			net.WriteColor( Color(130, 119, 48) )
+			net.WriteFloat( CurTime() + 60 )
 			net.Send(ply)
 			
 			timer.Create("pt_kill_timer" .. ply:EntIndex(), 60, 1, function()
 				if IsValid(plushtrap) then
 					plushtrap:Remove()
 				end
+			
+				net.Start("RemoveKillerCompanion")
+				net.Send(ply)
+			
 				kill_plushtrap(request_plushtrap)
 							
 				spectators = team.GetPlayers(TEAM_SPECTATOR)
@@ -470,12 +486,11 @@ pills.register("pill_springtrap",{
     },
 
 	reload=function(ply,ent)
-		if ply.lobbyFreeze != nil and ply.lobbyFreeze then return end
 		highlight.ByDistance(ply, ent)
 	end,
 	
 	land=function(ply,ent)
-		if ply.lobbyFreeze != nil and ply.lobbyFreeze or ply.tasered then return end
+		if ply.tasered then return end
 		
 		if ply:WaterLevel() < 2 and ply:GetVelocity().z < -160 then
 			ent:PillAnim("land",true)
@@ -495,10 +510,6 @@ function kill_plushtrap(ply)
 		ply:Kill()
 		ply:SetTeam(TEAM_SPECTATOR)
 		ply:SendLua( "LocalPlayer():ChatPrint( language.GetPhrase('fazhunt.springtrap.plushtime') )" )
-	
-		if IsValid(ply.DeathRagdoll) then
-			ply.DeathRagdoll:Remove()
-		end
 		
 		request_plushtrap = nil
 	end
@@ -604,9 +615,8 @@ pills.register("pill_plushtrap",{
 	},
 	stepSize=16,
 	sounds={
-		jump="fnaf3/sprjump.mp3",
-		land="fnaf3/sprland.mp3",
-		step=pills.helpers.makeList("fnaf2/none.wav",1)
+		jump="fnaf3/plushtrap/plu_jump.mp3",
+		land="fnaf3/plushtrap/plu_land.mp3",
 	},
 	type="ply",
     camera = {
@@ -633,31 +643,11 @@ pills.register("pill_plushtrap",{
 	canAim=function(ply,ent)
 		return ent.active
 	end,
-	moveMod=function(ply,ent,mv)
-		if IsValid(ent) then
-			if CLIENT then return end
-		
-			if timer.Exists( "CheckConditions"..ply:EntIndex()) or timer.Exists( "ChaseCheck"..ply:EntIndex()) then return end
-			
-			timer.Create("CheckConditions"..ply:EntIndex(), 2, 0, function()
-				if !IsValid(ent) then
-					if timer.Exists( "CheckConditions"..ply:EntIndex()) then
-						timer.Remove("CheckConditions"..ply:EntIndex())
-					end
-					if timer.Exists( "ChaseCheck"..ply:EntIndex()) then
-						timer.Remove("ChaseCheck"..ply:EntIndex())
-					end
-					return
-				end
-				
-				chaseCheck(ply, 'plushtrap')
-			end)
-		end
-	end,
 	
 	startFunction=function(ply,ent)
 		ply:SetCollisionGroup(COLLISION_GROUP_PASSABLE_DOOR)
 		--request_plushtrap = ply
+		chaseVoicelineChecker(ply, ent, "plushtrap")
 	end,
 	
 	restore=function(ply,ent, formtable)

@@ -1,6 +1,12 @@
 currentKiller = currentKiller or ""
 fh_hud_color = fh_hud_color or ""
 
+local currentCompanion = ""
+local companionColor = Color(255,255,255,255)
+local companionIcon
+local companionLifeTime
+local companionStartTime
+
 currentAbilities = currentAbilities or {}
 cupcakes = cupcakes or 0
 
@@ -19,12 +25,16 @@ cvars.AddChangeCallback("fh_ui_scale", function(name, value_old, value_new)
 end)
 --]]
 
-local killerIconPath = killerIconPath or ""
-local killerIcon = killerIcon or Material( killerIconPath )
+local killerIcon
 local cake = Material( "vgui/cake.png", "smooth" )
+
+local abilities_X_add = 0
 
 local circle_mat = Material( "vgui/animatronics_hud/circle.png", "smooth" )
 local circle_outline_mat = Material( "vgui/animatronics_hud/circle_outline.png", "smooth" )
+
+local c_comp_mat = Material( "vgui/animatronics_hud/companion_circle.png", "smooth" )
+local c_comp_outline_mat = Material( "vgui/animatronics_hud/companion_outline.png", "smooth" )
 
 local tokens_bg_mat = Material( "vgui/animatronics_hud/abilities/tokens_bg.png", "smooth" )
 local tokens_bg_outline_mat = Material( "vgui/animatronics_hud/abilities/tokens_outline.png", "smooth" )
@@ -45,14 +55,15 @@ function DrawKillerInterface()
 	local screenW, screenH = ScrW(), ScrH()
 
 	local hud_color = fh_hud_color or Color(255,255,255,255)
+	local с_hud_color = companionColor or Color(255,255,255,255)
 
 	local size = 330 * uiScale
 	local avatar_y = 260 * uiScale
 
-	local circle_width, circle_height = (circle_mat:GetInt("$realwidth") or 100) * uiScale, (circle_mat:GetInt("$realheight") or 100) * uiScale
-
 	local circleX = 32 * uiScale
 	local circleY = screenH - avatar_y - (16 * uiScale)
+
+	local circle_width, circle_height = (circle_mat:GetInt("$realwidth") or 100) * uiScale, (circle_mat:GetInt("$realheight") or 100) * uiScale
 
 	surface.SetMaterial(circle_mat)
 	surface.SetDrawColor(hud_color)
@@ -62,9 +73,9 @@ function DrawKillerInterface()
 
 	surface.SetMaterial(circle_outline_mat)
 	surface.SetDrawColor(hud_color)
-	surface.DrawTexturedRect(32 * uiScale, screenH - avatar_y - (16 * uiScale), circle_outline_mat_width, circle_outline_mat_height)
+	surface.DrawTexturedRect(circleX, screenH - avatar_y - (16 * uiScale), circle_outline_mat_width, circle_outline_mat_height)
 
-	if file.Exists("materials/" .. killerIconPath, "GAME") then
+	if killerIcon then
 		local mat_width, mat_height = (killerIcon:GetInt("$realwidth") or 100) * uiScale, (killerIcon:GetInt("$realheight") or 100) * uiScale
 		local avatarX = circleX + (circle_width - mat_width) / 2
 		local avatarY = circleY + circle_height - mat_height - (7 * uiScale)
@@ -73,8 +84,54 @@ function DrawKillerInterface()
 		surface.SetDrawColor(255, 255, 255, 255)
 		surface.DrawTexturedRect(avatarX, avatarY, mat_width, mat_height)
 	end
+	
+	if companionIcon then
+		local c_comp_mat_width, c_comp_mat_height = (c_comp_mat:GetInt("$realwidth") or 60) * uiScale, (c_comp_mat:GetInt("$realheight") or 60) * uiScale
 
-	local abilityX, abilityY = size, screenH - (100 * uiScale)
+		local c_comp_x = circleX + circle_width / 1.7
+		local c_comp_y = circleY + circle_height - c_comp_mat_height
+
+		surface.SetMaterial(c_comp_mat)
+		surface.SetDrawColor(с_hud_color)
+		surface.DrawTexturedRect(c_comp_x, c_comp_y, c_comp_mat_width, c_comp_mat_height)
+
+		local c_comp_outline_mat_width, c_comp_outline_mat_height = (c_comp_outline_mat:GetInt("$realwidth") or 60) * uiScale, (c_comp_outline_mat:GetInt("$realheight") or 60) * uiScale
+		
+		local totalDuration = companionLifeTime - companionStartTime
+		local elapsed = CurTime() - companionStartTime
+		local fillPercent = 1 - math.Clamp(elapsed / totalDuration, 0, 1)
+		
+		local x, y = c_comp_x, c_comp_y
+		local w, h = c_comp_outline_mat_width, c_comp_outline_mat_height
+		local filledHeight = h * fillPercent
+
+		render.SetScissorRect(x, y + (h - filledHeight), x + w, y + h, true)
+
+		surface.SetMaterial(c_comp_outline_mat)
+		surface.SetDrawColor(с_hud_color)
+		surface.DrawTexturedRect(x, y, w, h)
+
+		render.SetScissorRect(0, 0, 0, 0, false)
+		
+		if companionIcon then
+			local mat_width, mat_height = (companionIcon:GetInt("$realwidth") * 0.61 or 50) * uiScale, (companionIcon:GetInt("$realheight") * 0.61 or 50) * uiScale
+
+			local avatarX = c_comp_x + (c_comp_mat_width - mat_width) / 2
+			local avatarY = circleY + circle_height - mat_height - 11
+
+			surface.SetMaterial(companionIcon)
+			surface.SetDrawColor(255, 255, 255, 255)
+			surface.DrawTexturedRect(avatarX, avatarY, mat_width, mat_height)
+		end
+		local timeLeft = math.ceil(companionLifeTime - CurTime() or 0)
+		draw.SimpleText( tostring(timeLeft), "fh_hud_ability_button", x + w/2, y + h -  14, color_white, TEXT_ALIGN_CENTER, TEXT_ALIGN_BOTTOM )
+
+		abilities_X_add = math.min(abilities_X_add + (50 * FrameTime()), 25)
+	else
+		abilities_X_add = math.max(abilities_X_add - (50 * FrameTime()), 0)
+	end
+
+	local abilityX, abilityY = size + abilities_X_add, screenH - (100 * uiScale)
 
 	for abilityName, abilityData in pairs(currentAbilities) do
 		local maxTime = abilityData.maxTime
@@ -252,9 +309,48 @@ local function updateAnimHudHeader(name, ent)
 	if ent.formTable.option == "halloween" then
 		name = "h_" .. name
 	end
+	
+	local findHeader = killers.GetPortrait(name)
+	
+	if findHeader then
+		killerIcon = findHeader
+		return
+	end
+	
+	local path = "vgui/animatronics_hud/heads/" .. name .. ".png"
+	
+	
+	if file.Exists("materials/" .. path, "GAME") then
+		killerIcon = Material( path, "smooth" )
+		return
+	end
+	
+	killerIcon = nil
+end
 
-	killerIconPath = "vgui/animatronics_hud/heads/"..name..".png"
-	killerIcon = Material( killerIconPath, "smooth" )
+local function setCompanion(name, color, lifetime)
+	local findHeader = killers.GetPortrait(name)
+	
+	companionColor = color
+	companionLifeTime = lifetime or nil
+	companionStartTime = CurTime()
+	
+	if findHeader then
+		companionIcon = findHeader
+		return
+	end
+	
+	local path = "vgui/animatronics_hud/heads/" .. name .. ".png"
+	
+	if file.Exists("materials/" .. path, "GAME") then
+		companionIcon = Material( path, "smooth" )
+		return
+	end
+	
+	companionColor = Color(255,255,255,255)
+	companionLifeTime = nil
+	companionStartTime = nil
+	companionIcon = nil
 end
 
 function assignAbilitiesByKiller(name)
@@ -373,17 +469,32 @@ hook.Add("PillApply", "fh_applyhudkiller", function(ply, ent)
 	end
 end)
 
-net.Receive("ApplyKiller", function() 
+net.Receive("ApplyKillerCompanion", function() 
 	local anim = net.ReadString()
 	local clr = net.ReadColor()
+	local lifetime = net.ReadFloat()
 
-	hud_ApplyKiller(anim, clr)
+	setCompanion(anim, clr, lifetime)
+end)
+
+net.Receive("RemoveKillerCompanion", function() 
+	companionColor = Color(255,255,255,255)
+	companionIcon = nil
 end)
 
 net.Receive("fh_remove_hud_mine", function()
 	if cupcakes > 0 then
 		cupcakes = cupcakes - 1
 	end
+end)
+
+hook.Add("PostCleanupMap", "fh_cleanhudkiller", function(ply)
+	hook.Remove("HUDPaint", "DrawKillerInterface")
+    currentKiller = ""
+	cupcakes = 0
+	table.Empty(currentAbilities)
+	table.Empty(scrollOffsets)
+	table.Empty(scrollSpeeds)
 end)
 
 function hud_RemoveKiller()

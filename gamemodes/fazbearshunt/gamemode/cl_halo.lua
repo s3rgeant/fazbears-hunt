@@ -215,6 +215,7 @@ function drawHighlight()
 	
 	if highlight_mat:IsError() then return end
 	
+	-- 80 0 255 ШФ
     surface.SetDrawColor(255, 255, 255, 225)
     surface.SetMaterial(highlight_mat)
     surface.DrawTexturedRect(0, 0, ScrW(), ScrH())
@@ -344,10 +345,12 @@ hook.Add("PostDrawOpaqueRenderables", "fh_draw_teammates", function(depth, skybo
 			if toScreen.visible then
 				local trace = util.QuickTrace(eyePos, ent:WorldSpaceCenter() - eyePos, ply)
 				
-				if !trace.Hit or ent == pills.getMappedEnt(trace.Entity) then continue end
+				if ( !trace.Hit or ent == pills.getMappedEnt(trace.Entity) ) and !ent:IsInvisible() then continue end
 				
 				local pos = ent:GetPos()
 				local ang = ent:GetAngles()
+				
+				if pos:Distance(eyePos) < 250 then continue end
 
 				local camForward = EyeAngles():Forward()
 				local backOffset = camForward * 30

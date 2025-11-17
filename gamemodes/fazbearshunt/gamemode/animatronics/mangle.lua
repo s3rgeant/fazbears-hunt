@@ -38,6 +38,7 @@ pills.register("pill_mangle",{
 			crouch="crouch",
 			crouch_walk="crouchwalk",
 			stun="stun",
+			melee="melee",
 		},
 	},
 	moveSpeed={
@@ -217,7 +218,7 @@ hook.Add("KeyPress", "mangle_unhook", function(ply, key)
 	end
 end)
 
-local function tierDown(ply)
+function mangle_tierDown(ply)
 	if IsValid(ply) then
 		local curTier = ply._MangleTier or 0
 		
@@ -229,23 +230,7 @@ local function tierDown(ply)
 	end
 end
 
-local function mangleChangeSpeed(ply, tier)
-	local ent = pills.getMappedEnt(ply)
-	
-	local desiredspeed = man_speed[tier + 1]
-	
-	if IsValid(ent) then
-		ent:SetSpeed(unpack(desiredspeed))
-		
-		timer.Simple(180, function()
-			if IsValid(ent) and IsValid(ply) then
-				tierDown(ply)
-			end
-		end)
-	end
-end
-
-local function tierUp(ply)
+function mangle_tierUp(ply)
 	if IsValid(ply) then
 		local curTier = ply._MangleTier or 0
 		
@@ -259,23 +244,29 @@ local function tierUp(ply)
 	end
 end
 
-local function MangleHookUpCheck(ply, mv)
-	local velocity = ply:GetVelocity()
+local function mangleChangeSpeed(ply, tier)
+	local ent = pills.getMappedEnt(ply)
+	
+	local desiredspeed = man_speed[tier + 1]
+	
+	if IsValid(ent) then
+		ent:SetSpeed(unpack(desiredspeed))
+		
+		timer.Simple(180, function()
+			if IsValid(ent) and IsValid(ply) then
+				mangle_tierDown(ply)
+			end
+		end)
+	end
+end
 
-	local speedDir = velocity:GetNormalized()
-	local traceDist = 40
+local function MangleHookUpCheck(ply, mv)
+	local eyeDir = ply:EyeAngles():Forward()
+	local traceDist = 50
 
 	local startPos = ply:EyePos()
-	
-	local ang = speedDir:Angle()
-	
-	ang.yaw = math.Round(ang.yaw / 45) * 45
-	ang.pitch = math.Round(ang.pitch / 45) * 45
+	local endPos = startPos + eyeDir * traceDist
 
-	local snappedDir = ang:Forward()
-	
-	local endPos = startPos + (snappedDir * traceDist)
-	
 	local tr = util.TraceLine({
 		start = startPos,
 		endpos = endPos,
@@ -283,10 +274,18 @@ local function MangleHookUpCheck(ply, mv)
 		filter = ply
 	})
 
-	tr.startPos = startPos
-	tr.endPos = endPos
-
-	--debugoverlay.Line(startPos, endPos, 1, Color(255, 255, 0))
+	if not tr.Hit then
+		for yawOffset = -30, 30, 15 do
+			local offsetDir = (ply:EyeAngles() + Angle(0, yawOffset, 0)):Forward()
+			tr = util.TraceLine({
+				start = startPos,
+				endpos = startPos + offsetDir * traceDist,
+				mask = MASK_VISIBLE,
+				filter = ply
+			})
+			if tr.Hit then break end
+		end
+	end
 
 	return tr
 end
@@ -348,7 +347,7 @@ hook.Add("FinishMove", "mangle_hook_ready", function( ply, mv )
 				
 				victim:EmitSound("physics\body\body_medium_break3.wav")
 				
-				tierUp(ply)
+				mangle_tierUp(ply)
 			end
 			ply:LagCompensation(false)
 		end
@@ -372,13 +371,28 @@ hook.Add("FinishMove", "mangle_hook_ready", function( ply, mv )
 				-- ЗАЦЕП НА СТЕНУ
 				if tr.HitNormal.z >= -0.2 then
 				
+					local vectoradd = Vector(0,0,0)
+				
 					local trace = { start = ply:GetPos(), endpos = ply:GetPos() + -tr.HitNormal * 50, filter = ply }
 					local trr = util.TraceLine( trace, ply ) 
 					if ( !trr.Hit or tr.Entity ~= game.GetWorld() ) then
 					
-						debugoverlay.Line( ply:GetPos(), ply:GetPos() + -tr.HitNormal * 50 )
-						debugoverlay.Box( ply:GetPos() + -tr.HitNormal * 50, Vector(12,12,12), Vector(-12,-12,-12), 2, Color(255,0,0) )
-						return
+						--debugoverlay.Line( ply:GetPos(), ply:GetPos() + -tr.HitNormal * 50 )
+						--debugoverlay.Box( ply:GetPos() + -tr.HitNormal * 50, Vector(12,12,12), Vector(-12,-12,-12), 2, Color(255,0,0) )
+						
+						debugoverlay.Box( ply:GetPos() + Vector(0,0,64), Vector(12,12,12), Vector(-12,-12,-12), 2, Color(255,0,0) )
+						
+						local trace = { start = ply:GetPos(), endpos = ply:GetPos() + Vector(0,0,64), filter = ply,
+							mins = ply:OBBMins(),
+							maxs = ply:OBBMaxs(),
+						}
+						local trr = util.TraceHull( trace )
+						
+						if (!trr.Hit) then
+							vectoradd = Vector(0,0,64)
+						else
+							return
+						end
 					end
 					
 					local newpos = tr.HitPos + -ply:GetViewOffset() + tr.HitNormal * 28
@@ -397,7 +411,7 @@ hook.Add("FinishMove", "mangle_hook_ready", function( ply, mv )
 					
 					ply:SetNWString("_MangleLastHookType", "wall")
 					
-					mv:SetOrigin( tr.HitPos + -ply:GetViewOffset() + tr.HitNormal * 28 )
+					mv:SetOrigin( vectoradd + tr.HitPos + -ply:GetViewOffset() + tr.HitNormal * 28 )
 					
 				else -- ЗАЦЕП НА ПОТОЛОК
 					if ply:GetNWString("_MangleLastHookType", "wall") == "ceiling" then
@@ -455,7 +469,7 @@ hook.Add("FinishMove", "mangle_hook_ready", function( ply, mv )
 				
 				victim:EmitSound("physics\body\body_medium_break3.wav")
 				
-				tierUp(ply)
+				mangle_tierUp(ply)
 				
 				ply:SetNWBool("_MangleHookReady", false)
 				ply:SetNWString("_MangleLastHookType", "")
@@ -496,6 +510,9 @@ hook.Add( "CalcView", "mangle_caclview", function( ply, pos, angles, fov )
 	local ent = pills.getMappedEnt(ply)
 	
 	if IsValid(ent) and ent.formTable.name == "pill_mangle" then	
+		
+		if GetConVar("fh_thirdperson"):GetBool() then return end
+	
 		if !lastmangle_CL_viewoffset then
 			lastmangle_CL_viewoffset = ply:GetCurrentViewOffset()
 		end

@@ -30,14 +30,11 @@ end
 recursive_include("fazbearshunt/gamemode/utils/")
 recursive_include("fazbearshunt/gamemode/")
 recursive_include("fazbearshunt/gamemode/interface/")
-
-include( "mount/push.lua" )
-include( "mount/proximity.lua" )
-AddCSLuaFile( "mount/proximity.lua" )
+recursive_include("fazbearshunt/gamemode/mount/")
 
 util.AddNetworkString("KillerPicked")
-util.AddNetworkString("ApplyKiller")
-util.AddNetworkString("RemoveKiller")
+util.AddNetworkString("ApplyKillerCompanion")
+util.AddNetworkString("RemoveKillerCompanion")
 
 util.AddNetworkString("nv_off")
 
@@ -193,9 +190,9 @@ hook.Add("Think", "fh_disallow_killers_choose", function()
 		for ply, _ in pairs(animatronics) do
 			if IsValid(ply) and not IsValid(ply:GetPill()) then
 				giveRandomKiller(ply, true)
-				disallowTime = 0
 			end
 		end
+		disallowTime = 0
 	end
 end)
 
@@ -318,9 +315,11 @@ function setupPlayerVars(ply)
 end
 
 hook.Add("PlayerCanSeePlayersChat", "fh_chat", function(text, teamOnly, listener, speaker)
-	if speaker:IsPlayer() and speaker:Team() == TEAM_SPECTATOR or !speaker:Alive() then
-		if listener:Team() ~= TEAM_SPECTATOR then
-			return false
+	if isGameOn and !roundEnding then
+		if speaker:IsPlayer() and speaker:Team() == TEAM_SPECTATOR or !speaker:Alive() then
+			if listener:Team() ~= TEAM_SPECTATOR then
+				return false
+			end
 		end
 	end
 end)
@@ -1342,8 +1341,6 @@ function fh.GetRoundMusic(num)
 	return round_music[0]
 end
 
-fh.AddRoundMusic(1, "music/freeze_timer_springtrap.wav")
-
 fh.RoundTypes = fh.RoundTypes or {}
 fh.RoundTypeNameToID = fh.RoundTypeNameToID or {}
 fh.RoundTypeIDToName = fh.RoundTypeIDToName or {}
@@ -1473,5 +1470,28 @@ fh.RegisterRoundType("springtrap", 1, function()
 	
 	freezeAnimatronics()
 end, 20, 6, 18)
+
+fh.AddRoundMusic(1, "music/freeze_timer_springtrap.wav")
+
+fh.RegisterRoundType("bear5", 3, function()
+	local players = player.GetAll()
+		
+	players = fh.GetEarnedKillers(players)
+	
+	if players then
+		local chosenPlayer = fh.randomChoice(players)
+		
+		giveKiller(chosenPlayer, "bear5_main", true)
+		
+		chosenPlayer.lobbyFreeze = true
+		chosenPlayer:ReturnToSpawn()
+	end
+	
+	RandomTaser()
+	
+	freezeAnimatronics()
+end, 20, 6, 24)
+
+fh.AddRoundMusic(3, "music/bear_timer.wav")
 
 include( "fh_tag.lua" )

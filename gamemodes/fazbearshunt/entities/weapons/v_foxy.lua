@@ -36,7 +36,7 @@ SWEP.IsCharging = false -- переменная для отслеживания 
 SWEP.ChargeStartTime = 0 -- время начала удержания ЛКМ
 
 SWEP.HitSize = {
-	Min = Vector( -24, -24, -16 ),
+	Min = Vector( -24, -24, -32 ),
 	Max = Vector( 24, 24, 16 )
 }
 
@@ -101,13 +101,7 @@ function SWEP:DealDamage()
 	timer.Create('FOXY_cantKill'..ply:EntIndex(), 2, 1, function() end)
 	
 	if SERVER then
-	
-		timer.Simple(0.15, function()
-			if !IsValid(ent) then return end
-			--ent:PillStopGesture('swing')
-		end)
-	
-		ent:PillGesture('attack', 2, 1, 0.1, 0.7)
+		ent:PillGesture('melee', 2, 1, 0.1, 0.7)
 		
 		net.Start("fh_net_killer_change")
 		net.WriteString("kill")
@@ -123,6 +117,10 @@ function SWEP:DealDamage()
 				receiveTokensBack(ply)
 			end
 		end)
+	end
+	
+	if CLIENT then
+		RemoveRMBHint()
 	end
 		
 	ply:LagCompensation(true)
@@ -225,9 +223,12 @@ function SWEP:Think()
 
 	if self.IsCharging then
 		local ply = self.Owner
+		
+		ply:LagCompensation(true)
+		
 		local forward = ply:GetAimVector()
 		local startPos = ply:GetShootPos()
-		local endPos = startPos + forward * 60
+		local endPos = startPos + forward * 90 -- немного меньше расстояние, чтобы не было фейковых попаданий
 
 		local mins = Vector(-10, -10, -10)
 		local maxs = Vector(10, 10, 10)
@@ -242,6 +243,8 @@ function SWEP:Think()
 		})
 
 		local hitEnt = tr.Entity
+		
+		ply:LagCompensation(false)
 
 		if IsValid(hitEnt) and hitEnt:IsPlayer() and hitEnt:IsSurvivor() then
 			self.IsCharging = false

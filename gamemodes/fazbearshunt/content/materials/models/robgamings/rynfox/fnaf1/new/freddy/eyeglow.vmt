@@ -13,7 +13,6 @@ $nodecal "1"
 $model "1"
 $diffuseexp "1.5"
 $normalmapalphaenvmapmask   "1"
-$nocull 1
 $emissiveBlendEnabled "1"
 $emissiveBlendTexture     "dev/null"
 $emissiveBlendBaseTexture	"models/RobGamings/RynFox/FNAF1/New/EyeGlow"

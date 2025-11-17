@@ -74,7 +74,7 @@ function SWEP:DealDamage()
 	
 	if !IsValid(ent) then return end
 	
-	timer.Create('PT_cantKill'..ply:EntIndex(), 1.5, 1, function() end)
+	timer.Create('PT_cantKill'..ply:EntIndex(), 1, 1, function() end)
 	
 	if SERVER then
 	
@@ -82,7 +82,7 @@ function SWEP:DealDamage()
 		
 		net.Start("fh_net_killer_change")
 		net.WriteString("attack")
-		net.WriteFloat(1.5)
+		net.WriteFloat(1)
 		net.Send(ply)
 	
 	end
@@ -118,7 +118,9 @@ function SWEP:DealDamage()
 	
 	if !IsValid(target) then 
 		ply:LagCompensation(false)
-        ply:EmitSound("fnaf3/hit-miss.mp3")
+		if SERVER then
+			ply:EmitSound("fnaf3/plushtrap/plu_attack_miss.mp3")
+		end
 		return 
 	end
 	
@@ -172,7 +174,7 @@ function SWEP:DealDamage()
 	ply:LagCompensation(false)
 
     if target:IsPlayer() and !target:IsAnimatronic() or target:IsNPC() then
-        ply:EmitSound("fnaf3/hit.mp3")
+        ply:EmitSound("fnaf3/plushtrap/plu_attack_hit.mp3")
     end
 end
 

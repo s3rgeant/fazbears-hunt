@@ -100,11 +100,11 @@ end
 function foxyRush(ply, ent)
 	if ply:GetNWBool("isBlightRushing") then return end
 
+	if not ply:OnGround() or ply:Crouching() then return end
+
 	if ply:GetNWBool("isBlightBouncing") then
 		ply:SetNWBool("isBlightBouncing", false)
 	end
-
-	if not ply:OnGround() or ply:Crouching() then return end
 	
 	local dsp = IsHalloween() and 38 or 0
 
@@ -113,7 +113,7 @@ function foxyRush(ply, ent)
 		ply:SetNWBool("Blight_BlockM1", true)
 		
 		if SERVER then
-			ply:EmitSound("blight/first_rush.wav", 75, 100, 1, CHAN_AUTO, 0, dsp)
+			ply:EmitSound("vo/foxy_charge1.mp3", 75, 100, 1, CHAN_AUTO, 0, dsp)
 		
 			local wep = ply:GetActiveWeapon()
 			if IsValid(wep) and wep:GetClass() == "v_foxy" then
@@ -122,7 +122,7 @@ function foxyRush(ply, ent)
 			end
 		end
 	elseif ply.blightRushTokens == 4 and ply:GetNWBool("blightRushing") and SERVER then
-		ply:EmitSound("blight/rushing_lethal.wav", 75, 100, 1, CHAN_AUTO, 0, dsp)
+		ply:EmitSound("vo/foxy_charge2.mp3", 75, 100, 1, CHAN_AUTO, 0, dsp)
 	end
 
 	if ply.blightRushTokens ~= MAX_RUSH_TOKENS and not ply:GetNWBool("blightRushing") then return end
@@ -154,14 +154,12 @@ function foxyRush(ply, ent)
 	ply:SetFOV(100, 0.5)
 	ply.blightRushTokens = ply.blightRushTokens - 1
 	ply:SetNWBool("isBlightRushing", true)
-	ply.blightRushStart = CurTime()
 	if SERVER then
 		stopReceivingTokens(ply)
 	end
 	ply.puppet = ent
 	
 	local rushDuration = 3.5
-	ply.blightRushStart = CurTime()
 	ply:SetNWFloat("RushEndTime", CurTime() + rushDuration)
 
 	if ply.blightTimeoutTimer then
@@ -234,7 +232,10 @@ hook.Add("SetupMove", "BlightPredictionMove", function(ply, mv, cmd)
 	
 	local rushEnd = ply:GetNWFloat("RushEndTime", 0)
 	if CurTime() > rushEnd or ply:WaterLevel() >= 2 or ply:Crouching() then
-		if SERVER then EndRush(ply) end
+		EndRush(ply) 
+		if SERVER then 
+			playVoiceline('foxy', 'miss', ply)
+		end
 		return
 	end
 
@@ -247,9 +248,6 @@ hook.Add("SetupMove", "BlightPredictionMove", function(ply, mv, cmd)
 	mv:SetMaxSpeed(900)
 
 	mv:SetForwardSpeed(1000)
-
-	--mv:SetForwardSpeed(0)
-	--mv:SetSideSpeed(0)
 
 	if IsValid(ply.puppet) then
 		ply.puppet:SetPlaybackRate(1.3)
@@ -378,6 +376,8 @@ hook.Add("FinishMove", "BlightPredictionFinish", function(ply, mv)
 			ply.blightTimeoutTimer = nil
 		
 			foxyStun(ply)
+			
+			playVoiceline('foxy', 'miss', ply)
 
 			timer.Simple(5, function()
 				if IsValid(ply) then

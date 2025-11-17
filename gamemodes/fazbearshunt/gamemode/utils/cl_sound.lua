@@ -97,19 +97,33 @@ net.Receive("fh_3d_sound_play", function()
 	end)
 end)
 
--- ДОДЕЛАТЬ РАСПИЗДЯЙ!!
 hook.Add("EntityEmitSound", "fh_silent_anims", function(data)
-	if conVars.fh_less_steps:GetBool() then
-		local ply = LocalPlayer()
-		if !IsValid(ply) then return end
-		
-		if IsValid(data.Entity) and data.Entity:GetClass() == "pill_costume" then
-			local tr = util.QuickTrace( ply:EyePos(), data.Entity:WorldSpaceCenter() - ply:EyePos(), {data.Entity, ply} )
+	local ply = LocalPlayer()
+	if !IsValid(ply) then return end
+	
+	local ent = data.Entity
+	
+	if IsValid(ent) and ent:GetClass() == "pill_costume" then
+		local volume = data.Volume
+	
+		if conVars.fh_less_steps:GetBool() then
+			local tr = util.QuickTrace( ply:EyePos(), ent:WorldSpaceCenter() - ply:EyePos(), {ent, ply} )
 		
 			if tr.Hit then
-				data.Volume = conVars.fh_less_steps_volume:GetFloat()
+				volume = volume * conVars.fh_less_steps_volume:GetFloat()
 				return true
 			end
 		end
+		
+		local user = data.Entity:GetPillUser()
+		
+		if IsValid(user) then
+			if data.OriginalSoundName:match("foot") == "foot" and !user:IsSprinting() and user:GetRunSpeed() ~= user:GetWalkSpeed() then
+				volume = volume * 0.45
+			end
+		end
+		
+		data.Volume = volume
+		return true
 	end
 end)

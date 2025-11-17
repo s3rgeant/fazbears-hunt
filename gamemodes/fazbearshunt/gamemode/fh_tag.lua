@@ -31,7 +31,7 @@ fh.RegisterRoundType("bonnie_tag", 2, function()
 	timer.Create("EndGameTimer", tagDuration + tagSetup, 1, function()
 		fh_tag_end()
 	end)
-end, 20, 8, 28)
+end, 10, 8, 20)
 
 fh.SetRoundTypeBlocked(2, true)
 
@@ -42,6 +42,10 @@ hook.Add("fh_startgame", "tag_prevent_default_startgame", function(roundType)
 end)
 
 hook.Add( "PlayerShouldTakeDamage", "fh_tagkill", function( ply, attacker )
+	if ply:IsSurvivor() and fh.GetRoundType() == 2 and !attacker:IsPlayer() then
+		return false 
+	end
+	
 	if ply:IsSurvivor() and fh.GetRoundType() == 2 and attacker:IsPlayer() and attacker:IsAnimatronic() then
 		attacker:SetHealth(100)
 		
@@ -53,6 +57,7 @@ hook.Add( "PlayerShouldTakeDamage", "fh_tagkill", function( ply, attacker )
 		
 		giveKiller(ply, "pill_wbonnie2", true)
 		restoreAnimatronic(attacker)
+		attacker:SetTeam(TEAM_SURVIVOR)
 		
 		ply.tagged = true
 		timer.Simple(0.1, function()
@@ -75,6 +80,12 @@ hook.Add( "PlayerShouldTakeDamage", "fh_tagkill", function( ply, attacker )
 end )
 
 hook.Add("fh_should_animatronic_respawn", "fh_tag_dont_respawn_anims", function(target)
+	if fh.GetRoundType() == 2 then
+		return false
+	end
+end)
+
+hook.Add("CanPlayerSuicide", "fh_tag_dont_suicide", function(ply)
 	if fh.GetRoundType() == 2 then
 		return false
 	end

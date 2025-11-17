@@ -16,7 +16,4 @@ $model "1"
 $diffuseexp "1.5"
 $normalmapalphaenvmapmask   "1"
 $nocull 1
-$envmap "models/RobGamings/RynFox/FNAF1/New/ENV2"
-$envmaptint "[ 1 1 1 ]"
-$envmapFresnel "1"
 }

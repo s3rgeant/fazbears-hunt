@@ -88,8 +88,10 @@ local magnetStrength = 0.1
 
 local function scaredNear()
     _G.fh_is_scared_lock = true
-
+	
 	local myself = LocalPlayer()
+	local targetPlayer = myself:GetNWEntity("_WGoldenFreddy")
+
 	local eyePos = myself:EyePos()
 	local plyPos = targetPlayer:EyePos()
 	
@@ -135,8 +137,6 @@ local function stopScareProgress()
 	progressSoundChannel = nil
 	progressStartTime = 0
 	
-	scareImmunityUntil = CurTime() + 0.2
-	
 	magnetStrength = magnetStrength + 0.025
 	
 	hook.Remove("CreateMove", "fh_gfreddy_magnet_view")
@@ -145,48 +145,65 @@ end
 local function fh_gfreddy_check_scarysound()
 	local myself = LocalPlayer()
 	
-	if not IsValid(targetPlayer) or targetPlayer == myself then return end
+	local targetPlayer = myself:GetNWEntity("_WGoldenFreddy")
+	
+	if !IsValid(targetPlayer) or targetPlayer == myself then return end
 	
 	local ent = targetPlayer:GetPill()
-	
-	if !myself:GetNWBool("can_be_gf_scared", false) then return end
-	if not IsValid(myself) or IsValid(myself:GetPill()) then return end
-	if not targetPlayer:Alive() or targetPlayer:GetMoveType() == MOVETYPE_NOCLIP then return end
-	if myself:Team() == TEAM_SPECTATOR or not myself:Alive() then return end
 	
 	if !IsValid(ent) then return end
+	
+	if !myself:GetNWBool("can_be_gf_scared", true) then return end
+	if not IsValid(myself) or not targetPlayer:Alive() or not myself:Alive() then return end
 
-	local eyePos = myself:EyePos()
-	local eyeAngles = myself:EyeAngles()
-	local forward = eyeAngles:Forward()
-
-	local ent = targetPlayer:GetPill()
 	if ent:GetMaterial() == "models/null" then 
 		stopScareProgress()
 		return 
 	end
 
-	local plyPos = (targetPlayer:EyePos() + targetPlayer:GetPos()) / 2
-	local toPly = plyPos - eyePos
-	local distance = toPly:Length()
-	local toPlyNormalized = toPly:GetNormalized()
-	local dotProduct = forward:Dot(toPlyNormalized)
-	dotProduct = math.Clamp(dotProduct, -1, 1)
-	local angle = math.deg(math.acos(dotProduct))
-	local fov = 45
+	local eyePos = myself:EyePos()
+	local eyeAngles = myself:EyeAngles()
+	local forward = eyeAngles:Forward()
 
-	local trace = util.TraceLine({
-		start = eyePos,
-		endpos = plyPos,
-		filter = {myself, targetPlayer, ent},
-		mask = MASK_VISIBLE
-	})
+	local targetPos = targetPlayer:GetPos()
+	local mins, maxs = targetPlayer:OBBMins(), targetPlayer:OBBMaxs()
 
-	local canSee = not trace.Hit and angle <= fov
-	
+	local bottomPos = targetPlayer:LocalToWorld(Vector(0, 0, mins.z + 5))
+	local midPos = targetPlayer:LocalToWorld(Vector(0, 0, (mins.z + maxs.z) * 0.5))
+	local eyeTargetPos = targetPlayer:EyePos()
+
+	local function CanSeeTargetPoint(pos)
+		local toPly = pos - eyePos
+		local distance = toPly:Length()
+		local toPlyNormalized = toPly:GetNormalized()
+		local dotProduct = forward:Dot(toPlyNormalized)
+		dotProduct = math.Clamp(dotProduct, -1, 1)
+		local angle = math.deg(math.acos(dotProduct))
+		local fov = 45
+
+		local trace = util.TraceLine({
+			start = eyePos,
+			endpos = pos,
+			filter = {myself, targetPlayer, ent},
+			mask = MASK_VISIBLE
+		})
+
+		return (not trace.Hit) and (angle <= fov), distance
+	end
+
+	local canSee, distance
+
+	canSee, distance = CanSeeTargetPoint(bottomPos)
+	if not canSee then
+		canSee, distance = CanSeeTargetPoint(midPos)
+	end
+	if not canSee then
+		canSee, distance = CanSeeTargetPoint(eyeTargetPos)
+	end
+
 	if CurTime() < scareImmunityUntil then return end
 
-	if distance <= 200 and canSee then
+	if canSee and distance <= 200 then
 		scaredNear()
 		scareImmunityUntil = CurTime() + 4
 		stopScareProgress()
@@ -250,6 +267,8 @@ local function fh_gfreddy_check_scarysound()
 		end
 	else
 		stopScareProgress()
+	
+		scareImmunityUntil = CurTime() + 0.15
 	end
 end
 
@@ -268,12 +287,10 @@ net.Receive("fh_net_wgfreddy_scarysound", function()
 	local can = net.ReadBool()
 	local ply = net.ReadEntity()
 	if can then
-		targetPlayer = ply
 		hook.Add("Think", "fh_scarysound", fh_gfreddy_check_scarysound)
 		return
 	end
 	hook.Remove("Think", "fh_scarysound")
-	targetPlayer = nil
 end)
 
 function toggleScarySound(can)
@@ -283,5 +300,4 @@ function toggleScarySound(can)
 		return
 	end
 	hook.Remove("Think", "fh_scarysound")
-	targetPlayer = nil
 end

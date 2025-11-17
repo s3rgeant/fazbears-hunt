@@ -110,7 +110,7 @@ function SWEP:DealDamage()
     timer.Create('ST_cantKill'..ply:EntIndex(), 1.5, 1, function() end)
 
     if SERVER then
-        timer.Simple(0.15, function()
+        timer.Simple(0.05, function()
             if IsValid(ent) then
                 ent:PillStopGesture('swing')
             end
@@ -122,7 +122,7 @@ function SWEP:DealDamage()
 
         net.Start("fh_net_killer_change")
         net.WriteString("attack")
-        net.WriteFloat(2)
+        net.WriteFloat(1.5)
         net.Send(ply)
     end
 
@@ -149,7 +149,9 @@ function SWEP:DealDamage()
     local target = tr.Entity
     if not IsValid(target) then
         ply:LagCompensation(false)
-        ply:EmitSound("fnaf3/hit-miss.mp3")
+		if SERVER then
+			ply:EmitSound("fnaf3/hit-miss.mp3")
+		end
         return
     end
 

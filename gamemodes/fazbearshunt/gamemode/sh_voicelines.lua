@@ -68,6 +68,7 @@ local voicelines = {
         trip = generateVoicelines("foxy_trip", 5),
         negative = generateVoicelines("foxy_negative", 3),
         tasered = generateVoicelines("foxy_tasered", 4),
+        miss = generateVoicelines("foxy_miss", 1),
     },
     endo = {
         kill = generateVoicelines("endo_kill", 6),
@@ -105,7 +106,17 @@ local voicelines = {
         positive = generateVoicelines("mangle_positive", 3),
         trip = generateVoicelines("mangle_trip", 3),
         tasered = generateVoicelines("mangle_tasered", 3),
-    }
+    },
+	tchica = {
+        kill = generateVoicelines("tchica_kill", 3),
+        lastkill = generateVoicelines("tchica_lastkill", 3),
+        laugh = generateVoicelines("tchica_laugh", 7),
+        negative = generateVoicelines("tchica_negative", 3),
+        positive = generateVoicelines("tchica_positive", 3),
+        grab = generateVoicelines("tchica_grab", 4),
+        release = generateVoicelines("tchica_release", 3),
+        tasered = generateVoicelines("tchica_tasered", 3),
+    },
 }
 
 local function addVoiceline(v_name, voicelines)

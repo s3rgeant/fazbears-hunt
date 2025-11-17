@@ -4,5 +4,5 @@
 	"maps"		    "^fh_"
 	"category"	    "pvp"
 	"menusystem"	"1"
-..	"workshopid"	"3349811879"
+//	"workshopid"	"3349811879"
 }

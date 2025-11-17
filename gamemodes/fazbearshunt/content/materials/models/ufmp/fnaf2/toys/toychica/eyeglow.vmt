@@ -1,0 +1,49 @@
+"UnlitGeneric"
+{
+"$basetexture" "models\ufmp/FNAF2/toys/toychica\Teeth"
+$bumpmap "models\ufmp/FNAF2/toys\shared\Flat"
+$color "5.2"
+$nodecal 1
+$model 1
+$phong "1" 
+$phongexponent "200"
+$phongboost "50"
+$ambientocclusion "0.95"
+$phongfresnelranges "[0.05 0.5 1]"
+$phongalbedotint "1"
+$halflambert 1
+$diffuseexp 1.5
+$nocull 1
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

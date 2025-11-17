@@ -20,8 +20,7 @@ end
 recursive_include("fazbearshunt/gamemode/utils/")
 recursive_include("fazbearshunt/gamemode/")
 recursive_include("fazbearshunt/gamemode/interface/")
-
-include( "mount/proximity.lua" )
+recursive_include("fazbearshunt/gamemode/mount/")
 
 function getTeam(team)
 	local teamname = language.GetPhrase("fazhunt.survivors_team")
@@ -88,6 +87,12 @@ hook.Add("PlayerStartVoice", "HideVoicePanels", function(ply)
 		return false
     end
 	if !IsValid(ply) then return end
+	
+	local proximityEnabled = GetConVar("proximity_enabled"):GetInt()
+	
+	if proximityEnabled == 0 then
+		return false
+	end
 	
     local listenerTeam = listener:Team()
     local speakerTeam = ply:Team() or TEAM_SURVIVOR

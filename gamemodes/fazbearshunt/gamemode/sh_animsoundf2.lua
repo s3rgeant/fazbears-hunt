@@ -81,7 +81,7 @@ sound.Add({
 	name = 			"springtrap.breath",
 	channel = 		CHAN_AUTO,
 	level = 		75,
-	volume = 		1.0,
+	volume = 		0.6,
 	sound = 			{")fnaf3/springbreath_looped.wav"}
 })
 

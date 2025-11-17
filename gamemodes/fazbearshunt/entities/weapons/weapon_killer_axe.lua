@@ -392,6 +392,8 @@ hook.Add( "fh_animatronic_post_break_prop", "fh_anims_fight_axe_owner", function
 			wep:PlayCustomAnimation("ACT_SPECIAL_ATTACK1", 0.8)
 		end
 		
+		ent:PillGesture('melee', 2, 1, 0.1, 0.7)
+		
         local edata = EffectData()
         edata:SetOrigin(tr.HitPos)
         edata:SetEntity(target)
