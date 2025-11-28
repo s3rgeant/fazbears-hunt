@@ -146,6 +146,7 @@ function holdPlayer(ply, ent, target)
 	ent:SetUseForceAngles(true)
 	
 	target:SetMoveType(MOVETYPE_NONE)
+	target:SetNWBool("tchica_victim", true)
 	
 	target:SetCollisionGroup(COLLISION_GROUP_PASSABLE_DOOR)
 	
@@ -156,16 +157,20 @@ function releasePlayer(ply)
 	local target = chicaHolders[ply]
 	local ent = ply:GetPill()
 	
-	ent:ReplaceAnimation("idle", "idle")
-	ent:ReplaceAnimation("walk", "walk")
-	ent:SetSpeed(unpack(tchica_default_movement))
-	ent:SetUseForceAngles(false)
+	if IsValid(ent) and ent.formTable and ent.formTable.name == "pill_toychica" then
+		ent:ReplaceAnimation("idle", "idle")
+		ent:ReplaceAnimation("walk", "walk")
+		ent:SetSpeed(unpack(tchica_default_movement))
+		ent:SetUseForceAngles(false)
+	end
 	
 	if IsValid(target) then
 		chicasHoldings[target] = nil
 		target:SetMoveType(MOVETYPE_WALK)
 		
-		target:RepeatRestoreCollision()
+		target:RepeatRestoreCollision(0.25)
+		
+		target:SetNWBool("tchica_victim", false)
 		
 		timer.Simple(0, function()
 			if target:IsStuck() then
@@ -187,37 +192,59 @@ hook.Add("KeyRelease", "toychica_key_release", function(ply, key)
 end)
 
 hook.Add("SetupMove", "tchica_holding_tick", function(ply, mv, cmd)
-    local holder = chicasHoldings[ply]
-    if not IsValid(holder) then return end
+	local holder = chicasHoldings[ply]
+	if not IsValid(holder) then return end
 	
 	local ent = holder:GetPill()
-
-    local forwardPos = holder:GetPos() + holder:GetForward() * 48
-    forwardPos.z = holder:GetPos().z
-
-    mv:SetOrigin(forwardPos)
-
-    local ang = (holder:GetPos() - forwardPos):Angle()
-    ang.p = 0
-
-    ply:SetEyeAngles(ang)
-
-    local ang = (forwardPos - holder:GetPos()):Angle()
-    ang.p = 0
+	local startPos = holder:GetPos()
+	local forward = holder:GetForward()
+	
+	local maxDist = 48
+	
+	local desiredPos = startPos + forward * maxDist
+	desiredPos.z = startPos.z
+	
+	local trace = util.TraceHull({
+		start = startPos + Vector(0,0, holder:GetStepSize()),
+		endpos = desiredPos,
+		mins = Vector(-16, -16, 0),
+		maxs = Vector(16, 16, 72),
+		filter = { holder, ply }
+	})
+	
+	local finalPos = desiredPos
+	if trace.Hit then
+		finalPos = trace.HitPos - forward * 5
+		finalPos.z = startPos.z
+	end
+	
+	mv:SetOrigin(finalPos)
+	
+	local ang = (holder:GetPos() - finalPos):Angle()
+	ang.p = 0
+	ply:SetEyeAngles(ang)
 	
 	if IsValid(ent) then
-		ent:SetForceAngles(ang)
+		local ang2 = (finalPos - holder:GetPos()):Angle()
+		ang2.p = 0
+		ent:SetForceAngles(ang2)
 	end
 end)
 
 hook.Add("StartCommand", "tchica_holder_tick", function(ply, cmd)
-    if ply:GetNWBool("tchica_holding") then
+    if ply:GetNWBool("tchica_holding") or ply:GetNWBool("tchica_victim") then
 		cmd:RemoveKey(IN_JUMP)
 		cmd:RemoveKey(IN_SPEED)
 		cmd:RemoveKey(IN_WALK)
 		cmd:RemoveKey(IN_DUCK)
 	end
 end)
+
+hook.Add( "OnPlayerPhysicsPickup", "tchica_pickup", function( ply, ent )
+    if ply:GetNWBool("tchica_holding") or ply:GetNWBool("tchica_victim") then 
+		ply:DropObject()
+	end
+end )
 
 if CLIENT then
 	local YAW_LIMIT_DPS = 150

@@ -10,7 +10,7 @@ local function recursive_include(path)
     for _, file_name in ipairs(files) do
 		if file_name == "cl_init.lua" then continue end
         local full_path = path .. file_name
-
+		
         if file_name:StartWith("sh_") or file_name:StartWith("cl_") then
             include(full_path)
         end
@@ -370,3 +370,9 @@ hook.Add("PreDrawViewModel", "fix_flying_viewmodels", function(vm, ply, weapon)
 		return true
 	end
 end)
+
+--[[
+saverestore.AddRestoreHook( "fh_sp_support", function( save )
+	saverestore.WriteTable( { "test" }, save )
+end )
+]]--

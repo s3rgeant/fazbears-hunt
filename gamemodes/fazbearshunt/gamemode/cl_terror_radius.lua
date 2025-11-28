@@ -22,8 +22,8 @@ local chaseTimers      = state.chaseTimers
 
 --НАСТРОЙКИ ДИСТАНЦИЙ
 local tr_Far = 2700
-local tr_Approach = 1500
-local tr_Close = 800
+local tr_Approach = 1900
+local tr_Close = 1000
 
 local tr_ChaseKeep = 1200 -- если начался чейз, он не пропадёт пока мы не отбежим от аниматроника на это расстояние
 
@@ -187,6 +187,14 @@ function checkChase(ply, killer)
     end
 end
 
+local function getLayer(theme, layer)
+	if !theme or !layer then return end
+	if availableThemes[theme][layer] then
+		return layer
+	end
+	return nil
+end
+
 local stealthDelay = 2 -- чтобы террор быстро не пропадал если аниматроник резко застелсил
 local stealthLastActive = {}
 
@@ -291,14 +299,20 @@ if !timer.Exists("tr_update") then
 						if distance < tr_Far and distance > tr_Approach then
 							layer = "first_layer"
 						elseif distance < tr_Approach and distance > tr_Close then
-							layer = "second_layer"
+							layer = getLayer(theme, "second_layer") or getLayer(theme, "first_layer")
 						elseif distance < tr_Close then
-							layer = "third_layer"
+							layer = getLayer(theme, "third_layer") or getLayer(theme, "second_layer") or getLayer(theme, "first_layer")
 						end
 					end
 
-					if layer == "third_layer" then
+					if layer == (getLayer(theme, "third_layer") or getLayer(theme, "second_layer") or getLayer(theme, "first_layer")) and distance < tr_Close then
 						checkChase(myself, killer)
+					end
+
+			        local forceLayer = hook.Run("FH_HandleKillerTerrorLayers", killer, theme, layer)
+					
+					if forceLayer then
+						layer = forceLayer
 					end
 
 					closestGuyPos = distance
@@ -308,6 +322,7 @@ if !timer.Exists("tr_update") then
         end
 
         if foundNoOne and !imChasing then
+			isChasing[myself] = nil
             terrorStop(0.5)
         end
 
@@ -335,7 +350,7 @@ local animatronicThemes = {
     ["pill_wbonnie2"] = "springtrap",
     ["pill_wfreddy2"] = "freddy",
     ["pill_wchica2"] = "springtrap",
-    ["pill_sfreddy2"] = "springtrap",
+    ["pill_sfreddy2"] = "sfreddy",
     ["pill_clown"] = "springtrap",
     ["pill_springtrap"] = "springtrap",
     ["pill_plushtrap"] = "springtrap",

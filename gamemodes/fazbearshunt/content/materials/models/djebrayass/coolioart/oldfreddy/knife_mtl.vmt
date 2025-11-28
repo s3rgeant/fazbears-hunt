@@ -1,0 +1,14 @@
+"VertexlitGeneric"
+{
+	"$basetexture" "models\djebrayass\coolioart\oldfreddy\Knife_D"
+	"$bumpmap" "models\djebrayass\coolioart\oldfreddy\Knife_N"
+
+	"$phongexponenttexture" "models\djebrayass\coolioart\oldfreddy\Knife_E"
+
+	"$translucent"		"1"
+
+	"$phong" "1"
+	"$phongboost"	"19.986979"
+
+	"$phongfresnelranges"	"[0.87 0.9 1]"
+}

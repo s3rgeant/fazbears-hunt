@@ -52,8 +52,7 @@ function ENT:CheckForPlayers()
 	local outworlded = getOutworldVictims()
 
     for _, ply in pairs(ents.FindInSphere(pos, radius)) do
-        if ply:IsPlayer() and ply ~= owner and ply:Team() != 2701 and ply:Team() != TEAM_SPECTATOR and !table.HasValue(nearPlayers, ply) and !outworlded[ply] then
-			
+        if ply:IsPlayer() and ply ~= owner and ply:Alive() and ply:IsSurvivor() and !table.HasValue(nearPlayers, ply) and !outworlded[ply] then
 			local trace = util.TraceLine({
 				start = pos,
 				endpos = ply:GetPos(),

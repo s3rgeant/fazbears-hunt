@@ -79,7 +79,7 @@ end
 
 function SWEP:CanHeal(ent)
     if not IsValid(ent) then return false end
-    if ent:IsPlayer() and ent:IsSurvivor() or ent:IsNPC() then
+    if ent:IsPlayer() and ent:IsSurvivor() and !ent:IsInvisible() and !ent:GetNW2Bool("_OUTWORLD_target") or ent:IsNPC() then
         return ent:Health() < ent:GetMaxHealth()
     end
     return false
@@ -104,16 +104,16 @@ function SWEP:DoHeal(ent)
 end
 
 function SWEP:HealSuccess()
+    local curtime = CurTime()
+    self:SetNextIdle(curtime + self:SequenceDuration())
+    self:SetNextPrimaryFire(curtime + self.HealCooldown)
+    self:SetNextSecondaryFire(curtime + self.HealCooldown)
+	
     self:EmitSound(self.HealSound)
     self:SendWeaponAnim(ACT_VM_PRIMARYATTACK)
 
     local owner = self:GetOwner()
     if IsValid(owner) then owner:SetAnimation(PLAYER_ATTACK1) end
-
-    local curtime = CurTime()
-    self:SetNextIdle(curtime + self:SequenceDuration())
-    self:SetNextPrimaryFire(curtime + self.HealCooldown)
-    self:SetNextSecondaryFire(curtime + self.HealCooldown)
 	
 	if SERVER and self:Clip1() == 0 then
 		timer.Simple(0.5, function()
@@ -146,7 +146,7 @@ if CLIENT then
         if not IsValid(wep) or wep:GetClass() ~= "weapon_fh_medkit" then return end
 
         for _, v in player.Iterator() do
-            if v ~= ply and v:IsSurvivor() and v:Alive() and v:Health() > 0 then
+            if v ~= ply and v:IsSurvivor() and v:Alive() and !v:IsInvisible() and !v:GetNW2Bool("_OUTWORLD_target") and v:Health() > 0 then
 			
 				local tr = util.QuickTrace( ply:EyePos(), v:WorldSpaceCenter() - ply:EyePos(), {ply, v} )
 				
@@ -176,8 +176,11 @@ if CLIENT then
         if not IsValid(wep) or wep:GetClass() ~= "weapon_fh_medkit" then return end
 
         local tr = ply:GetEyeTrace()
-        if IsValid(tr.Entity) and tr.Entity:IsPlayer() and tr.Entity:IsSurvivor() and ply:GetPos():Distance(tr.Entity:GetPos()) <= wep.HealRange then
-            halo.Add({tr.Entity}, Color(0, 255, 0), 2, 2, 2, true, false)
+		
+		local ent = tr.Entity
+		
+        if IsValid(ent) and ent:IsPlayer() and ent:IsSurvivor() and !ent:IsInvisible() and !ent:GetNW2Bool("_OUTWORLD_target") and ply:GetPos():Distance(ent:GetPos()) <= wep.HealRange then
+            halo.Add({ent}, Color(0, 255, 0), 2, 2, 2, true, false)
         end
     end)
 	

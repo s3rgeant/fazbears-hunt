@@ -1,5 +1,7 @@
 SWEP.PrintName = "Clown SWEP"
 
+SWEP.Base = "v_base"
+
 if CLIENT then
 	local vfov = CreateClientConVar('cl_fov_clown', 110, true, false, 'Fov of Clown')
 	SWEP.ViewModelFOV = vfov:GetFloat() or 110
@@ -14,40 +16,17 @@ if CLIENT then
 end
 
 SWEP.ViewModel = "models/tetTris/vm/springtrap_clown.mdl"
-SWEP.WorldModel = ""
-SWEP.UseHands = false
-SWEP.DrawAmmo = false
 SWEP.m_WeaponDeploySpeed = 0.6
-SWEP.CurAnim = 'idle'
-SWEP.PreviousOnGround = true
-SWEP.HoldAnim = 0
-
-SWEP.Primary.ClipSize = -1
-SWEP.Primary.DefaultClip = -1
-SWEP.Primary.Ammo = "none"
-SWEP.Primary.Automatic = true
-
-SWEP.Secondary.ClipSize = -1
-SWEP.Secondary.DefaultClip = -1
-SWEP.Secondary.Ammo = "none"
 
 SWEP.HitDelay = 0.8	-- через сколько после замаха надо удар сделать
 
-local LAND_ANIM_DELAY = 0.2
-
 function SWEP:SetupDataTables()
-
 	self:NetworkVar( "Float", 0, "NextMeleeAttack" )
-
+    return self.BaseClass.SetupDataTables and self.BaseClass.SetupDataTables(self)
 end
 
-function SWEP:Deploy()
-	self.CurAnim = "deploy"
-    return true
-end
-
-function SWEP:Holster()
-    return true
+function SWEP:SetupAnimations()
+	self:AddAnimation("hit")
 end
 
 function SWEP:PrimaryAttack()
@@ -56,9 +35,12 @@ function SWEP:PrimaryAttack()
 	
 	if !IsValid(ent) or ply.tasered then return end
 	
-	if ply:IsFrozen() or timer.Exists('Cl_cantKill'..ply:EntIndex()) then return end
+	if ply:IsFrozen() then return end
 	
-	timer.Create('Cl_cantKill'..ply:EntIndex(), 2, 1, function() end)
+	local now = CurTime()
+	
+	self:SetNextPrimaryFire(now + 2)
+	self:SetLastAttack(now)
 	
 	if SERVER then
 		if !ply:Crouching() then
@@ -72,13 +54,9 @@ function SWEP:PrimaryAttack()
 		ply:EmitSound("hammer_ready.wav")
 	end
 	
-	self:PlayCustomAnimation("ACT_MELEE_ATTACK1", 1.6)
+	self:HandleAnimation("hit", 1.6)
 	
 	self:SetNextMeleeAttack( CurTime() + self.HitDelay )
-end
-
-function SWEP:SecondaryAttack()
-    return true
 end
 
 function SWEP:DealDamage()
@@ -172,82 +150,9 @@ function SWEP:Think()
 	local meleetime = self:GetNextMeleeAttack()
 
 	if ( meleetime > 0 and curtime > meleetime ) then
-
 		self:DealDamage()
-
 		self:SetNextMeleeAttack( 0 )
-
 	end
-	
-    if SERVER then
-        local ply = self.Owner
-        local speed = ply:GetAbsVelocity():Length()
-        local onGround = ply:OnGround()
-        local runSpeed = ply:GetRunSpeed()
-        local walkSpeed = ply:GetWalkSpeed()
-        local crouchSpeed = ply:GetCrouchedWalkSpeed()
-		
-        if self.HoldAnim > 0 and CurTime() < self.HoldAnim then
-			return self.BaseClass.Think and self.BaseClass.Think(self)
-        end
-        
-        if (onGround and ply:WaterLevel() <= 1) and not self.PreviousOnGround then
-            if self.CurAnim ~= 'land' then
-                self.Weapon:SendWeaponAnim(ACT_LAND)
-                self.CurAnim = 'land'
-				self.HoldAnim = CurTime() + LAND_ANIM_DELAY
-				return
-            end
-        elseif not onGround and self.PreviousOnGround then
-            if self.CurAnim ~= 'jump' then
-                self.Weapon:SendWeaponAnim(ACT_JUMP)
-                self.CurAnim = 'jump'
-            end
-        end
-        
-        self.PreviousOnGround = onGround
-
-        if (onGround and ply:WaterLevel() <= 1) and walkSpeed > 10 then
-            if speed >= runSpeed * 0.9 then
-                if self.CurAnim ~= 'run' then
-                    self.Weapon:SendWeaponAnim(ACT_VM_SPRINT_IDLE)
-                    self.CurAnim = 'run'
-                end
-            elseif speed >= walkSpeed * 0.9 and speed > 5 or ply:Crouching() and speed >= crouchSpeed then
-                if self.CurAnim ~= 'walk' then
-                    self.Weapon:SendWeaponAnim(ACT_WALK)
-                    self.CurAnim = 'walk'
-                end
-            elseif speed <= walkSpeed * 0.5 and self.CurAnim ~= 'idle' and self.CurAnim != 'land' then
-                self.Weapon:SendWeaponAnim(ACT_IDLE)
-                self.CurAnim = 'idle'
-            end
-        else
-            if ply:GetVelocity().z < 0 or ply:WaterLevel() > 1 then
-                if self.CurAnim ~= 'glide' and self.CurAnim ~= 'ACT_MELEE_ATTACK1' then
-                    self.Weapon:SendWeaponAnim(ACT_GLIDE)
-                    self.CurAnim = 'glide'
-                end
-            end
-        end
-    end
 
     return self.BaseClass.Think and self.BaseClass.Think(self)
-end
-
-function SWEP:PlayCustomAnimation(anim, hold)
-    if not self or not IsValid(self) then return end
-    
-    local animMap = {
-        ["ACT_MELEE_ATTACK1"] = ACT_MELEE_ATTACK1,
-    }
-    
-    local act = animMap[anim]
-    if act then
-        self:SendWeaponAnim(act)
-        self.CurAnim = anim
-		self.HoldAnim = CurTime() + hold
-    else
-        print("Хуй его знает: ", anim)
-    end
 end

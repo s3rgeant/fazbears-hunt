@@ -55,9 +55,21 @@ function SWEP:Holster()
 end
 
 function SWEP:PrimaryAttack()
+	if CLIENT then return end
 	if self:GetBlockSwap() then return end
     self:SetNextIdle(0)
+	
+	local animCount = team.NumPlayers(2701)
+	
+	if fh.GetActiveUsedKiller("pill_plushtrap") then
+		animCount = math.max(animCount - 1, 1)
+	end
 
+	if animCount == 1 then
+		self:GetOwner():SendLua('LocalPlayer():ChatPrint(language.GetPhrase("weapon_killmask.nearby"))')
+		return
+	end
+	
 	self:SendWeaponAnim(ACT_VM_RELEASE)
 	
 	self:GetOwner():DoAnimationEvent( ACT_GMOD_GESTURE_ITEM_PLACE )
@@ -67,6 +79,7 @@ function SWEP:PrimaryAttack()
 	timer.Simple(1.2, function()
 		if IsValid(self) and IsValid(self.Owner) then
 			self:SpringLock()
+			self:CallOnClient("SpringLock")
 		end
 	end)
 end

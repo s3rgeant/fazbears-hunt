@@ -69,9 +69,11 @@ function SWEP:Initialize()
 end
 
 function SWEP:PrimaryAttack()
-	if SERVER then
+
+	local owner = self.Owner
+	owner:SetAnimation(PLAYER_ATTACK1)
 	
-		local owner = self.Owner
+	if SERVER then
 		
 		owner:LagCompensation(true)
 		

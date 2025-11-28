@@ -207,7 +207,7 @@ function freezeAnimatronics(duration)
 		for ply, _ in pairs( animatronics ) do
 			ply.lobbyFreeze = false
 		end
-		game.GetWorld():SetNW2Bool("roundActive", true)
+		SetGlobal2Bool("roundActive", true)
 		roundActive = true
 		
 		hook.Run("fh_poststartgame", roundType, animatronics)
@@ -218,12 +218,6 @@ hook.Add("ShouldPlayerPush", "fh_push_management", function(pusher, victim)
 	if victim.lobbyFreeze then
 		return false
 	end
-end)
-
-hook.Add('fh_poststartgame', 'enable_scary_sound_fh', function()
-	net.Start("fh_net_scarysound")
-	net.WriteBool(true)
-	net.SendOmit( table.GetKeys( getOutworldVictims() ) )
 end)
 
 local function giveKillerShared(ply, killer, force)
@@ -329,7 +323,7 @@ function endRound(killerVictory, duration)
 	duration = duration or 10
 
 	roundEnding = true
-	game.GetWorld():SetNW2Bool("roundEnding", true)
+	SetGlobal2Bool("roundEnding", true)
 	
 	RunConsoleCommand("proximity_enabled", 0)
 	
@@ -357,9 +351,9 @@ function endRound(killerVictory, duration)
 			
 			if roundType == 1 and springtrap_ply then
 					
-				hook.Add("SetupPlayerVisibility", "fh_pvs", function(ply, viewent)
+				hook.Add("SetupPlayerVisibility", "fh_pvs_wincamera", function(ply, viewent)
 					if !IsValid(win_camera) then
-						hook.Remove("SetupPlayerVisibility", "fh_pvs")
+						hook.Remove("SetupPlayerVisibility", "fh_pvs_wincamera")
 						return
 					end
 					AddOriginToPVS(win_camera:GetPos())
@@ -377,7 +371,8 @@ function endRound(killerVictory, duration)
 					springtrap_ply:SetPos(win_location:GetPos())
 					springtrap_ply:SetEyeAngles(win_location:GetAngles())
 					springtrap_ply:SetRenderAngles(win_location:GetAngles())
-					ent:SetAngles(win_location:GetAngles())
+					ent:SetUseForceAngles(true)
+					ent:SetForceAngles(win_location:GetAngles())
 					
 					for _, p in player.Iterator() do
 						p:SetViewEntity(win_camera)
@@ -413,9 +408,9 @@ function endRound(killerVictory, duration)
 end
 
 function endGame()
-	game.GetWorld():SetNW2Bool("gameOn", false)
+	SetGlobal2Bool("gameOn", false)
 	isGameOn = false
-	game.GetWorld():SetNW2Bool("roundActive", false)
+	SetGlobal2Bool("roundActive", false)
 	roundActive = false
 	
 	disallowTime = 0
@@ -428,6 +423,12 @@ function endGame()
 		if ply:HasWeapon("weapon_taser") then
 			ply:StripWeapon("weapon_taser")
 		end
+		
+		timer.Simple(0, function()
+			if IsValid(ply) then
+				ply:NoPlayerCollide(0.25)
+			end
+		end)
 
 		if ply:GetPill() then
 			pills.restore(ply:Nick(), true)
@@ -442,7 +443,7 @@ function endGame()
 	timer.Create("GameStartTimer", lobbyDuration, 1, function()
 		registerNewRound()
 		roundEnding = false
-		game.GetWorld():SetNW2Bool("roundEnding", false)
+		SetGlobal2Bool("roundEnding", false)
 	end)
 	
 	RunConsoleCommand("proximity_enabled", 1)
@@ -469,6 +470,8 @@ function GM:fh_postendgame()
 end
 
 function startGame(forceid)
+	local _, players = player.Iterator()
+
 	RunConsoleCommand("proximity_enabled", 1)
 	lobbyDuration = 30
 	
@@ -478,6 +481,14 @@ function startGame(forceid)
 	
 	if conVars.fh_gifts_spawning:GetBool() then
 		doGiftSpawning()
+	end
+	
+	for _, ply in ipairs(players) do
+		timer.Simple(0, function()
+			if IsValid(ply) then
+				ply:NoPlayerCollide(0.25)
+			end
+		end)
 	end
 	
 	local fh_prestartgame = hook.Run("fh_prestartgame")
@@ -494,7 +505,7 @@ function startGame(forceid)
 		return 
 	end
 	
-	for _, ply in player.Iterator() do
+	for _, ply in ipairs(players) do
 		ply:SetJumpBoostMultiplier( getScaledJumpBoost() )
 	end
 	
@@ -539,9 +550,9 @@ function registerNewRound(forceid)
 	end
 	roundCount = roundCount + 1
 	
-	game.GetWorld():SetNW2Bool("gameOn", true)
+	SetGlobal2Bool("gameOn", true)
 	isGameOn = true
-	game.GetWorld():SetNW2Bool("roundEnding", false)
+	SetGlobal2Bool("roundEnding", false)
 	roundEnding = false
 	table.Empty(survivors)
 	table.Empty(animatronics)
@@ -685,6 +696,9 @@ hook.Add( "Initialize", "fh_init", function()
 	
 	RunConsoleCommand("proximity_enabled", 1)
 	
+	-- stupid :pray:
+	RunConsoleCommand("sv_playermodel_selector_force", 0)
+	
 	-- выделенный сервер не включает таймер. пробую делать вот так
 	isGameOn = false
 	roundEnding = false
@@ -810,19 +824,20 @@ function GM:PlayerSetModel( pl )
 	player_manager.RunClass( pl, "SetModel" )
 end
 
+local ENTITY_SetClass = FindMetaTable("Entity").SetClass
 local PLAYER = FindMetaTable("Player")
 
-if PLAYER then
+function PLAYER:ReturnToSpawn()
+	if not IsValid(self) or not self:IsPlayer() then return end
 
-	function PLAYER:ReturnToSpawn()
-		if not IsValid(self) or not self:IsPlayer() then return end
+	local spawnPoint = hook.Run("PlayerSelectSpawn", self)
 
-		local spawnPoint = hook.Run("PlayerSelectSpawn", self)
+	self:SetPos(spawnPoint:GetPos())
+	self:SetEyeAngles(spawnPoint:GetAngles())
+end
 
-		self:SetPos(spawnPoint:GetPos())
-		self:SetEyeAngles(spawnPoint:GetAngles())
-	end
-
+function FixSetModel()
+	PLAYER.SetModel = ENTITY_SetClass
 end
 
 hook.Add("PlayerSpawn", "fh_spawn", function( ply, transiton )
@@ -838,6 +853,7 @@ hook.Add("PlayerSpawn", "fh_spawn", function( ply, transiton )
 	
 	if !isGameOn then
 		ply:SetTeam(TEAM_SURVIVOR)
+		ply:NoPlayerCollide(0.25)
 	end
 	net.Start('DeadHUDDisable')
 	net.Send(ply)
@@ -1111,7 +1127,12 @@ hook.Add("PillRestore", "fh_restorepill", function(ply, ent)
 end)
 
 hook.Add( "GetFallDamage", "FH_FallDamage", function(ply, speed)
-	return math.min(speed / 35, 50)
+	local damage = ( speed - 526.5 ) * ( 100 / 396 )
+	local hasArmor = ply:Armor() > 0
+	if hasArmor then
+		ply:SetArmor(damage / ply:Armor())
+	end
+	return math.min( damage, hasArmor and 90 or 100 )
 end )
 
 net.Receive("fh_selected_killer", function(len, ply)
@@ -1473,25 +1494,5 @@ end, 20, 6, 18)
 
 fh.AddRoundMusic(1, "music/freeze_timer_springtrap.wav")
 
-fh.RegisterRoundType("bear5", 3, function()
-	local players = player.GetAll()
-		
-	players = fh.GetEarnedKillers(players)
-	
-	if players then
-		local chosenPlayer = fh.randomChoice(players)
-		
-		giveKiller(chosenPlayer, "bear5_main", true)
-		
-		chosenPlayer.lobbyFreeze = true
-		chosenPlayer:ReturnToSpawn()
-	end
-	
-	RandomTaser()
-	
-	freezeAnimatronics()
-end, 20, 6, 24)
-
-fh.AddRoundMusic(3, "music/bear_timer.wav")
-
-include( "fh_tag.lua" )
+include( "rounds/bonnie_tag.lua" )
+include( "rounds/bear5.lua" )

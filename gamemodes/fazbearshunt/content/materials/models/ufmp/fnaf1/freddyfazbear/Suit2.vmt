@@ -1,0 +1,21 @@
+VertexLitGeneric
+{
+	$basetexture "models\ufmp\fnaf1\freddyfazbear\suit2"
+	$bumpmap "models\ufmp\FNaF1\Shared\bumpnolinesnew"
+	$surfaceprop Metal
+
+	$nocull 1
+
+	$phong 1
+	$phongexponenttexture "models\ufmp\fnaf1\freddyfazbear/suit2_spec"
+	$phongfresnelranges "[0 0.5 1]"
+	$phongwarptexture "models\ufmp\white"
+$phongtint "[0.0 0.4 1]"
+	$phongboost 0.2
+                $color "[0.64 0.62 0.45]"
+                $color2 "2"
+	$basemapalphaphongmask 1
+
+	$basetexturealphaenvmapmask 1
+	$diffuseexp 1.5
+}

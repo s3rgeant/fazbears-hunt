@@ -115,7 +115,7 @@ local voicelines = {
         positive = generateVoicelines("tchica_positive", 3),
         grab = generateVoicelines("tchica_grab", 4),
         release = generateVoicelines("tchica_release", 3),
-        tasered = generateVoicelines("tchica_tasered", 3),
+        tasered = generateVoicelines("tchica_tasered", 4),
     },
 }
 

@@ -113,13 +113,19 @@ local positiveEffects = {
         name = "medkit",
 		desc = "fazhunt.gifts.medkit",
         func = function(ply)
-            ply:Give("weapon_fh_medkit")
+			if !ply:HasWeapon("weapon_fh_medkit") then
+				ply:Give("weapon_fh_medkit")
+			else
+				local wep = ply:GetWeapon( "weapon_fh_medkit" )
+				
+				if IsValid(wep) then
+					wep:SetClip1( wep:Clip1() + 25 )
+				end
+			end
         end,
 		req = function(ply)
-			if ply:HasWeapon("weapon_fh_medkit") then return false end
-			
-			if ply:Health() >= 100 then
-				return false
+			if ply:Health() < 85 then
+				return true
 			end
 		
 			local damageOnlyAnims = killers.getAllDamageOnly()

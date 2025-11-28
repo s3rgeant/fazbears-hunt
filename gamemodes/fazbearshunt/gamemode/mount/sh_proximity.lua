@@ -18,6 +18,17 @@ if SERVER then
 		return self.fh_audible
 	end
 
+	function PLAYER:SetDeaf(state)
+		self.fh_deaf = state and true or false
+	end
+
+	function PLAYER:GetDeaf()
+		if self.fh_deaf == nil then
+			return true
+		end
+		return self.fh_deaf
+	end
+
 	-- чтобы слушать только одного игрока (за золотого фредди например слышать только жертву)
 	function PLAYER:ForceListenPlayer(talker)
 		if not IsValid(talker) or not talker:IsPlayer() then return end
@@ -47,7 +58,11 @@ if SERVER then
 			end
 		end
 
-		if not talker:GetAudible() then
+		if not talker:GetAudible() and listener:Alive() then
+			return false, false
+		end
+
+		if not listener:GetDeaf() then
 			return false, false
 		end
 

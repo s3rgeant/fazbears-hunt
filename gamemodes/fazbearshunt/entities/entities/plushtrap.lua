@@ -45,9 +45,8 @@ function ENT:Initialize()
 		end
 	end)
 
-    -- Время перезарядки удара и нанесение урона
-    self.AttackDamage  = 10
-    self.AttackDelay   = 2  -- секунды
+    self.AttackDamage  = 12
+    self.AttackDelay   = 2
     self.NextAttackTime = 0
 	
 	self.usedLayers = {}
@@ -133,6 +132,7 @@ function ENT:Think()
 			or self.Target and (self.Target:GetPos().z > self:GetPos().z and self:GetPos():Distance(self.Target:GetPos()) < 250)) then
 				if self:IsOnGround() then
 					self.loco:Jump()
+					self:EmitSound("fnaf3/plushtrap/plu_jump.mp3")
 					self.CurrentSpeed = PT_BOOST_SPEED
 				end
 				
@@ -144,19 +144,21 @@ function ENT:Think()
 					local successHit = math.random(1,100) > 8
 				
 					local dmgInfo = DamageInfo()
-					dmgInfo:SetDamage(self.AttackDamage + math.random(-1,1))
+					dmgInfo:SetDamage(self.AttackDamage)
 					dmgInfo:SetAttacker(self)
 					dmgInfo:SetInflictor(self)
 					dmgInfo:SetDamageType(DMG_CLUB)
 	
 					if successHit then
 						ply:TakeDamageInfo(dmgInfo)
+						self:EmitSound("fnaf3/plushtrap/plu_attack_hit.mp3")
+					else
+						self:EmitSound("fnaf3/plushtrap/plu_attack_miss.mp3")
 					end
 	
 					self.NextAttackTime = CurTime() + self.AttackDelay
 					
 					self:PillGesture('bite'.. (math.random(1,2) == 1 and "1" or "2"), 1, 1, 0, 1)
-					self:EmitSound("fnaf3/" .. (successHit and "hit" or "hit-miss") ..".mp3")
 					break
 				end
 			end
@@ -191,6 +193,7 @@ function ENT:OnLandOnGround( ent )
 	else
 		self:StartActivity( ACT_IDLE )
 	end
+	self:EmitSound("fnaf3/plushtrap/plu_land.mp3")
 	self:PillGesture('land', 2, 1, 0, 1)
 end
 

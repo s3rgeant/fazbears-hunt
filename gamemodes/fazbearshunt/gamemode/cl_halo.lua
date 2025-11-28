@@ -63,28 +63,12 @@ end
 function toggleShadows(bool)
 	if bool then
 		for _, ply in player.Iterator() do
-            ply:DrawShadow(true)
-		
-			for _, wep in ipairs(ply:GetWeapons()) do
-				if IsValid(wep) then
-					wep:SetNoDraw(false)
-					wep:DrawShadow(true)
-					wep:SetRenderMode(RENDERMODE_NORMAL)
-				end
-			end
+            player_renderer.Draw(ply)
 		end
 	else
 		for _, ply in player.Iterator() do
 			if ply ~= target and ply:Team() != 2701 then
-				ply:DrawShadow(false)
-		
-				for _, wep in ipairs(ply:GetWeapons()) do
-					if IsValid(wep) then
-						wep:SetNoDraw(true)
-						wep:DrawShadow(false)
-						wep:SetRenderMode(RENDERMODE_NONE)
-					end
-				end
+				player_renderer.NoDraw(ply)
 			end
 		end
 	end
@@ -345,36 +329,43 @@ hook.Add("PostDrawOpaqueRenderables", "fh_draw_teammates", function(depth, skybo
 			if toScreen.visible then
 				local trace = util.QuickTrace(eyePos, ent:WorldSpaceCenter() - eyePos, ply)
 				
-				if ( !trace.Hit or ent == pills.getMappedEnt(trace.Entity) ) and !ent:IsInvisible() then continue end
+				local tr = util.TraceLine( {
+					start = eyePos,
+					endpos = ent:GetPos() + ent:OBBCenter(),
+					filter = ply,
+					mask = MASK_SHOT_HULL,
+				} )
+				
+				local entIsPill = ( ent == pills.getMappedEnt(trace.Entity) )
+				
+				if ( !trace.Hit or entIsPill ) and !ent:IsInvisible() then continue end
 				
 				local pos = ent:GetPos()
 				local ang = ent:GetAngles()
 				
-				if pos:Distance(eyePos) < 250 then continue end
-
-				local camForward = EyeAngles():Forward()
-				local backOffset = camForward * 30
+				if !ent:IsInvisible() and pos:Distance(eyePos) < 250 then continue end
 
 				cam.IgnoreZ(true)
+				local oldfogmode = render.GetFogMode()
+				render.FogMode( 0 )
+				
 				render.SuppressEngineLighting(true)
 				render.SetColorModulation(color.r / 255, color.g / 255, color.b / 255)
 				render.SetBlend(0.6)
 				render.MaterialOverride(outlineMaterial)
 
-				local mat = Matrix()
-				mat:Translate(pos + backOffset)
-				mat:Rotate(ang)
-
-				cam.PushModelMatrix(mat, true)
-					ent:SetLOD(8) -- мы делаем модельку обводки "уёбищной" чтобы она не жрала фпс
-					ent:DrawModel()
-				cam.PopModelMatrix()
+				ent:SetLOD(8) -- мы делаем модельку обводки "уёбищной" чтобы она не жрала фпс
+				ent:DrawShadow( false )
+				ent:DrawModel()
 
 				render.MaterialOverride(nil)
 				render.SetColorModulation(1, 1, 1)
 				render.SetBlend(1)
 				render.SuppressEngineLighting(false)
+				render.FogMode( oldfogmode )
+
 				ent:SetLOD(-1)
+				ent:DrawShadow( true )
 				cam.IgnoreZ(false)
 			end
 		end

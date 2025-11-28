@@ -41,13 +41,15 @@ hook.Add("PillSound", "gf_pillsound_management", function(ply, ent, name)
 	if !table.IsEmpty(wgfreddy_targets) then
 		for k, v in pairs( wgfreddy_targets ) do
 			local victim = v
+			local gfreddy = k
 			
-			if IsValid(victim) then -- на всякий случень
-				if ply ~= outworld_victims[victim] then
+			if IsValid(victim) and IsValid(gfreddy) then -- на всякий случень
+				if ply ~= outworld_victims[victim] and ply ~= wgfreddy_targets[gfreddy] then
 			
 					local rf = RecipientFilter()
 					rf:AddAllPlayers()
 					rf:RemovePlayer(victim)
+					rf:RemovePlayer(gfreddy)
 					
 					return rf
 				end
@@ -84,18 +86,6 @@ local function gfreddy_death_handle(victim, inflictor, attacker)
 	end
 	if outworld_victims[victim] then
 		cancel_outworld(victim)
-	end
-	
-	if !table.IsEmpty(wgfreddy_targets) then
-		for k,v in pairs( wgfreddy_targets ) do
-			net.Start("fh_draw_anim")
-			net.WritePlayer(k)
-			net.Send(victim)
-			
-			net.Start("fh_draw_player")
-			net.WritePlayer(v)
-			net.Send(victim)
-		end
 	end
 end
 
@@ -251,6 +241,14 @@ if SERVER then
 			return false
 		end
 	end )
+	
+	hook.Add("PlayerCanSeePlayersChat", "fh_gfreddy_chat", function(text, teamOnly, listener, speaker)
+		if isGameOn and !roundEnding then
+			if speaker:IsPlayer() and IsValid(speaker:GetPill()) and speaker:GetPill():GetName() == "pill_wgfreddy2" then
+				return false
+			end
+		end
+	end)
 end
 
 if CLIENT then
@@ -707,42 +705,6 @@ if CLIENT then
 		
 		fh_cl_dontdraw_plushies()
 	end)
-	
-	--[[
-	net.Receive("fh_dontdraw_player", function()
-		local dude = net.ReadPlayer()
-		
-		if IsValid(dude) then
-			dude:SetNoDraw(true)
-			dude:DrawShadow(false)
-			
-			for _, wep in ipairs(dude:GetWeapons()) do
-				if IsValid(wep) then
-					wep:SetNoDraw(true)
-					wep:DrawShadow(false)
-					wep:SetRenderMode(RENDERMODE_NONE)
-				end
-			end
-		end
-	end)
-	
-	net.Receive("fh_draw_player", function()
-		local dude = net.ReadPlayer()
-		
-		if IsValid(dude) then
-			dude:SetNoDraw(false)
-			dude:DrawShadow(true)
-		
-			for _, wep in ipairs(dude:GetWeapons()) do
-				if IsValid(wep) then
-					wep:SetNoDraw(false)
-					wep:DrawShadow(true)
-					wep:SetRenderMode(RENDERMODE_NORMAL)
-				end
-			end
-		end
-	end)
-	]]--
 
 	hook.Add( "PostCleanupMap", "fh_pill_wgfreddy_reset", function( name )
         hook.Remove("RenderScreenspaceEffects", "merc_grayscale_hook")
@@ -805,10 +767,6 @@ if PLAYER then
 end
 
 local function cancel_outworld_target(ply)
-	net.Start("fh_draw_player")
-	net.WritePlayer(ply)
-	net.Broadcast()
-	
 	net.Start("fh_net_scarysound")
 	net.WriteBool(true)
 	net.Send(ply)
@@ -825,6 +783,7 @@ local function cancel_outworld_target(ply)
 	ply:SetPushBlocked(false)
 	
 	ply:SetAudible(true)
+	ply:SetDeaf(false)
 	
 	ply:SetGFreddyImmune(true)
 	
@@ -861,22 +820,6 @@ hook.Add("PlayerSpawn", "wgfreddy_spawn", function(ply)
 	if wgfreddy_targets[ply] or outworld_victims[ply] then
 		cancel_outworld(ply)
 	end
-	
-	if !table.IsEmpty(wgfreddy_targets) then
-		for k,v in pairs( wgfreddy_targets ) do
-			local ent = pills.getMappedEnt(k)
-			
-			if IsValid(ent) then
-				net.Start("fh_dontdraw_anim")
-				net.WriteEntity(ent)
-				net.Send(ply)
-			end
-			
-			net.Start("fh_dontdraw_player")
-			net.WritePlayer(v)
-			net.Send(ply)
-		end
-	end
 end)
 
 local sfreddy_noclip_movement = {500, 600, 500, 250}
@@ -887,10 +830,6 @@ local function cancel_outworld_wgfreddy(ply)
 	net.Send(ply)
 	
 	ply:SetNWBool("wgfreddy_enraged", false)
-
-	net.Start("fh_draw_anim")
-	net.WritePlayer(ply)
-	net.Broadcast()
 
 	local ent = ply:GetPill()
 	if !IsValid(ent) or !ply:Alive() then return end
@@ -914,58 +853,6 @@ local function cancel_outworld_wgfreddy(ply)
 		ent.cloaked = true
 	end
 end
-
-concommand.Add( "dev_start_outworld", function( ply, cmd, args )
-	if !ply:IsSuperAdmin() then return end
-
-	local nick1 = tostring(args[1])
-	local nick2 = tostring(args[2])
-	
-	local gf = nil
-	local target = nil
-	
-	for _, ply in player.Iterator() do
-		local nickname = ply:Nick():lower()
-	
-		if !IsValid(gf) and nickname:match( nick1:lower() ) then
-			gf = ply
-			
-			if IsValid(target) then
-				break
-			else
-				continue
-			end
-		end
-		
-		if !IsValid(target) and nickname:match( nick2:lower() ) then
-			target = ply
-			
-			if IsValid(gf) then
-				break
-			else
-				continue
-			end
-		end
-	end
-	
-	if IsValid(ply) and !IsValid(target) then
-		target = ply
-	end
-	
-	if IsValid(gf) and IsValid(target) then
-		local ent = pills.getMappedEnt(gf)
-		
-		if IsValid(ent) then
-			start_outworld(gf, ent, target)
-			return
-		else
-			print("dev_start_outworld - has failed! Check if first player is Golden Freddy.")
-			return
-		end
-	end
-	
-	print("dev_start_outworld - has failed! Maybe the nicknames were wrong.")
-end )
 
 function start_outworld(ply, ent, target)
 	local placedPlushies = fh_spawnPlushies(target)
@@ -1000,6 +887,7 @@ function start_outworld(ply, ent, target)
 	target:SetPushBlocked(true)
 	
 	target:SetAudible(false)
+	target:SetDeaf(true)
 	ply:ForceListenPlayer(target)
 	
 	target:SetCollisionGroup(COLLISION_GROUP_PLAYER_MOVEMENT)
@@ -1094,8 +982,7 @@ function start_outworld_battle(ply, ent, target)
 	target:SetPushImmune(true)
 	target:SetPushBlocked(true)
 	
-	target:SetAudible(false)
-	ply:ForceListenPlayer(target)
+	ply:SetAudible(true)
 	
 	target:SetCollisionGroup(COLLISION_GROUP_PLAYER_MOVEMENT)
 	
@@ -1258,6 +1145,58 @@ function StopDelayedDamage(ply)
 
     ply._damagePausedUntil = nil
 end
+
+concommand.Add( "dev_start_outworld", function( ply, cmd, args )
+	if !ply:IsSuperAdmin() then return end
+
+	local nick1 = tostring(args[1])
+	local nick2 = tostring(args[2])
+	
+	local gf = nil
+	local target = nil
+	
+	for _, ply in player.Iterator() do
+		local nickname = ply:Nick():lower()
+	
+		if !IsValid(gf) and nickname:match( nick1:lower() ) then
+			gf = ply
+			
+			if IsValid(target) then
+				break
+			else
+				continue
+			end
+		end
+		
+		if !IsValid(target) and nickname:match( nick2:lower() ) then
+			target = ply
+			
+			if IsValid(gf) then
+				break
+			else
+				continue
+			end
+		end
+	end
+	
+	if IsValid(ply) and !IsValid(target) then
+		target = ply
+	end
+	
+	if IsValid(gf) and IsValid(target) then
+		local ent = pills.getMappedEnt(gf)
+		
+		if IsValid(ent) then
+			start_outworld(gf, ent, target)
+			return
+		else
+			print("dev_start_outworld - has failed! Check if first player is Golden Freddy.")
+			return
+		end
+	end
+	
+	print("dev_start_outworld - has failed! Maybe the nicknames were wrong.")
+end )
 
 if SERVER then
 	net.Receive("cl_target_wgfreddy_scared", function( len, ply )

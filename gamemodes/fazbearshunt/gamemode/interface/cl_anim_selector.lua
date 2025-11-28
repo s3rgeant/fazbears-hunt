@@ -62,7 +62,6 @@ function draw_killer_selector()
 
     if IsValid(fh_admin_panel) then 
         fh_admin_panel:Remove()
-        gui.EnableScreenClicker(false)
     end
 
     selector = vgui.Create("DFrame")
@@ -71,12 +70,16 @@ function draw_killer_selector()
     selector:ShowCloseButton(false)
     selector:SetSize(600, 527)
     selector:Center()
-    selector:MakePopup()
 	selector.Paint=function(self, w, h)
 		surface.SetDrawColor(255, 255, 255, 255)
 		surface.SetMaterial(selector_window)
 		surface.DrawTexturedRect(0, 0, w, h)
 	end
+	gui.EnableScreenClicker(true)
+	
+    selector.OnClose = function()
+        gui.EnableScreenClicker(false)
+    end
 
 	-- скролл хуйня
     local scroll = vgui.Create("DScrollPanel", selector)
@@ -289,7 +292,6 @@ function draw_killer_selector()
 	model_viewer:ShowCloseButton(false)
 	model_viewer:SetSize(355, 500)
 	model_viewer:Center()
-	model_viewer:MakePopup()
 	
 	model_viewer:SetX(selector:GetX() + selector:GetWide() + 5)
 	
@@ -369,7 +371,6 @@ function draw_killer_selector()
 	description_panel:ShowCloseButton(false)
 	description_panel:SetSize(355, 500)
 	description_panel:Center()
-	description_panel:MakePopup()
 	description_panel:SetX(selector:GetX() - description_panel:GetWide() - 5)
 	
 	description_panel.Paint = function(self, w, h)
@@ -423,7 +424,6 @@ function draw_killer_selector()
 	selectorTitle:ShowCloseButton(false)
 	selectorTitle:SetSize(357, 42)
 	selectorTitle:Center()
-	selectorTitle:MakePopup()
 	selectorTitle:SetY(selector:GetY() - selectorTitle:GetTall() - 5)
 	
 	selectorTitle.Paint=function(self, w, h)

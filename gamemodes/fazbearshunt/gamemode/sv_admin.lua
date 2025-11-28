@@ -15,6 +15,8 @@ function GiveAnimatronic(ply, killer)
 	giveKiller(ply, killer, true)
 	ply:ReturnToSpawn()
 	ply:RemoveRagdoll()
+	
+	ply:NoPlayerCollide(0.25)
 end
 
 function RevivePlayer(ply)
@@ -32,6 +34,8 @@ function RevivePlayer(ply)
 	ply:SetTeam(TEAM_SURVIVOR)
     ply:Spawn()
 	ply:RemoveRagdoll()
+	
+	ply:NoPlayerCollide(0.25)
 end
 
 function highlightSelected(targets, owner)
@@ -199,7 +203,7 @@ end
 
 function EndPostRound()
 	if !roundActive and !roundEnding and isGameOn then
-		game.GetWorld():SetNW2Bool("roundActive", true)
+		SetGlobal2Bool("roundActive", true)
 		roundActive = true
 		endgame_shared()
 		
@@ -387,7 +391,7 @@ net.Receive("AdminAction", function(len, ply)
 		local killer = net.ReadString()
 		if killer == "" or string.len(killer) < 1 then return end
 		
-		pill_makePreferable(killer, string.match(action, "add"))
+		pill_makePreferable(killer, string.match(action, "add") == "add")
 		save_dontPrefer()
 	
 		net.Start("fh_change_notprefered")

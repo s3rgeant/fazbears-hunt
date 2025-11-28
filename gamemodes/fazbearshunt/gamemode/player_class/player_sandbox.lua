@@ -54,7 +54,6 @@ end
 
 
 function PLAYER:SetModel()
-
 	local cl_playermodel = self.Player:GetInfo( "cl_playermodel" )
 	local modelname = player_manager.TranslatePlayerModel( cl_playermodel )
 	util.PrecacheModel( modelname )

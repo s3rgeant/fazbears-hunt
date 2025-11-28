@@ -40,6 +40,10 @@ pills.register("pill_mangle",{
 			stun="stun",
 			melee="melee",
 		},
+		speedCap={
+			walk=66,
+			run=475,
+		},
 	},
 	moveSpeed={
 		walk=man_speed[1][1],
@@ -63,6 +67,8 @@ pills.register("pill_mangle",{
 	
 	hull=Vector(32,32,76),
 	duckBy=50,
+	
+	noLookLerp=true,
 	
 	bloodType=BLOOD_COLOR_MECH,
 
@@ -142,9 +148,9 @@ pills.register("pill_mangle",{
 			ply:SetNWBool("_MangleHooked", false)
 			ply:SetNWBool("_MangleHookReady", true)
 			
-			ply:SetLocalVelocity( ply:GetVelocity() + ((initVelVector) * velocityPower) + addVelocity )
-			
 			ply:SetMoveType(MOVETYPE_WALK)
+			
+			ply:SetLocalVelocity( ply:GetVelocity() + ((initVelVector) * velocityPower) + addVelocity )
 		end
 	},
 	
@@ -270,7 +276,7 @@ local function MangleHookUpCheck(ply, mv)
 	local tr = util.TraceLine({
 		start = startPos,
 		endpos = endPos,
-		mask = MASK_VISIBLE,
+		mask = MASK_PLAYERSOLID,
 		filter = ply
 	})
 
@@ -426,7 +432,7 @@ hook.Add("FinishMove", "mangle_hook_ready", function( ply, mv )
 					local trace = { start = ply:GetPos(), endpos = ply:GetPos() + Vector(0,0,80), filter = ply }
 					local trr = util.TraceEntity( trace, ply ) 
 					if ( trr.Hit ) then
-						mv:SetOrigin( trr.HitPos + trr.HitNormal * 4 )
+						mv:SetOrigin( trr.HitPos + trr.HitNormal * 2 )
 					else
 						mv:SetOrigin( tr.HitPos + -ply:GetViewOffset() + tr.HitNormal * 7 )
 					end

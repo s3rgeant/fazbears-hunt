@@ -21,7 +21,7 @@ local function fh_default_check_scarysound()
 				local ent = pills.getMappedEnt(ply)
 				
 				if IsValid(ent) then
-					if ent.dontdraw or ent:GetMaterial() == "models/null" then return end
+					if !ent.IsDrawn or ent:GetMaterial() == "models/null" then return end
 				end
 				
                 local plyPos = ply:EyePos()
@@ -75,6 +75,7 @@ local function fh_default_check_scarysound()
     end
 end
 
+local goldunfreda = false
 local mat_videoglitch = Material( "effects/shaders/merc_videoglitch" )
 
 function render.DrawMercVideoGlitch(strength)
@@ -287,9 +288,11 @@ net.Receive("fh_net_wgfreddy_scarysound", function()
 	local can = net.ReadBool()
 	local ply = net.ReadEntity()
 	if can then
+		goldunfreda = true
 		hook.Add("Think", "fh_scarysound", fh_gfreddy_check_scarysound)
 		return
 	end
+	goldunfreda = false
 	hook.Remove("Think", "fh_scarysound")
 end)
 
@@ -301,3 +304,9 @@ function toggleScarySound(can)
 	end
 	hook.Remove("Think", "fh_scarysound")
 end
+
+hook.Add('fh_poststartgame', 'enable_scary_sound_fh', function()
+	if !goldunfreda then
+		toggleScarySound(true)
+	end
+end)

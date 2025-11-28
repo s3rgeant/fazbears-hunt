@@ -86,6 +86,7 @@ local killerData = killerData or {
     ["pill_mangle"] = {name = "mangle", fullname = "fazhunt.animatronics.mangle", color = colors.Endo},
 	
     ["pill_toychica"] = {name = "tchica", fullname = "Toy Chica", color = colors.Chica},
+--	["bear5_main"] = {name = "bear5", fullname = "Bear 5", color = Color(73,104,255)},
 }
 
 killerAbilities = {
@@ -158,16 +159,21 @@ killerAbilities = {
 killers = killers or {}
 
 local killerAvatars = {}
-for name,v in pairs(killerData) do
-	local imagePath = "vgui/bars/" .. v.name .. ".png"
+
+local function precacheAvatar(pill, techname)
+	local imagePath = "vgui/bars/" .. techname .. ".png"
 	local animImage = nil
 	
     if file.Exists("materials/" .. imagePath, "GAME") then
 		animImage = Material(imagePath, "mips")
 		if !animImage:IsError() then
-			killerAvatars[name] = animImage
+			killerAvatars[pill] = animImage
 		end
 	end
+end
+
+for name,v in pairs(killerData) do
+	precacheAvatar(name,v.name)
 end
 
 function killers.GetAvatar(killer)
@@ -178,16 +184,21 @@ function killers.GetAvatar(killer)
 end
 
 local killerPortraits = {}
-for name,v in pairs(killerData) do
-	local imagePath = "vgui/animatronics_hud/heads/" .. v.name .. ".png"
+
+local function precachePortrait(pill, techname)
+	local imagePath = "vgui/animatronics_hud/heads/" .. techname .. ".png"
 	local animImage = nil
 	
     if file.Exists("materials/" .. imagePath, "GAME") then
 		animImage = Material(imagePath, "mips")
 		if !animImage:IsError() then
-			killerPortraits[v.name] = animImage
+			killerPortraits[techname] = animImage
 		end
 	end
+end
+
+for name,v in pairs(killerData) do
+	precachePortrait(name,v.name)
 end
 
 function killers.GetPortrait(killer)
@@ -210,6 +221,9 @@ function killers.Register(pill, a_name, a_fullname, a_color)
     a_color = a_color or colors.Gray
 
     killerData[pill] = {name = a_name, fullname = a_fullname, color = a_color}
+	
+	precacheAvatar(pill, a_name)
+	precachePortrait(pill,a_name)
 end
 
 function killers.SetAbilities(name, abilities)
@@ -270,11 +284,12 @@ function killers.getAllNonPreferables()
 end
 
 local dontPrefer = {"pill_springtrap", "pill_plushtrap", "pill_wgfreddy2"}
-
+--[[
 -- по умолчанию нельзя выбирать этих аниматроников, пишем их в файлик, чтобы файликом можно было управлять
 if !file.Exists("fh_dontprefer.txt", "DATA") then
 	file.Write("fh_dontprefer.txt", table.concat(dontPrefer, "\n"))
 end
+]]--
 
 function pill_makeSecondary(anim, bool)
 	bool = bool or true
@@ -346,10 +361,11 @@ function save_dontPrefer(net)
 	net = net or false
 
 	local tablo = {}
-	for k, v in pairs ( killers.getAllNonPreferables() ) do
-		table.insert(tablo, k)
+	for k, v in pairs( killerData ) do
+		tablo[k] = v.preferable or false
 	end
-	file.Write("fh_dontprefer.txt", table.concat(tablo, "\n"))
+	
+	file.Write("fh_preferables.json", util.TableToJSON(tablo))
 end
 
 function pill_makePreferable(anim, bool)
@@ -372,18 +388,50 @@ if SERVER then
 	pill_makePreferable(table.GetKeys(killerData), true)
 end
 
+pill_makePreferable( dontPrefer )
+
 hook.Add("Initialize", "fh_dontprefer", function()
 	hook.Remove("PlayerTick", "TickWidgets") -- вроде слегка оптимизирует игру. спиздил с zombie-survival
 	if CLIENT then return end
 	
-	if file.Exists("fh_dontprefer.txt", "DATA") then
+	-- СОВМЕСТИМОСТЬ СО СТАРЫМИ ВЕРСИЯМИ ФХ
+	if file.Exists("fh_dontprefer.txt", "DATA") and !file.Exists("fh_preferables.json", "DATA") then
 		local data = file.Read("fh_dontprefer.txt", "DATA") or ""
 		
 		if data != "" then 
 			local lines = string.Split(data, "\n")
+			local toJson = {}
+			
+			for k,v in pairs(killerData) do
+				toJson[k] = v.preferable or false
+			end
+			
+			for k,v in pairs(lines) do
+				toJson[v] = false
+			end
 			
 			pill_makePreferable( lines )
+			
+			file.Write("fh_preferables.json", util.TableToJSON(toJson) )
 		end
+	end
+	
+	if file.Exists("fh_preferables.json", "DATA") then
+		local data = file.Read("fh_preferables.json", "DATA") or ""
+		
+		local datajson = util.JSONToTable( data ) or {}
+		
+		for k,v in pairs(datajson) do
+			pill_makePreferable( k, v )
+		end
+	else
+		local tosave = {}
+		for k,v in pairs(killerData) do
+			tosave[k] = v.preferable or false
+			pill_makePreferable( k, v.preferable or false )
+		end
+			
+		file.Write("fh_preferables.json", util.TableToJSON(tosave) )
 	end
 end)
 
@@ -505,6 +553,11 @@ hook.Add("ShouldCollide", "fh_collisions", function(ent1, ent2)
     -- Два игрока и один из них имеет PASSABLE_DOOR
     if (cg1 == COLLISION_GROUP_PASSABLE_DOOR and isPlayer1 and isPlayer2)
         or (cg2 == COLLISION_GROUP_PASSABLE_DOOR and isPlayer2 and isPlayer1) then
+        return false
+    end
+	
+    if (cg1 == COLLISION_GROUP_PLAYER_MOVEMENT and isPlayer1 and isPlayer2)
+        or (cg2 == COLLISION_GROUP_PLAYER_MOVEMENT and isPlayer2 and isPlayer1) then
         return false
     end
 

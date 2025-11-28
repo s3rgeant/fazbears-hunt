@@ -1,0 +1,23 @@
+VertexLitGeneric
+{
+	$basetexture "models/ufmp/fnaf1/freddyfazbear/textures/flesh"
+	$bumpmap "models/ufmp/fnaf1/freddyfazbear/textures/fleshbump"
+	$surfaceprop Metal
+
+	$nocull 1
+
+	$phong 1
+	$phongfresnelranges "[0.05 0.5 1]"
+	$phongwarptexture "models\ufmp\fnaf1\freddyfazbear/white"
+	$halflambert 1
+	$phongalbedotint 1
+	$phongexponent 20
+	$phongboost 5
+$phongtint "[0.24 0.04 0.038]"
+
+	$color "[0.77 0.77 0.77]"
+	$color2 "[1.04 1.04 1.04]"
+
+	$ambientocclusion 0
+	$diffuseexp 1.5
+}

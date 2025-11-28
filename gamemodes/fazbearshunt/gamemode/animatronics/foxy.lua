@@ -79,8 +79,7 @@ function foxyStun(ply)
 	
 	local wep = ply:GetActiveWeapon()
 	if IsValid(wep) and wep:GetClass() == "v_foxy" then
-		wep.run_string = "run"
-		wep.run_act = ACT_VM_SPRINT_IDLE
+		wep:AddAnimation("run", ACT_VM_SPRINT_IDLE)
 	end
 	
 	timer.Simple(3, function()
@@ -117,8 +116,7 @@ function foxyRush(ply, ent)
 		
 			local wep = ply:GetActiveWeapon()
 			if IsValid(wep) and wep:GetClass() == "v_foxy" then
-				wep.run_string = "weakrun"
-				wep.run_act = ACT_MP_RUN_MELEE
+				wep:AddAnimation("run", ACT_MP_RUN_MELEE)
 			end
 		end
 	elseif ply.blightRushTokens == 4 and ply:GetNWBool("blightRushing") and SERVER then
@@ -133,8 +131,7 @@ function foxyRush(ply, ent)
 		if SERVER then
 			local wep = ply:GetActiveWeapon()
 			if IsValid(wep) and wep:GetClass() == "v_foxy" then
-				wep.run_string = "run"
-				wep.run_act = ACT_VM_SPRINT_IDLE
+				wep:AddAnimation("run", ACT_VM_SPRINT_IDLE)
 			end
 		end
 	end
@@ -249,10 +246,6 @@ hook.Add("SetupMove", "BlightPredictionMove", function(ply, mv, cmd)
 
 	mv:SetForwardSpeed(1000)
 
-	if IsValid(ply.puppet) then
-		ply.puppet:SetPlaybackRate(1.3)
-	end
-
 	local wep = ply:GetViewModel(0)
 	if IsValid(wep) and not wep.IsCharging then
 		wep:SetPlaybackRate(1.3)
@@ -296,16 +289,17 @@ hook.Add("FinishMove", "BlightPredictionFinish", function(ply, mv)
 	ply:LagCompensation(true)
 	local tr = BlightCheckCollision(ply)
 	ply:LagCompensation(false)
-	if tr.Hit and (not tr.Entity or not tr.Entity:IsPlayer() or tr.Entity:IsAnimatronic()) then
+	
+	if tr.Hit and (!IsValid(tr.Entity) or not tr.Entity:IsPlayer() or tr.Entity:IsAnimatronic()) then
 		
-		if tr.Entity ~= game.GetWorld() and CLIENT then
+		if CLIENT and tr.Entity ~= game.GetWorld() then
 			return
 		end
 		
-		if tr.Entity then
+		if IsValid(tr.Entity) and !tr.Entity:IsPlayer() then
+		
 			local ent = tr.Entity
 			local physobj = ent:GetPhysicsObject()
-			
 			if IsValid(physobj) and ent:Health() > 0 then
 				local wep = ply:GetActiveWeapon()
 				
@@ -318,6 +312,11 @@ hook.Add("FinishMove", "BlightPredictionFinish", function(ply, mv)
 				ent:TakeDamageInfo(dmginfo)
 				SuppressHostEvents(ply)
 				
+				return
+			end
+			
+			if tr.Entity:GetClass() == "prop_door_rotating" then
+				breakBustDoor(ply, tr.Entity)
 				return
 			end
 		end
@@ -347,7 +346,6 @@ hook.Add("FinishMove", "BlightPredictionFinish", function(ply, mv)
 			ply:EmitSound("blight/impact.wav")
 
 			if IsValid(ply.puppet) then
-				ply.puppet:SetPlaybackRate(1)
 				ply.puppet:PillGesture("chargestun", 1, 0.8, 0.1, 0.3)
 			end
 		end

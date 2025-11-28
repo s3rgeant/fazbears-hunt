@@ -43,7 +43,7 @@ if SERVER then
                 ent:Fire("Shatter", "0.5 0.5 " .. ent:BoundingRadius())
                 BustEffects(ply, ent, false)
 				return true
-            elseif ent:Health() > 0 and ent:Health() <= ent:GetMaxHealth() then
+            elseif !ent:IsPlayer() and ent:Health() > 0 and ent:Health() <= ent:GetMaxHealth() then
                 ent:TakeDamage(10, ply, ent)
                 ent:EmitSound("Glass.Strain")
                 BustEffects(ply, ent, false)
@@ -62,7 +62,7 @@ if SERVER then
 
         local vel = mv:GetVelocity()
 		if vel:Length() < 600 then
-			if vel:Length() < ply:GetRunSpeed() * 0.8 or (not cmd:KeyDown(IN_SPEED) and ply:GetRunSpeed() ~= ply:GetWalkSpeed() and vel:Length() < 400) or vel:Length() < 200 then return end
+			if vel:Length() < ply:GetRunSpeed() * 0.7 or (not cmd:KeyDown(IN_SPEED) and ply:GetRunSpeed() ~= ply:GetWalkSpeed() and vel:Length() < 400) or vel:Length() < 200 then return end
 		end
 
         local dir = vel:GetNormalized()
@@ -108,6 +108,7 @@ if SERVER then
 		door:SetKeyValue("opendir", 0)
 		door:Fire("SetSpeed", 420, 0)
 		door:Fire("OpenAwayFrom", "Buster" .. ply:EntIndex(), 0)
+		door:Fire("Lock", "", 0)
 		
 		hook.Run("FuncDoorBust", ply, door)
 
@@ -117,6 +118,7 @@ if SERVER then
 			if IsValid(door) then
 				door:Fire("SetSpeed", oldSpeed, 0)
 				door:SetKeyValue("opendir", oldDir)
+				door:Fire("Unlock", "", 0)
 			end
 		end)
 
@@ -128,6 +130,7 @@ if SERVER then
         door:SetSaveValue("m_hactivator", ply)
         door:Fire("SetSpeed", 500, 0)
         door:Fire("Open", "", 0)
+		door:Fire("Lock", "", 0)
         PushPlayersFromDoor(door, ply:GetForward())
     end
 
@@ -161,6 +164,7 @@ if SERVER then
 			if IsValid(door) then
 				door:Fire("SetSpeed", oldSpeed, 0)
 				door:SetKeyValue("spawnflags", oldFlags)
+				door:Fire("Unlock", "", 0)
 			end
 		end)
 
@@ -210,73 +214,4 @@ if CLIENT then
         ef:SetMagnitude(magnit)
         util.Effect("busteffect", ef)
     end)
-	
-	local function FindDoubleDoorPair(door)
-		if not IsValid(door) then return nil end
-
-		local class = door:GetClass()
-		local pos = door:GetPos()
-		local ang = door:GetAngles()
-		local yaw = ang.y
-
-		for _, ent in ipairs(ents.FindInSphere(pos, 120)) do
-			if ent ~= door and IsValid(ent) and ent:GetClass() == class then
-				local dist = pos:Distance(ent:GetPos())
-				if dist > 20 and dist < 120 then
-					return ent
-				end
-			end
-		end
-
-		return nil
-	end
-
-	hook.Add("CreateMove", "DoorAutoAlign", function(cmd)
-		local ply = LocalPlayer()
-		if not IsValid(ply) or not ply:Alive() then return end
-
-		if not cmd:KeyDown(IN_FORWARD) then return end
-		
-		if ply:GetMoveType() ~= MOVETYPE_WALK then return end
-
-		local tr = ply:GetEyeTrace()
-		local ent = tr.Entity
-		if not IsValid(ent) then return end
-
-		local class = ent:GetClass()
-		if class ~= "prop_door_rotating" and class ~= "func_door_rotating" then return end
-
-		if tr.HitPos:DistToSqr(ply:GetShootPos()) > (100 * 100) then return end
-
-		local vel = ply:GetVelocity():Length()
-		if vel < ply:GetRunSpeed() * 0.6 then return end
-
-		local second = FindDoubleDoorPair(ent)
-
-		local targetPos
-
-		if IsValid(second) then
-			targetPos = (ent:WorldSpaceCenter() + second:WorldSpaceCenter()) * 0.5
-		else
-			targetPos = ent:WorldSpaceCenter()
-		end
-
-		local targetDir = (targetPos - ply:GetShootPos())
-		targetDir.z = 0
-		targetDir:Normalize()
-
-		local eyeDir = ply:EyeAngles():Forward()
-
-		if eyeDir:Dot(targetDir) < 0.75 then return end
-
-		local ang = ply:EyeAngles()
-		local fwd = ang:Forward()
-		local right = ang:Right()
-
-		local moveX = targetDir:Dot(fwd) * 400
-		local moveY = targetDir:Dot(right) * 400
-
-		cmd:SetForwardMove(moveX)
-		cmd:SetSideMove(moveY)
-	end)
 end

@@ -117,7 +117,7 @@ function unmapEnt(ply, ent)
     if ply.fh_pill_ent == ent then
         ply.fh_pill_ent = nil
     elseif IsValid(ply.fh_pill_ent) then
-        return ply.fh_pill_ent.formTable.type
+        return ply.fh_pill_ent.formTable.type, ply.fh_pill_ent.formTable.name
     end
 end
 
@@ -306,6 +306,7 @@ function restore(ply, breakout)
 				ply:SetNotSolid(false)
             end
             ply:SetRenderMode(RENDERMODE_NORMAL)
+			ply:SetModelScale(1)
 
             if ply:Alive() then
 				-- Just respawn the player to reset most stuff.
@@ -361,6 +362,66 @@ hook.Add("KeyPress", "pk_pill_keypress_nolc_shared", function(ply, key)
 	end
 end)
 
+hook.Add("CalcMainActivity", "pk_pill_calc_activity", function(ply, vel)
+	local ent = getMappedEnt(ply)
+
+	if IsValid(ent) then
+		ply:SetCycle( ent:GetCycle() )
+		return ACT_INVALID, ent:GetSequence()
+	end
+end)
+
+function GM:UpdateAnimation( ply, velocity, maxseqgroundspeed )
+	local ent = getMappedEnt(ply)
+	
+	local rate = 1
+	
+	if !IsValid(ent) then
+		local len = velocity:Length()
+		local movement = 1.0
+
+		if ( len > 0.2 ) then
+			movement = ( len / maxseqgroundspeed )
+		end
+
+		rate = math.min( movement, 2 )
+
+		-- if we're under water we want to constantly be swimming..
+		if ( ply:WaterLevel() >= 2 ) then
+			rate = math.max( rate, 0.5 )
+		elseif ( !ply:IsOnGround() && len >= 1000 ) then
+			rate = 0.1
+		end
+	end
+
+	ply:SetPlaybackRate( rate )
+
+	-- We only need to do this clientside..
+	if ( CLIENT ) then
+		if ( ply:InVehicle() ) then
+			--
+			-- This is used for the 'rollercoaster' arms
+			--
+			local Vehicle = ply:GetVehicle()
+			local Velocity = Vehicle:GetVelocity()
+			local fwd = Vehicle:GetUp()
+			local dp = fwd:Dot( Vector( 0, 0, 1 ) )
+
+			ply:SetPoseParameter( "vertical_velocity", ( dp < 0 && dp || 0 ) + fwd:Dot( Velocity ) * 0.005 )
+
+			-- Pass the vehicles steer param down to the player
+			local steer = Vehicle:GetPoseParameter( "vehicle_steer" )
+			steer = steer * 2 - 1 -- convert from 0..1 to -1..1
+			if ( Vehicle:GetClass() == "prop_vehicle_prisoner_pod" ) then steer = 0 ply:SetPoseParameter( "aim_yaw", math.NormalizeAngle( ply:GetAimVector():Angle().y - Vehicle:GetAngles().y - 90 ) ) end
+			ply:SetPoseParameter( "vehicle_steer", steer )
+
+		end
+
+		GAMEMODE:GrabEarAnimation( ply )
+		GAMEMODE:MouthMoveAnimation( ply )
+	end
+end
+
 -- THEM HOOKS
 if SERVER then
     hook.Add("KeyPress", "pk_pill_keypress", function(ply, key)
@@ -403,8 +464,10 @@ if SERVER then
     hook.Add("DoAnimationEvent", "pk_pill_triggerAnims", function(ply, event, data)
         local ent = getMappedEnt(ply)
         if IsValid(ent) and ent.formTable.type == "ply" then
-            if event == PLAYERANIMEVENT_JUMP and !ent.animFreeze and ent.formTable.jumpPower > 0 then
-                ent:PillAnim("jump")
+            if event == PLAYERANIMEVENT_JUMP and !ent.animFreeze and ply:GetJumpPower() > 0 then
+				if ply:GetJumpPower() > 0 then
+					ent:PillAnim("jump")
+				end
                 ent:DoJump()
             end
 

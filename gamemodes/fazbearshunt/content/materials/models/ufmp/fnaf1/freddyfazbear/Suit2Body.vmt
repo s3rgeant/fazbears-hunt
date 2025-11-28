@@ -1,0 +1,19 @@
+"vertexlitgeneric"
+{
+"$basetexture" "models\ufmp\fnaf1\freddyfazbear\suit2"
+$bumpmap "models\ufmp\FNaF1\Shared\bumpnolinesnew"
+$phongexponenttexture "models\ufmp\fnaf1\freddyfazbear\specbody"
+$phongwarptexture "models\ufmp\white"
+$surfaceprop metal
+$phong "1"
+$phongtint "[0.0 0.4 1]"
+$phongexponent "0"
+$phongboost "0.2"
+$basetexturetransform                       "[0.8 0 0 0 0 0.8 0 0 0 0 1 0 0 0 0 1]"
+$phongalbedotint "1"
+$halflambert "1"
+$nodecal "1"
+$model "1"
+$diffuseexp "1.5"
+$normalmapalphaenvmapmask   "1"
+}

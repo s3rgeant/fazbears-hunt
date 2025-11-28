@@ -1,7 +1,6 @@
 AddCSLuaFile()
 
 ENT.Type = "filter"
-ENT.Base = "base_filter"
 
 function ENT:Initialize()
     self.Lists = {}

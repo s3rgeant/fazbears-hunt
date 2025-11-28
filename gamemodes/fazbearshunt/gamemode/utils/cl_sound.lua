@@ -103,6 +103,13 @@ hook.Add("EntityEmitSound", "fh_silent_anims", function(data)
 	
 	local ent = data.Entity
 	
+	-- дабы не было двойных шагов из-за того что мы установили игроку модельку аниматроника
+	if IsValid(ent) and ent:IsPlayer() then
+		if IsValid(ent:GetPill()) and data.OriginalSoundName:match("foot") == "foot" then
+			return false
+		end
+	end
+	
 	if IsValid(ent) and ent:GetClass() == "pill_costume" then
 		local volume = data.Volume
 	

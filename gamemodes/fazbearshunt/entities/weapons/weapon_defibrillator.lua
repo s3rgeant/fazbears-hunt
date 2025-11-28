@@ -296,7 +296,7 @@ function SWEP:SecondaryAttack()
 		dmginfo:SetInflictor(self)
 		dmginfo:SetDamagePosition(tr.HitPos)
 		dmginfo:SetDamageType(DMG_SLASH) 
-		dmginfo:SetDamage(25)
+		dmginfo:SetDamage(5)
 			
 		if tr.Hit and (tr.Entity:IsPlayer() || tr.Entity:IsNPC() || tr.Entity:GetClass() == "prop_ragdoll") then
 			self.Owner:EmitSound( "player/survivor/hit/rifle_swing_hit_infected" .. math.random(7, 12) .. ".wav")

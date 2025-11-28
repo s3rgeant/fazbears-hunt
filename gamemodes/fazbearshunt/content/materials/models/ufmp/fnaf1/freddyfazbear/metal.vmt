@@ -1,0 +1,21 @@
+"VertexlitGeneric"
+{
+	"$basetexture" "models\ufmp\fnaf1\freddyfazbear/knife/Metall2"
+	"$bumpmap" "models\ufmp\fnaf1\freddyfazbear/knife/Metal2Norm"
+	"$nocull" 1
+	$surfaceprop metal
+
+	"$basetexturealphaenvmapmask" 1
+ 	"$phong" "1"
+	"$phongexponent" "30"
+	"$phongboost"	"250"
+	"$phongfresnelranges"	"[0.0099999998 0.3000000119 0.1000000015]"
+	"$phongalbedotint" "1"
+    "$basemapalphaphongmask"	"1"
+	"$phongalbedoboost"	"1"
+
+}
+
+
+
+

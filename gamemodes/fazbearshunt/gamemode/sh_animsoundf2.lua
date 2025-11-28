@@ -20,6 +20,15 @@ sound.Add({
 						,"bigstep3.mp3"
 						,"bigstep4.mp3"}
 })
+sound.Add({
+	name = 			"bear.foot1",
+	channel = 		CHAN_STATIC,
+	level = 		90,
+	volume = 		1.0,
+	sound = 			{"bear/bear_step1.mp3"
+						,"bear/bear_step2.mp3"
+						,"bear/bear_step3.mp3"}
+})
 
 //mangle
 

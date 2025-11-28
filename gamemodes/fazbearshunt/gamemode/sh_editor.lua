@@ -96,6 +96,9 @@ if SERVER then
 		end
 		if ply:IsSuperAdmin() or ply:Team() == TEAM_EDITOR then
 			if ply:Team() ~= TEAM_EDITOR then
+				if ply:GetPill() then
+					pills.restore(ply:Nick(), true)
+				end
 				ply:StripWeapons()
 				ply:Spectate(OBS_MODE_ROAMING)
 				ply:SetTeam(TEAM_EDITOR)

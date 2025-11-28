@@ -1,0 +1,580 @@
+AddCSLuaFile()
+
+function bearScream(ply, ent)
+	if !ply._BearScreamSound then
+		ply._BearScreamSound = CreateSound(ply, ")bear/bear5_jumpscare.wav")
+	elseif ply._BearScreamSound:IsPlaying() then
+		ply._BearScreamSound:Stop()
+	end
+	
+	ply._BearScreamSound:Play()
+			
+	ent:PillGesture('scream', 5, 1, 0.1, 0.1)
+	
+	local timerName = ply:EntIndex() .. "_Bear5Scream"
+	
+	if timer.Exists(timerName) then
+		timer.Remove(timerName)
+	end
+	
+	timer.Create(timerName, math.random(2,34)/ 10, 1, function()
+		if IsValid(ply) and IsValid(ent) then
+			ply._BearScreamSound:Stop()
+			ent:PillStopGesture('scream')
+		end
+	end)
+end
+
+pills.clone("bear5_main", "pill_wfreddy2", {
+	printName="Bear 5",
+	
+	model="models/speps/pill/oldfreddy.mdl",
+	
+	anims={
+		default={
+			idle="bear5_idle",
+			crouch="crouch",
+			crouch_walk="crouchmove",
+			walk="walk",
+			run="bear5_run",
+			cloak="special",
+			scare="scare",
+			jump="jump",
+			glide="air",
+			land="land",
+			stalk="stalk",
+			stun="stun",
+			melee="melee",
+			
+			swing="preattack",
+			attack="attack",
+			scream="scream",
+		},
+	},
+	option="default",
+	
+	moveSpeed={
+		walk=150,
+		run=500,
+		ducked=75,
+	},
+	
+	options=function() return {
+		["default"] = {
+			bodyGroups = {
+				[0] = 1, 
+				["Microphone"] = 1},
+			skin=1,
+		}
+	} end,
+	option="default",
+	
+	viewmodel={
+		weapon="v_bear",
+		skin=5,
+		bodyGroup="Microphone",
+	},
+	
+	attack={
+		mode="trigger",
+		func=function(ply,ent)
+		end
+    },
+	
+	attack2={
+		mode="trigger",
+		func=function(ply,ent)
+		end
+    },
+	
+	boneMorphs={
+		["bip_eye_R"] = {scale = Vector(0.5,0.5,0.5)},
+		["bip_eye_L"] = {scale = Vector(0.5,0.5,0.5)},
+		["bip_EyeLid_0_R"] = {scale = Vector(0,0,0)},
+		["bip_EyeLid_1_R"] = {scale = Vector(0,0,0)},
+		["bip_EyeLid_0_L"] = {scale = Vector(0,0,0)},
+		["bip_EyeLid_1_L"] = {scale = Vector(0,0,0)},
+	},
+})
+
+pills.register("bear5_clone",{
+	printName="Bear 5 Clone",
+	
+	model="models/fh/animatronics/bear5.mdl",
+	modelScale="0.7",
+	
+	health=2000,
+	type="ply",
+	
+    camera = {
+        offset = Vector(0, 0, 50),
+		dist = 100
+    },
+	hull=Vector(32,32,50),
+	
+	duckBy=10,
+	stepSize=24,
+	
+	bloodType=BLOOD_COLOR_MECH,
+	muteSteps = true,
+	noFallDamage=true,
+	movePoseMode="xy",
+	
+	anims={
+		default={
+			idle="idle",
+			walk="run",
+			run="run",
+			jump="jump",
+			glide="glide",
+			
+			attack="attack",
+		},
+	},
+	sounds={
+		jump="jump.mp3",
+		land="land.mp3",
+	},
+	
+	moveSpeed={
+		walk=490,
+		ducked=150,
+	},
+	
+	viewmodel={
+		weapon="v_bear",
+		skin=5,
+		bodyGroup="Microphone",
+	},
+	
+	boneMorphs={
+		["bip_eye_R"] = {scale = Vector(0.5,0.5,0.5)},
+		["bip_eye_L"] = {scale = Vector(0.5,0.5,0.5)},
+		["bip_EyeLid_0_R"] = {scale = Vector(0,0,0)},
+		["bip_EyeLid_1_R"] = {scale = Vector(0,0,0)},
+		["bip_EyeLid_0_L"] = {scale = Vector(0,0,0)},
+		["bip_EyeLid_1_L"] = {scale = Vector(0,0,0)},
+	},
+})
+
+killers.Register("bear5_main", "bear5", "Bear 5", Color(0,120,255))
+killers.Register("bear5_clone", "bearling5", "Bearling 5", Color(0,120,255))
+
+if SERVER then return end -- дальше бога нет
+
+-- Дистанция, на которой видно эффект
+local AURA_MIN_DISTANCE, AURA_MAX_DISTANCE = 40, 2000
+
+-- Общее число "пикселей" по всей модели
+local GLITCH_BLACK_COUNT, GLITCH_WHITE_COUNT = 150, 5
+
+-- Насколько "за" костью по лучу от камеры "пиксели" уводит
+local BONE_BACK_OFFSET_MIN, BONE_BACK_OFFSET_MAX = 3.0, 9.0
+
+-- Базовый разброс вокруг кости (в плоскости экрана) для "пикселей"
+local BONE_JITTER_RADIUS_NEAR, BONE_JITTER_RADIUS_FAR = 1.0, 3.0
+
+-- Усиление вертикального разброса (по оси вверх экрана)
+local VERTICAL_JITTER_MULT = 1.7
+
+-- Размеры обычных квадратиков
+local SQUARE_SIZE_MIN, SQUARE_SIZE_MAX  = 2.0, 5.0
+
+local BLACK_SQUARE_ALPHA = 255
+local WHITE_SQUARE_ALPHA = 255
+
+-- Скорость смены
+local NOISE_FPS_MIN, NOISE_FPS_MAX = 4, 8
+
+-- Сколько "пикселей" держать один FPS, перед сменой (рандомно)
+-- Фактически используется для расчёта времени в секундах: holdFrames / fps
+local NOISE_HOLD_MIN_FRAMES, NOISE_HOLD_MAX_FRAMES = 6, 18
+
+-- "Залипающие пиксели" (оставшиеся в мире и не двигающиеся с костями)
+local DETACHED_SQUARE_MIN_LIFETIME, DETACHED_SQUARE_MAX_LIFETIME = 1.0, 5.0
+local DETACHED_SQUARE_CHANCE       = 0.03  -- шанс на одного кандидата-"пиксель"
+local DETACHED_SQUARE_MAX_COUNT    = 45    -- максимум залипших "пикселей" на одного Bear5
+
+local GLITCH_MATERIAL = GLITCH_MATERIAL or CreateMaterial(
+    "fh_bear5_glitch_square_material",
+    "UnlitGeneric",
+    {
+        ["$basetexture"] = "color/white",
+        ["$ignorez"]     = "0", -- <- эта мразь решила однажды сквозь карту херачить, я хз как и почему
+        ["$vertexalpha"] = "1",
+        ["$vertexcolor"] = "1"
+    }
+)
+
+local bears = {}
+
+-- [entIndex] = { fps = number, nextFpsChangeTime = number }
+local auraNoiseState = {}
+
+-- [entIndex] = {
+--   { pos = Vector, size = number, colorR, colorG, colorB, alpha, dieTime = number },
+--   ...
+--   lastSeen = CurTime()
+-- }
+
+local function IsPillBear5(ent)
+    if not IsValid(ent) then return false end
+
+    if ent:GetName() == "bear5_main" or ent:GetName():find("bear5", 1, true) then
+        return true
+    end
+
+    return false
+end
+
+local function GetBear5(ply)
+    if not IsValid(ply) then return nil end
+
+    local mapped = pills.getMappedEnt(ply)
+    if not IsValid(mapped) then return nil end
+    if not IsPillBear5(mapped) then return nil end
+
+    return mapped
+end
+
+local function ShouldSkipAuraOnPlayer(ply)
+    local lp = LocalPlayer()
+    if not IsValid(lp) then return false end
+
+    if ply == lp:GetObserverTarget()
+        and lp:GetViewEntity() == lp
+        and lp:GetObserverMode() == OBS_MODE_IN_EYE then
+        return true
+    end
+
+    return false
+end
+
+local function GetNoiseFrameForEnt(pillEnt)
+    local state    = auraNoiseState[pillEnt]
+    local now      = CurTime()
+
+    -- Инициализация
+    if not state then
+        local fps        = math.random(NOISE_FPS_MIN, NOISE_FPS_MAX)
+        local holdFrames = math.random(NOISE_HOLD_MIN_FRAMES, NOISE_HOLD_MAX_FRAMES)
+
+        state = {
+            fps = fps,
+            nextFpsChangeTime = now + (holdFrames / fps)
+        }
+
+        auraNoiseState[pillEnt] = state
+    else
+        -- Пора сменить FPS?
+        if now >= state.nextFpsChangeTime then
+            local fps        = math.random(NOISE_FPS_MIN, NOISE_FPS_MAX)
+            local holdFrames = math.random(NOISE_HOLD_MIN_FRAMES, NOISE_HOLD_MAX_FRAMES)
+
+            state.fps = fps
+            state.nextFpsChangeTime = now + (holdFrames / fps)
+        end
+    end
+
+    -- Текущий кадр
+    return math.floor(now * state.fps)
+end
+
+local function DrawAura(pillEnt) -- <- на всякий проверь ещё, тут нейронка насрала + я насрал, мб что-нибудь не так и я это тупо не увидел
+	if not IsValid(pillEnt) then return end
+	if pillEnt:IsInvisible() then return end
+	
+	local eyePos    = EyePos()
+	local eyeAngles = EyeAngles()
+	if not eyePos or not eyeAngles then return end
+	
+	local pillCenter     = pillEnt:LocalToWorld(pillEnt:OBBCenter())
+	local vectorToCenter = pillCenter - eyePos
+	local distanceToPill = vectorToCenter:Length()
+	
+	if distanceToPill < AURA_MIN_DISTANCE or distanceToPill > AURA_MAX_DISTANCE then
+		return
+	end
+	
+	local distanceFraction = math.Clamp(
+		(distanceToPill - AURA_MIN_DISTANCE) / (AURA_MAX_DISTANCE - AURA_MIN_DISTANCE),
+		0, 1
+	)
+	
+	-- Направление взгляда камеры
+	local viewForward = eyeAngles:Forward()
+	
+	-- Базис для мелких "пикселей" (в плоскости экрана)
+	local worldUp = Vector(0, 0, 1)
+	if math.abs(viewForward:Dot(worldUp)) > 0.95 then
+		worldUp = Vector(0, 1, 0)
+	end
+	
+	local screenRight = viewForward:Cross(worldUp)
+	screenRight:Normalize()
+	
+	local screenUp = screenRight:Cross(viewForward)
+	screenUp:Normalize()
+	
+	local boneCount = pillEnt:GetBoneCount() or 0
+	if boneCount <= 0 then return end
+	
+	local radius = pillEnt:BoundingRadius()
+	if radius <= 0 then radius = 40 end
+	
+	-- Кадр с учётом рандомного FPS + "перерывов" между сменами FPS
+	local noiseFrame = GetNoiseFrameForEnt(pillEnt)
+	
+	-- "Кадр" шума -> эффект статики
+	local baseRandomSeed = pillEnt:EntIndex() * 7919 + noiseFrame * 104729 -- <- не думаю, что это нормально, но ИИ предложило так, как бы, да
+	
+	local entIndex = pillEnt:EntIndex()
+	local now      = CurTime()
+	
+	render.SetMaterial(GLITCH_MATERIAL)
+	
+	-- Пачка пикселей по костям (белые и чёрные)
+	local function DrawSquareSet(squareCount, colorR, colorG, colorB, alpha, seedOffset, keySuffix)
+		if squareCount <= 0 then return end
+	
+		for i = 1, squareCount do
+			local squareSeed = baseRandomSeed + seedOffset + i * 37
+	
+			-- 1) Случайная кость
+			local boneIndexFloat = util.SharedRandom(
+				"fh_bear5_glitch_bone_" .. keySuffix,
+				0, boneCount - 0.0001,
+				squareSeed
+			)
+			local boneIndex = math.floor(boneIndexFloat)
+			if boneIndex < 0 or boneIndex >= boneCount then
+				continue
+			end
+	
+			local bonePos = select(1, pillEnt:GetBonePosition(boneIndex))
+			if not bonePos then
+				continue
+			end
+	
+			local parentIndex = pillEnt:GetBoneParent(boneIndex)
+			local parentPos
+			if parentIndex and parentIndex >= 0 then
+				parentPos = select(1, pillEnt:GetBonePosition(parentIndex))
+			end
+	
+			local segmentStart = parentPos or bonePos
+			local segmentEnd   = bonePos
+	
+			local segmentDir = segmentEnd - segmentStart
+			local segmentLen = segmentDir:Length()
+			if segmentLen < 1 then
+				segmentDir = viewForward
+				segmentLen = 8
+			else
+				segmentDir:Mul(1 / segmentLen)
+			end
+	
+			-- 2) Позиция вдоль кости
+			local alongFraction = util.SharedRandom(
+				"fh_bear5_glitch_along_" .. keySuffix,
+				0, 1,
+				squareSeed + 1
+			)
+			local pointOnBone = segmentStart + segmentDir * (segmentLen * alongFraction)
+	
+			-- 3) Смещение ЗА кость по рэю от камеры
+			local backOffset = util.SharedRandom(
+				"fh_bear5_glitch_back_" .. keySuffix,
+				BONE_BACK_OFFSET_MIN,
+				BONE_BACK_OFFSET_MAX,
+				squareSeed + 2
+			)
+			local worldPos = pointOnBone + viewForward * backOffset
+	
+			-- 4) Разброс в плоскости экрана + усиление по высоте (для головы и ног, иначе всё возле пуза)
+			local baseJitterRadius = Lerp(
+				distanceFraction,
+				BONE_JITTER_RADIUS_NEAR,
+				BONE_JITTER_RADIUS_FAR
+			)
+	
+			local heightOffset   = pointOnBone.z - pillCenter.z
+			local heightFraction = math.Clamp(math.abs(heightOffset) / (radius * 0.7), 0, 1) -- <- оооооо пиздец бляяяяяяять
+	
+			local jitterRadius = baseJitterRadius + radius * 0.25 * heightFraction
+	
+			local jitterAngle = util.SharedRandom(
+				"fh_bear5_glitch_angle_" .. keySuffix,
+				0, math.pi * 2,
+				squareSeed + 3
+			)
+			local jitterLen = util.SharedRandom(
+				"fh_bear5_glitch_radius_" .. keySuffix,
+				jitterRadius * 0.3,
+				jitterRadius,
+				squareSeed + 4
+			)
+	
+			local offsetRight = math.cos(jitterAngle) * jitterLen
+			local offsetUp    = math.sin(jitterAngle) * jitterLen * VERTICAL_JITTER_MULT
+	
+			worldPos = worldPos
+				+ screenRight * offsetRight
+				+ screenUp    * offsetUp
+	
+			-- 5) Размер "пикселя"
+			local size = util.SharedRandom(
+				"fh_bear5_glitch_size_" .. keySuffix,
+				SQUARE_SIZE_MIN,
+				SQUARE_SIZE_MAX,
+				squareSeed + 5
+			)
+			if size <= 0.5 then
+				continue
+			end
+	
+			-- 6) Нормаль к камере
+			local normal = eyePos - worldPos
+			if normal:LengthSqr() < 1 then
+				continue
+			end
+			normal:Normalize()
+	
+			-- Рисуем обычный (привязанный) "пиксель"
+			render.DrawQuadEasy(
+				worldPos,
+				normal,
+				size,
+				size,
+				Color(colorR, colorG, colorB, alpha),
+				0
+			)
+		end
+	end
+	
+	DrawSquareSet(
+		GLITCH_BLACK_COUNT,
+		0, 0, 0,
+		BLACK_SQUARE_ALPHA,
+		0,
+		"black"
+	)
+	
+	DrawSquareSet(
+		GLITCH_WHITE_COUNT,
+		255, 255, 255,
+		WHITE_SQUARE_ALPHA,
+		9999,
+		"white"
+	)
+end
+
+-- Это для зеркал и т.д.
+
+hook.Add("PostDrawTranslucentRenderables", "FH_Bear5_GlitchAura_Draw", function(isDepthPass, isSkybox)
+	if isSkybox or isDepthPass then return end
+	
+	local viewer = LocalPlayer()
+	if not IsValid(viewer) then return end
+	
+	for ply, _ in pairs(bears) do
+		if not IsValid(ply) or not ply:Alive() then
+			continue
+		end
+	
+		local pillEnt = GetBear5(ply)
+		if not IsValid(pillEnt) then
+			continue
+		end
+	
+		if ShouldSkipAuraOnPlayer(ply) then
+			continue
+		end
+	
+		if pillEnt.IsDrawn == false
+			or pillEnt:GetNoDraw()
+			or (isstring(pillEnt:GetMaterial()) and string.lower(pillEnt:GetMaterial()) == "models/null") then
+			continue
+		end
+	
+		DrawAura(pillEnt)
+	end
+end)
+
+hook.Add("PrePlayerDraw", "FH_Bear5_GlitchAura_Mirrors", function(ply)
+    local lp = LocalPlayer()
+    if ply ~= lp then return end
+
+    local pillEnt = GetBear5(ply)
+    if not IsValid(pillEnt) then return end
+
+    if pillEnt.IsDrawn
+        or pillEnt:GetNoDraw()
+        or (isstring(pillEnt:GetMaterial()) and string.lower(pillEnt:GetMaterial()) == "models/null") then
+        return
+    end
+
+    if ShouldSkipAuraOnPlayer(ply) then return end
+
+    DrawAura(pillEnt)
+end)
+
+-- ЭМБИЕНС
+local bear5Ambience = {}
+
+local function StopAmbience(ent, fadeOut)
+    local snd = bear5Ambience[ent]
+	
+    if snd then
+        if fadeOut then
+            snd:FadeOut(0.5)
+        else
+            snd:Stop()
+        end
+    end
+
+    bear5Ambience[ent] = nil
+end
+
+local GLOBAL_VOLUME = 0.45
+local LOCAL_BEAR_VOLUME_FACTOR = 0.15
+local SOUND_LEVEL_DB = 70
+local function StartAmbienceForPill(ent, ownerPly)
+    if bear5Ambience[ent] then return end
+
+    local snd = CreateSound(ent, ")bear/bear_aura_ambience.wav")
+    if not snd then return end
+
+    snd:SetSoundLevel(SOUND_LEVEL_DB)
+
+    local volume = GLOBAL_VOLUME
+    local lp = LocalPlayer()
+
+    if IsValid(lp) and ownerPly == lp then
+        volume = volume * LOCAL_BEAR_VOLUME_FACTOR
+    end
+
+    if volume < 0 then volume = 0 end
+    if volume > 1 then volume = 1 end
+
+    snd:PlayEx(volume, 100)
+
+    bear5Ambience[ent] = snd
+end
+
+hook.Add("PillApply", "bear5_ambience_apply", function(ply, ent)
+    if IsValid(ply) and ent:GetName() == "bear5_main" then
+		bears[ply] = true
+        StartAmbienceForPill(ent, ply)
+    end
+end)
+
+hook.Add("PillRestore", "bear5_ambience_restore", function(ply, ent)
+    if IsValid(ply) and ent:GetName() == "bear5_main" then
+		bears[ply] = nil
+		StopAmbience(ent)
+		if auraNoiseState[pillEnt] then
+			auraNoiseState[pillEnt] = nil
+		end
+    end
+end)

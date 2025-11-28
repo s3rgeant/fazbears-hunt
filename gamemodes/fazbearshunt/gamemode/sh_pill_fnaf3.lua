@@ -134,9 +134,6 @@ pills.register("pill_clown",{
 		xPose="aim_yaw",
 		yPose="aim_pitch"
 	},
-	canAim=function(ply,ent)
-		return ent.active
-	end,
 
 	noFallDamage=true,
 	
@@ -242,6 +239,9 @@ pills.register("pill_springtrap",{
 			egypt="egypt",
 			stun="stun",
 		},
+		speedCap={
+			run=500,
+		},
 	},
 	moveSpeed={
 		walk=spring_default_movement[1],
@@ -276,9 +276,6 @@ pills.register("pill_springtrap",{
 		xPose="aim_yaw",
 		yPose="aim_pitch"
 	},
-	canAim=function(ply,ent)
-		return ent.active
-	end,
 	startFunction=function(ply,ent)
 		ent:PillLoopSound('breathing', 0.6)
 		
@@ -640,9 +637,6 @@ pills.register("pill_plushtrap",{
 		xPose="aim_yaw",
 		yPose="aim_pitch"
 	},
-	canAim=function(ply,ent)
-		return ent.active
-	end,
 	
 	startFunction=function(ply,ent)
 		ply:SetCollisionGroup(COLLISION_GROUP_PASSABLE_DOOR)
