@@ -125,12 +125,8 @@ pills.register("pill_wfreddy2",{
 		ducked=wfreddy_default_movement[3],
 	},
 	sounds={
-		gs="fnaf2/stareshort.wav",
-		loop_stare="fnaf2/with_s2_loop2.wav",
 		jump="jump.mp3",
 		land="land.mp3",
-		melee=pills.helpers.makeList("fnaf2/xscream2.wav",2),
-		step=pills.helpers.makeList("fnaf2/none.wav",1)
 	},
 	type="ply",
     camera = {

@@ -197,6 +197,26 @@ function draw_killer_selector()
 								bodyGroups = pickedOption.bodyGroups
 							end
 						end
+
+						if v.boneMorphs then
+							for bone, dab in pairs(v.boneMorphs) do
+								local b = ent:LookupBone(bone)
+
+								if b then
+									if dab.pos then
+										ent:ManipulateBonePosition(b, dab.pos)
+									end
+
+									if dab.rot then
+										ent:ManipulateBoneAngles(b, dab.rot)
+									end
+
+									if dab.scale then
+										ent:ManipulateBoneScale(b, dab.scale)
+									end
+								end
+							end
+						end
 						
 						if skin then
 							ent:SetSkin(skin)
@@ -255,31 +275,6 @@ function draw_killer_selector()
 			surface.SetMaterial(self.Stolen and anim_box_stolen or NeverPlayedAs(box.name) and (self:IsHovered() and new_anim_box_hover or new_anim_box) or self:IsHovered() and anim_box_hover or anim_box)
 			surface.DrawTexturedRect(0, 0, w, h)
 		end
-		
-		--[[
-		if NeverPlayedAs(box.name) then
-			local new_end_x = 36
-			local new_end_y = 118
-		
-			box.PaintOver = function(self, w, h)
-				surface.SetDrawColor(0,0,0,225)
-				surface.DrawRect( 0, new_end_y, new_end_x, new_end_x )
-
-				for i = 0, 2 do
-				
-					surface.SetDrawColor(255, 200, 0, 255)
-					surface.DrawOutlinedRect(i, i, w - i*2, h - i*2)
-					surface.DrawLine( 0, new_end_y + i, new_end_x, new_end_y + i )
-					surface.DrawLine( new_end_x + i, 140, new_end_x + i, new_end_y )
-				end
-				
-				surface.SetFont( "Default" )
-				surface.SetTextColor( 255, 200, 0 )
-				surface.SetTextPos( 8, new_end_y + 4 ) 
-				surface.DrawText( "NEW",  false)
-			end
-		end
-		]]--
 
 		grid:AddItem(box)
     end

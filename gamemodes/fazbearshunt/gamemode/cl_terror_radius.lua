@@ -347,7 +347,7 @@ end)
 local animatronicThemes = {
     ["pill_wfoxy2"] = "springtrap",
     ["pill_endo02"] = "springtrap",
-    ["pill_wbonnie2"] = "springtrap",
+    ["pill_wbonnie2"] = "bonnie",
     ["pill_wfreddy2"] = "freddy",
     ["pill_wchica2"] = "springtrap",
     ["pill_sfreddy2"] = "sfreddy",

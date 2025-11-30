@@ -11,6 +11,7 @@ local fh_logo_glow = Material("vgui/playerlist/logo_glow.png")
 
 local playerlist_mat = Material("vgui/playerlist/playerlist.png")
 local playerlist_mat_lowres = Material("vgui/playerlist/playerlist_lowres.png")
+local playerlist_mat_highres = Material("vgui/playerlist/playerlist_highres.png")
 
 local playerlist_header = Material("vgui/playerlist/playerlist_header.png")
 local right_tab_mat = Material("vgui/playerlist/tabs/right_t.png")
@@ -47,14 +48,17 @@ function GM:ScoreboardShow()
 	nextTimeUpdate = CurTime() + 5
 	
 	local lowres = ScrH() <= 600 
+	local highres = ScrH() > 1080 
+	
+	local bababoey = lowres and 100 or highres and 400 or 250
 
     customScoreboard = vgui.Create("DFrame")
-    customScoreboard:SetSize(550, !lowres and 500 or 300)
+    customScoreboard:SetSize(550, lowres and 300 or highres and 750 or 500)
     customScoreboard:SetTitle("")
     customScoreboard:ShowCloseButton(false)
     customScoreboard:SetDraggable(false)
     customScoreboard:Center()
-	customScoreboard:SetPos(customScoreboard.x, math.Clamp( ScrH() / 2 - (!lowres and 250 or 100) , 125 , 360))
+	customScoreboard:SetPos(customScoreboard.x, math.Clamp( ScrH() / 2 - bababoey, 125 , 360))
 	
     anim_scrollPanel = vgui.Create("DScrollPanel", customScoreboard)
 	anim_scrollPanel:SetSize( 278, 500 )

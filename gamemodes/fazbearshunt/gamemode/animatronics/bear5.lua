@@ -58,6 +58,10 @@ pills.clone("bear5_main", "pill_wfreddy2", {
 		run=500,
 		ducked=75,
 	},
+	sounds={
+		jump="bear/bear_jump.mp3",
+		land="bear/bear_land.mp3",
+	},
 	
 	options=function() return {
 		["default"] = {
@@ -114,6 +118,7 @@ pills.register("bear5_clone",{
 	
 	duckBy=10,
 	stepSize=24,
+    jumpPower=210,
 	
 	bloodType=BLOOD_COLOR_MECH,
 	muteSteps = true,
@@ -160,7 +165,67 @@ pills.register("bear5_clone",{
 killers.Register("bear5_main", "bear5", "Bear 5", Color(0,120,255))
 killers.Register("bear5_clone", "bearling5", "Bearling 5", Color(0,120,255))
 
+if SERVER then
+	util.AddNetworkString("bear5_bell")
+end
+
+hook.Add( "EntityTakeDamage", "fh_bear_damage_bell", function( ply, dmginfo )
+	local attacker = dmginfo:GetAttacker()
+	if IsValid(attacker) then
+		if ply:IsPlayer() and ply:IsSurvivor() and fh.GetRoundType() == 3 and attacker:IsPlayer() and attacker:IsAnimatronic() then
+			local damageDealt = dmginfo:GetDamage()
+			
+			if damageDealt < ply:Health() then
+				net.Start("bear5_bell")
+				net.Send(ply)
+			end
+		end
+	end
+end )
+
 if SERVER then return end -- дальше бога нет
+
+local bearimages = {
+	Material("bear5/bear1.png"),
+	Material("bear5/bear2.png"),
+	Material("bear5/bear3.png"),
+	Material("bear5/bear4.png"),
+	Material("bear5/bear5.png"),
+	Material("bear5/bear6.png"),
+	Material("bear5/bear7.png"),
+}
+
+local bearalpha = 255
+local randomImage
+local function bearbell()
+	if randomImage:IsError() then return end
+	
+    surface.SetDrawColor(255, 255, 255, bearalpha)
+    surface.SetMaterial(randomImage)
+    surface.DrawTexturedRect(0, 0, ScrW(), ScrH())
+	
+	bearalpha = bearalpha - (100 * FrameTime())
+end
+
+net.Receive("bear5_bell", function()
+	randomImage = bearimages[math.random(1,5)]
+	bearalpha = 255
+	hook.Add("HUDPaint", "bear5_bell", bearbell)
+	
+	surface.PlaySound("bear/bear_hallucinations.wav")
+	
+	local repeattimes = math.random(1,2)
+	
+	for i = 1, repeattimes do
+		timer.Simple(i * 1.2, function()
+			randomImage = bearimages[math.random(1,7)]
+			bearalpha = 255
+			hook.Add("HUDPaint", "bear5_bell", bearbell)
+	
+			surface.PlaySound("bear/bear_hallucinations.wav")
+		end)
+	end
+end)
 
 -- Дистанция, на которой видно эффект
 local AURA_MIN_DISTANCE, AURA_MAX_DISTANCE = 40, 2000

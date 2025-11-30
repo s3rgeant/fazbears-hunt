@@ -349,9 +349,11 @@ hook.Add("PostDrawOpaqueRenderables", "fh_draw_teammates", function(depth, skybo
 				local oldfogmode = render.GetFogMode()
 				render.FogMode( 0 )
 				
+				local clr = color or killers.getColor(ent:GetName())
+				
 				render.SuppressEngineLighting(true)
-				render.SetColorModulation(color.r / 255, color.g / 255, color.b / 255)
-				render.SetBlend(0.6)
+				render.SetColorModulation(clr.r / 255, clr.g / 255, clr.b / 255)
+				render.SetBlend(0.5)
 				render.MaterialOverride(outlineMaterial)
 
 				ent:SetLOD(8) -- мы делаем модельку обводки "уёбищной" чтобы она не жрала фпс

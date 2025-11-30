@@ -20,12 +20,21 @@ end, 20, 6, 24)
 
 fh.AddRoundMusic(3, "music/bear_timer.wav")
 
-hook.Add( "PlayerShouldTakeDamage", "fh_bear_kill", function( ply, attacker )
-	print(fh.GetRoundType(), attacker:IsPlayer(), attacker:IsAnimatronic())
-	if fh.GetRoundType() == 3 and attacker:IsPlayer() and attacker:IsAnimatronic() then
-		
-		giveKiller(ply, "bear5_clone", true)
-
-		return false 
+hook.Add( "EntityTakeDamage", "fh_bear_kill", function( ply, dmginfo )
+	local attacker = dmginfo:GetAttacker()
+	if IsValid(attacker) then
+		if ply:IsPlayer() and ply:IsSurvivor() and fh.GetRoundType() == 3 and attacker:IsPlayer() and attacker:IsAnimatronic() then
+			local damageDealt = dmginfo:GetDamage()
+			
+			if damageDealt >= ply:Health() then
+				giveKillerSilent(ply, "bear5_clone", true)
+				
+				ply:NoPlayerCollide(0.25)
+				
+				hook.Run("SendDeathNotice", attacker, attacker:GetActiveWeapon():GetClass(), ply, 1)
+				
+				winConditions()
+			end
+		end
 	end
 end )

@@ -168,15 +168,13 @@ function SWEP:DealDamage()
 	
 	if targetIsSurv then
 		ply:EmitSound("weapons/axe/melee_axe_0" .. math.random(1,3) .. ".wav", 45, 100, 0.4, CHAN_AUTO )
-	else
-		ply:EmitSound("weapons/axe/axe_impact_world" .. math.random(1,2) .. ".wav", 45, 100, 0.4, CHAN_AUTO )
-	end
-
-	if targetIsSurv then
+		
 		local edata = EffectData()
 		edata:SetOrigin(tr.HitPos)
 		edata:SetEntity(target)
 		util.Effect("BloodImpact", edata, true, true)
+	else
+		ply:EmitSound("weapons/axe/axe_impact_world" .. math.random(1,2) .. ".wav", 45, 100, 0.4, CHAN_AUTO )
 	end
 
 	local dmginfo = DamageInfo()

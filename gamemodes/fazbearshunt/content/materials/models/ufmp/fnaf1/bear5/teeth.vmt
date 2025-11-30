@@ -1,0 +1,21 @@
+VertexLitGeneric
+{
+	$basetexture "models\ufmp\fnaf1\bear5\teeth"
+	$bumpmap "models\ufmp/fnaf1\shared\flat"
+	$surfaceprop Metal
+
+	$nocull 1
+
+	$phong 1
+	$phongfresnelranges "[0.05 0.5 1]"
+	$halflambert 1
+	$phongalbedotint 1
+	$phongexponent 1
+	$phongboost 0
+
+	$color "0.56"
+	$color2 "[1.04 1.04 1.04]"
+
+	$ambientocclusion 0
+	$diffuseexp 1.5
+}

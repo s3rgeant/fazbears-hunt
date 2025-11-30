@@ -32,6 +32,7 @@ SWEP.HitSize = {
 
 function SWEP:SetupDataTables()
 	self:NetworkVar( "Float", 0, "NextMeleeAttack" )
+    return self.BaseClass.SetupDataTables and self.BaseClass.SetupDataTables(self)
 end
 
 function SWEP:SetupAnimations()
@@ -55,13 +56,15 @@ function SWEP:PrimaryAttack()
 	
 	if self.IsCharging or ply.tasered then return end
 	
-	if ply:IsFrozen() or timer.Exists('FOXY_cantKill'..ply:EntIndex()) then return end
+	if ply:IsFrozen() then return end
 	
 	if SERVER then
 		--ent:PillGesture('swing', 2, 1, 0.1, 0.3)
 	end
 	
-	self:HandleAnimation("preattack", 2)
+    if IsFirstTimePredicted() then
+		self:HandleAnimation("preattack", 2)
+    end
 	
 	self:SetPlaybackRate(1)
 	
@@ -77,11 +80,16 @@ function SWEP:DealDamage()
 	
 	if !IsValid(ent) then return end
 	
-	self:HandleAnimation("attack", 0.6)
+	local now = CurTime()
+	
+    if IsFirstTimePredicted() then
+		self:HandleAnimation("attack", 0.6)
+    end
 	
 	self:SetPlaybackRate(1)
 	
-	timer.Create('FOXY_cantKill'..ply:EntIndex(), 2, 1, function() end)
+	self:SetNextPrimaryFire(now + 2)
+	self:SetLastAttack(now)
 	
 	if SERVER then
 		ent:PillGesture('melee', 2, 1, 0.1, 0.7)

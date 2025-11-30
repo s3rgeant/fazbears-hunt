@@ -455,6 +455,15 @@ function killers.getAllDamageOnly()
 	return tablo
 end
 
+function killers.getColor(killer)
+	local color = Color(255,255,255)
+	local data = killerData[killer]
+	if data and data.color then
+		return data.color
+	end
+	return color
+end
+
 function formatTime(secs)
 	if !secs then return nil end
     local minutes = math.floor(secs / 60)
@@ -533,11 +542,6 @@ hook.Add("ShouldCollide", "fh_collisions", function(ent1, ent2)
 			return false
 		end
 	end
-
-    -- Отключаем столкновения с миром
-    if cg1 == COLLISION_GROUP_WORLD or cg2 == COLLISION_GROUP_WORLD then
-        return false
-    end
 
     -- Shadow + Golden Freddy
     if cg1 == COLLISION_GROUP_DEBRIS and isPlayer1 then

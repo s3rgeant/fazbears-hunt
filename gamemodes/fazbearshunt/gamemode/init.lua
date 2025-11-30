@@ -1088,12 +1088,6 @@ hook.Add( "PlayerShouldTakeDamage", "fh_shouldtakedamage", function( ply, attack
 			return custom_cond
 		end
 	
-		if fh.GetRoundType() == 3 then
-			if ply:Team() ~= attacker:Team() then
-				return true
-			end
-		end
-	
 		if IsValid(attacker) and 
 			(ply:Team() == attacker:Team() or 
 			ply:IsAnimatronic() and attacker:IsAnimatronic() or
@@ -1101,7 +1095,6 @@ hook.Add( "PlayerShouldTakeDamage", "fh_shouldtakedamage", function( ply, attack
 			or attacker:Team() == TEAM_SPECTATOR 
 			or !roundActive or roundEnding)
 		then
-		
 			return false
 		end
 	end

@@ -1,0 +1,20 @@
+"VertexlitGeneric"
+{
+$basetexture "models\ufmp\Black"
+$bumpmap "models\ufmp\Flat"
+$phongexponenttexture "models\ufmp\fnaf1\bear5\NoseSpec"
+$surfaceprop metal
+$phong "1"
+$phongexponent "0"
+$phongtint "[0.5725490 0.5725490 0.5725490]"
+$phongboost "8"
+$ambientocclusion "0"
+$phongfresnelranges "[0.0399999991 0.0399999991 0.0399999991]"
+$phongalbedotint "1"
+$halflambert "1"
+$nodecal "1"
+$model "1"
+$diffuseexp "1.5"
+$normalmapalphaenvmapmask   "1"
+$nocull 1
+}
