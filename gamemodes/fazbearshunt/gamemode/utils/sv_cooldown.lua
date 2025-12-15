@@ -9,6 +9,18 @@ function cooldown.Set(ply, name, duration)
 	our_cooldowns[ply][name] = CurTime() + duration
 end
 
+function cooldown.Send(ply, name)
+	if !IsValid(ply) then return end
+	local cd = cooldown.Get(ply, name)
+	
+	if cd > 0 then
+		net.Start("fh_net_killer_change")
+		net.WriteString(name)
+		net.WriteFloat(cd)
+		net.Send(ply)
+	end
+end
+
 function cooldown.Get(ply, name)
 	if not IsValid(ply) then return 0 end
 

@@ -76,10 +76,8 @@ function meta:CreateRagdoll()
 		
 		local ply_ragcol = self:GetPlayerColor()
 		ent.RagColor = Vector(ply_ragcol.r, ply_ragcol.g, ply_ragcol.b)
-		net.Start("ragColor")
-	    net.WriteInt(ent:EntIndex(), 16)
-	    net.WriteVector(ent.RagColor)
-	    net.Broadcast()
+		
+		ent.GetPlayerColor = function() return Vector(ply_ragcol.r, ply_ragcol.g, ply_ragcol.b) end
 	else
 		phys:SetVelocity(plyvel)
 	end

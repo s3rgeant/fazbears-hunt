@@ -1,0 +1,12 @@
+VertexLitGeneric
+{
+	$basetexture "models/fh/weapons/snowball/ice_diffuse"
+	$bumpmap "models/fh/weapons/snowball/ice_normal"
+	$surfaceprop Ice
+
+	$phong 1
+	$phongfresnelranges "[1 1 3]"
+	$phongexponent 1
+	$phongboost 5.17
+	$phongalbedoboost 88.2
+}

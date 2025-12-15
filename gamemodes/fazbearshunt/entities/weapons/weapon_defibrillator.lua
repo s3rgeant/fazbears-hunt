@@ -376,6 +376,8 @@ local blockedReviveWeapons = {
 }
 
 local function SetDefibAttributes(ply)
+	if ply:GetPill() then return end
+
 	ply.LastDeathTime = CurTime()
 	ply.CrouchedBeforeDeath = ply:Crouching()
 	

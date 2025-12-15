@@ -11,14 +11,6 @@ end
 	
 game.AddAmmoType({
     name = "ammo_banana",
-    dmgtype = DMG_BLAST,
-    tracer = TRACER_NONE,
-    plydmg = 0,
-    npcdmg = 0,
-    force = 500,
-    minsplash = 5,
-    maxsplash = 10,
-    maxcarry = 50
 })
 
 if CLIENT then

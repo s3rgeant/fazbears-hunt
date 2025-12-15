@@ -1,5 +1,22 @@
 AddCSLuaFile()
 
+if SERVER then
+	util.AddNetworkString("bear5_bell")
+	
+	util.AddNetworkString("fox_request")
+	util.AddNetworkString("fox_request_start")
+	util.AddNetworkString("fox_request_get")
+	util.AddNetworkString("fox_request_complete")
+end
+
+sound.Add({
+	name = 			"bearling.foot",
+	channel = 		CHAN_STATIC,
+	level = 		75,
+	volume = 		1.0,
+	sound = 			{")bear/bearling_softstep.wav"}
+})
+
 function bearScream(ply, ent)
 	if !ply._BearScreamSound then
 		ply._BearScreamSound = CreateSound(ply, ")bear/bear5_jumpscare.wav")
@@ -25,6 +42,8 @@ function bearScream(ply, ent)
 	end)
 end
 
+local bearRequester
+local foxPlayerReq
 pills.clone("bear5_main", "pill_wfreddy2", {
 	printName="Bear 5",
 	
@@ -49,6 +68,8 @@ pills.clone("bear5_main", "pill_wfreddy2", {
 			swing="preattack",
 			attack="attack",
 			scream="scream",
+			
+			pumpit="pumpit",
 		},
 	},
 	option="default",
@@ -88,6 +109,25 @@ pills.clone("bear5_main", "pill_wfreddy2", {
 	attack2={
 		mode="trigger",
 		func=function(ply,ent)
+			if cooldown.Exists(ply, "death") or IsValid(bearRequester) then return end
+			
+			local rf = RecipientFilter()
+			rf:AddRecipientsByTeam(TEAM_PILLS)
+			
+			rf:RemovePlayer(ply)
+			
+			if rf:GetCount() > 0 then
+				net.Start("fox_request_start")
+				net.Send(rf)
+				
+				bearRequester = ply
+			
+				cooldown.Set(ply, "death", 666)
+				cooldown.Send(ply, "death")
+				return
+			end
+			
+			ply:ChatPrint("No players found")
 		end
     },
 	
@@ -99,7 +139,48 @@ pills.clone("bear5_main", "pill_wfreddy2", {
 		["bip_EyeLid_0_L"] = {scale = Vector(0,0,0)},
 		["bip_EyeLid_1_L"] = {scale = Vector(0,0,0)},
 	},
+	
+	startFunction=function(ply,ent)
+		cooldown.Set(ply, "death", 360)
+		timer.Simple(3, function()
+			cooldown.Send(ply, "death")
+		end)
+	end,
+	
+	restore=function(ply,ent)
+		cooldown.Set(ply, "death", 0)
+		
+		if IsValid(bearRequester) then
+			bearRequester = nil
+		end
+	end,
 })
+
+net.Receive("fox_request", function(len, ply)
+	if !IsValid(bearRequester) then
+		if !IsValid(foxPlayerReq) then
+			ply:SendLua( "LocalPlayer():ChatPrint( language.GetPhrase('fazhunt.springtrap.plusherror') )" )
+		else
+			ply:SendLua( "LocalPlayer():ChatPrint( language.GetPhrase('fazhunt.springtrap.plushchoosed') )" )
+		end
+		return
+	end
+	
+	net.Start("fox_request_get")
+	net.WritePlayer(ply)
+	net.Send(bearRequester)
+end)
+
+net.Receive("fox_request_complete", function(len, ply)
+	local ply = net.ReadPlayer()
+	
+	if IsValid(ply) and !IsValid(foxPlayerReq) then
+		giveKiller(ply, "fox4", true)
+		foxPlayerReq = ply
+	end
+	
+	bearRequester = nil
+end)
 
 pills.register("bear5_clone",{
 	printName="Bear 5 Clone",
@@ -116,9 +197,9 @@ pills.register("bear5_clone",{
     },
 	hull=Vector(32,32,50),
 	
-	duckBy=10,
+	duckBy=30,
 	stepSize=24,
-    jumpPower=210,
+    jumpPower=240,
 	
 	bloodType=BLOOD_COLOR_MECH,
 	muteSteps = true,
@@ -142,14 +223,12 @@ pills.register("bear5_clone",{
 	},
 	
 	moveSpeed={
-		walk=490,
+		walk=475,
 		ducked=150,
 	},
 	
 	viewmodel={
-		weapon="v_bear",
-		skin=5,
-		bodyGroup="Microphone",
+		weapon="v_bearling",
 	},
 	
 	boneMorphs={
@@ -162,20 +241,150 @@ pills.register("bear5_clone",{
 	},
 })
 
-killers.Register("bear5_main", "bear5", "Bear 5", Color(0,120,255))
-killers.Register("bear5_clone", "bearling5", "Bearling 5", Color(0,120,255))
-
-if SERVER then
-	util.AddNetworkString("bear5_bell")
-end
-
-hook.Add( "EntityTakeDamage", "fh_bear_damage_bell", function( ply, dmginfo )
-	local attacker = dmginfo:GetAttacker()
-	if IsValid(attacker) then
-		if ply:IsPlayer() and ply:IsSurvivor() and fh.GetRoundType() == 3 and attacker:IsPlayer() and attacker:IsAnimatronic() then
-			local damageDealt = dmginfo:GetDamage()
+local fox4_victims = {}
+pills.register("fox4",{
+	printName="Fox 4",
+	
+	model="models/fh/animatronics/fox4.mdl",
+	modelScale="1.1",
+	
+	health=5000,
+	type="ply",
+	
+    camera = {
+        offset = Vector(0, 0, 76),
+		dist = 100
+    },
+	hull=Vector(32,32,82),
+	
+	duckBy=55,
+	stepSize=24,
+    jumpPower=300,
+	
+	bloodType=BLOOD_COLOR_MECH,
+	muteSteps = true,
+	noFallDamage=true,
+	movePoseMode="xy",
+	
+	anims={
+		default={
+			idle="idle",
+		},
+	},
+	sounds={
+		jump="jump.mp3",
+		land="land.mp3",
+		melee="bear/fox4_jumpscare.wav",
+	},
+	
+	moveSpeed={
+		walk=700,
+		ducked=150,
+	},
+	
+	viewmodel={
+		weapon="v_fox4",
+	},
+	
+	startFunction=function(ply,ent)
+		ply:SetJumpBoostMultiplier(0)
+	end,
+	
+	attack={
+		mode="trigger",
+		func=function(ply,ent)
+			if IsValid(ply:GetEntityInUse()) then return end
 			
-			if damageDealt < ply:Health() then
+			local target = FindNearestPlayer(ent:GetPos(), 130, ply, 75)
+			
+			if fox4_victims[ply] and fox4_victims[ply][target] then
+				AnimatronicBreakProp(ply, ent)
+				return
+			end
+			
+			local jumpscare = performJumpscare(ply, ent, target, 3, "fox4", 60, "v_foxy")
+			
+			if !IsValid(target) or target:HasGodMode() or !jumpscare then 
+				AnimatronicBreakProp(ply, ent)
+				return 
+			end
+			
+			if !fox4_victims[ply] then fox4_victims[ply] = {} end
+			fox4_victims[ply][target] = true
+		end
+    },
+	
+	restore=function(ply,ent)
+		net.Start("player_renderer_clear_e")
+		net.Send(ply)
+		
+		fox4_victims[ply] = nil
+		
+		if foxPlayerReq == ply then
+			foxPlayerReq = nil
+		end
+		
+		ply:SetJumpBoostMultiplier( getScaledJumpBoost() )
+	end,
+})
+
+hook.Add( "PlayerSpawn", "fox4_notarget", function( ply )
+	for fox4,v in pairs(fox4_victims) do
+		if IsValid(fox4) and fox4_victims[fox4][ply] then
+			fox4_victims[fox4][ply] = nil
+					
+			net.Start("player_renderer_draw")
+			net.WriteEntity(ply)
+			net.Send(fox4)
+		end
+	end
+end)
+
+hook.Add( "PostCleanupMap", "bear5_cleanup", function( )
+	foxPlayerReq = nil
+end)
+
+hook.Add( "EntityTakeDamage", "fox4_screamer", function( target, dmginfo )
+    if target:IsPlayer() and target:IsSurvivor() then
+		local attacker = dmginfo:GetAttacker()
+		local damage = dmginfo:GetDamage()
+		
+        if IsValid(attacker) and attacker:IsPlayer() and IsValid(attacker:GetPill()) and (attacker:GetPill():GetPillName():match("fox4") == "fox4")  then
+			if target:Health() > 1 and !target:GetNW2Bool("KillerObsessed") then
+				target:SetArmor(0)
+				dmginfo:SetDamage(target:Health() - 1)
+				
+				net.Start("player_renderer_nodraw")
+				net.WriteEntity(target)
+				net.Send(attacker)
+			end
+        end
+    end
+end )
+
+killers.Register("bear5_main", "bear5", "Bear 5", Color(0,120,255), "Freaks")
+killers.Register("bear5_clone", "bearling5", "Bearling 5", Color(0,120,255), "Freaks")
+killers.Register("fox4", "fox4", "Fox 4", Color(0,255,20), "Freaks")
+
+killers.SetAbilities("bear5", {
+	{ name = 'highlight', key = 'R' },
+	{ name = 'death', key = 'RMB' },
+})
+
+hook.Add("FuncDoorBust", "fh_fox4_doorbust", function(ply, door)
+	local puppet = pills.getMappedEnt(ply)
+	if not IsValid(puppet) then return end
+	local name = puppet.formTable.name
+
+	if name == "fox4" and ply:GetVelocity():Length() > 400 then
+		breakBustDoor(ply, door)
+	end
+end)
+
+hook.Add( "PlayerHurt", "fh_bear_damage_bell", function( ply, attacker, healthRemaining, damageDealt )
+	if IsValid(attacker) then
+		if ply:IsPlayer() and attacker:IsPlayer() and IsValid(attacker:GetPill()) and (attacker:GetPill():GetPillName():match("bear5_main") == "bear5_main") then
+			if healthRemaining > 0 then
 				net.Start("bear5_bell")
 				net.Send(ply)
 			end
@@ -209,7 +418,7 @@ end
 
 net.Receive("bear5_bell", function()
 	randomImage = bearimages[math.random(1,5)]
-	bearalpha = 255
+	bearalpha = 180
 	hook.Add("HUDPaint", "bear5_bell", bearbell)
 	
 	surface.PlaySound("bear/bear_hallucinations.wav")
@@ -219,7 +428,7 @@ net.Receive("bear5_bell", function()
 	for i = 1, repeattimes do
 		timer.Simple(i * 1.2, function()
 			randomImage = bearimages[math.random(1,7)]
-			bearalpha = 255
+			bearalpha = 180
 			hook.Add("HUDPaint", "bear5_bell", bearbell)
 	
 			surface.PlaySound("bear/bear_hallucinations.wav")
@@ -285,7 +494,7 @@ local auraNoiseState = {}
 local function IsPillBear5(ent)
     if not IsValid(ent) then return false end
 
-    if ent:GetName() == "bear5_main" or ent:GetName():find("bear5", 1, true) then
+    if ent:GetPillName() == "bear5_main" or ent:GetPillName():find("bear5", 1, true) then
         return true
     end
 
@@ -628,14 +837,14 @@ local function StartAmbienceForPill(ent, ownerPly)
 end
 
 hook.Add("PillApply", "bear5_ambience_apply", function(ply, ent)
-    if IsValid(ply) and ent:GetName() == "bear5_main" then
+    if IsValid(ply) and ent:GetPillName() == "bear5_main" then
 		bears[ply] = true
         StartAmbienceForPill(ent, ply)
     end
 end)
 
 hook.Add("PillRestore", "bear5_ambience_restore", function(ply, ent)
-    if IsValid(ply) and ent:GetName() == "bear5_main" then
+    if IsValid(ply) and ent:GetPillName() == "bear5_main" then
 		bears[ply] = nil
 		StopAmbience(ent)
 		if auraNoiseState[pillEnt] then

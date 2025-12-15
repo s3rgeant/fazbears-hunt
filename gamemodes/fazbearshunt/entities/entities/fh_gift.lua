@@ -8,8 +8,6 @@ ENT.Author = "sergeant"
 ENT.Spawnable = true
 ENT.Category = "Fun + Games"
 
-ENT.InitialZ = 0
-
 if SERVER then
     util.AddNetworkString("fh_hl_badkid")
     util.AddNetworkString("fh_hl_animatronics")
@@ -31,8 +29,15 @@ function ENT:Initialize()
         self:EmitSound("items/battery_pickup.wav")
         self.IsUsed = false
     end
-    self.InitialZ = self:GetPos().z
     self.SpawnTime = CurTime()
+	
+	local owner = self:GetOwner()
+	if IsValid(owner) then
+		local ground = owner:GetGroundEntity()
+		if IsValid(ground) and ground:GetClass() == "func_tracktrain" then
+			self:SetParent(ground)
+		end
+	end
 end
 
 if SERVER then
@@ -59,33 +64,44 @@ if SERVER then
 end
 
 if CLIENT then
-	function ENT:Draw()
+
+	function ENT:RenderOverride(flags)
+		local basePos = self:GetPos()
+
+		local height = math.sin((CurTime() - self.SpawnTime) * 2) * 5
+		local renderPos = basePos + Vector(0, 0, height)
+
+		local ang = self:GetAngles()
+		ang.y = ang.y + ((CurTime() * 140) % 360)
+
+		self:SetRenderOrigin(renderPos)
+		self:SetRenderAngles(ang)
+
 		self:DrawModel()
+
+		self:SetRenderOrigin()
+		self:SetRenderAngles()
+
 		if IsValid(self:GetOwner()) then
-			local distance = LocalPlayer():GetPos():Distance(self:GetPos())
+			local distance = LocalPlayer():GetPos():Distance(basePos)
 			if distance <= 1000 then
-				local ang = LocalPlayer():EyeAngles()
-				ang:RotateAroundAxis(ang:Forward(), 90)
-				ang:RotateAroundAxis(ang:Right(), 90)
-				
-				cam.Start3D2D(self:GetPos() + Vector(0, 0, 65), Angle(0, ang.y, 90), 0.25)
-				draw.SimpleText(string.format( language.GetPhrase("fazhunt.gifts.owner"), self:GetOwner():Nick() ), "timerFontUpper", 0, 0, Color(255, 255, 255), TEXT_ALIGN_CENTER, TEXT_ALIGN_CENTER)
+				local a = LocalPlayer():EyeAngles()
+				a:RotateAroundAxis(a:Forward(), 90)
+				a:RotateAroundAxis(a:Right(),   90)
+
+				cam.Start3D2D(basePos + Vector(0,0,65 + height), Angle(0, a.y, 90), 0.25)
+					draw.SimpleText(
+						string.format(language.GetPhrase("fazhunt.gifts.owner"), self:GetOwner():Nick()),
+						"timerFontUpper",
+						0, 0,
+						Color(255,255,255),
+						TEXT_ALIGN_CENTER, TEXT_ALIGN_CENTER
+					)
 				cam.End3D2D()
 			end
 		end
 	end
 	
-	function ENT:Think()
-		local height = math.sin((CurTime() - self.SpawnTime) * 2) * 5
-		local pos = self:GetPos()
-		pos.z = self.InitialZ + height
-		self:SetPos(pos)
-	
-		self:NextThink(CurTime())
-		self:SetRenderAngles(self:GetAngles() + Angle(0, 1, 0))
-		self:SetNextClientThink(CurTime())
-		return true
-	end
 end
 
 local PLAYER = FindMetaTable("Player")
@@ -109,7 +125,7 @@ local anim_visibility_users = {}
 
 -- Позитивные эффекты
 local positiveEffects = {
-    {
+    ["medkit"] = {
         name = "medkit",
 		desc = "fazhunt.gifts.medkit",
         func = function(ply)
@@ -138,7 +154,7 @@ local positiveEffects = {
 			return false
 		end
     },
-    {
+    ["invisibility"] = {
         name = "invisibility",
 		desc = "fazhunt.gifts.invisibility",
         func = function(ply)
@@ -149,7 +165,7 @@ local positiveEffects = {
 			and !ply:HasWeapon("weapon_mask")
         end
     },
-    {
+    ["gravity_gun"] = {
         name = "gravity_gun",
 		desc = "fazhunt.gifts.gravity_gun",
         func = function(ply)
@@ -159,7 +175,7 @@ local positiveEffects = {
 			return !ply:HasWeapon("weapon_physcannon") and #ents.FindByClass("prop_physics") > 100
         end
     },
-    {
+    ["animatronics_visibility"] = {
         name = "animatronics_visibility",
 		desc = "fazhunt.gifts.animatronics_visibility",
         func = function(ply)
@@ -176,7 +192,7 @@ local positiveEffects = {
 			return !anim_visibility_users[ply]
 		end
     },
-    {
+    ["defibrilator"] = {
         name = "defibrilator",
 		desc = "fazhunt.gifts.defibrillator",
         func = function(ply)
@@ -192,7 +208,7 @@ local positiveEffects = {
 			return false
         end
     },
-    {
+    ["bananas"] = {
         name = "bananas",
 		desc = "fazhunt.gifts.bananas",
 		num = 5,
@@ -210,7 +226,7 @@ local positiveEffects = {
 			ply:SetSuppressPickupNotices(false)
         end
     },
-    {
+    ["adrenaline"] = {
         name = "adrenaline",
 		desc = "fazhunt.gifts.adrenaline",
         func = function(ply)
@@ -220,7 +236,7 @@ local positiveEffects = {
 			return !ply:HasWeapon("weapon_adrenaline")
         end
     },
-    {
+    ["fanta"] = {
         name = "fanta",
 		desc = "fazhunt.gifts.fanta",
         func = function(ply)
@@ -235,7 +251,7 @@ local positiveEffects = {
 			return false
         end
     },
-    {
+    ["killer_mask"] = {
         name = "killer_mask",
 		desc = "fazhunt.gifts.killer_mask",
         func = function(ply)
@@ -272,8 +288,7 @@ local positiveEffects = {
 
 -- Негативные эффекты
 local negativeEffects = {
-    {
-        name = "spawn_car",
+    ["spawn_car"] = {
 		desc = "",
         func = function(ply)
             local playerPos = ply:GetPos()
@@ -320,49 +335,40 @@ local negativeEffects = {
             end)
         end
     },
-    {
-        name = "animatronics_alert",
+    ["animatronics_alert"] = {
 		desc = "fazhunt.gifts.animatronics_alert",
         func = function(ply)
             net.Start("fh_hl_badkid")
             net.WriteEntity(ply)
             net.Broadcast()
-            
-            table.insert(affectedPlayers, ply)
-        
-            if timer.Exists("RemoveAffectedPlayer" .. ply:SteamID64()) then
-                timer.Remove("RemoveAffectedPlayer" .. ply:SteamID64())
-            end
-        
-            timer.Create("RemoveAffectedPlayer" .. ply:SteamID64(), conVars.halo_time:GetFloat(), 1, function()
-                table.RemoveByValue(affectedPlayers, ply)
-            end)
+			
+			for _, player in player.Iterator() do
+				if player:Team() == TEAM_PILLS then
+					highlight.Add(player, ply)
+				end
+			end
         end
     },
-    {
-        name = "reduce_step",
+    ["reduce_step"] = {
 		desc = "fazhunt.gifts.reduce_step",
         func = function(ply)
             ply:SetStepSize(0)
         end
     },
-    {
-        name = "strip_weapons",
+    ["strip_weapons"] = {
 		desc = "fazhunt.gifts.strip_weapons",
         func = function(ply)
             ply:StripWeapons()
         end
     },
-    {
-        name = "thinkfast",
+    ["thinkfast"] = {
 		desc = "",
         func = function(ply)
             net.Start('fh_net_thinkfast')
             net.Send(ply)
         end
     },
-    {
-        name = "fov_buff",
+    ["fov_buff"] = {
 		desc = "fazhunt.gifts.fov_buff",
 		num = 30,
         func = function(ply)
@@ -378,8 +384,7 @@ local negativeEffects = {
             end)
         end
     },
-    {
-        name = "sound_dsp",
+    ["sound_dsp"] = {
 		desc = "fazhunt.gifts.sound_dsp",
 		num = 30,
         func = function(ply)
@@ -392,8 +397,7 @@ local negativeEffects = {
             end)
         end
     },
-    {
-        name = "vanish",
+    ["vanish"] = {
 		desc = "",
 		silent=true,
         func = function(ply)
@@ -465,8 +469,7 @@ local negativeEffects = {
 
 if SERVER then
 	function gifts.AddPositiveEffect(name, desc, num, func, req)
-		table.insert(positiveEffects, {
-			name = name,
+		table.insert(positiveEffects[name], {
 			desc = desc or "",
 			num = num or -1,
 			func = func,
@@ -475,12 +478,19 @@ if SERVER then
 	end
 	
 	function gifts.AddNegativeEffect(name, desc, num, func)
-		table.insert(negativeEffects, {
-			name = name,
+		table.insert(negativeEffects[name], {
 			desc = desc or "",
 			num = num or -1,
 			func = func
 		})
+	end
+	
+	function gifts.GrantEffect(ply, name)
+		if IsValid(ply) and ply:IsPlayer() then
+			if positiveEffects[name] then
+				
+			end
+		end
 	end
 end
 
@@ -488,41 +498,34 @@ function ENT:ApplyEffect(player)
 	local isOwner = self:GetOwner() == player
 	local effects = {}
 	
-	local availablePositiveEffects = {}
-	for _, effect in ipairs(positiveEffects) do
+	for name, effect in pairs(positiveEffects) do
 		if effect.req and effect.req(player) then
-			table.insert(availablePositiveEffects, effect)
+			effects[name] = effect
 		elseif !effect.req then
-			table.insert(availablePositiveEffects, effect)
+			effects[name] = effect
 		end
 	end
 	
-	if isOwner then
-		effects = availablePositiveEffects
-	else
+	if !isOwner then
 		local negativeForce = math.random(1,2) == 2
 		if negativeForce then
-			for _, effect in ipairs(negativeEffects) do
-				table.insert(effects, effect)
-			end
-		else
-			for _, effect in ipairs(availablePositiveEffects) do
-				table.insert(effects, effect)
+			for name, effect in pairs(negativeEffects) do
+				effects[name] = effect
 			end
 		end
 	end
 	
-	if #effects == 0 then
+	if table.IsEmpty(effects) then
 		self:Remove()
 		return
 	end
 	
-	local effect = effects[math.random(#effects)]
+	local effect = table.Random(effects)
 	effect.func(player)
 	
 	local isPositive = false
-	for _, posEffect in ipairs(availablePositiveEffects) do
-		if posEffect.name == effect.name then
+	for name, posEffect in pairs(effects) do
+		if positiveEffects[name] == effect then
 			isPositive = true
 			break
 		end
@@ -532,23 +535,16 @@ function ENT:ApplyEffect(player)
 		if !effect.silent then
 			self:EmitSound("orch_hit_csharp_short.wav")
 		end
-		
-		net.Start('fh_net_display')
-		net.WriteString('fazhunt.gifts.positive')
-		net.WriteString(effect.desc or "")
-		net.WriteFloat(effect.num or -1)
-		net.WriteFloat(5)
-		net.Send(player)
 	else
 		if !effect.silent then
 			self:EmitSound("ahuitebe.mp3")
 		end
-		
-		net.Start('fh_net_display')
-		net.WriteString('fazhunt.gifts.negative')
-		net.WriteString(effect.desc or "")
-		net.WriteFloat(effect.num or -1)
-		net.WriteFloat(5)
-		net.Send(player)
 	end
+		
+	net.Start('fh_net_display')
+	net.WriteString('fazhunt.gifts.' .. (isPositive and 'positive' or 'negative'))
+	net.WriteString(effect.desc or "")
+	net.WriteFloat(effect.num or -1)
+	net.WriteFloat(5)
+	net.Send(player)
 end

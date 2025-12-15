@@ -75,6 +75,9 @@ function draw_killer_selector()
 		surface.SetMaterial(selector_window)
 		surface.DrawTexturedRect(0, 0, w, h)
 	end
+	selector.Think=function(delta)
+        gui.EnableScreenClicker(true)
+	end
 	gui.EnableScreenClicker(true)
 	
     selector.OnClose = function()

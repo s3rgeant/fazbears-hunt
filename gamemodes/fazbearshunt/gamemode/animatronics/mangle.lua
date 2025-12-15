@@ -4,8 +4,6 @@ if SERVER then
 	util.PrecacheModel("models/ufmp/fnaf2/toys/themangle.mdl")
 end
 
-pills.packStart("FH MANGLE", "FH MANGLE", "icon16/pill.png")
-
 local man_speed = {
 	[1] = {66, 475, 80, 250},
 	[2] = {66, 485, 80, 252},
@@ -16,11 +14,24 @@ local man_speed = {
 pills.register("pill_mangle",{
 	printName="Mangle",
 	model="models/ufmp/fnaf2/toys/themangle.mdl",
-	bodyGroups={
-			[4] = math.random(1,1000) == 1 and 2 or 0, -- нормальный глаз посхалко
-			[3] = 1,
-			["EndoHeadEye[2 models]"] = 1,
+	options=function() return {
+		["default"] = {
+			bodyGroups = {
+				[4] = math.random(1,1000) == 1 and 2 or 0, -- нормальный глаз посхалко
+				[3] = 1,
+				["EndoHeadEye[2 models]"] = 1,
+			},
 		},
+		["christmas"] = {
+			bodyGroups = {
+				[4] = math.random(1,1000) == 1 and 2 or 0, -- нормальный глаз посхалко
+				[3] = 1,
+				["EndoHeadEye[2 models]"] = 1,
+				["FestiveHat"] = 1,
+			},
+		},
+	} end,
+	option=IsChristmas() and "christmas" or "default",
 	modelScale="1.3",
 	anims={
 		default={
@@ -89,7 +100,7 @@ pills.register("pill_mangle",{
 			
 			if ply:GetNWBool("_MangleHooked") or ply:GetNWBool("_MangleHookReady") then return end
 			
-			local target = FindNearestPlayer(ent:GetPos(), 130, ply, 90)
+			local target = FindNearestPlayer(ent:GetPos(), 130, ply, 75)
 			
 			local jumpscare = performJumpscare(ply, ent, target, 1.6, "mangle", 70, "v_mangle")
 			
@@ -118,6 +129,14 @@ pills.register("pill_mangle",{
 			end
 			
 			if ply:GetNWBool("_MangleHookReady") then return end
+
+			if ply:GetNWBool("_MangleHooked") and ply:GetNWString("_MangleLastHookType") ~= "ceiling" then
+				local diff = math.AngleDifference( eyeAng.y, ply:GetNWAngle("_MangleHookAngle").y )
+				
+				if diff < -90 or diff > 90 then
+					return
+				end
+			end
 			
 			if SERVER then
 				ent:SetUseForceAngles(false)
@@ -139,14 +158,20 @@ pills.register("pill_mangle",{
 				addVelocity = Vector(0,0,200)
 			end
 
-			local initVelVector = ply:EyeAngles():Forward() + (ply:EyeAngles():Up() * 0.2)
+			local up = eyeAng:Up()
+			up.x = 0
+			up.y = 0
+
+			local initVelVector = eyeAng:Forward() + up * 0.2
 
 			if ply:GetNWBool("_MangleHooked") then
-				initVelVector = ply:EyeAngles():Forward()
+				initVelVector = eyeAng:Forward()
 			end
 			
 			ply:SetNWBool("_MangleHooked", false)
 			ply:SetNWBool("_MangleHookReady", true)
+			
+			ply._wereJumpingPill = true
 			
 			ply:SetMoveType(MOVETYPE_WALK)
 			
@@ -155,12 +180,14 @@ pills.register("pill_mangle",{
 	},
 	
 	land=function(ply,ent)
-		if ply.lobbyFreeze != nil and ply.lobbyFreeze then return end
-		
 		local longerStun = ply:GetNWString("_MangleHookReady") and ply:GetNWString("_MangleLastHookType") == ""
 		
-		if ply:WaterLevel() < 2 and ply:GetVelocity().z < -180 then
-			ent:PillAnim(!longerStun and "land" or "land_hard",true)
+		if ply:WaterLevel() < 2 then
+			if ply._wereJumpingPill or !ply._wereJumpingPill and ply:GetVelocity().z < -270 then
+				if !ply._jumpPosPill or ply._jumpPosPill and ply:GetPos():Distance(ply._jumpPosPill) > 150 then
+					ent:PillAnim(!longerStun and "land" or "land_hard",true)
+				end
+			end
 		end
 	end,
 	
@@ -175,19 +202,7 @@ pills.register("pill_mangle",{
 			end
 		end
 		
-		timer.Create("CheckConditions"..ply:EntIndex(), 2, 0, function()
-			if !IsValid(ent) then
-				if timer.Exists( "CheckConditions"..ply:EntIndex()) then
-					timer.Remove("CheckConditions"..ply:EntIndex())
-				end
-				if timer.Exists( "ChaseCheck"..ply:EntIndex()) then
-					timer.Remove("ChaseCheck"..ply:EntIndex())
-				end
-				return
-			end
-			
-			chaseCheck(ply, 'mangle')
-		end)
+		chaseVoicelineChecker(ply, ent, "mangle")
 	end,
 
 	noFallDamage=true,
@@ -211,6 +226,7 @@ hook.Add("KeyPress", "mangle_unhook", function(ply, key)
 				if ply:GetNWBool("_MangleHooked") then 
 					ply:SetNWBool("_MangleHooked", false)
 					ply:SetNWBool("_MangleHookReady", false)
+					ply:SetNWString("_MangleLastHookType", "")
 					ply:SetMoveType(MOVETYPE_WALK)
 					
 					ply:SetViewOffset(Vector(0,0,70))
@@ -223,6 +239,22 @@ hook.Add("KeyPress", "mangle_unhook", function(ply, key)
 		end
 	end
 end)
+
+local function mangleChangeSpeed(ply, tier)
+	local ent = pills.getMappedEnt(ply)
+	
+	local desiredspeed = man_speed[tier + 1]
+	
+	if IsValid(ent) then
+		ent:SetSpeed(unpack(desiredspeed))
+		
+		timer.Simple(180, function()
+			if IsValid(ent) and IsValid(ply) then
+				mangle_tierDown(ply)
+			end
+		end)
+	end
+end
 
 function mangle_tierDown(ply)
 	if IsValid(ply) then
@@ -250,22 +282,6 @@ function mangle_tierUp(ply)
 	end
 end
 
-local function mangleChangeSpeed(ply, tier)
-	local ent = pills.getMappedEnt(ply)
-	
-	local desiredspeed = man_speed[tier + 1]
-	
-	if IsValid(ent) then
-		ent:SetSpeed(unpack(desiredspeed))
-		
-		timer.Simple(180, function()
-			if IsValid(ent) and IsValid(ply) then
-				mangle_tierDown(ply)
-			end
-		end)
-	end
-end
-
 local function MangleHookUpCheck(ply, mv)
 	local eyeDir = ply:EyeAngles():Forward()
 	local traceDist = 50
@@ -276,7 +292,7 @@ local function MangleHookUpCheck(ply, mv)
 	local tr = util.TraceLine({
 		start = startPos,
 		endpos = endPos,
-		mask = MASK_PLAYERSOLID,
+		mask = MASK_VISIBLE,
 		filter = ply
 	})
 
@@ -444,10 +460,13 @@ hook.Add("FinishMove", "mangle_hook_ready", function( ply, mv )
 				ply:SetViewOffset(Vector(0,0,24))
 				
 				local forceangle = tr.HitNormal:Angle()
-				forceangle.p = -forceangle.p
+				--forceangle.p = -forceangle.p
 				
 				ent:SetForceAngles(forceangle)
+				
+				forceangle.p = -forceangle.p
 			
+				ply:SetNWAngle("_MangleHookAngle", forceangle)
 				ply:SetNWBool("_MangleHooked", true)
 			end
 			ply:SetMoveType(MOVETYPE_NONE)
@@ -515,7 +534,7 @@ hook.Add( "CalcView", "mangle_caclview", function( ply, pos, angles, fov )
 
 	local ent = pills.getMappedEnt(ply)
 	
-	if IsValid(ent) and ent.formTable.name == "pill_mangle" then	
+	if IsValid(ent) and ent.formTable.name == "pill_mangle" and IsValid(ply:GetViewEntity()) and ply:GetViewEntity() == ply then	
 		
 		if GetConVar("fh_thirdperson"):GetBool() then return end
 	

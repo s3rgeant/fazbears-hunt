@@ -409,6 +409,12 @@ function CanMangleLunge()
 		if !ply:OnGround() or ply:Crouching() or eyeAng.p > 0 then
 			return Color(200, 32, 32, 200)
 		end
+	elseif ply:GetNWString("_MangleLastHookType") ~= "ceiling" then
+		local diff = math.AngleDifference( eyeAng.y, ply:GetNWAngle("_MangleHookAngle").y )
+		
+		if diff < -90 or diff > 90 then
+			return Color(200, 32, 32, 200)
+		end
 	end
 	return Color(255, 255, 255, 255)
 end
@@ -700,6 +706,7 @@ hook.Add("OnContextMenuOpen", "fh_contextmenu", function()
 	playeredit_button:SetIcon("icon16/user.png")
 	
 	local button = contextmenu_options:AddCVar( language.GetPhrase("fazhunt.context.mute_spectators"), "proximity_hear_spectators", "0", "1" )
+	local button = contextmenu_options:AddCVar( language.GetPhrase("fazhunt.context.opt_out"), "fh_opt_out_anim", "1", "0" )
 	if IsHalloween() then
 		local button = contextmenu_options:AddCVar( "Halloween Color Correction", "fh_halloween_cc", "1", "0" )
 	end

@@ -58,6 +58,25 @@ local function wrapText(text, font, maxWidth)
     return lines
 end
 
+surface.CreateFont("optionMenuTitle", { 
+	font = "Share Tech Mono Regular", 
+	size = 28, 
+	extended = true, 
+	weight = 400, 
+	antialias = true, 
+	bold = true 
+})
+
+surface.CreateFont("optionMenuOptions", { 
+	font = "Share Tech Mono Regular", 
+	size = 22, 
+	extended = true, 
+	weight = 400, 
+	antialias = true, 
+	bold = true 
+})
+
+local optionmenu_mat = Material("vgui/optionmenu/optionmenu.png")
 hook.Add("HUDPaint", "DrawSelMenu", function()
     if not menuData.visible then return end
 	
@@ -65,29 +84,32 @@ hook.Add("HUDPaint", "DrawSelMenu", function()
 	local y = ScrH() * 0.3
     
 	local x, y = x, y
-    local boxWidth, boxHeight = 300, 500
-    draw.RoundedBox(10, x, y, boxWidth, boxHeight, Color(0, 0, 0, 200))
+    local boxWidth, boxHeight = 320, 500
+	
+	surface.SetDrawColor(255, 255, 255, 255)
+	surface.SetMaterial(optionmenu_mat)
+	surface.DrawTexturedRect(x, y, boxWidth, boxHeight)
     
     y = y + 15
-    local wrappedTitle = wrapText(menuData.title, "timerFontUpper", boxWidth - 20)
+    local wrappedTitle = wrapText(menuData.title, "optionMenuTitle", boxWidth - 25)
     for _, line in ipairs(wrappedTitle) do
-        draw.SimpleText(line, "timerFontUpper", x + 10, y, color_white, TEXT_ALIGN_LEFT)
+        draw.SimpleText(line, "optionMenuTitle", x + 15, y, color_white, TEXT_ALIGN_LEFT)
         y = y + 25
     end
 	
 	y = y + 25
     for _, text in ipairs(menuData.text) do
-        local wrappedText = wrapText(text, "timerFontUpper", boxWidth - 20)
+        local wrappedText = wrapText(text, "optionMenuOptions", boxWidth - 25)
         for _, line in ipairs(wrappedText) do
-            draw.SimpleText(line, "timerFontUpper", x + 10, y, color_white, TEXT_ALIGN_LEFT)
+            draw.SimpleText(line, "optionMenuOptions", x + 15, y, color_white, TEXT_ALIGN_LEFT)
             y = y + 25
         end
     end
 
     for i, option in ipairs(menuData.options) do
-        local wrappedOption = wrapText(i .. ". " .. option.text, "timerFontUpper", boxWidth - 20)
+        local wrappedOption = wrapText(i .. ". " .. option.text, "optionMenuOptions", boxWidth - 25)
         for _, line in ipairs(wrappedOption) do
-            draw.SimpleText(line, "timerFontUpper", x + 10, y, color_white, TEXT_ALIGN_LEFT)
+            draw.SimpleText(line, "optionMenuOptions", x + 15, y, color_white, TEXT_ALIGN_LEFT)
             y = y + 25
         end
     end
@@ -105,6 +127,12 @@ net.Receive("fh_sel_menu_close", function()
 	sel_menu_close()
 end)
 
+function pt_request_complete(ply)
+	net.Start("pt_request_complete")
+	net.WritePlayer(ply)
+	net.SendToServer()
+end
+
 net.Receive("st_request_get", function()
 	local ply = net.ReadPlayer()
 	
@@ -117,11 +145,23 @@ net.Receive("st_request_get", function()
 	end)
 end)
 
-function pt_request_complete(ply)
-	net.Start("pt_request_complete")
+function fox_request_complete(ply)
+	net.Start("fox_request_complete")
 	net.WritePlayer(ply)
 	net.SendToServer()
 end
+
+net.Receive("fox_request_get", function()
+	local ply = net.ReadPlayer()
+	
+	if #menuData.options == 9 then return end
+	
+	sel_menu_add_title(language.GetPhrase("fazhunt.optionmenu.fox") .. ":")
+	sel_menu_add_option(ply:Nick(), 
+	function()
+		return fox_request_complete(ply)
+	end)
+end)
 
 hook.Add("PostCleanupMap", "fh_cleanup_optionmenu", function(ply)
 	sel_menu_close()
@@ -129,9 +169,17 @@ end)
 
 --[[
 concommand.Add("fh_menu_test", function(ply, cmd, args)
-	if ply:IsAdmin() then
-		sel_menu_add_title("Замени Плюштрапа игроком:")
-		sel_menu_add_option("заебал", function() end)
+	if ply:IsSuperAdmin() then
+		sel_menu_add_title(language.GetPhrase("fazhunt.optionmenu.fox") .. ":")
+		sel_menu_add_option("жопа", function() end)
+		sel_menu_add_option("аа", function() end)
+		sel_menu_add_option("ппап", function() end)
+		sel_menu_add_option("ыпып", function() end)
+		sel_menu_add_option("sergeant", function() end)
+		sel_menu_add_option("segren robbery", function() end)
+		sel_menu_add_option("sergeant robbery", function() end)
+		sel_menu_add_option("sergeant robbery2", function() end)
+		sel_menu_add_option("sergeant robbery22", function() end)
 	end
 end)
 ]]--

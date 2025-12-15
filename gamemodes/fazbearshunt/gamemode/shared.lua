@@ -23,9 +23,8 @@ TEAM_EDITOR = 2703
 team.SetUp(TEAM_SURVIVOR, "Survivors", Color(84, 163, 255))
 team.SetColor( TEAM_SPECTATOR, Color(117, 117, 130) )
 
-function IsHalloween()
-    return os.date("%B") == "October"
-end
+function IsHalloween() return os.date("%B") == "October" end
+function IsChristmas() local d = tonumber(os.date("%m")) return (d == 1 or d == 12) end
 
 conVars = {
 	halo_radius = CreateConVar( "halo_radius", 2000, { FCVAR_ARCHIVE, FCVAR_REPLICATED}, "Halo radius." ),
@@ -52,7 +51,9 @@ conVars = {
 	
 	fh_max_cupcakes = CreateConVar( "fh_max_cupcakes", 3, { FCVAR_ARCHIVE, FCVAR_REPLICATED}, "Maximum amount of cupcakes Chica can spawn." ),
 	fh_silent_highlight = CreateConVar( "fh_silent_highlight", 0, { FCVAR_ARCHIVE, FCVAR_REPLICATED}, "Makes highlights fully mute, and removes its overlay." ),
-	fh_respawn_dead_animatronics = CreateConVar( "fh_respawn_dead_animatronics", 1, { FCVAR_ARCHIVE, FCVAR_REPLICATED}, "Respawn animatronic if it died?" )
+	fh_respawn_dead_animatronics = CreateConVar( "fh_respawn_dead_animatronics", 1, { FCVAR_ARCHIVE, FCVAR_REPLICATED}, "Respawn animatronic if it died?" ),
+
+	opt_out_anim = CreateConVar("fh_opt_out_anim", 0, { FCVAR_ARCHIVE,FCVAR_CLIENTDLL,FCVAR_USERINFO }, "Do you wannna opt out of Animatronics?", 0, 1),
 }
 
 local colors = {
@@ -71,88 +72,87 @@ local colors = {
 }
 
 local killerData = killerData or {
-    ["pill_wfreddy2"] = {name = "freddy", fullname = "fazhunt.animatronics.freddy", color = colors.Freddy},
-    ["pill_wbonnie2"] = {name = "bonnie", fullname = "fazhunt.animatronics.bonnie", color = colors.Bonnie},
-    ["pill_wchica2"] = {name = "chica", fullname = "fazhunt.animatronics.chica", color = colors.Chica},
-    ["pill_wfoxy2"] = {name = "foxy", fullname = "fazhunt.animatronics.foxy", color = colors.Foxy},
-    ["pill_endo02"] = {name = "endo", fullname = "fazhunt.animatronics.endo", color = colors.Endo},
-    ["pill_sfreddy2"] = {name = "sfreddy", fullname = "fazhunt.animatronics.sfreddy", color = colors.Shadow},
-    ["pill_wgfreddy2"] = {name = "gfreddy", fullname = "fazhunt.animatronics.gfreddy", color = colors.Golden},
-    ["pill_clown"] = {name = "clown", fullname = "fazhunt.animatronics.clown", color = colors.Clown},
+	["pill_wfreddy2"] = {name = "freddy", fullname = "fazhunt.animatronics.freddy", color = colors.Freddy},
+	["pill_wbonnie2"] = {name = "bonnie", fullname = "fazhunt.animatronics.bonnie", color = colors.Bonnie},
+	["pill_wchica2"] = {name = "chica", fullname = "fazhunt.animatronics.chica", color = colors.Chica},
+	["pill_wfoxy2"] = {name = "foxy", fullname = "fazhunt.animatronics.foxy", color = colors.Foxy},
+	["pill_endo02"] = {name = "endo", fullname = "fazhunt.animatronics.endo", color = colors.Endo},
+	["pill_sfreddy2"] = {name = "sfreddy", fullname = "fazhunt.animatronics.sfreddy", color = colors.Shadow},
+	["pill_wgfreddy2"] = {name = "gfreddy", fullname = "fazhunt.animatronics.gfreddy", color = colors.Golden},
+	["pill_clown"] = {name = "clown", fullname = "fazhunt.animatronics.clown", color = colors.Clown},
 	
-    ["pill_springtrap"] = {name = "springtrap", fullname = "fazhunt.animatronics.springtrap", color = colors.Springtrap},
-    ["pill_plushtrap"] = {name = "plushtrap", fullname = "fazhunt.animatronics.plushtrap", color = colors.Plushtrap},
+	["pill_springtrap"] = {name = "springtrap", fullname = "fazhunt.animatronics.springtrap", color = colors.Springtrap},
+	["pill_plushtrap"] = {name = "plushtrap", fullname = "fazhunt.animatronics.plushtrap", color = colors.Plushtrap},
 	
-    ["pill_mangle"] = {name = "mangle", fullname = "fazhunt.animatronics.mangle", color = colors.Endo},
+	["pill_mangle"] = {name = "mangle", fullname = "fazhunt.animatronics.mangle", color = colors.Endo},
 	
-    ["pill_toychica"] = {name = "tchica", fullname = "Toy Chica", color = colors.Chica},
---	["bear5_main"] = {name = "bear5", fullname = "Bear 5", color = Color(73,104,255)},
+	["pill_toychica"] = {name = "tchica", fullname = "fazhunt.animatronics.toychica", color = colors.Chica},
 }
 
 killerAbilities = {
     freddy = {
-        { name = 'kill', key = 'LMB', duration = 0, hidden = true },
-        { name = 'stalk', key = 'RMB', duration = 0 },
-        { name = 'highlight', key = 'R', duration = 0 }
+        { name = 'kill', key = 'LMB', hidden = true },
+        { name = 'stalk', key = 'RMB' },
+        { name = 'highlight', key = 'R' }
     },
     bonnie = {
-        { name = 'kill', key = 'LMB', duration = 0, hidden = true },
-        { name = 'yoursmine', key = 'RMB', duration = 0 },
-        { name = 'highlight', key = 'R', duration = 0 }
+        { name = 'kill', key = 'LMB', hidden = true },
+        { name = 'yoursmine', key = 'RMB' },
+        { name = 'highlight', key = 'R' }
     },
     chica = {
-        { name = 'kill', key = 'LMB', duration = 0, hidden = true },
-        { name = 'mine', key = 'RMB', duration = 0 },
-        { name = 'highlight', key = 'R', duration = 0 }
+        { name = 'kill', key = 'LMB', hidden = true },
+        { name = 'mine', key = 'RMB' },
+        { name = 'highlight', key = 'R' }
     },
     foxy = {
-        { name = 'kill', key = 'LMB', duration = 0, hidden = true },
-		{ name = 'charge', key = 'RMB', duration = 0, tokens = 5,
+        { name = 'kill', key = 'LMB', hidden = true },
+		{ name = 'charge', key = 'RMB', tokens = 5,
 		condition = function()
             return foxyChargeCondition()
         end},
-        { name = 'highlight', key = 'R', duration = 0 }
+        { name = 'highlight', key = 'R' }
     },
     sfreddy = {
-        { name = 'kill', key = 'LMB', duration = 0, hidden = true },
-        { name = 'submerge', key = 'RMB', duration = 0, condition = function()
+        { name = 'kill', key = 'LMB', hidden = true },
+        { name = 'submerge', key = 'RMB', condition = function()
             return isNotStuck()
         end },
-        { name = 'highlight', key = 'R', duration = 0 }
+        { name = 'highlight', key = 'R' }
     },
     endo = {
-        { name = 'kill', key = 'LMB', duration = 0, hidden = true },
-        { name = 'grab', key = 'RMB', duration = 0 },
-        { name = 'highlight', key = 'R', duration = 0 }
+        { name = 'kill', key = 'LMB', hidden = true },
+        { name = 'grab', key = 'RMB' },
+        { name = 'highlight', key = 'R' }
     },
     clown = {
-        { name = 'attack', key = 'LMB', duration = 0 },
-        { name = 'highlight', key = 'R', duration = 0 }
+        { name = 'attack', key = 'LMB' },
+        { name = 'highlight', key = 'R' }
     },
     plushtrap = {
-        { name = 'attack', key = 'LMB', duration = 0 },
-        { name = 'lifetime', duration = 0, hidden = true }
+        { name = 'attack', key = 'LMB' },
+        { name = 'lifetime', hidden = true }
     },
     springtrap = {
-        { name = 'attack', key = 'LMB', duration = 0 },
-        { name = 'summon', key = 'RMB', duration = 0 },
-        { name = 'highlight', key = 'R', duration = 0 },
+        { name = 'attack', key = 'LMB' },
+        { name = 'summon', key = 'RMB' },
+        { name = 'highlight', key = 'R' },
     },
     gfreddy = {
-        { name = 'submerge', key = 'RMB', duration = 0 },
-        { name = 'choose_target', key = 'R', duration = 0 }
+        { name = 'submerge', key = 'RMB' },
+        { name = 'choose_target', key = 'R' }
     },
     mangle = {
-        { name = 'kill', key = 'LMB', duration = 0, hidden = true },
-        { name = 'lunge', key = 'RMB', duration = 0, condition = function()
+        { name = 'kill', key = 'LMB', hidden = true },
+        { name = 'lunge', key = 'RMB', condition = function()
             return CanMangleLunge()
         end },
-        { name = 'highlight', key = 'R', duration = 0}
+        { name = 'highlight', key = 'R'}
     },
     tchica = {
-        { name = 'kill', key = 'LMB', duration = 0, hidden = true },
-        { name = 'hold', key = 'RMB', duration = 0 },
-        { name = 'highlight', key = 'R', duration = 0}
+        { name = 'kill', key = 'LMB', hidden = true },
+        { name = 'hold', key = 'RMB' },
+        { name = 'highlight', key = 'R' }
     },
 }
 
@@ -208,7 +208,7 @@ function killers.GetPortrait(killer)
 	return nil
 end
 
-function killers.Register(pill, a_name, a_fullname, a_color)
+function killers.Register(pill, a_name, a_fullname, a_color, category)
     assert(pill, "[killers.Register] You need a pill to begin with!")
     assert(a_name, "[killers.Register] You need a name to begin with!")
 
@@ -221,6 +221,10 @@ function killers.Register(pill, a_name, a_fullname, a_color)
     a_color = a_color or colors.Gray
 
     killerData[pill] = {name = a_name, fullname = a_fullname, color = a_color}
+	
+	if category then
+		killerData[pill].category = category
+	end
 	
 	precacheAvatar(pill, a_name)
 	precachePortrait(pill,a_name)
@@ -238,6 +242,20 @@ function killers.SetAbilities(name, abilities)
     end
 end
 
+function killers.GetName(pill)
+    if killerData[pill] then
+		return killerData[pill].name
+	end
+	return ""
+end
+
+function killers.GetFullName(pill)
+    if killerData[pill] then
+		return killerData[pill].fullname
+	end
+	return ""
+end
+
 local function IsNavmesh()
 	if CLIENT then
 		return true
@@ -246,8 +264,7 @@ local function IsNavmesh()
 end
 
 function killers.getAll()
-	local tablo = table.Copy(killerData)
-	return tablo
+	return table.Copy(killerData)
 end
 
 function killers.getAllSolos()
@@ -355,7 +372,7 @@ pill_RequiresNavmesh("pill_wgfreddy2")
 
 pill_SetDamageAttack( {"pill_springtrap", "pill_plushtrap", "pill_clown"} )
 
-pill_makeSecondary( {"pill_endo02", "pill_sfreddy2", "pill_wgfreddy2"} )
+pill_makeSecondary( {"pill_endo02", "pill_sfreddy2", "pill_wgfreddy2", "pill_toychica"} )
 
 function save_dontPrefer(net)
 	net = net or false
@@ -501,18 +518,6 @@ utf8.sub = function(str, startChar, endChar)
     end
 end
 
-hook.Add("SetupMove", "CustomNoClipSpeedControl", function(ply, mv, cmd)
-    if ply:GetMoveType() == MOVETYPE_NOCLIP then
-        if ply:GetMoveType() == MOVETYPE_OBSERVER then
-			mv:SetMaxSpeed( 60 )
-            mv:SetMaxClientSpeed( 60 )
-        else
-			mv:SetMaxSpeed( 20 )
-            mv:SetMaxClientSpeed( 20 )
-        end
-    end
-end)
-
 hook.Add("ShouldCollide", "fh_collisions", function(ent1, ent2)
     local cg1, cg2 = ent1:GetCollisionGroup(), ent2:GetCollisionGroup()
     local class1, class2 = ent1:GetClass(), ent2:GetClass()
@@ -632,6 +637,9 @@ hook.Add("PreGamemodeLoaded", "FH_pk_pill_support", function()
 			end
 			
 		end
+
+		-- закомментировать если хуйня
+		pk_pills = pills
 	end
 end)
 

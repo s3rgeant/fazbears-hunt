@@ -1,0 +1,28 @@
+"VertexlitGeneric"
+{
+$basetexture "models\ufmp\FNAF1\fox4\Eye"
+$bumpmap "models\ufmp/Flat"
+$surfaceprop metal
+$phong "1"
+$phongexponent "130"
+$phongboost "23"
+$phongfresnelranges "[0.05 0.5 1]"
+$ambientocclusion "0"
+$phongalbedotint "1"
+$halflambert "1"
+$color "0.87"
+$color2 "[0.79 0.79 0.79]"
+$nodecal "1"
+$model "1"
+$diffuseexp "1.5"
+$normalmapalphaenvmapmask   "1"
+$basemapalphaphongmask "1"
+$nocull 1
+$emissiveBlendEnabled "1"
+$emissiveBlendTexture "models\ufmp\FNAF1\fox4/White"
+$emissiveBlendBaseTexture "models\ufmp\FNAF1\fox4/EyeGlow"
+$emissiveBlendFlowTexture "models\ufmp\FNAF1\fox4/White"
+$emissiveBlendTint "[1 1 1]"
+$emissiveBlendStrength "0.15"
+$emissiveBlendScrollVector "[0 0]"	
+}

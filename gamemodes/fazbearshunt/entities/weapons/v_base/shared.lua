@@ -67,14 +67,14 @@ end
 function SWEP:Reload()
 end
 
-function SWEP:HandleAnimation(anim, hold)
+function SWEP:HandleAnimation(anim, hold, force)
 	if !self.Animations[anim] then
 		return false
 	end
 	
 	local act = self.Animations[anim]
 	
-	if self.CurAnim == anim and act == self:GetActivity() then
+	if self.CurAnim == anim and act == self:GetActivity() and !force then
 		return false
 	end
 	

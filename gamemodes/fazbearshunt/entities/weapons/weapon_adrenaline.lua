@@ -80,18 +80,28 @@ function SWEP:PrimaryAttack()
 				owner:SetRunSpeed(owner:GetRunSpeed() * 1.2)
 				owner:SetCrouchedWalkSpeed(owner:GetCrouchedWalkSpeed() * 1.4)
 				
-				local trail = util.SpriteTrail(owner, owner:LookupAttachment( "chest" ), Color(0, 169, 255, 200), true, 32, 0, 1, 1 / ( ( 32 + 0 ) * 0.5 ), "trails/physbeam")
+				local trail = owner._adrenTrail or util.SpriteTrail(owner, owner:LookupAttachment( "chest" ), Color(0, 169, 255, 200), true, 32, 0, 1, 1 / ( ( 32 + 0 ) * 0.5 ), "trails/physbeam")
 				
 				owner._adrenTrail = trail
 			end
 		end)
+		
+		local timerName = "adren_trail_remove" .. owner:EntIndex()
+		
+		if timer.Exists(timerName) then
+			timer.Remove(timerName)
+		end
 		
 		timer.Simple(8, function()
 			if IsValid(owner) then
 				owner:SetWalkSpeed(owner:GetWalkSpeed() / 1.2)
 				owner:SetRunSpeed(owner:GetRunSpeed() / 1.2)
 				owner:SetCrouchedWalkSpeed(owner:GetCrouchedWalkSpeed() / 1.4)
-				
+			end
+		end)
+		
+		timer.Create(timerName, 8, 1, function()
+			if IsValid(owner) then
 				local trail = owner._adrenTrail
 				
 				if IsValid(trail) then

@@ -1,0 +1,19 @@
+"VertexlitGeneric"
+{
+$basetexture "models\ufmp\Black"
+$bumpmap "models\ufmp\FNAF1\fox4\eyepatchbump"
+$phongwarptexture "models\ufmp\white"
+$surfaceprop metal
+$basetexturetransform "[0.55 0 0 0 0 0.55 0 0 0 0 1 0 0 0 0 1]"
+$phong "1"
+$phongexponent "30"
+$phongboost "0.5"
+$phongfresnelranges "[0.05 0.5 1]"
+$phongalbedotint "1"
+$halflambert "1"
+$nodecal "1"
+$model "1"
+$diffuseexp "1.5"
+$normalmapalphaenvmapmask   "1"
+$nocull "1"
+}

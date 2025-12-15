@@ -120,7 +120,6 @@ hook.Add("InitPostEntity", "fh_player_fullconnect", function(ent)
 end)
 
 net.Receive("KillerPicked", function()
-    local num = net.ReadUInt(8)
     local playerName = net.ReadString()
     local animatronicName = net.ReadString()
     local color = net.ReadColor()
@@ -195,9 +194,21 @@ net.Receive("SetKillerAngle", function()
 	end
 end)
 
+hook.Add( "OnEntityCreated", "fh_RagdollColor", function( ent )
+	if ent:GetClass() == "prop_ragdoll" then
+		local ply = ent:GetOwner()
+		if IsValid(ply) and ply:IsPlayer() then
+			local color = ply:GetPlayerColor()
+			ent.GetPlayerColor = function() return color end
+		end
+	end
+end )
+
 net.Receive("ragColor", function(len)
 	local rag = Entity(net.ReadInt(16))
 	local col = net.ReadVector()
+	
+	print(rag, col)
 
 	rag.GetPlayerColor = function() return col end
 end)

@@ -1,0 +1,8 @@
+"unlitGeneric"
+{
+    "$basetexture" "models\ufmp\fnaf1\bear5/white"
+
+
+$bumpmap "models\ufmp\fnaf1\bear5/flat"
+"$nocull" "1"
+}

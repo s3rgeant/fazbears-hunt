@@ -453,7 +453,10 @@ local function OpenAdminPanel()
 		local cat = CatList:Add(bettername)
 
 		for _, animData in pairs(animList) do
-			local button = cat:Add(animData.name)
+			local name = animData.fh_data and animData.fh_data.fullname
+		
+			local button = cat:Add(name and language.GetPhrase(name) or animData.name)
+			
 			button.DoClick = function()
 				currentAnimatronic = animData.name
 				
@@ -511,6 +514,7 @@ local function OpenAdminPanel()
 					end
 				end
 			end
+			button:SetName(animData.name)
 		end
 	end
 

@@ -111,6 +111,12 @@ hook.Add("EntityEmitSound", "fh_silent_anims", function(data)
 	end
 	
 	if IsValid(ent) and ent:GetClass() == "pill_costume" then
+		local handler = hook.Run("PillCostumeEmitSound", data)
+		
+		if handler ~= nil then
+			return handler
+		end
+		
 		local volume = data.Volume
 	
 		if conVars.fh_less_steps:GetBool() then

@@ -18,6 +18,7 @@ end
 
 SWEP.ViewModel = "models/tetTris/vm/Plushtrap.mdl"
 SWEP.m_WeaponDeploySpeed = 0.6
+SWEP.SwayScale = 0.5
 
 SWEP.HitSize = {
 	Min = Vector( -18, -18, -12 ),
@@ -179,7 +180,7 @@ if CLIENT then
 			for _, ent in pairs(team.GetPlayers( TEAM_SURVIVOR )) do
 				if !ent:Alive() or ent:GetNoDraw() or ent:IsInvisible() then continue end
 				if ent ~= ply and ent:GetPos():Distance(ply:GetPos()) <= plushtrap_visionrange:GetInt() then
-					table.insert(nearPlayers, ent)
+					nearPlayers[ent] = ent
 				end
 			end
 			halo.Add(nearPlayers, Color(255, 0, 0), 1, 1, 2, true, true)
@@ -198,12 +199,12 @@ if CLIENT then
 			for _, ent in pairs(team.GetPlayers( TEAM_SURVIVOR )) do
 				if !ent:Alive() or ent:GetNoDraw() or ent:IsInvisible() then continue end
 				if ent ~= ply and ent:GetPos():Distance(ply:GetPos()) <= plushtrap_visionrange:GetInt() then
-					table.insert(nearPlayers, ent)
+					nearPlayers[ent] = true
 				end
 			end
 	
 			cam.Start3D()
-				for k, v in pairs(nearPlayers) do
+				for v, _ in pairs(nearPlayers) do
 					if v ~= LocalPlayer() and v:IsValid() and v:Health() > 0 then
 						v:DrawModel()
 					end

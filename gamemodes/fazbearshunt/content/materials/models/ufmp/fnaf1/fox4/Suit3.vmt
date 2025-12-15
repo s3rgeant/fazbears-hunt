@@ -1,0 +1,20 @@
+"VertexlitGeneric"
+{
+$basetexture "models\ufmp\fnaf1\fox4\Suit3NEW"
+$bumpmap "models\ufmp\fnaf1\fox4\suit3bumpNEW"
+$surfaceprop metal
+$phong "1"
+$phongexponent "1"
+$color   "[0.94 1 0.91]"
+$color2 "[0.82 0.82 0.82]"
+$ambientocclusion "0"
+$phongboost "0"
+$phongfresnelranges "[0.05 0.5 1]"
+$phongalbedotint "1"
+$halflambert "1"
+$nodecal "1"
+$model "1"
+$diffuseexp "1.5"
+$normalmapalphaenvmapmask   "1"
+$nocull 1
+}

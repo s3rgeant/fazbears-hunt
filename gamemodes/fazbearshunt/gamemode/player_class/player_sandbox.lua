@@ -40,15 +40,30 @@ end
 
 function PLAYER:Loadout()
 
-	self.Player:GiveAmmo( 128,	"Pistol", 		true )
-	self.Player:GiveAmmo( 20,	"grenade", 		true )
+	self.Player:RemoveAllAmmo()
+
+	self.Player:GiveAmmo( 64,	"Pistol", 		true )
+	self.Player:GiveAmmo( 5,	"grenade", 		true )
 
 	self.Player:Give( "weapon_pistol" )
+	if IsChristmas() then
+		self.Player:GiveAmmo( 24,	"snowball", 	true )
+		self.Player:Give( "weapon_snowball" )
+	end
 	self.Player:Give( "weapon_frag" )
 	self.Player:Give( "weapon_crowbar" )
 	self.Player:Give( "weapon_empty_hands" )
 
 	self.Player:SwitchToDefaultWeapon()
+
+end
+
+function PLAYER:Spawn()
+
+	BaseClass.Spawn( self )
+
+	local plyclr = self.Player:GetInfo( "cl_playercolor" )
+	self.Player:SetPlayerColor( Vector( plyclr ) )
 
 end
 

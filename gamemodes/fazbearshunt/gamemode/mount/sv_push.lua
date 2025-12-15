@@ -50,37 +50,47 @@ end)
 hook.Add("KeyPress", "PushInteraction", function(ply, key)
 	if ply:IsPushBlocked() then return end
 
-	ply:LagCompensation(true)
-
 	if key == IN_USE and not push[ply:UserID()] then
+
+		local handler = hook.Run("HandlePushLagCompensation", ply)
+		
+		if handler ~= false then
+			ply:LagCompensation(true)
+		end
+		
 		local ent = ply:GetEyeTrace().Entity
 		if IsValid(ply) and IsValid(ent) then
 			if ply:IsPlayer() and ply:Team() ~= TEAM_SPECTATOR and ent:IsPlayer() and not ent:IsPushImmune() then
 				local allowed = hook.Run("ShouldPlayerPush", ply, ent)
 
-				if allowed == false then return end
-			
-				local pushSounds = ent:IsAnimatronic() and PushSound_pills or PushSound
-				
-				if ply:GetPos():Distance(ent:GetPos()) <= 100 then
-					if ent:Alive() and ent:GetMoveType() == MOVETYPE_WALK and not ent:IsFlagSet(FL_FROZEN) then
-						ply:EmitSound(pushSounds[math.random(#pushSounds)], 100, 100)
-						local velAng = ply:EyeAngles():Forward()
-						velAng.z = math.Clamp(velAng.z, -0.1, 0.5)
+				if allowed ~= false then
+					local pushSounds = ent:IsAnimatronic() and PushSound_pills or PushSound
+					
+					if ply:GetPos():Distance(ent:GetPos()) <= 100 then
+						if ent:Alive() and ent:GetMoveType() == MOVETYPE_WALK and not ent:IsFlagSet(FL_FROZEN) then
+							local power = hook.Run("PlayerPush", ply, ent)
+							
+							ply:EmitSound(pushSounds[math.random(#pushSounds)], 100, 100)
+							local velAng = ply:EyeAngles():Forward()
+							velAng.z = math.Clamp(velAng.z, -0.1, 0.2)
 
-						ent:SetVelocity(velAng * (ent:IsAnimatronic() and !ply:IsAnimatronic() and 250 or 450))
-						ent:ViewPunch(Angle(math.random(-25, 25), math.random(-25, 25), 0))
-						push[ply:UserID()] = true
-						timer.Simple(0.15, function()
-							push[ply:UserID()] = false
-						end)
+							ent:SetVelocity(velAng * ( power or (ent:IsAnimatronic() and !ply:IsAnimatronic() and 250 or 450)))
+							ent:ViewPunch(Angle(math.random(-25, 25), math.random(-25, 25), 0))
+							
+							push[ply:UserID()] = true
+							timer.Simple(0.20, function()
+								if IsValid(ply) then
+									push[ply:UserID()] = false
+								end
+							end)
+						end
 					end
 				end
 			end
 		end
-	end
 	
-	ply:LagCompensation(false)
+		ply:LagCompensation(false)
+	end
 end)
 
 hook.Add("PlayerDeath", "PushDeath", function(ply)

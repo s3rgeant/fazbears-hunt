@@ -27,72 +27,6 @@ hook.Add("PlayerSelectSpawn", "PreventPlayerStuckSpawn", function(ply)
     end
 	
 	return spawns[math.random(#spawns)]
-	--[[
-
-    local chosenSpawn = spawns[math.random(#spawns)]
-    local spawnPos = chosenSpawn:GetPos()
-    local spawnAng = chosenSpawn:GetAngles()
-
-    local attempts = 0
-    local isPositionFound = false
-
-    while attempts < maxAttempts do
-        local isOccupied = false
-
-        for _, otherPly in player.Iterator() do
-            if otherPly ~= ply and IsValid(otherPly) then
-                if otherPly:GetPos():Distance(spawnPos) < spawnOffset then
-                    isOccupied = true
-                    break
-                end
-            end
-        end
-
-        if isOccupied then
-            local angle = math.rad(math.random(0, 360))
-            local offset = Vector(math.cos(angle), math.sin(angle), 0) * spawnOffset
-            spawnPos = chosenSpawn:GetPos() + offset
-            attempts = attempts + 1
-        else
-            local trace = {}
-            trace.start = spawnPos + Vector(0, 0, 10)
-            trace.endpos = spawnPos + Vector(0, 0, 10)
-            trace.mins = hullMin
-            trace.maxs = hullMax
-            trace.filter = ply
-
-            local tr = util.TraceHull(trace)
-
-            if not tr.Hit then
-                isPositionFound = true
-                debugoverlay.Line(spawnPos + Vector(0, 0, 10), spawnPos + Vector(0, 0, 10), 15, Color(255, 0, 0), true)
-                break
-            else
-                local angle = math.rad(math.random(0, 360))
-                local offset = Vector(math.cos(angle), math.sin(angle), 0) * spawnOffset
-                spawnPos = spawnPos + offset
-                attempts = attempts + 1
-            end
-        end
-    end
-
-    if not isPositionFound then
-        spawnPos = chosenSpawn:GetPos()
-    end
-
-    local tempSpawn = ents.Create("info_player_start")
-    tempSpawn:SetPos(spawnPos)
-    tempSpawn:SetAngles(spawnAng)
-    tempSpawn:Spawn()
-
-    timer.Simple(1, function()
-        if IsValid(tempSpawn) then
-            tempSpawn:Remove()
-        end
-    end)
-
-    return tempSpawn
-	]]--
 end)
 
 function updateSpawnList(tab)
@@ -172,15 +106,15 @@ end
 local function FindSafePosition(ply)
     local startPos = ply:GetPos()
     local directions = {
-        Vector(48, 0, 0),
-        Vector(-48, 0, 0),
-        Vector(0, 48, 0),
-        Vector(0, -48, 0),
+        Vector(12, 0, 0),
+        Vector(-12, 0, 0),
+        Vector(0, 12, 0),
+        Vector(0, -12, 0),
         Vector(0, 0, 5),
         Vector(0, 0, -5),
     }
 
-    for i = 1, 10 do
+    for i = 1, 12 do
         for _, dir in ipairs(directions) do
             local checkPos = startPos + dir * i
             local tr = util.TraceHull({
@@ -238,24 +172,24 @@ end
 function PLAYER:NoPlayerCollide(duration)
 	if !IsValid(self) then return end
 	
-	if timer.Exists("fh_repeat_unstuck" .. self:EntIndex()) then return end
+	local timerName = "fh_repeat_unstuck" .. self:EntIndex()
+	
+	if timer.Exists(timerName) then return end
 
 	duration = duration or 0.5
 	local oldCollision = self:GetCollisionGroup()
 	
-	--if oldCollision == COLLISION_GROUP_DEBRIS then return end
-	
 	self:SetCollisionGroup(COLLISION_GROUP_PLAYER_MOVEMENT)
 	
-	timer.Create("fh_repeat_unstuck" .. self:EntIndex(), duration, 0, function()
+	timer.Create(timerName, duration, 0, function()
 		if !IsValid(self) or !self:Alive() or self:GetCollisionGroup() ~= COLLISION_GROUP_PLAYER_MOVEMENT then
-			timer.Remove("fh_repeat_unstuck" .. self:EntIndex())
+			timer.Remove(timerName)
 			return
 		end
 		
 		if IsValid(self) and !QuickIsStuck(self) then
 			self:SetCollisionGroup(oldCollision)
-			timer.Remove("fh_repeat_unstuck" .. self:EntIndex())
+			timer.Remove(timerName)
 		end
 	end)
 end
@@ -277,13 +211,13 @@ function PLAYER:RepeatRestoreCollision(duration)
 end
 
 hook.Add("fh_startgame", "fh_startgame_unstuck", function(roundType)
-	for i, ply in player.Iterator() do
-		timer.Simple(i/10, function()
-			if ply:IsStuck() then
-				ply:Unstuck()
-			end
-		end)
-	end
+	--for i, ply in player.Iterator() do
+		--timer.Simple(i/10, function()
+			--if ply:IsStuck() then
+				--ply:Unstuck()
+			--end
+		--end)
+	--end
 end)
 
 hook.Add("fh_defibrillator_spawn", "fh_startgame_unstuck", function()

@@ -120,8 +120,8 @@ function ENT:CheckForPlayers()
 	net.Send(totalPlayers)
 	
 	for _, player in pairs(totalPlayers) do
-		if !table.HasValue(affectedPlayers, player) then
-			table.insert(affectedPlayers, player)
+		if !affectedPlayers[player] then
+			affectedPlayers[player] = true
 		end
 	end
 			

@@ -59,48 +59,27 @@ function highlight.ByDistance(ply, ent)
 	end
 end
 
-concommand.Add("fh_show_halo_radius", function(ply, cmd, args)
-	if IsValid(ply) and ply:IsSuperAdmin() then
-
-		debugoverlay.Sphere( ply:GetPos(), conVars.halo_radius:GetInt(), 10, Color( 255, 0, 0, 120 ), true )
-	end
-end)
-
-local function getMapHalfSize()
-    local mins, maxs = Vector(math.huge, math.huge, math.huge), Vector(-math.huge, -math.huge, -math.huge)
-
-    for _, ent in ents.Iterator() do
-		local modelname = ent:GetModel()
-		if modelname and ( modelname:match("skybox") or modelname:match("cloud") or !modelname:match(".mdl") ) or !modelname then continue end
+local function highlight_remove_Timer(maboy, ply, duration)
+	local prevTime = affectedPlayers[ply] or 0
 	
-        local eMins, eMaxs = ent:WorldSpaceAABB()
-        mins.x = math.min(mins.x, eMins.x)
-        mins.y = math.min(mins.y, eMins.y)
-        mins.z = math.min(mins.z, eMins.z)
-        maxs.x = math.max(maxs.x, eMaxs.x)
-        maxs.y = math.max(maxs.y, eMaxs.y)
-        maxs.z = math.max(maxs.z, eMaxs.z)
-    end
-
-    local size = maxs - mins
-    local half = size:Length() / 2
-
-    return half
+	local newTime = ( CurTime() + duration > prevTime ) and CurTime() + duration or prevTime
+	
+	if !affectedPlayers[ply] then
+		affectedPlayers[ply] = newTime
+	end
+	
+	timer.Create("highlight_remove" .. ply:EntIndex(), newTime - CurTime(), 1, function()
+		affectedPlayers[ply] = nil
+		
+		if IsValid(ply) and ply:Alive() and IsValid(maboy) then
+			net.Start("RemoveAffectedPlayer")
+			net.WriteEntity(ply)
+			net.Send(maboy)
+		end
+	end)
 end
 
-concommand.Add("fh_test_auto_halo_radius", function(ply, cmd, args)
-	if IsValid(ply) and ply:IsSuperAdmin() then
-	
-		local halfDiagonal = getMapHalfSize()
-		print("Auto Halo Radius: ", halfDiagonal / 2, conVars.halo_radius:GetInt())
-
-		debugoverlay.Sphere( ply:GetPos(), conVars.halo_radius:GetInt(), 8, Color( 255, 0, 0, 120 ), true )
-		
-		debugoverlay.Sphere( ply:GetPos(), halfDiagonal / 2, 8, Color( 0, 125, 255, 120 ), true )
-	end
-end)
-
-function highlight.Add(ply, players, duration)
+function highlight.Add(ply, players, duration, color)
     assert(ply, "Can't highlight players for someone who is NOT VALID!")
     assert(players, "Can't highlight players if they are NOT VALID!")
 
@@ -110,16 +89,11 @@ function highlight.Add(ply, players, duration)
 			net.Start("AddAffectedPlayers")
 			net.WriteTable(players)
 			net.WriteFloat(duration)
+			net.WriteColor(color or Color(255,0,0))
 			net.Send(ply)
 			
 			for _, v in ipairs(players) do
-				if !table.HasValue(affectedPlayers, v) then
-					table.insert(affectedPlayers, v)
-				end
-				
-				timer.Simple(duration, function()
-					table.RemoveByValue(affectedPlayers, v)
-				end)
+				highlight_remove_Timer(ply, v, duration)
 			end
 		end
 	else
@@ -127,15 +101,10 @@ function highlight.Add(ply, players, duration)
 			net.Start("AddAffectedPlayers")
 			net.WriteTable( {players} )
 			net.WriteFloat(duration)
+			net.WriteColor(color or Color(255,0,0))
 			net.Send(ply)
 			
-			if !table.HasValue(affectedPlayers, v) then
-				table.insert(affectedPlayers, players)
-			end
-			
-			timer.Simple(duration, function()
-				table.RemoveByValue(affectedPlayers, players)
-			end)
+			highlight_remove_Timer(ply, players, duration)
 		end
 	end
 end
@@ -190,8 +159,6 @@ function highlight.GetVisionSound(ent)
 	return vision_sounds["default"]
 end
 
-
-
 function highlight.NotifyTarget(target, ent, isAffected)
 	local sound_to_play = highlight.GetVisionSound(ent)
 	if !conVars.fh_silent_highlight:GetBool() then
@@ -216,9 +183,11 @@ end
 ]]
 hook.Add("SetupPlayerVisibility", "fh_halo_visibility", function(ply, viewent)
 	if !table.IsEmpty(affectedPlayers) then
-		for _, player in ipairs(affectedPlayers) do
+		for player, _ in pairs(affectedPlayers) do
 			if IsValid(player) and player ~= ply and ply:IsAnimatronic() then
-				AddOriginToPVS(player:GetPos())
+				if viewent:IsValid() and !viewent:TestPVS( player ) then
+					AddOriginToPVS(player:GetPos())
+				end
 			end
 		end
 	end
@@ -231,9 +200,9 @@ hook.Add("PlayerChangedTeam", "fh_halo_team", function(ply, oldteam, team)
 		end
 	end
 	
-	if table.HasValue(affectedPlayers, ply) then
+	if affectedPlayers[ply] then
 		if team == 2701 then
-			table.RemoveByValue(affectedPlayers, ply)
+			affectedPlayers[ply] = nil
 			net.Start("RemoveAffectedPlayer")
 			net.WriteEntity(ply)
 			net.Broadcast()
@@ -242,8 +211,8 @@ hook.Add("PlayerChangedTeam", "fh_halo_team", function(ply, oldteam, team)
 end)
 
 hook.Add( "PlayerDeath", "fh_halo_death_check", function( victim, inflictor, attacker )
-	if table.HasValue(affectedPlayers, victim) then
-		table.RemoveByValue(affectedPlayers, victim)
+	if affectedPlayers[victim] then
+		affectedPlayers[victim] = nil
 		
 		net.Start("RemoveAffectedPlayer")
 		net.WriteEntity(victim)
@@ -259,11 +228,52 @@ hook.Add( "PlayerDeath", "fh_halo_death_check", function( victim, inflictor, att
 end)
 	
 hook.Add( "PlayerDisconnected", "fh_pill_fnaf2_disconnect", function( ply )
-	if table.HasValue(affectedPlayers, ply) then
-		table.RemoveByValue(affectedPlayers, ply)
+	if affectedPlayers[ply] then
+		affectedPlayers[ply] = nil
 		
 		net.Start("RemoveAffectedPlayer")
 		net.WriteEntity(ply)
 		net.Broadcast()
+	end
+end)
+
+concommand.Add("fh_show_halo_radius", function(ply, cmd, args)
+	if IsValid(ply) and ply:IsSuperAdmin() then
+
+		debugoverlay.Sphere( ply:GetPos(), conVars.halo_radius:GetInt(), 10, Color( 255, 0, 0, 120 ), true )
+	end
+end)
+
+local function getMapHalfSize()
+    local mins, maxs = Vector(math.huge, math.huge, math.huge), Vector(-math.huge, -math.huge, -math.huge)
+
+    for _, ent in ents.Iterator() do
+		local modelname = ent:GetModel()
+		if modelname and ( modelname:match("skybox") or modelname:match("cloud") or !modelname:match(".mdl") ) or !modelname then continue end
+	
+        local eMins, eMaxs = ent:WorldSpaceAABB()
+        mins.x = math.min(mins.x, eMins.x)
+        mins.y = math.min(mins.y, eMins.y)
+        mins.z = math.min(mins.z, eMins.z)
+        maxs.x = math.max(maxs.x, eMaxs.x)
+        maxs.y = math.max(maxs.y, eMaxs.y)
+        maxs.z = math.max(maxs.z, eMaxs.z)
+    end
+
+    local size = maxs - mins
+    local half = size:Length() / 2
+
+    return half
+end
+
+concommand.Add("fh_test_auto_halo_radius", function(ply, cmd, args)
+	if IsValid(ply) and ply:IsSuperAdmin() then
+	
+		local halfDiagonal = getMapHalfSize()
+		print("Auto Halo Radius: ", halfDiagonal / 2, conVars.halo_radius:GetInt())
+
+		debugoverlay.Sphere( ply:GetPos(), conVars.halo_radius:GetInt(), 8, Color( 255, 0, 0, 120 ), true )
+		
+		debugoverlay.Sphere( ply:GetPos(), halfDiagonal / 2, 8, Color( 0, 125, 255, 120 ), true )
 	end
 end)

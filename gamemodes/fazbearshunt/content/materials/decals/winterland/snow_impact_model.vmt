@@ -1,0 +1,16 @@
+VertexLitGeneric
+{
+	$basetexture "decals/winterland/snow_impact"
+
+	$translucent 1
+	$additive 1
+	$decal 1
+
+	$vertexcolor 1
+	$vertexalpha 1
+
+	$decalfadeduration 12
+	$decalfadetime 41
+	$decalscale 0.1
+	$modelmaterial "decals/winterland/snow_impact_model"
+}

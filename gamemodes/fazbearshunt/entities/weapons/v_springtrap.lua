@@ -153,7 +153,7 @@ function SWEP:DealDamage()
 
     if target:GetMoveType() == MOVETYPE_VPHYSICS then
         local owner = target:GetOwner()
-        if (not IsValid(owner)) or (IsValid(owner) and not owner:IsAnimatronic()) then
+        if (not IsValid(owner)) or (IsValid(owner) and owner:IsPlayer() and !owner:IsAnimatronic()) then
             local phys = target:GetPhysicsObject()
             if IsValid(phys) then
                 local dir = ply:GetAimVector()

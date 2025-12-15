@@ -65,8 +65,11 @@ function SWEP:PrimaryAttack()
 		animCount = math.max(animCount - 1, 1)
 	end
 
-	if animCount == 1 then
+	if animCount == 1 and fh.GetActiveUsedKiller("pill_springtrap") then
 		self:GetOwner():SendLua('LocalPlayer():ChatPrint(language.GetPhrase("weapon_killmask.nearby"))')
+		return
+	elseif isGameOn and !roundActive then
+		self:GetOwner():SendLua('LocalPlayer():ChatPrint(language.GetPhrase("weapon_killmask.wait"))')
 		return
 	end
 	
@@ -93,6 +96,7 @@ local dropWeaponry = {
 --	["weapon_defibrillator"] = true,
 	["weapon_fanta"] = true,
 	["weapon_fh_medkit"] = true,
+	["weapon_taser"] = true,
 }
 
 function SWEP:SpringLock()

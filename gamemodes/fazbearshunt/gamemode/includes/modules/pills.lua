@@ -26,7 +26,7 @@ end
 local forms = {}
 
 function register(name, t)
-    t.name = name
+    t.name = name:lower()
 
     if t.printName then
         table.insert(currentPack.items, {
@@ -137,7 +137,7 @@ end
 if SERVER then
     concommand.Add("pills_apply", function(ply, cmd, args, str)
 		if IsValid(ply) and !ply:IsAdmin() then return end
-        apply(args[1], args[2], "user", tonumber(args[3]))
+        apply(args[1], args[2], "user", tonumber(args[3]), ply)
     end)
 
     concommand.Add("pills_restore", function(ply, cmd, args, str)
@@ -180,15 +180,23 @@ if SERVER then
     function apply(ply, name, mode, option)
         if CLIENT then return end
 		
-		local found = false
-		for _, plyr in player.Iterator() do
-			if plyr:Nick() == ply then
-				ply = plyr
-				found = true
-				break
+		local pk_pill_trans = false
+		if isentity(ply) and ply:IsPlayer() then pk_pill_trans = true end
+		
+		if !pk_pill_trans then
+		
+			local found = false
+			for _, plyr in player.Iterator() do
+				if plyr:Nick() == ply then
+					ply = plyr
+					found = true
+					break
+				end
 			end
+			if not found then return end
 		end
-		if not found then return end
+		
+		name = name:lower()
 		
         t = forms[name]
 
@@ -290,7 +298,11 @@ function restore(ply, breakout)
     if IsValid(ent) then
 		unmapEnt(ply, ent)
 		
-        if SERVER then
+        if SERVER then			
+			if ent.formTable.restore then
+				ent.formTable.restore(ply, ent, ent.formTable)
+			end
+
 			ent.notDead = true
 			ent:Remove()
 			
@@ -467,8 +479,12 @@ if SERVER then
             if event == PLAYERANIMEVENT_JUMP and !ent.animFreeze and ply:GetJumpPower() > 0 then
 				if ply:GetJumpPower() > 0 then
 					ent:PillAnim("jump")
+			
+					ent:SetNextAnimThink(CurTime())
 				end
                 ent:DoJump()
+				ply._wereJumpingPill = true
+				ply._jumpPosPill = ply:GetPos()
             end
 
             if event == PLAYERANIMEVENT_ATTACK_PRIMARY then
@@ -493,12 +509,24 @@ if SERVER then
                 ent.formTable.land(ply, ent)
                 ent:PillSound("land", false)
             end
+			
+			ply._wereJumpingPill = nil
+			ply._jumpPosPill = nil
 
             if ent.formTable.noFallDamage or ent.formTable.type == "phys" then return true end
         end
     end)
 
     hook.Add("DoPlayerDeath", "pk_pill_death", function(ply)
+        if IsValid(getMappedEnt(ply)) then
+            if SERVER then
+				ply:SuppressRagdollSpawn()
+                getMappedEnt(ply):PillDie()
+            end
+        end
+    end)
+
+    hook.Add("PlayerSilentDeath", "pk_pill_death", function(ply)
         if IsValid(getMappedEnt(ply)) then
             if SERVER then
 				ply:SuppressRagdollSpawn()

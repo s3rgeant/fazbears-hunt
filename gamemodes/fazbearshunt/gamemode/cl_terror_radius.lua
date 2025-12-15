@@ -1,5 +1,7 @@
 local state = Persist("cl_terror_radius")
 
+terror_radius = terror_radius or {}
+
 -- это хуйня нужна чтобы локальные переменные сохранялись после перезапуска скриптов
 
 state.currentKillers = state.currentKillers or {}
@@ -172,7 +174,7 @@ function checkChase(ply, killer)
     local playerVisible = !ply:GetNoDraw() and ply:GetMaterial() ~= "models/null" and !IsValid(ply:GetPill()) 
 		or IsValid(ply:GetPill()) and ply:GetPill():GetMaterial() ~= "models/null" and !ply:GetPill():GetNoDraw()
     if distance < tr_ChaseKeep and isKillerLookingAt(ply, killer) and killerMoving and playerMoving and playerVisible and killer:GetMoveType() ~= MOVETYPE_NOCLIP then
-        isChasing[ply] = true
+        isChasing[ply] = killer
         if chaseTimers[ply] then
             timer.Remove(chaseTimers[ply])
             chaseTimers[ply] = nil
@@ -189,7 +191,7 @@ end
 
 local function getLayer(theme, layer)
 	if !theme or !layer then return end
-	if availableThemes[theme][layer] then
+	if availableThemes[theme] and availableThemes[theme][layer] then
 		return layer
 	end
 	return nil
@@ -237,7 +239,7 @@ if !timer.Exists("tr_update") then
 							if isChasing[ply] then
 								layer = "chase"
 								imChasing = true
-								if availableThemes[theme] and availableThemes[theme]["chase_low"] then
+								if getLayer("chase_low") then
 									if ply:Health() <= ply:GetMaxHealth() / 2 then
 										layer = "chase_low"
 									end
@@ -287,10 +289,10 @@ if !timer.Exists("tr_update") then
 
 					foundNoOne = false
 
-					if isChasing[myself] then
+					if isChasing[myself] == killer then
 						checkChase(myself, killer)
 						layer = "chase"
-						if availableThemes[theme] and availableThemes[theme]["chase_low"] then
+						if getLayer("chase_low") then
 							if myself:Health() <= myself:GetMaxHealth() / 2 then
 								layer = "chase_low"
 							end
@@ -308,11 +310,18 @@ if !timer.Exists("tr_update") then
 					if layer == (getLayer(theme, "third_layer") or getLayer(theme, "second_layer") or getLayer(theme, "first_layer")) and distance < tr_Close then
 						checkChase(myself, killer)
 					end
-
-			        local forceLayer = hook.Run("FH_HandleKillerTerrorLayers", killer, theme, layer)
+					
+					local forceLayer, forceNotFound = nil, nil
+			        forceLayer, forceNotFound = hook.Run("FH_HandleKillerTerrorLayers", killer, theme, layer)
 					
 					if forceLayer then
 						layer = forceLayer
+					end
+					
+					if forceNotFound then
+						layer = nil
+						foundNoOne = true
+						continue
 					end
 
 					closestGuyPos = distance
@@ -345,26 +354,31 @@ hook.Add("fh_postendgame", "tr_allow_tr_playing", function()
 end)
 
 local animatronicThemes = {
-    ["pill_wfoxy2"] = "springtrap",
-    ["pill_endo02"] = "springtrap",
-    ["pill_wbonnie2"] = "bonnie",
-    ["pill_wfreddy2"] = "freddy",
-    ["pill_wchica2"] = "springtrap",
-    ["pill_sfreddy2"] = "sfreddy",
-    ["pill_clown"] = "springtrap",
-    ["pill_springtrap"] = "springtrap",
-    ["pill_plushtrap"] = "springtrap",
-    ["pill_mangle"] = "springtrap",
-    ["mask"] = "mask",
-    ["bear5_main"] = "bear5",
+    ["pill_wfoxy2"] 		= "default",
+    ["pill_endo02"] 		= "default",
+    ["pill_wchica2"] 		= "default",
+    ["pill_clown"] 			= "default",
+    ["pill_springtrap"] 	= "default",
+    ["pill_plushtrap"] 		= "default",
+    ["pill_mangle"] 		= "default",
+	
+    ["pill_wfreddy2"] 		= "freddy",
+    ["pill_wbonnie2"] 		= "bonnie",
+    ["pill_sfreddy2"] 		= "sfreddy",
+	
+    ["mask"] 				= "mask",
+	
+    ["bear5_main"] 			= "bear5",
+    ["bearling5_main"] 		= "bear5",
 }
 
 local stealthAnims = {
-    ["pill_springtrap"] = true
+    ["pill_springtrap"] = true,
+    ["pill_toychica"] = true,
 }
 
 local stealth2Anims = {
-    ["pill_mangle"] = true
+    ["pill_mangle"] = true,
 }
 
 local function getThemeByName(name)
@@ -378,48 +392,59 @@ local function getThemeByName(name)
     return nil
 end
 
+function terror_radius.addTheme(name, theme)
+	if !name or !theme then return end
+	if animatronicThemes[name] then return end
+	
+	animatronicThemes[name] = theme
+end
+
+function terror_radius.setPlayerTheme(ply, theme)
+	if !ply or !theme or !ply:IsPlayer() then return end
+	
+	local selectedTheme = getThemeByName(theme)
+	if selectedTheme then
+		currentKillers[ply] = selectedTheme
+		if stealthAnims[theme] then
+			stealthKillers[ply] = true
+		elseif stealth2Anims[theme] then
+			stealthKillers2[ply] = true
+		end
+	end
+end
+
+function terror_radius.resetPlayerTheme(ply)
+	if !ply or !ply:IsPlayer() then return end
+	
+	if currentKillers[ply] then
+		currentKillers[ply] = nil
+		stealthKillers[ply] = nil
+		stealthKillers2[ply] = nil
+		everyoneKillers[ply] = nil
+	end
+end
+
 hook.Add("PillApply", "tr_apply_chase", function(ply, ent)
     if IsValid(ply) then
-        local name = ent.formTable and ent.formTable.name
-
-        local selectedTheme = getThemeByName(name)
-        if selectedTheme then
-            currentKillers[ply] = selectedTheme
-            if stealthAnims[name] then
-                stealthKillers[ply] = true
-			elseif stealth2Anims[name] then
-                stealthKillers2[ply] = true
-            end
-        end
+		local name = ent.formTable and ent.formTable.name
+	
+		terror_radius.setPlayerTheme(ply, name)
     end
 end)
 
 hook.Add("FH_KillerObsessed", "tr_apply_chase_maskkiller", function(ply)
     if IsValid(ply) then
-        local selectedTheme = getThemeByName("mask")
-        if selectedTheme then
-            currentKillers[ply] = selectedTheme
-        end
-        everyoneKillers[ply] = true
+		terror_radius.setPlayerTheme(ply, "mask")
+		everyoneKillers[ply] = true
     end
 end)
 
 hook.Add("FH_KillerLostObsession", "tr_restore_chase_maskkiller", function(ply)
-    if currentKillers[ply] then
-        currentKillers[ply] = nil
-        stealthKillers[ply] = nil
-        everyoneKillers[ply] = nil
-        stealthKillers2[ply] = nil
-    end
+    terror_radius.resetPlayerTheme(ply)
 end)
 
 hook.Add("PillRestore", "tr_restore_chase", function(ply)
-    if currentKillers[ply] then
-        currentKillers[ply] = nil
-        stealthKillers[ply] = nil
-        everyoneKillers[ply] = nil
-        stealthKillers2[ply] = nil
-    end
+    terror_radius.resetPlayerTheme(ply)
 end)
 
 function start_TR_Update()

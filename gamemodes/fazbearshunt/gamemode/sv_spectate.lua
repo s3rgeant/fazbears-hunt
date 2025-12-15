@@ -1,3 +1,49 @@
+playerObservers = playerObservers or {}
+
+local meta = FindMetaTable("Player")
+
+function meta:GetObservers()
+    return playerObservers[self] or {}
+end
+
+function meta:GetObserverCount()
+    if not playerObservers[self] then return 0 end
+    return #playerObservers[self]
+end
+
+local function AddObserver(target, ply)
+    if not IsValid(target) then return end
+    playerObservers[target] = playerObservers[target] or {}
+    table.insert(playerObservers[target], ply)
+end
+
+local function RemoveObserver(target, ply)
+    if not IsValid(target) then return end
+    local t = playerObservers[target]
+    if not t then return end
+    for i, v in ipairs(t) do
+        if v == ply then
+            table.remove(t, i)
+            break
+        end
+    end
+end
+
+local function UpdatePlayerObserver(ply, newTarget)
+    local old = ply._lastObsTarget
+    if old == newTarget then return end
+
+    if IsValid(old) then
+        RemoveObserver(old, ply)
+    end
+
+    if IsValid(newTarget) then
+        AddObserver(newTarget, ply)
+    end
+
+    ply._lastObsTarget = newTarget
+end
+
 function getPlrs(ply)
 	local entities = {}
 
@@ -42,6 +88,7 @@ local function cyclePlayers(ply, am)
 	if players[num]:IsPlayer() then
 		ply:SetupHands( players[num] )
 	end
+	UpdatePlayerObserver(ply, players[num])
 end
 
 hook.Add('PlayerDeathThink', 'fh_block_respawn', function(ply)
@@ -77,6 +124,7 @@ hook.Add( "KeyPress", "KEY_PRESS_SPECTATOR", function( ply, key )
 				ply:Spectate(OBS_MODE_ROAMING)
 			end
 			
+			UpdatePlayerObserver(ply, ply:GetObserverTarget())
 		elseif ( key == IN_ATTACK ) then
 			cyclePlayers(ply, 1)
 		elseif ( key == IN_ATTACK2 ) then
@@ -84,3 +132,32 @@ hook.Add( "KeyPress", "KEY_PRESS_SPECTATOR", function( ply, key )
 		end
 	end
 end )
+
+hook.Add("PlayerSpawn", "obs_clear_spawn", function(ply)
+    if IsValid(ply._lastObsTarget) then
+        RemoveObserver(ply._lastObsTarget, ply)
+    end
+    ply._lastObsTarget = nil
+end)
+
+hook.Add("PlayerDisconnected", "obs_clear_disconnect", function(ply)
+    if IsValid(ply._lastObsTarget) then
+        RemoveObserver(ply._lastObsTarget, ply)
+    end
+end)
+
+hook.Add("PlayerDeath", "obs_clear_death", function(ply)
+    if IsValid(ply._lastObsTarget) then
+        RemoveObserver(ply._lastObsTarget, ply)
+    end
+    ply._lastObsTarget = nil
+end)
+
+hook.Add("DoPlayerDeath", "obs_death", function(ply)
+    if ply:GetPill() and ply:GetObserverCount() > 0 then
+		for _, target in ipairs(ply:GetObservers()) do
+			target:UnSpectate()
+			target:Spectate(OBS_MODE_ROAMING)
+		end
+	end
+end)

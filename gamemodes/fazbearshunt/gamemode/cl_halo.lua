@@ -5,8 +5,9 @@ local visionSuccessSound = "vision_success.wav"
 local visionUnsuccessSound = "vision_unsuccess.wav"
 
 local affectedPlayers = {}
+local affectedPlayers_force = {}
 local animatronics = {}
-local teammates = teammates or {}
+local teammates = {}
 
 local fh_halo_teammates = CreateClientConVar('fh_halo_teammates', 1, true, false, 'Highlight Teammates? (Animatronics Only) Turn Off for Performance.', 0, 1)
 
@@ -18,69 +19,40 @@ net.Receive("NotifySpectators", function()
 	chat:AddText(Color( 255, 0, 0 ), player, Color( 180, 20, 20 ), ' ', language.GetPhrase("fuppr.highlight_specs"), ': ', Color( 170, 55, 50 ), table.concat(players, ", "))
 end)
 
-local target
-function addAffected(ply, duration)
+function addAffected(ply, duration, color, force)
 	local duration = duration or conVars.halo_time:GetFloat()
 	
-	if !table.HasValue(affectedPlayers, ply) then
-		table.insert(affectedPlayers, ply)
+	if !affectedPlayers[ply] or force then
+		affectedPlayers[ply] = color or Color(255,0,0)
 	end
 	
-	if timer.Exists( "RemoveAffectedPlayer"..ply:SteamID64() ) then
-		timer.Remove( "RemoveAffectedPlayer"..ply:SteamID64() )
+	if force then
+		affectedPlayers_force[ply] = true
 	end
-	
-	timer.Create( "RemoveAffectedPlayer"..ply:SteamID64(), duration, 1, function()
-		if ply == target then return end
-		table.RemoveByValue(affectedPlayers, ply)
-	end)
+end
+
+function removeAffected(ply, force)
+	if affectedPlayers[ply] and !affectedPlayers_force[ply] or force then
+		affectedPlayers[ply] = nil
+	end
 end
 
 net.Receive("AddAffectedPlayers", function()
     players = net.ReadTable()
 	duration = net.ReadFloat()
+	color = net.ReadColor()
 	
 	if duration <= 0 then duration = nil end
 	
 	for _, targetPlayer in ipairs(players) do
 		if IsValid(targetPlayer) then
-			addAffected(targetPlayer, duration)
+			addAffected(targetPlayer, duration, color)
 		end
 	end
-end)
-
-function fh_addpermanent_affected_freddy(ply)
-	if !table.HasValue(affectedPlayers, ply) then
-		table.insert(affectedPlayers, ply)
-	end
-	target = ply
-	toggleShadows(false)
-end
-
-function fh_add_affected_springtrap(ply)
-end
-
-function toggleShadows(bool)
-	if bool then
-		for _, ply in player.Iterator() do
-            player_renderer.Draw(ply)
-		end
-	else
-		for _, ply in player.Iterator() do
-			if ply ~= target and ply:Team() != 2701 then
-				player_renderer.NoDraw(ply)
-			end
-		end
-	end
-end
-
-net.Receive("fh_addaffected_stalk", function()
-	fh_addpermanent_affected_freddy(net.ReadEntity())
 end)
 
 net.Receive("fh_addaffected_springtrap", function()
 	local player = net.ReadEntity()
-	addAffected(player, 90)
 	
 	local starttime = CurTime()
 	
@@ -105,46 +77,12 @@ end)
 
 net.Receive("RemoveAffectedPlayer", function()
     targetPlayer = net.ReadEntity()
-	if table.HasValue(affectedPlayers, targetPlayer) then
-		table.RemoveByValue(affectedPlayers, targetPlayer)
-	end
-	
-	if targetPlayer == target then
-		target = nil
-		toggleShadows(true)
-	end
-end)
-
-net.Receive("fh_hl_animatronics", function()
-	for _, ply in ipairs(team.GetPlayers(2701)) do
-		if !table.HasValue(animatronics, ply) then
-			table.insert(animatronics, pills.getMappedEnt(ply))
-		end
-	end
-	surface.PlaySound("human_gift_vision.wav")
-	timer.Simple(30, function()
-		table.Empty(animatronics)
-	end)
-end)
-
-net.Receive("fh_hl_teammates", function()
-	if LocalPlayer():Team() == 2701 then
-		for _, ply in ipairs(team.GetPlayers(2701)) do
-			if !table.HasValue(teammates, ply) and ply ~= LocalPlayer() then
-				table.insert(teammates, pills.getMappedEnt(ply))
-			end
-		end
-	end
-end)
-
-net.Receive("fh_uhl_teammates", function()
-	table.Empty(teammates)
+	removeAffected(targetPlayer)
 end)
 
 net.Receive("fh_hl_badkid", function ()
 	local player = net.ReadEntity()
 	if LocalPlayer() ~= player and LocalPlayer():Team() == 2701 then
-		addAffected(player)
 		surface.PlaySound("vision_unbox_success.wav")
 	end
 	
@@ -261,18 +199,34 @@ net.Receive("ToggleHighlightSound", function()
     end
 end)
 
-hook.Add( "PreDrawHalos", "HaloDo", function()
+hook.Add( "PreDrawHalos", "fh_affected", function()
 	-- ДЛЯ АНИМАТРОНИКОВ
-
-	local affectedPlayersReal = {}
 	
-	for k, v in pairs(affectedPlayers) do
-		if v ~= LocalPlayer() and v:IsValid() and v:Health() > 0 and !v:IsInvisible() then
-			table.insert(affectedPlayersReal, v)
+	local coloredHalo = {}
+
+	for ply, color in pairs(affectedPlayers) do
+		if ply ~= LocalPlayer() and IsValid(ply) and ply:Health() > 0 and not ply:IsInvisible() then
+			local pos = ply:GetPos()
+			if pos:ToScreen().visible then
+				local key = ("%d_%d_%d"):format(color.r, color.g, color.b)
+
+				if not coloredHalo[key] then
+					coloredHalo[key] = {
+						color = color,
+						players = {}
+					}
+				end
+
+				table.insert(coloredHalo[key].players, ply)
+			end
 		end
 	end
 
-	halo.Add(affectedPlayersReal, Color(255, 0, 0, 255), 0.5, 0.5, 1, true, true)
+	for _, data in pairs(coloredHalo) do
+		local c = data.color
+		c.a = 255
+		halo.Add(data.players, c, 0.5, 0.5, 1, true, true)
+	end
 	
 	local lp = LocalPlayer()
 	
@@ -313,6 +267,70 @@ local teammateColor = Color(0, 255, 0)
 local enemyColor = Color(255, 155, 0)
 local outlineMaterial = Material("models/debug/debugwhite")
 
+local teammatesColors = {}
+
+hook.Add("HUDPaint", "fh_draw_affected", function()
+    cam.Start3D()
+        for v, color in pairs(affectedPlayers) do
+            if v ~= LocalPlayer() and v:IsValid() and v:Health() > 0 and !v:IsInvisible() then
+                v:DrawModel()
+            end
+        end
+    cam.End3D()
+
+	local affectedPlayersReal = {}
+	
+	for v, color in pairs(affectedPlayers) do
+		if v ~= LocalPlayer() and v:IsValid() and v:Health() > 0 and !v:IsInvisible() then
+			affectedPlayersReal[v] = color
+		end
+	end
+	draw_orbs(affectedPlayersReal)
+	
+	if fh_halo_teammates:GetBool() then 
+		if !table.IsEmpty(teammatesColors) then
+			draw_orbs(teammatesColors, nil, GetGlobal2Float("FarZ", 8000))
+		end
+	end
+end)
+
+net.Receive("fh_hl_animatronics", function()
+	for _, ply in ipairs(team.GetPlayers(2701)) do
+		if !table.HasValue(animatronics, ply) then
+			local ent = pills.getMappedEnt(ply)
+			table.insert(animatronics, ent)
+			teammatesColors[ent] = 0
+		end
+	end
+	surface.PlaySound("human_gift_vision.wav")
+	timer.Simple(30, function()
+		table.Empty(animatronics)
+		if !LocalPlayer():IsAnimatronic() then
+			table.Empty(teammatesColors)
+		end
+	end)
+end)
+
+net.Receive("fh_hl_teammates", function()
+	if LocalPlayer():Team() == 2701 then
+		for _, ply in ipairs(team.GetPlayers(2701)) do
+			local ent = pills.getMappedEnt(ply)
+			if ply ~= LocalPlayer() and IsValid(ent) then
+				teammatesColors[ent] = teammateColor
+			end
+			
+			if ply ~= LocalPlayer() then
+				teammates[ply] = ent
+			end
+		end
+	end
+end)
+
+net.Receive("fh_uhl_teammates", function()
+	table.Empty(teammatesColors)
+	table.Empty(teammates)
+end)
+
 hook.Add("PostDrawOpaqueRenderables", "fh_draw_teammates", function(depth, skybox, skybox3d )
     local ply = LocalPlayer()
     if not IsValid(ply) then return end
@@ -322,16 +340,21 @@ hook.Add("PostDrawOpaqueRenderables", "fh_draw_teammates", function(depth, skybo
 	local function drawAnimatronics(tbl, color)
 		local viewEntity = ply:GetViewEntity()
 		local eyePos = IsValid(viewEntity) and (viewEntity:IsPlayer() and viewEntity:EyePos() or viewEntity:GetPos() ) or ply:EyePos()
-		for _, ent in ipairs(tbl) do
+		for _, ent in pairs(tbl) do
 			if not IsValid(ent) or not ent.DrawModel then continue end
 			
-			local toScreen = ent:GetPos():ToScreen()
+			local pos = ent:GetPos()
+			local distance = pos:Distance(LocalPlayer():GetPos())
+			
+			if distance > GetGlobal2Float("FarZ", 8000) + 50 then continue end
+			
+			local toScreen = pos:ToScreen()
 			if toScreen.visible then
 				local trace = util.QuickTrace(eyePos, ent:WorldSpaceCenter() - eyePos, ply)
 				
 				local tr = util.TraceLine( {
 					start = eyePos,
-					endpos = ent:GetPos() + ent:OBBCenter(),
+					endpos = pos + ent:OBBCenter(),
 					filter = ply,
 					mask = MASK_SHOT_HULL,
 				} )
@@ -340,7 +363,6 @@ hook.Add("PostDrawOpaqueRenderables", "fh_draw_teammates", function(depth, skybo
 				
 				if ( !trace.Hit or entIsPill ) and !ent:IsInvisible() then continue end
 				
-				local pos = ent:GetPos()
 				local ang = ent:GetAngles()
 				
 				if !ent:IsInvisible() and pos:Distance(eyePos) < 250 then continue end
@@ -349,7 +371,7 @@ hook.Add("PostDrawOpaqueRenderables", "fh_draw_teammates", function(depth, skybo
 				local oldfogmode = render.GetFogMode()
 				render.FogMode( 0 )
 				
-				local clr = color or killers.getColor(ent:GetName())
+				local clr = color or killers.getColor(ent:GetPillName())
 				
 				render.SuppressEngineLighting(true)
 				render.SetColorModulation(clr.r / 255, clr.g / 255, clr.b / 255)
@@ -384,7 +406,7 @@ hook.Add("PostDrawOpaqueRenderables", "fh_draw_teammates", function(depth, skybo
 	end
 	
 	if !table.IsEmpty(animatronics) then
-		drawAnimatronics(animatronics, enemyColor)
+		drawAnimatronics(animatronics)
 	end
 end)
 
@@ -412,54 +434,92 @@ hook.Add("HUDPaint", "fh_cupcake_count_draw", function()
     end
 end)
 
-local target_orb = Material("vgui/target_orb.png", "noclamp smooth")
-local maxDistance = 1650
+local target_orb = Material("vgui/target_orb_color.png", "noclamp smooth")
 
-hook.Add("HUDPaint", "fh_draw_affected", function()
-    cam.Start3D()
-        for k, v in pairs(affectedPlayers) do
-            if v ~= LocalPlayer() and v:IsValid() and v:Health() > 0 and !v:IsInvisible() then
-                v:DrawModel()
-            end
-        end
-    cam.End3D()
-
-	local affectedPlayersReal = {}
-	
-	for k, v in pairs(affectedPlayers) do
-		if v ~= LocalPlayer() and v:IsValid() and v:Health() > 0 and !v:IsInvisible() then
-			table.insert(affectedPlayersReal, v)
-		end
-	end
-	draw_orbs(affectedPlayersReal)
-end)
-
-function draw_orbs(tbl, material)
-	local material = material or target_orb
+function draw_orbs(tbl, material, distance)
+    local material = material or target_orb
 
     local ply = LocalPlayer()
     if !IsValid(ply) or !ply:Alive() then return end
-	
+    
     local screenW, screenH = ScrW(), ScrH()
     local halfW, halfH = screenW / 2, screenH / 2
-    local textureSize = 64 / 2
+    local textureSize = 32
     
-    for _, target in ipairs(tbl) do
+    local maxDistance = distance or 1650
+
+    local overlap = {}
+
+    for target, color in pairs(tbl) do
         if IsValid(target) then
-			if target:IsPlayer() and (!target:Alive() or target:Team() == TEAM_SPECTATOR) then continue end
+            if target:IsPlayer() and (!target:Alive() or target:Team() == TEAM_SPECTATOR) then continue end
+
             local min, max = target:GetCollisionBounds()
             local targetPos = target:GetPos() + Vector(0, 0, (min.z + max.z) / 2)
             local screenPos = targetPos:ToScreen()
             local dist = ply:GetPos():Distance(target:GetPos())
             
             if dist > maxDistance then
-                local alpha = math.Clamp((dist - maxDistance) / 200, 0, 1) * 255 -- Плавное появление
+                local alpha = math.Clamp((dist - maxDistance) / 200, 0, 1) * 255
                 
-                -- ограничиваем координаты, чтобы текстура не уходила за границы экрана более чем на половину
                 local clampedX = math.Clamp(screenPos.x, textureSize, screenW - textureSize)
                 local clampedY = math.Clamp(screenPos.y, textureSize, screenH - textureSize)
                 
-                surface.SetDrawColor(255, 255, 255, alpha)
+                local ourColor = IsColor(color) and color:Copy() or Color(255,0,0,255)
+                ourColor.a = alpha
+
+                if target:GetClass() == "pill_costume" and killers.GetFullName(target:GetPillName()) and ply:IsAnimatronic() then
+                    
+                    local nickname = nil
+                    local name = killers.GetFullName(target:GetPillName())
+                    if IsValid(target:GetParent()) and target:GetParent():IsPlayer() then
+                        nickname = target:GetParent():Nick()
+                    end
+
+                    local pillMaterial = killers.GetAvatar(target:GetPillName())
+                    if pillMaterial then
+                        ourColor = Color(255,255,255, alpha)
+                    end
+
+                    local dir = (target:GetPos() - ply:GetPos())
+                    local ang = dir:Angle()
+                    local yaw = math.NormalizeAngle(ply:EyeAngles().y - ang.y) 
+
+                    local normalized = math.Clamp(yaw / 90, -1, 1)
+
+                    local maxOffset = 250
+                    local drawX = clampedX
+                    local drawY = clampedY
+
+                    local key = math.floor(normalized * 10)
+                    overlap[key] = (overlap[key] or 0) + 1
+
+                    local localShift = (overlap[key] - 1) * 64
+                    if normalized >= 0 then
+                        drawX = drawX + localShift
+                    else
+                        drawX = drawX - localShift 
+                    end
+
+                    surface.SetDrawColor(ourColor:Unpack())
+                    surface.SetMaterial(pillMaterial or material)
+                    surface.DrawTexturedRect(drawX - textureSize, drawY - textureSize, 64, 64)
+
+                    if nickname then
+                        draw.SimpleText(nickname, "SmallTextFont",
+                            drawX, drawY + 48, IsColor(color) and color or Color(255,255,255),
+                            TEXT_ALIGN_CENTER, TEXT_ALIGN_CENTER
+                        )
+                    end
+
+                    continue
+                end
+				
+                if target:GetClass() == "pill_costume" and killers.GetFullName(target:GetPillName()) and ply:IsSurvivor() then
+					local ourColor = IsColor(color) or killers.getColor(target:GetPillName())
+				end
+
+                surface.SetDrawColor(ourColor:Unpack())
                 surface.SetMaterial(material)
                 surface.DrawTexturedRect(clampedX - textureSize, clampedY - textureSize, 64, 64)
             end
@@ -467,17 +527,7 @@ function draw_orbs(tbl, material)
     end
 end
 
-hook.Add("PrePlayerDraw", "fh_stalker_pv", function(ply)
-	if target then
-		if (ply ~= target and ply:Team() != 2701) then
-			return true
-		end
-	end
-end)
-
 hook.Add("PostCleanupMap", "fh_cleanup_halo", function(ply)
-	target = nil
-	toggleShadows(true)
 	table.Empty(affectedPlayers)
 	
 	hook.Remove("HUDPaint", "fh_hl_overlay_draw")

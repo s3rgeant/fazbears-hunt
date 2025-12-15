@@ -1,3 +1,5 @@
+playerlist = playerlist or {}
+
 local scoreboardHeader = nil
 local customScoreboard = nil
 local anim_scrollPanel = nil
@@ -30,11 +32,42 @@ surface.CreateFont("bySergeantFont", { font = "Share Tech Mono Regular",
 
 nextTimeUpdate = 0
 
+local playerIcons = {}
+local iconsSet = {}
+function playerlist.AddIconSet(icon, texture, size, color)
+	if !iconsSet[icon] then
+		iconsSet[icon] = {
+			texture = texture,
+			size = size or 16,
+			color = color or Color(255,255,255)
+		}
+	end
+end
+
+function playerlist.SetPlayerIcon(steamid, icon)
+	if !iconsSet[icon] then
+		print("Failed to apply player ( " .. steamid .. " ) icon ( " .. icon .. " )")
+		return
+	end
+	
+	playerIcons[steamid] = icon
+end
+
+function playerlist.ResetPlayerIcon(steamid)
+	playerIcons[steamid] = nil
+end
+
+function playerlist.ResetIconSet(icon)
+	iconsSet[icon] = nil
+end
+
+playerlist.AddIconSet("boosty", "vgui/playerlist/icons/boosty.png", 16, Color(243,168,38))
+
 function GM:ScoreboardShow()
 	gui.EnableScreenClicker(true)
     if IsValid(customScoreboard) then
 		if CurTime() > nextTimeUpdate then
-			nextTimeCheck = CurTime() + 5
+			nextTimeUpdate = CurTime() + 5
 			
 			UpdatePlayerList(TEAM_SURVIVOR, surv_scrollPanel)
 			UpdatePlayerList(2701, anim_scrollPanel)
@@ -252,8 +285,10 @@ function GM:ScoreboardShow()
 end
 
 local function CreatePlayerPanel(scrollbar, ply)
+	local panel_height = 32
+	
 	local plyPanel = scrollbar:Add("DPanel")
-	plyPanel:SetSize(0, 32)
+	plyPanel:SetSize(0, panel_height)
 	plyPanel:Dock(TOP)
 	plyPanel:DockMargin(16, 0, 16, 5)
 	
@@ -356,22 +391,29 @@ local function CreatePlayerPanel(scrollbar, ply)
 	local clr = Color(255,255,255)
 	local name_x = 28
 	local sub_name_val = 0
-
-	if table.HasValue(boosters, ply:SteamID64()) then
-		clr = Color(243, 168, 38)
-		name_x = 48
-
-		local boosty = vgui.Create( "DImage", plyPanel )
-		boosty:SetSize( 14, 16 )
-		boosty:SetPos( 36, 8 )
-		boosty:SetImage("vgui/playerlist/icons/boosty.png")
-		sub_name_val = 2
+	
+	if playerIcons[ply:SteamID64()] then
+		local icon = playerIcons[ply:SteamID64()]
+		
+		if iconsSet[icon] then
+			local texture = iconsSet[icon].texture
+			local size = iconsSet[icon].size
+			local color = iconsSet[icon].color
+			
+			clr = color
+			
+			local icon = vgui.Create( "DImage", plyPanel )
+			icon:SetSize( size, size )
+			icon:SetPos( 36, (panel_height/2) - (size/2) )
+			icon:SetImage(texture)
+			
+			name_x = name_x + size
+			sub_name_val = math.ceil( size / 8 )
+		end
 	end
 	
 	if ply:Team() == TEAM_SPECTATOR then
-	
 		clr = Color(120,120,120)
-	
 	end
 
 	local nameLabel = vgui.Create("DLabel", plyPanel)
@@ -616,18 +658,27 @@ local function CreateAnimatronicPanel(scrollbar, ply, killerData)
 	end
 	
 	local clr = Color(255,255,255)
-	local name_x = 32
-	local sub_name_val = 1
-
-	if table.HasValue(boosters, ply:SteamID64()) then
-		clr = Color(243, 168, 38)
-		name_x = 52
-
-		local boosty = vgui.Create( "DImage", plyPanel )
-		boosty:SetSize( 14, 16 )
-		boosty:SetPos( 40, panel_height / 2 - (16 / 2) )
-		boosty:SetImage("vgui/playerlist/icons/boosty.png")
-		sub_name_val = 3
+	local name_x = 28
+	local sub_name_val = 0
+	
+	if playerIcons[ply:SteamID64()] then
+		local icon = playerIcons[ply:SteamID64()]
+		
+		if iconsSet[icon] then
+			local texture = iconsSet[icon].texture
+			local size = iconsSet[icon].size
+			local color = iconsSet[icon].color
+			
+			clr = color
+			
+			local icon = vgui.Create( "DImage", plyPanel )
+			icon:SetSize( size, size )
+			icon:SetPos( 36, (panel_height/2) - (size/2) )
+			icon:SetImage(texture)
+			
+			name_x = name_x + size
+			sub_name_val = math.ceil( size / 8 )
+		end
 	end
 
 	local nameLabel = vgui.Create("DLabel", plyPanel)
@@ -750,9 +801,14 @@ hook.Add("player_disconnect", "fh_playerlist_update_disconnect", function()
     end
 end)
 
+local function apply_boosters()
+	for _, v in ipairs(boosters) do
+		playerlist.SetPlayerIcon(v, "boosty")
+	end
+end
+
 local function get_boosters()
     http.Fetch( "https://raw.githubusercontent.com/s3rgeant/fazbearshunt_docs/refs/heads/main/boosty",
-		
 		-- onSuccess function
 		function( body, length, headers, code )
 			for line in string.gmatch(body, "[^\n]+") do
@@ -761,8 +817,8 @@ local function get_boosters()
 					table.insert(boosters, num)
 				end
 			end
+			apply_boosters()
 		end,
-	
 		-- onFailure function
 		function( message )
 			print("[FH] Failed AGAIN to fetch boosty data base :(")
@@ -781,6 +837,7 @@ hook.Add( "InitPostEntity", "fh_get_boosters", function()
 					table.insert(boosters, num)
 				end
 			end
+			apply_boosters()
 		end,
 	
 		-- onFailure function
@@ -792,4 +849,4 @@ hook.Add( "InitPostEntity", "fh_get_boosters", function()
 			end)
 		end
 	)
-end )
+end)

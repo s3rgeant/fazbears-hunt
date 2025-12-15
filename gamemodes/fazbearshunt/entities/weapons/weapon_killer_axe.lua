@@ -85,7 +85,9 @@ local PushSound_pills = {
 function SWEP:DealDamage()
 	local ply = self.Owner
 
-	ply:LagCompensation(true)
+	if !IsValid( ply:GetNWEntity("MyEndoGrabber") ) then
+		ply:LagCompensation(true)
+	end
 		
 	self.Owner:ViewPunch(Angle(1,-3,0))
 
@@ -312,7 +314,7 @@ if CLIENT then
 					if IsValid(ent) and ent.formTable.name == "pill_wgfreddy2" and !owner:GetNW2Bool("_OUTWORLD_target") then continue end
 					
 					if !IsValid(ent) then ent = ply end
-					table.insert(nearPlayers, ent)
+					nearPlayers[ent] = ent
 				end
 			end
 			halo.Add(nearPlayers, Color(255, 0, 0), 1, 1, 2, true, true)
@@ -336,7 +338,7 @@ if CLIENT then
 					if IsValid(ent) and ent.formTable.name == "pill_wgfreddy2" and !owner:GetNW2Bool("_OUTWORLD_target") then continue end
 					
 					if !IsValid(ent) then ent = ply end
-					table.insert(nearPlayers, ent)
+					nearPlayers[ent] = true
 				end
 			end
 			draw_orbs(nearPlayers)
@@ -387,7 +389,7 @@ hook.Add( "fh_animatronic_post_break_prop", "fh_anims_fight_axe_owner", function
 		target:TakeDamageInfo( dmginfo )
 		SuppressHostEvents( ply )
 		if IsValid(wep) then
-			wep:PlayCustomAnimation("ACT_SPECIAL_ATTACK1", 0.8)
+			wep:HandleAnimation("attack", 0.8)
 		end
 		
 		ent:PillGesture('melee', 2, 1, 0.1, 0.7)
@@ -483,7 +485,7 @@ end)
 
 hook.Add( "EntityTakeDamage", "EntityDamageExample", function( target, dmginfo )
 	if target:IsPlayer() and target:GetNW2Bool("KillerObsessed") then
-		dmginfo:SetDamage( math.random(4,6) )
+		dmginfo:SetDamage( math.min(dmginfo:GetDamage(), math.random(4,6) ) )
 	end
 	if target:IsPlayer() and target:IsSurvivor() and IsValid(dmginfo:GetAttacker()) and dmginfo:GetAttacker():GetNW2Bool("KillerObsessed") then
 		dmginfo:SetDamage( math.min(dmginfo:GetDamage(), 30) )

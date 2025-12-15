@@ -39,7 +39,7 @@ function ENT:Initialize()
 		scaleHull = self.formTable.modelScale
 	end
     local hull = (self.formTable.hull or Vector(32, 32, 72)) / scaleHull
-    local duckBy = self.formTable.duckBy or (self.formTable.hull and 0 or 36)
+    local duckBy = (self.formTable.duckBy or (self.formTable.hull and 0 or 36)) / scaleHull
     ply:SetHull(-Vector(hull.x / 2, hull.y / 2, 0), Vector(hull.x / 2, hull.y / 2, hull.z))
     ply:SetHullDuck(-Vector(hull.x / 2, hull.y / 2, 0), Vector(hull.x / 2, hull.y / 2, hull.z - duckBy or 0))
 	ply:SetMaterial("models/null")
@@ -119,7 +119,7 @@ function ENT:Initialize()
         --clside this?
         ply:SetStepSize((self.formTable.stepSize or (hull.z / 4)) * scaleHull)
         ply:SetViewOffset(camOffset)
-        ply:SetViewOffsetDucked(camOffset - Vector(0, 0, duckBy))
+        ply:SetViewOffsetDucked(camOffset - Vector(0, 0, duckBy * scaleHull))
         local speed = self.formTable.moveSpeed or {}
         ply:SetWalkSpeed(speed.walk or 200)
 		ply:SetSlowWalkSpeed(speed.walk or 200)
@@ -261,7 +261,7 @@ function ENT:Initialize()
             self:SetMaterial(self.formTable.visMat)
         end
 
-        if bodyGroups then
+        if bodyGroups and istable(bodyGroups) then
 			for k, v in pairs(bodyGroups) do
 				if isnumber(k) then
 					self:SetBodygroup(k, v)
@@ -321,7 +321,7 @@ function ENT:OnRemove()
 
     -- compatibility
     if self.formTable.onRemove then
-        self.formTable.onRemove(self, self.formTable)
+        self.formTable.onRemove(self, self.formTable, ply)
     end
 
     if SERVER then
@@ -331,14 +331,7 @@ function ENT:OnRemove()
     local newType, newName = pills.unmapEnt(self:GetPillUser(), self)
 
     if newType ~= "ply" and IsValid(ply) then
-		if SERVER then
-			if newName ~= self.formTable.name and self.formTable.restore then
-				self.formTable.restore(ply, self, self.formTable)
-			end
-		end
-		
         ply:ResetHull()
-
 		hook.Run("PillRestore", ply, self)
     end
 end
@@ -730,9 +723,15 @@ function ENT:PillSound(name, bulk)
         if bulk then
             sound.Play(s, self:GetPos(), self.formTable.sounds[name .. "_level"] or (name == "step" and 75 or 75), self.formTable.sounds[name .. "_pitch"] or 100, 1)
         else
+			local rf = RecipientFilter()
+			rf:AddAllPlayers()
+			
 			local recipients = hook.Run("PillSound", self:GetPillUser(), self, name)
+			if recipients then
+				rf:RemovePlayers(recipients)
+			end
 		
-            self:GetPillUser():EmitSound(s, self.formTable.sounds[name .. "_level"] or 75, self.formTable.sounds[name .. "_pitch"] or 100, 1, CHAN_AUTO, 0, 0, recipients or nil)
+            self:GetPillUser():EmitSound(s, self.formTable.sounds[name .. "_level"] or 75, self.formTable.sounds[name .. "_pitch"] or 100, 1, CHAN_AUTO, 0, 0, rf)
         end
 
         return true
@@ -877,12 +876,8 @@ function ENT:OnRestore()
 	end
 end
 
-function ENT:GetName()
-	local name = self.formTable.name
-	if name then
-		return name
-	end
-	return ""
+function ENT:GetPillName()
+	return self.formTable.name
 end
 
 function ENT:SetDefaultSpeed()
@@ -992,7 +987,7 @@ hook.Add("PrePlayerDraw", "fh_pill_costume_mirrors", function(ply)
                 end
             end
 
-            if bodyGroups then
+            if bodyGroups and istable(bodyGroups) then
                 for k, v in pairs(bodyGroups) do
                     if isnumber(k) then
                         m:SetBodygroup(k, v)

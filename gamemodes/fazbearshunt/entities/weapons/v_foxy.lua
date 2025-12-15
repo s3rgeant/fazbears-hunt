@@ -41,6 +41,7 @@ function SWEP:SetupAnimations()
 	self:AddAnimation("draw")
 	self:AddAnimation("preattack")
 	self:AddAnimation("attack")
+	self:AddAnimation("laugh")
 end
 
 function SWEP:PrimaryAttack()
@@ -140,6 +141,9 @@ function SWEP:DealDamage()
 	
 	if !IsValid(target) then 
 		ply:LagCompensation(false)
+		if SERVER then
+			playVoiceline('foxy', 'miss', ply, 0.8)
+		end
 		return 
 	end
 	
@@ -262,7 +266,7 @@ if CLIENT then
         local ply = self.Owner
         if not IsValid(ply) then return EyePos, EyeAng end
 		
-        local target = (ply:Crouching() and ply:OnGround()) and 1 or 0
+        local target = (self:GetSequenceName(self:GetSequence()):match("crouch") == "crouch") and 1 or 0
         crouchFactor = Lerp(FrameTime() * 5, crouchFactor, target)
 
         local newPitch = Lerp(crouchFactor, EyeAng.p, 0)

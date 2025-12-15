@@ -22,8 +22,8 @@ SWEP.HitDelay = 0.8	-- через сколько удар будет произ�
 SWEP.ChargeStartTime = 0 -- время начала удержания ЛКМ
 
 SWEP.HitSize = {
-	Min = Vector( -13, -13, -24 ),
-	Max = Vector( 13, 13, 16 )
+	Min = Vector( -18, -18, -24 ),
+	Max = Vector( 18, 18, 16 )
 }
 
 function SWEP:SetupDataTables()

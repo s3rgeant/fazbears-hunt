@@ -1,0 +1,25 @@
+VertexLitGeneric
+{
+	$basetexture "models/ufmp\FNAF1\fox4/gold"
+	$bumpmap "models/ufmp/flat"
+	$surfaceprop Metal
+
+	$nocull 1
+
+	$phong 1
+	$phongfresnelranges "[0.05 0.5 1]"
+	$phongwarptexture "models/ufmp\FNAF1\fox4/white"
+                $phongtint "[0 0.26 0.02]"
+	$halflambert 1
+	$phongalbedotint 1
+	$phongexponent 4
+	$phongboost 2
+
+	$nodecal 1
+
+	$color "0"
+$ambientocclusion 0
+
+	$diffuseexp 1.5
+	$model 1
+}

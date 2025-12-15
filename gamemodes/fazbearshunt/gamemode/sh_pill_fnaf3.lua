@@ -9,7 +9,7 @@ if SERVER then
 	util.AddNetworkString("fh_sel_menu_close")
 	
 	util.AddNetworkString("dead_pt_request_start")
-	util.AddNetworkString("dead_pt_request_stop")
+	util.AddNetworkString("client_requset_stop")
 	
 	util.AddNetworkString("fh_plushalert_inrange")
 	util.AddNetworkString("fh_plushalert_outrange")
@@ -158,7 +158,6 @@ pills.register("pill_clown",{
 	end,
 
 	reload=function(ply,ent)
-		if ply.lobbyFreeze != nil and ply.lobbyFreeze then return end
 		highlight.ByDistance(ply, ent)
 	end,
 	
@@ -203,9 +202,12 @@ pills.register("pill_springtrap",{
 		["halloween"] = {
 			skin=2,
 			bodyGroups = { [24] = 1 },
-		}
+		},
+		["christmas"] = {
+			bodyGroups = { [25] = 1 },
+		},
 	} end,
-	option=IsHalloween() and "halloween" or "default",
+	option=IsHalloween() and "halloween" or IsChristmas() and "christmas" or "default",
 	--[[
 	bodyGroups=IsHalloween() and {[24] = 1} or {},
 	boneMorphs={
@@ -229,13 +231,17 @@ pills.register("pill_springtrap",{
 			land="land",
 			jump="jump",
 			glide="glide",
+			
 			summon="summon",
 			swing="preattack",
 			attack="attack",
+			
 			turnleft="turnleft",
 			turnright="turnright",
+			
 			crouch="crouchidle",
 			crouch_walk="crouch",
+			
 			egypt="egypt",
 			stun="stun",
 		},
@@ -366,8 +372,6 @@ pills.register("pill_springtrap",{
 		mode="trigger",
 		func=function(ply,ent)
 			if !timer.Exists( "EndGameTimer" ) then return end
-			
-			if ply.lobbyFreeze != nil and ply.lobbyFreeze or ply.tasered then return end
 		
 			if !ply:OnGround() or IsValid(pt_request_springtrap_ply) or IsValid(request_plushtrap) then return end
 	
@@ -402,7 +406,7 @@ pills.register("pill_springtrap",{
 							
 							if table.Count(spectators) > 0 then
 								for _,v in ipairs( spectators ) do
-									net.Start("dead_pt_request_stop")
+									net.Start("client_requset_stop")
 									net.Send(v)
 								end
 							end
@@ -467,7 +471,7 @@ pills.register("pill_springtrap",{
 				
 				if table.Count(spectators) > 0 then
 					for _,v in ipairs( spectators ) do
-						net.Start("dead_pt_request_stop")
+						net.Start("client_requset_stop")
 						net.Send(v)
 					end
 				end
@@ -489,17 +493,17 @@ pills.register("pill_springtrap",{
 	land=function(ply,ent)
 		if ply.tasered then return end
 		
-		if ply:WaterLevel() < 2 and ply:GetVelocity().z < -160 then
-			ent:PillAnim("land",true)
-			return
+		if ply:WaterLevel() < 2 then
+			if ply._wereJumpingPill or !ply._wereJumpingPill and ply:GetVelocity().z < -270 then
+				if !ply._jumpPosPill or ply._jumpPosPill and ply:GetPos():Distance(ply._jumpPosPill) > 150 then
+					ent:PillAnim("land",true)
+				end
+			end
 		end
 	end,
 	jump=function(ply,ent)
 		ent:PillSound("jump",false)
 	end,
-	
-	restore=function(ply,ent, formtable)
-	end
 })
 
 function kill_plushtrap(ply)
@@ -525,7 +529,7 @@ function successRage(ply, ent, target)
 	spring_rage_movement[3], 
 	spring_rage_movement[4])
 	
-	table.insert(affectedPlayers, target)
+	highlight.Add( ply, {target}, 90, Color(66,150,0) )
 	
 	net.Start('fh_addaffected_springtrap')
 	net.WriteEntity(target)
@@ -583,7 +587,7 @@ plushtrap_visionrange = CreateConVar( "fh_plushtrap_highlight_range", "2200", { 
 
 --PLUSHTRAP
 
-local pt_speed_normal = {450,200,190}
+local pt_speed_normal = {450,200,210}
 local pt_speed_slowed = {410,150,0}
 
 pills.register("pill_plushtrap",{
@@ -791,7 +795,7 @@ function plushtrap_request_complete(springtrap, ply)
 	
 	if !table.IsEmpty(spectators) then
 		for _,v in ipairs( spectators ) do
-			net.Start("dead_pt_request_stop")
+			net.Start("client_requset_stop")
 			net.Send(v)
 		end
 	end

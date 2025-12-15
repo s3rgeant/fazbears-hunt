@@ -11,7 +11,7 @@ local function fh_default_check_scarysound()
     local eyeAngles = myself:EyeAngles()
     local forward = eyeAngles:Forward()
 
-    local viewRadius = 125
+    local viewRadius = 1250
 	
 	if !myself:Alive() or myself:Team() == TEAM_SPECTATOR then return end
 
@@ -45,8 +45,8 @@ local function fh_default_check_scarysound()
                         local trace = util.TraceLine({
                             start = eyePos,
                             endpos = plyPos,
-                            filter = {myself,ply},
-                            mask = MASK_VISIBLE
+							filter = {ply, myself},
+                            mask = MASK_BLOCKLOS_AND_NPCS,
                         })
 
                         local canSee = false
@@ -186,7 +186,7 @@ local function fh_gfreddy_check_scarysound()
 			start = eyePos,
 			endpos = pos,
 			filter = {myself, targetPlayer, ent},
-			mask = MASK_VISIBLE
+			mask = MASK_BLOCKLOS_AND_NPCS
 		})
 
 		return (not trace.Hit) and (angle <= fov), distance
@@ -220,8 +220,6 @@ local function fh_gfreddy_check_scarysound()
 					chan:Play()
 					progressSoundChannel = chan
 					progressStartTime = CurTime()
-					
-					scareImmunityUntil = CurTime() + 1
 				end
 			end)
 			
@@ -245,8 +243,8 @@ local function fh_gfreddy_check_scarysound()
 				local newAng = currentAngle + Angle(diff.p * magnetStrength, diff.y * magnetStrength, 0)
 				cmd:SetViewAngles(newAng)
 			end)
-
-			scareImmunityUntil = CurTime() + 0.1
+					
+			scareImmunityUntil = CurTime() + 1
 		end
 
 		if IsValid(progressSoundChannel) and CurTime() - progressStartTime >= progressDuration then
@@ -264,7 +262,7 @@ local function fh_gfreddy_check_scarysound()
 			
 			magnetStrength = 0.1
 			
-			scareImmunityUntil = CurTime() + 1
+			scareImmunityUntil = CurTime() + 8
 		end
 	else
 		stopScareProgress()
@@ -286,7 +284,6 @@ end)
 
 net.Receive("fh_net_wgfreddy_scarysound", function()
 	local can = net.ReadBool()
-	local ply = net.ReadEntity()
 	if can then
 		goldunfreda = true
 		hook.Add("Think", "fh_scarysound", fh_gfreddy_check_scarysound)

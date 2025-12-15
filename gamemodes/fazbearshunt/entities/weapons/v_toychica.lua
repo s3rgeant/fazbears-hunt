@@ -1,0 +1,50 @@
+SWEP.PrintName = "Toy Chica SWEP"
+
+SWEP.Base = "v_base"
+
+if CLIENT then
+	local vfov = CreateClientConVar('cl_fov_toychica', 100, true, false, 'Fov of Chica')
+	SWEP.ViewModelFOV = vfov:GetFloat() or 100
+    
+    cvars.AddChangeCallback("cl_fov_toychica", function(name, old_value, new_value)
+		local wep = LocalPlayer():GetActiveWeapon()
+		if IsValid(wep) and string.StartWith(wep:GetClass(), "v_") then
+			wep.ViewModelFOV = tonumber(new_value) or 100
+		end
+    end)
+end
+
+SWEP.ViewModel = "models/ufmp/fnaf2/toys/vm/toychica.mdl"
+
+function SWEP:SetupAnimations()
+	self:AddAnimation("draw")
+	self:AddAnimation("attack")
+end
+
+if CLIENT then
+    local crouchFactor = 0
+
+    function SWEP:CalcViewModelView(ViewModel, OldEyePos, OldEyeAng, EyePos, EyeAng)
+        local ply = self.Owner
+        if not IsValid(ply) then return EyePos, EyeAng end
+		
+        local target = (self:GetSequenceName(self:GetSequence()):match("hold") == "hold") and 1 or 0
+        crouchFactor = Lerp(FrameTime() * 5, crouchFactor, target)
+
+        local newPitch = Lerp(crouchFactor, EyeAng.p, 15)
+        EyeAng.p = newPitch
+		
+		local pillAngleY = ply:GetPill():GetAngles().y
+		
+		if pillAngleY > 180 then
+			pillAngleY = pillAngleY - 360
+		elseif pillAngleY < -180 then
+			pillAngleY = pillAngleY + 360
+		end
+
+        local newYaw = Lerp(crouchFactor, EyeAng.y, pillAngleY)
+        EyeAng.y = newYaw
+
+        return EyePos, EyeAng
+    end
+end

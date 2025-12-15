@@ -124,6 +124,7 @@ roundEnding = roundEnding or false -- концовка раунда
 	0 - обыкновенный раунд
 	1 - спрингтрап
 	2 - бонни-тэг
+	3 - bear5
 ]]--
 local roundType = roundType or 0
 
@@ -132,7 +133,7 @@ survivors = survivors or {}
 
 usedKillers = {}
 
-disallowTime = disallowTime or 0
+forceAnimSelectTime = forceAnimSelectTime or 0
 function assignKillers()
     local players = player.GetAll()
     local totalPlayers = #players
@@ -150,17 +151,14 @@ function assignKillers()
         curMaxKillers = 1
     end
 	
-    local availableKillers = table.GetKeys(killers.getAllPreferables(curMaxKillers > 1))
-	
 	if totalPlayers == 0 or !players then return end
 	
+    local availableKillers = table.GetKeys(killers.getAllPreferables(curMaxKillers > 1))
+	
     for i = 1, curMaxKillers do
-		if table.IsEmpty(players) then
-			players = player.GetAll()
-		end
 		local killers = fh.GetEarnedKillers(players)
 		
-		local chosenPlayer = fh.randomChoice(killers)
+		local chosenPlayer = killers[1]
 		table.RemoveByValue(players, chosenPlayer)
 		
 		animatronics[chosenPlayer] = true
@@ -176,7 +174,7 @@ function assignKillers()
 		end
     end
 	
-	disallowTime = CurTime() + 60
+	forceAnimSelectTime = CurTime() + 60
 	
 	for v, _ in pairs(curKillers) do
 		net.Start("fh_let_killers_choose")
@@ -186,13 +184,13 @@ function assignKillers()
 end
 
 hook.Add("Think", "fh_disallow_killers_choose", function()
-	if disallowTime > 0 and CurTime() >= disallowTime and isGameOn then
+	if forceAnimSelectTime > 0 and CurTime() >= forceAnimSelectTime and isGameOn then
 		for ply, _ in pairs(animatronics) do
 			if IsValid(ply) and not IsValid(ply:GetPill()) then
 				giveRandomKiller(ply, true)
 			end
 		end
-		disallowTime = 0
+		forceAnimSelectTime = 0
 	end
 end)
 
@@ -213,6 +211,12 @@ function freezeAnimatronics(duration)
 		hook.Run("fh_poststartgame", roundType, animatronics)
     end)
 end
+
+hook.Add("fh_poststartgame", "gifts_spawning", function(pusher, victim)
+	if conVars.fh_gifts_spawning:GetBool() then
+		doGiftSpawning()
+	end
+end)
 
 hook.Add("ShouldPlayerPush", "fh_push_management", function(pusher, victim)
 	if victim.lobbyFreeze then
@@ -275,7 +279,6 @@ function giveKiller(ply, killer, force)
 	if !killerData then return end
 
     net.Start("KillerPicked")
-    net.WriteUInt(1, 8)
     net.WriteString(ply:Nick())
     net.WriteString(killerData.fullname)
     net.WriteColor(killerData.color)
@@ -342,64 +345,6 @@ function endRound(killerVictory, duration)
 		timer.Remove("EndGameTimer")
 	end
 	
-	if killerVictory then
-		local win_camera = ents.FindByClass("fh_win_camera")[1]
-		local win_location = ents.FindByClass("info_killer_win")[1]
-		local springtrap_ply = usedKillers["pill_springtrap"]
-				
-		if IsValid(win_location) and IsValid(win_camera) then
-			
-			if roundType == 1 and springtrap_ply then
-					
-				hook.Add("SetupPlayerVisibility", "fh_pvs_wincamera", function(ply, viewent)
-					if !IsValid(win_camera) then
-						hook.Remove("SetupPlayerVisibility", "fh_pvs_wincamera")
-						return
-					end
-					AddOriginToPVS(win_camera:GetPos())
-				end)
-				
-				timer.Simple(0.5, function()
-					for _, p in player.Iterator() do
-						p:ScreenFade( SCREENFADE.OUT, Color( 0, 0, 0, 255 ), 0.5, 0 )
-					end
-				end)
-				
-				timer.Simple(1, function()
-					local ent = pills.getMappedEnt(springtrap_ply)
-					
-					springtrap_ply:SetPos(win_location:GetPos())
-					springtrap_ply:SetEyeAngles(win_location:GetAngles())
-					springtrap_ply:SetRenderAngles(win_location:GetAngles())
-					ent:SetUseForceAngles(true)
-					ent:SetForceAngles(win_location:GetAngles())
-					
-					for _, p in player.Iterator() do
-						p:SetViewEntity(win_camera)
-						p:SetFOV(65, 2)
-						
-						p:ScreenFade( SCREENFADE.IN, Color( 0, 0, 0, 255 ), 1, 0 )
-					end
-					
-					net.Start("fh_play_sound")
-					net.WriteString("#music/rampage.wav")
-					net.Broadcast()
-					
-					timer.Simple(0.01, function()
-						ent:PillAnim("egypt", true)
-						springtrap_ply:Lock()
-						ent.animLoop = true
-						
-						-- ну ещё раз на всякий
-						springtrap_ply:SetEyeAngles(win_location:GetAngles())
-						springtrap_ply:SetRenderAngles(win_location:GetAngles())
-						ent:SetAngles(win_location:GetAngles())
-					end)
-				end)
-			end
-		end
-	end
-	
 	hook.Run("fh_postendgame", killerVictory, animatronics)
 	
 	timer.Create("endGameWait", duration, 1, function() 
@@ -413,7 +358,7 @@ function endGame()
 	SetGlobal2Bool("roundActive", false)
 	roundActive = false
 	
-	disallowTime = 0
+	forceAnimSelectTime = 0
 	table.Empty(usedKillers)
 	
 	for _, ply in player.Iterator() do
@@ -477,10 +422,6 @@ function startGame(forceid)
 	
 	if timer.Exists("endGameWait") then
 		timer.Remove("endGameWait")
-	end
-	
-	if conVars.fh_gifts_spawning:GetBool() then
-		doGiftSpawning()
 	end
 	
 	for _, ply in ipairs(players) do
@@ -591,35 +532,14 @@ function restoreAnimatronic(ply)
 	pills.restore(ply:Nick(), true)
 	animatronics[ply] = nil
 	survivors[ply] = true
-end
-
-function GetGiftSpawnInterval()
-	local def1 = 80
-	local def2 = 98
-	
-	local count = math.min(team.NumPlayers(TEAM_SURVIVOR) or 1, 20)
-	
-	def1 = def1 + (count * ( 0.15 * count ) )
-	def2 = def2 + (count * ( 0.175 * count ) )
-	
-	return def1, def2
-end
-
-function GetGiftSpawnChance()
-	local def = 95
-	
-	local count = math.min(team.NumPlayers(TEAM_SURVIVOR) or 1, 5)
-	
-	def = def - math.min(count * 1.2, 25)
-	
-	return def
+	ply:SetTeam(TEAM_SURVIVOR)
 end
 
 function doGiftSpawning()
 	if timer.Exists('RandomGifts') then return end
-	timer.Create("RandomGifts", fh_random_time( GetGiftSpawnInterval() ), 0, function()
+	timer.Create("RandomGifts", 120, 0, function()
 		SpawnGifts()
-		timer.Adjust("RandomGifts", fh_random_time( GetGiftSpawnInterval() ), nil, nil)
+		timer.Adjust("RandomGifts", 120)
 	end)
 end
 
@@ -634,14 +554,14 @@ function SpawnGifts()
 	end
 	
 	for ply, _ in pairs(survivors) do
-		if math.random(1, 100) <= GetGiftSpawnChance() and (ply:Alive() and ply:Team() != TEAM_SPECTATOR) then
+		if ply:Alive() and ply:Team() ~= TEAM_SPECTATOR then
 			local FH_ShouldPlayerReceiveGifts = hook.Run("FH_ShouldPlayerReceiveGifts", ply)
 			
 			if FH_ShouldPlayerReceiveGifts == false then continue end
 			
 			if ply:GetGiftOwnership() then continue end
 			
-			timer.Simple(util.SharedRandom( math.random(-100,100), 1, 12 ), function()
+			timer.Simple(math.random(10,100) / 10, function()
 				if !IsValid(ply) or !ply:IsSurvivor() then return end
 				local gift = ents.Create("fh_gift")
 				gift:SetPos(ply:GetPos() + Vector(0, 0, 10))
@@ -748,14 +668,9 @@ hook.Add("SetupMove", "fh_lock_position", function(ply, mv, cmd)
 	end
 end)
 
-hook.Add("PlayerPostThink", "fh_zero_physics", function(ply)
-	if ply:IsAnimatronic() and !roundActive and isGameOn then
-		ply:SetVelocity(-ply:GetVelocity())
-	end
-end)
-
 hook.Add("FinishMove", "fh_canmove", function(ply)
 	if ply:IsAnimatronic() and !roundActive and isGameOn then
+		ply:SetLocalVelocity(Vector(0,0,0))
 		return true
 	end
 end)
@@ -959,9 +874,56 @@ hook.Add("EntityTakeDamage", "fh_anims_only_breakable_props", function(ent, dmgi
 	end
 end)
 
+hook.Add("EntityTakeDamage", "fh_no_grenade_teamkill", function(ent, dmginfo)
+	local attacker = dmginfo:GetAttacker()
+	local inflictor = dmginfo:GetInflictor()
+	
+	if !ent:IsPlayer() and IsValid(ent:GetPhysicsObject()) and IsValid(attacker) and IsValid(inflictor) then
+		if attacker:IsPlayer() and inflictor:GetClass() == "npc_grenade_frag" then
+			ent._ImpulseOwner = attacker
+			
+			local timerName = "reset_impulse_owner" .. ent:EntIndex()
+			
+			if timer.Exists(timerName) then
+				timer.Remove(timerName)
+			end
+			
+			timer.Create(timerName, 2, 1, function()
+				if IsValid(ent) and ent._ImpulseOwner then
+					ent._ImpulseOwner = nil
+				end
+			end)
+		end
+	end
+	
+	attacker = attacker._ImpulseOwner
+	if ent:IsPlayer() and IsValid(attacker) then
+		if attacker:IsPlayer() and ent:Team() == attacker:Team() then
+			return true
+		end
+	end
+end)
+
+hook.Add("OnEntityCreated", "farz_remember", function(ent)
+	if ent:GetClass() == "env_fog_controller" then
+		timer.Simple(1, function()
+			local farz = ent:GetInternalVariable("farz")
+			
+			if farz <= 0 then farz = 6000 end
+			
+			SetGlobal2Float("FarZ", farz)
+		end)
+	end
+end)
+
 local function fh_death_hook(victim)
 	if survivors[victim] then
 		survivors[victim] = nil
+		
+		if timer.Exists("RandomGifts") then
+			local timertime = timer.TimeLeft("RandomGifts")
+			timer.Adjust("RandomGifts", timertime + 10)
+		end
 		
 		local animCount = table.Count(animatronics)
 		
@@ -1300,47 +1262,70 @@ hook.Add("fh_startgame", "FH_UpdateLastKillers", function(killerVictory, anims)
 end)
 
 function fh.GetEarnedKillers(players)
-    if not istable(players) then return {} end
-
-    local bestVal = nil
-    local bestList = {}
-
-    for _, ply in ipairs(players) do
-        if not IsValid(ply) then continue end
-        local id = GetPlyID(ply)
-        local key = ToKey(id)
-        local val = LastKillers[key]
-
-        if val == nil then
-            if bestVal ~= "__NIL__" then
-                bestList = { ply }
-                bestVal = "__NIL__"
-            else
-                table.insert(bestList, ply)
-            end
-        else
-            val = tonumber(val) or 0
-            if bestVal ~= "__NIL__" then
-                if bestVal == nil or val > bestVal then
-                    bestVal = val
-                    bestList = { ply }
-                elseif val == bestVal then
-                    table.insert(bestList, ply)
-                end
-            end
-        end
-    end
+	if not istable(players) then return {} end
 	
-	if table.IsEmpty(bestList) then
-		return players
+	local data = {}
+	local opt_out_people = {}
+	
+	for _, ply in ipairs(players) do
+		if IsValid(ply) then
+			if ply:GetInfoNum("fh_opt_out_anim", 0) == 1 then
+				table.insert(opt_out_people, ply)
+				table.RemoveByValue(players, ply)
+			end
+		end
 	end
-
-    return bestList
+	
+	if table.IsEmpty(players) then
+		for _, ply in ipairs(opt_out_people) do
+			table.insert(players, ply)
+		end
+	end
+	
+	for _, ply in ipairs(players) do
+		if IsValid(ply) then
+			
+			local id = GetPlyID(ply)
+			local key = ToKey(id)
+			local val = LastKillers[key]
+			val = tonumber(val)
+	
+			table.insert(data, {
+				ply = ply,
+				val = val
+			})
+		end
+	end
+	
+	table.sort(data, function(a, b)
+		local va, vb = a.val, b.val
+	
+		if va == nil and vb == nil then
+			return false
+		elseif va == nil then
+			return true
+		elseif vb == nil then
+			return false
+		else
+			return math.abs(va - 15) < math.abs(vb - 15)
+		end
+	end)
+	
+	local result = {}
+	for _, d in ipairs(data) do
+		table.insert(result, d.ply)
+	end
+	
+	return result
 end
 
 local round_music = {
 	[0] = "music/first_minute.wav"
 }
+
+if IsChristmas() then
+	round_music[0] = "music/christmas_timer.wav"
+end
 
 function fh.AddRoundMusic(num, music)
 	if !round_music[num] then
@@ -1472,7 +1457,7 @@ fh.RegisterRoundType("springtrap", 1, function()
 	players = fh.GetEarnedKillers(players)
 	
 	if players then
-		local chosenPlayer = fh.randomChoice(players)
+		local chosenPlayer = players[1]
 		
 		giveKiller(chosenPlayer, "pill_springtrap", true)
 		
@@ -1486,6 +1471,58 @@ fh.RegisterRoundType("springtrap", 1, function()
 end, 20, 6, 18)
 
 fh.AddRoundMusic(1, "music/freeze_timer_springtrap.wav")
+
+hook.Add("fh_postendgame", "springtrap_win_dance", function(victory, anims)
+	if victory then
+		local win_camera = ents.FindByClass("fh_win_camera")[1]
+		local win_location = ents.FindByClass("info_killer_win")[1]
+		local springtrap_ply = usedKillers["pill_springtrap"]
+				
+		if IsValid(win_location) and IsValid(win_camera) then
+			
+			if roundType == 1 and springtrap_ply then
+				
+				timer.Simple(0.5, function()
+					for _, p in player.Iterator() do
+						p:ScreenFade( SCREENFADE.OUT, Color( 0, 0, 0, 255 ), 0.5, 0 )
+					end
+				end)
+				
+				timer.Simple(1, function()
+					local ent = pills.getMappedEnt(springtrap_ply)
+					
+					springtrap_ply:SetPos(win_location:GetPos())
+					springtrap_ply:SetEyeAngles(win_location:GetAngles())
+					springtrap_ply:SetRenderAngles(win_location:GetAngles())
+					ent:SetUseForceAngles(true)
+					ent:SetForceAngles(win_location:GetAngles())
+					
+					for _, p in player.Iterator() do
+						p:SetViewEntity(win_camera)
+						p:SetFOV(65, 2)
+						
+						p:ScreenFade( SCREENFADE.IN, Color( 0, 0, 0, 255 ), 1, 0 )
+					end
+					
+					net.Start("fh_play_sound")
+					net.WriteString("#music/rampage.wav")
+					net.Broadcast()
+					
+					timer.Simple(0.01, function()
+						ent:PillAnim("egypt", true)
+						springtrap_ply:Lock()
+						ent.animLoop = true
+						
+						-- ну ещё раз на всякий
+						springtrap_ply:SetEyeAngles(win_location:GetAngles())
+						springtrap_ply:SetRenderAngles(win_location:GetAngles())
+						ent:SetAngles(win_location:GetAngles())
+					end)
+				end)
+			end
+		end
+	end
+end)
 
 include( "rounds/bonnie_tag.lua" )
 include( "rounds/bear5.lua" )

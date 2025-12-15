@@ -207,7 +207,7 @@ function EndPostRound()
 		roundActive = true
 		endgame_shared()
 		
-		disallowTime = 0
+		forceAnimSelectTime = 0
 	
 		net.Start('fh_net_scarysound')
 		net.WriteBool(true)

@@ -1,0 +1,19 @@
+"VertexlitGeneric"
+{
+$basetexture "models\ufmp\fnaf1\shared\black"
+$bumpmap "models\ufmp\fnaf1\shared\wirebump"
+$phongexponenttexture "models\ufmp\fnaf1\shared\wirespec"
+$phongwarptexture "models\ufmp\fnaf1\shared\white"
+$surfaceprop metal
+$phong "1"
+$phongexponent "2.2"
+$phongboost "0.6"
+$phongfresnelranges "[0.05 0.5 1]"
+$phongalbedotint "1"
+$halflambert "1"
+$nodecal "1"
+$model "1"
+$diffuseexp "1.5"
+$normalmapalphaenvmapmask   "1"
+$nocull 1
+}

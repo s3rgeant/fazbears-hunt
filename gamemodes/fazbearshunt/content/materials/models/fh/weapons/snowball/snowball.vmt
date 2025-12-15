@@ -1,0 +1,20 @@
+VertexLitGeneric
+{
+	$basetexture "models/fh/weapons/snowball/snowball_diffuse"
+	$bumpmap "models/fh/weapons/snowball/snowball_normal"
+	$surfaceprop Snow
+
+	$envmap "env_cubemap"
+	$envmaptint "[0.02 0.02 0.02]"
+	$envmapsaturation 0.11
+	$envmapfresnel 1
+
+	$phong 1
+	$phongfresnelranges "[0.03 0.39 3]"
+	$phongalbedotint 1
+	$phongexponent 1
+	$phongboost 5.17
+	$phongalbedoboost 170
+
+	$model 1
+}

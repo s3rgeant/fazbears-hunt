@@ -230,9 +230,6 @@ hook.Add("SetupMove", "BlightPredictionMove", function(ply, mv, cmd)
 	local rushEnd = ply:GetNWFloat("RushEndTime", 0)
 	if CurTime() > rushEnd or ply:WaterLevel() >= 2 or ply:Crouching() then
 		EndRush(ply) 
-		if SERVER then 
-			playVoiceline('foxy', 'miss', ply)
-		end
 		return
 	end
 
@@ -374,8 +371,6 @@ hook.Add("FinishMove", "BlightPredictionFinish", function(ply, mv)
 			ply.blightTimeoutTimer = nil
 		
 			foxyStun(ply)
-			
-			playVoiceline('foxy', 'miss', ply)
 
 			timer.Simple(5, function()
 				if IsValid(ply) then

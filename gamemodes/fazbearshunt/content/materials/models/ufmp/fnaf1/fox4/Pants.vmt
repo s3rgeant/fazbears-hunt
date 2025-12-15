@@ -1,0 +1,21 @@
+"VertexlitGeneric"
+{
+$basetexture "models\ufmp\FNAF1\fox4\pants"
+$bumpmap "models\ufmp\FNaF1\Shared\BumpLinesNew"
+$surfaceprop metal
+$phong "1"
+$color2 "[3 3 3]"
+$ambientocclusion "0.7"
+$color "0.16"
+$phongexponent "35"
+$phongboost "0"
+$phongfresnelranges "[0.05 0.5 1]"
+$phongalbedotint "1"
+$halflambert "1"
+$phongalbedotint "1"
+$nodecal "1"
+$model "1"
+$diffuseexp "1.5"
+$normalmapalphaenvmapmask   "1"
+$nocull 1
+}

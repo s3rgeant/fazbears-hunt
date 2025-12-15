@@ -42,6 +42,7 @@ if SERVER then
 	hook.Add( "PlayerSpawn", "reset_proximity_onspawn", function(ply)
 		ply.fh_force_listen = nil
 		ply.fh_audible = nil
+		ply.fh_deaf = nil
 	end)
 	
 	hook.Add("PlayerCanHearPlayersVoice", "fh_proximity_sv", function(listener, talker)

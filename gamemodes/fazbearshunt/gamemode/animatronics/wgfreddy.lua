@@ -1,5 +1,236 @@
 AddCSLuaFile()
 
+wgfreddy_targets = {}
+outworld_victims = {}
+outworld_victims_count = {}
+local sfreddy_noclip_movement = {500, 600, 500, 250} -- это на случай если - fuppr_sfreddy_noclip 0
+
+hook.Add( "PostCleanupMap", "wgfreddy_cleanup", function( name )
+	table.Empty(outworld_victims)
+	table.Empty(outworld_victims_count)
+	table.Empty(wgfreddy_targets)
+end)
+
+function getOutworldVictims()
+	return outworld_victims
+end
+
+local gfreddy_movement = {130, 130, 0, 0}
+
+--golden freddy
+
+pills.register("pill_wgfreddy2",{
+	printName="Withered Golden Freddy",
+	model="models/speps/pill/oldgoldenfreddy.mdl",
+	bodyGroups={[0] = 1},
+	anims={
+		default={
+			idle="idle",
+			crouch="sit",
+			walk="walk",
+			run="run",
+			out="sdpecial",
+			inn="tonormal",
+			scare="sscare",
+			rage="rage",
+			melee="melee",
+		},
+	},
+
+	moveSpeed={
+		walk=130,
+	--	run=500,
+		ducked=0,
+	},
+	sounds={
+		gs="fnaf2/wgfreddy_laugh.wav",
+		melee=pills.helpers.makeList("fnaf2/xscream2.wav",2),
+		step=pills.helpers.makeList("fnaf2/none.wav",1)
+	},
+	type="ply",
+    camera = {
+        offset = Vector(0, 0, 90),
+		dist = 150
+    },
+	hull=Vector(32,32,86),
+	duckBy=60,
+	bloodType=BLOOD_COLOR_MECH,
+	
+	viewmodel={
+		weapon="v_freddy",
+		skin=1
+	},
+	
+	muteSteps = true,
+	
+	cloak={
+		max=-1
+	},
+    jumpPower=0,
+	health=10000,
+	movePoseMode="xy",
+	aim = {
+		xPose="aim_yaw",
+		yPose="aim_pitch"
+	},
+
+	noFallDamage=true,
+	
+	startFunction=function(ply,ent)
+		ply:DrawViewModel(false)
+		ent:SetSpeed( unpack(sfreddy_noclip_movement) )
+		ent:SetMaterial("models/null")
+		ent:DrawShadow(false)
+		
+		ply:SetCollisionGroup( COLLISION_GROUP_DEBRIS )
+		ply:CollisionRulesChanged()
+		
+		ply:SetAudible(false)
+		ply:SetPushBlocked(true)
+		
+		ent.cloaked = true
+		
+		ply:SetNWBool("wgfreddy_enraged", false)
+	end,
+	
+	restore=function(ply,ent, formtable)
+		ply:SetCollisionGroup( COLLISION_GROUP_PLAYER )
+	end,
+	
+	onRemove=function(ent,formTable,ply)
+		if CLIENT then
+			hook.Remove("PreDrawHalos", "fh_wgfreddy_draw_halo")
+			hook.Remove("PostDrawTranslucentRenderables", "fh_draw_gfreddy_target_text")
+			return 
+		end
+		cancel_outworld(ply)
+		
+		ply:SetPushBlocked(false)
+		ply:SetAudible(true)
+		ply:ResetListenPlayer()
+	end,
+	
+	attack={
+		mode="trigger",
+		func=function(ply,ent)
+			if !wgfreddy_targets[ply] then return end
+			
+			if IsValid(ply:GetEntityInUse()) then return end
+			
+			if !ply:GetNWBool("wgfreddy_enraged") then return end
+			
+			local target = FindNearestPlayer(ent:GetPos(), 130, ply, 75)
+
+			local jumpscare = performJumpscare(ply, ent, target, 1.6, nil, 50, "v_freddy")
+			
+			if !IsValid(target) or target ~= wgfreddy_targets[ply] or !jumpscare then 
+				AnimatronicBreakProp(ply, ent)
+				return 
+			end
+		end
+    },
+
+	attack2={
+		mode="trigger",
+		func = function(ply,ent)
+			if !ply:OnGround() then return end
+			
+			if !navmesh.IsLoaded() or navmesh.GetNavAreaCount() < 5 then 
+				ply:ChatPrint("Refused. No navmesh.")
+				return 
+			end
+			
+			if !wgfreddy_targets[ply] or cooldown.Exists(ply, 'appear') then return end
+			
+			if ply:GetNWBool("wgfreddy_enraged") then return end
+			
+			ply:LagCompensation( false )
+			
+			if !ent.cloaked then
+				if !ply:OnGround() and ply:WaterLevel() == 0 then return end
+				if !IsValid(ent) then return end
+				
+				cooldown.Set(ply, 'appear', 10)
+				
+				net.Start("fh_net_killer_change")
+				net.WriteString("submerge")
+				net.WriteFloat(10)
+				net.Send(ply)
+				
+				if fh_can_see_player(wgfreddy_targets[ply], ply, 1500) then
+					wgfreddy_targets[ply]:ScreenFade(SCREENFADE.IN, Color(0,0,0), 1, 0.5)
+					
+					EmitSound("gfreddy.laugh", ply:GetPos())
+				end
+				
+				ent:SetSpeed( unpack(sfreddy_noclip_movement) )
+				ply:DrawViewModel(false)
+						
+				ent:SetMaterial("models/null")
+				ent:DrawShadow(false)
+				
+				ply:SetCollisionGroup(COLLISION_GROUP_DEBRIS )
+				ply:CollisionRulesChanged()
+				
+				ent.cloaked=true
+				
+			else
+				if fh_can_see_player(wgfreddy_targets[ply], ply, 1600) then return end
+				
+				cooldown.Set(ply, 'appear', 1)
+				
+				net.Start("fh_net_killer_change")
+				net.WriteString("submerge")
+				net.WriteFloat(1)
+				net.Send(ply)
+			
+				local trace = util.TraceHull({
+					start = ply:GetPos(),
+					endpos = ply:GetPos(),
+					mins = ply:OBBMins(),
+					maxs = ply:OBBMaxs(),
+					filter = ply
+				})
+				
+				if trace.Hit then
+					net.Start("fh_play_sound")
+					net.WriteString('sfreddyerror.wav')
+					net.Send(ply)
+					return 
+				end
+				
+				ply:DrawViewModel(true)
+				ent:SetSpeed( unpack(gfreddy_movement) )
+				
+				ent:SetMaterial()
+				ent:DrawShadow(true)
+					
+				--ply:SetCollisionGroup(COLLISION_GROUP_PLAYER_MOVEMENT)
+				ply:SetCollisionGroup(COLLISION_GROUP_PLAYER)
+				ply:CollisionRulesChanged()
+							
+				ent.cloaked=false
+			end
+			ply:LagCompensation( true )
+			
+		end
+	},
+	
+	reload=function(ply,ent)
+		if wgfreddy_targets[ply] then return end
+
+		local target = fh_get_wgfreddy_target(ply)
+		
+		if !IsValid(target) then return end
+		
+		start_outworld(ply, ent, target)
+	end,
+
+	jump=function(ply,ent)
+		--ent:PillSound("jump",false)
+	end
+})
+
 util.PrecacheSound("fnaf2/gfreddy/plushie_hint.mp3")
 util.PrecacheSound("fnaf2/gfreddy/plushie_taken.wav")
 util.PrecacheSound("fnaf2/gfreddy/plushie_taken_alert.wav")
@@ -28,7 +259,7 @@ hook.Add("fh_startgame", "spawn_wgfreddy", function(roundType)
 			if count >= 8 or ( GetConVar( "developer" ):GetBool() and count > 2 ) then
 				players = fh.GetEarnedKillers(players)
 				
-				local chosenPlayer = fh.randomChoice(players)
+				local chosenPlayer = players[1]
 		
 				giveKillerSilent(chosenPlayer, "pill_wgfreddy2", true)
 				chosenPlayer:ReturnToSpawn()
@@ -39,21 +270,25 @@ end)
 
 hook.Add("PillSound", "gf_pillsound_management", function(ply, ent, name)
 	if !table.IsEmpty(wgfreddy_targets) then
-		for k, v in pairs( wgfreddy_targets ) do
-			local victim = v
-			local gfreddy = k
-			
+		for gfreddy, victim in pairs( wgfreddy_targets ) do
 			if IsValid(victim) and IsValid(gfreddy) then -- на всякий случень
 				if ply ~= outworld_victims[victim] and ply ~= wgfreddy_targets[gfreddy] then
-			
 					local rf = RecipientFilter()
-					rf:AddAllPlayers()
-					rf:RemovePlayer(victim)
-					rf:RemovePlayer(gfreddy)
+					rf:AddPlayer(victim)
+					rf:AddPlayer(gfreddy)
 					
 					return rf
 				end
 			end
+		end
+	end
+end)
+
+hook.Add("FH_PlayerShouldJumpscare", "wgfreddy_target_jumpscare", function(ply, ent, target)
+	if ent.formTable and ent.formTable.name != "pill_wgfreddy2" then
+		local outw_boys = table.GetKeys(getOutworldVictims())
+		if table.HasValue(outw_boys, target) then 
+			return false
 		end
 	end
 end)
@@ -70,6 +305,26 @@ end)
 
 hook.Add("FH_HandleTaserHit", "gf_notaser", function(ply)
 	if wgfreddy_targets[ply] then
+		return false
+	end
+end)
+
+hook.Add("FH_HandleBlindRageTarget", "gf_noblindrage", function(ply, target)
+	if outworld_victims[target] then
+		return false
+	end
+end)
+
+hook.Add("ShouldCollide", "gf_collide", function(ent1, ent2)
+	if ent1:GetNW2Bool("_OUTWORLD_target") and !ent2:GetNW2Bool("_OUTWORLD_gfreddy")  then
+		return false
+	elseif ent2:GetNW2Bool("_OUTWORLD_target") and !ent1:GetNW2Bool("_OUTWORLD_gfreddy") then
+		return false
+	end
+	
+	if ent1:GetNW2Bool("_OUTWORLD_gfreddy") and !ent2:GetNW2Bool("_OUTWORLD_target")  then
+		return false
+	elseif ent2:GetNW2Bool("_OUTWORLD_gfreddy") and !ent1:GetNW2Bool("_OUTWORLD_target") then
 		return false
 	end
 end)
@@ -272,7 +527,7 @@ if CLIENT then
 		
 			ply:SetNoDraw(true)
 			if !IsValid(ply:GetPill()) then
-				ply:DrawShadow(true)
+				ply:DrawShadow(false)
 			end
 			
 			for _, wep in ipairs(ply:GetWeapons()) do
@@ -323,7 +578,7 @@ if CLIENT then
 
 	hook.Add( "ForceDrawPill", "fh_pill_wgfreddy_nodraw", function( ply, ent )
 		local myself = LocalPlayer()
-		if myself:Alive() then
+		if IsValid(myself) and myself:Alive() then
 			if ply == myself then return end
 		
 			if !myself:GetNW2Bool("_OUTWORLD_target") and ply:GetNW2Bool("_OUTWORLD_gfreddy") then
@@ -338,7 +593,7 @@ if CLIENT then
 		end
 	end)
 
-	hook.Add( "EntityEmitSound", "fh_wgfreddy_sound_handler", function( t )
+	hook.Add( "PillCostumeEmitSound", "fh_wgfreddy_sound_handler", function( t )
 		local myself = LocalPlayer()
 		if IsValid(myself) and myself:Alive() then
 			if myself:GetNW2Bool("_OUTWORLD_target") or myself:GetNW2Bool("_OUTWORLD_gfreddy") then
@@ -366,7 +621,8 @@ if CLIENT then
 			return false
 		end
 
-		if myself:GetNW2Bool("_OUTWORLD_gfreddy") and !killer:GetNW2Bool("_OUTWORLD_target") then
+		if myself:GetPill() and myself:GetPill():GetPillName() == "pill_wgfreddy2" and !myself:GetNW2Bool("_OUTWORLD_gfreddy")
+		or myself:GetNW2Bool("_OUTWORLD_gfreddy") and !killer:GetNW2Bool("_OUTWORLD_target") then
 			return false
 		end
 	end)
@@ -422,7 +678,6 @@ if CLIENT then
 		end)
 	end)
 	
-	
 	local function fh_wgfreddy_selecting_halo()
 		hook.Add("PreDrawHalos", "fh_wgfreddy_draw_halo", function()
 			local ply = LocalPlayer()
@@ -476,6 +731,12 @@ if CLIENT then
 			end
 		end)
 	end
+	
+	hook.Add("PillApply", "wgfreddy_Apply", function(ply, ent)
+		if ply == LocalPlayer() and ent.formTable and ent.formTable.name == "pill_wgfreddy2" then
+			fh_wgfreddy_selecting_halo()
+		end
+	end)
 	
 	net.Receive("fh_wgfreddy_selecting_halo", fh_wgfreddy_selecting_halo)
 	
@@ -682,7 +943,7 @@ if CLIENT then
 				target:DrawModel()
 			cam.End3D()
 			
-			draw_orbs({target}, wgf_target_orb)
+			draw_orbs({ [target] = Color(255,255,0) } )
 		end)
 	end)
 	
@@ -882,7 +1143,6 @@ function start_outworld(ply, ent, target)
 	target:SetNW2Bool("_OUTWORLD_target", true)
 	
 	ply:SetPushImmune(true)
-	ply:SetPushBlocked(true)
 	target:SetPushImmune(true)
 	target:SetPushBlocked(true)
 	
@@ -890,7 +1150,7 @@ function start_outworld(ply, ent, target)
 	target:SetDeaf(true)
 	ply:ForceListenPlayer(target)
 	
-	target:SetCollisionGroup(COLLISION_GROUP_PLAYER_MOVEMENT)
+	--target:SetCollisionGroup(COLLISION_GROUP_PLAYER_MOVEMENT)
 	target:SetRunSpeed(240)
 	target:SetWalkSpeed(120)
 	target:SetJumpBoostMultiplier(0)
@@ -900,7 +1160,6 @@ function start_outworld(ply, ent, target)
 	
 	net.Start("fh_net_wgfreddy_scarysound")
 	net.WriteBool(true)
-	net.WriteEntity(ply)
 	net.Send(target)
 	
 	local timer_name = "plushie_hint_" .. ply:EntIndex()
@@ -984,7 +1243,7 @@ function start_outworld_battle(ply, ent, target)
 	
 	ply:SetAudible(true)
 	
-	target:SetCollisionGroup(COLLISION_GROUP_PLAYER_MOVEMENT)
+	--target:SetCollisionGroup(COLLISION_GROUP_PLAYER_MOVEMENT)
 	
 	ply:DrawViewModel(true)
 	if ent.cloaked then
@@ -992,7 +1251,8 @@ function start_outworld_battle(ply, ent, target)
 		ent:SetMaterial()
 		ent:DrawShadow(true)
 			
-		ply:SetCollisionGroup(COLLISION_GROUP_PLAYER_MOVEMENT)
+		--ply:SetCollisionGroup(COLLISION_GROUP_PLAYER_MOVEMENT)
+		ply:SetCollisionGroup(COLLISION_GROUP_PLAYER)
 		ply:CollisionRulesChanged()
 					
 		ent.cloaked=false
@@ -1092,6 +1352,8 @@ function StartDelayedDamage(ply)
     if not IsValid(ply) or not ply:IsPlayer() then return end
 
     local steamID = ply:SteamID()
+	
+    ply._damagePausedUntil = CurTime() + 0
     
     if DamageTimers[steamID] then return end
 
@@ -1143,7 +1405,7 @@ function StopDelayedDamage(ply)
         DamageTimers[steamID] = nil
     end
 
-    ply._damagePausedUntil = nil
+    ply._damagePausedUntil = CurTime() + 999999 -- самый тупой и ебланский фикс одной хуйни
 end
 
 concommand.Add( "dev_start_outworld", function( ply, cmd, args )
@@ -1202,6 +1464,8 @@ if SERVER then
 	net.Receive("cl_target_wgfreddy_scared", function( len, ply )
 		if outworld_victims[ply] and ply:Alive() then
 			local wgfreddy = outworld_victims[ply]
+			
+			if !wgfreddy_targets[wgfreddy] then return end
 		
             ply:TakeDamage( math.min(ply:Health() / 2, 20), wgfreddy, wgfreddy:GetActiveWeapon() )
 			
@@ -1216,7 +1480,7 @@ if SERVER then
 			
 			if !IsValid(ent) then return end
 			
-			if ply:Health() < 30 then
+			if ply:Health() < 30 and !wgfreddy:GetNWBool("wgfreddy_enraged") then
 				StopDelayedDamage(ply)
 				
 				if ent.cloaked then
@@ -1225,7 +1489,7 @@ if SERVER then
 					ent:SetMaterial()
 					ent:DrawShadow(true)
 						
-					ply:SetCollisionGroup(COLLISION_GROUP_PLAYER_MOVEMENT)
+					ply:SetCollisionGroup(COLLISION_GROUP_PLAYER)
 					ply:CollisionRulesChanged()
 								
 					ent.cloaked=false
@@ -1250,7 +1514,7 @@ if SERVER then
 				ply:SetWalkSpeed(200)
 				
 				timer.Simple(10, function()
-					if IsValid(ent) and IsValid(ply) then
+					if IsValid(ent) and IsValid(ply) and ply:Alive() and IsValid(wgfreddy) and wgfreddy:Alive() then
 						if outworld_victims[ply] and wgfreddy_targets[wgfreddy] then
 							net.Start('fh_ent_sound_play')
 							net.WritePlayer(wgfreddy)
