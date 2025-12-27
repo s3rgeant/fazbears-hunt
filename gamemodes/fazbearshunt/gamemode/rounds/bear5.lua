@@ -42,8 +42,7 @@ end )
 
 hook.Add("fh_postendgame", "bear5_win_dance", function(victory, anims)
 	if victory then
-		local win_camera = ents.FindByClass("fh_win_camera")[1]
-		local win_location = ents.FindByClass("info_killer_win")[1]
+		local win_location, win_camera = FindSuitableVictoryPos(150, 200)
 		local bear_ply = fh.GetActiveUsedKiller("bear5_main")
 				
 		if IsValid(win_location) and IsValid(win_camera) then

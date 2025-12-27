@@ -15,7 +15,6 @@ game.AddAmmoType( {
 SWEP.PrintName = "#weapon_taser"
 
 SWEP.Spawnable = true
-SWEP.AdminOnly = false
 SWEP.Slot = 1
 SWEP.SlotPos = 2
 

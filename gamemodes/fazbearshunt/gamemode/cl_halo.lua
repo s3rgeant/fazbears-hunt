@@ -34,6 +34,7 @@ end
 function removeAffected(ply, force)
 	if affectedPlayers[ply] and !affectedPlayers_force[ply] or force then
 		affectedPlayers[ply] = nil
+		affectedPlayers_force[ply] = nil
 	end
 end
 
@@ -350,20 +351,18 @@ hook.Add("PostDrawOpaqueRenderables", "fh_draw_teammates", function(depth, skybo
 			
 			local toScreen = pos:ToScreen()
 			if toScreen.visible then
-				local trace = util.QuickTrace(eyePos, ent:WorldSpaceCenter() - eyePos, ply)
-				
 				local tr = util.TraceLine( {
 					start = eyePos,
 					endpos = pos + ent:OBBCenter(),
-					filter = ply,
+					filter = function(ent)
+						return !ent:IsPlayer() and ent ~= ply
+					end,
 					mask = MASK_SHOT_HULL,
 				} )
 				
-				local entIsPill = ( ent == pills.getMappedEnt(trace.Entity) )
+				local entIsPill = ( ent == pills.getMappedEnt(tr.Entity) )
 				
-				if ( !trace.Hit or entIsPill ) and !ent:IsInvisible() then continue end
-				
-				local ang = ent:GetAngles()
+				if ( !tr.Hit or entIsPill ) and !ent:IsInvisible() then continue end
 				
 				if !ent:IsInvisible() and pos:Distance(eyePos) < 250 then continue end
 
@@ -436,6 +435,19 @@ end)
 
 local target_orb = Material("vgui/target_orb_color.png", "noclamp smooth")
 
+local function IsOverlapping(x, y, size)
+    for _, ico in ipairs(drawnIcons) do
+        if math.abs(ico.x - x) < size * 2 and math.abs(ico.y - y) < size * 2 then
+            return true
+        end
+    end
+    return false
+end
+
+local function RegisterIcon(x, y)
+    drawnIcons[#drawnIcons + 1] = { x = x, y = y }
+end
+
 function draw_orbs(tbl, material, distance)
     local material = material or target_orb
 
@@ -449,6 +461,7 @@ function draw_orbs(tbl, material, distance)
     local maxDistance = distance or 1650
 
     local overlap = {}
+	drawnIcons = {}
 
     for target, color in pairs(tbl) do
         if IsValid(target) then
@@ -466,10 +479,43 @@ function draw_orbs(tbl, material, distance)
                 local clampedY = math.Clamp(screenPos.y, textureSize, screenH - textureSize)
                 
                 local ourColor = IsColor(color) and color:Copy() or Color(255,0,0,255)
-                ourColor.a = alpha
-
+				
                 if target:GetClass() == "pill_costume" and killers.GetFullName(target:GetPillName()) and ply:IsAnimatronic() then
                     
+					local textureSize = 16
+
+					local drawX = clampedX
+					local drawY = clampedY
+
+					local step = textureSize * 2
+					local maxSteps = 6
+					local placed = false
+
+					for i = 0, maxSteps do
+						local offset = i * step
+
+						local tryRight = drawX + offset
+						if not IsOverlapping(tryRight, drawY, textureSize/1.5) then
+							drawX = tryRight
+							placed = true
+							break
+						end
+
+						local tryLeft = drawX - offset
+						if not IsOverlapping(tryLeft, drawY, textureSize/1.5) then
+							drawX = tryLeft
+							placed = true
+							break
+						end
+					end
+					
+					if terror_radius.imChasing() then
+						alpha = 60
+						if drawX > (ScrW()/2) - 65 and drawX < (ScrW()/2) + 65 then continue end
+					end
+
+					RegisterIcon(drawX, drawY)
+					
                     local nickname = nil
                     local name = killers.GetFullName(target:GetPillName())
                     if IsValid(target:GetParent()) and target:GetParent():IsPlayer() then
@@ -481,33 +527,13 @@ function draw_orbs(tbl, material, distance)
                         ourColor = Color(255,255,255, alpha)
                     end
 
-                    local dir = (target:GetPos() - ply:GetPos())
-                    local ang = dir:Angle()
-                    local yaw = math.NormalizeAngle(ply:EyeAngles().y - ang.y) 
-
-                    local normalized = math.Clamp(yaw / 90, -1, 1)
-
-                    local maxOffset = 250
-                    local drawX = clampedX
-                    local drawY = clampedY
-
-                    local key = math.floor(normalized * 10)
-                    overlap[key] = (overlap[key] or 0) + 1
-
-                    local localShift = (overlap[key] - 1) * 64
-                    if normalized >= 0 then
-                        drawX = drawX + localShift
-                    else
-                        drawX = drawX - localShift 
-                    end
-
                     surface.SetDrawColor(ourColor:Unpack())
                     surface.SetMaterial(pillMaterial or material)
-                    surface.DrawTexturedRect(drawX - textureSize, drawY - textureSize, 64, 64)
+                    surface.DrawTexturedRect(drawX - textureSize, drawY - textureSize, textureSize*2, textureSize*2)
 
                     if nickname then
-                        draw.SimpleText(nickname, "SmallTextFont",
-                            drawX, drawY + 48, IsColor(color) and color or Color(255,255,255),
+                        draw.SimpleText(nickname, "CreditsText",
+                            drawX, drawY + 32, IsColor(color) and color or Color(255,255,255,alpha),
                             TEXT_ALIGN_CENTER, TEXT_ALIGN_CENTER
                         )
                     end
@@ -516,12 +542,13 @@ function draw_orbs(tbl, material, distance)
                 end
 				
                 if target:GetClass() == "pill_costume" and killers.GetFullName(target:GetPillName()) and ply:IsSurvivor() then
-					local ourColor = IsColor(color) or killers.getColor(target:GetPillName())
+					ourColor = IsColor(color) and color or killers.getColor(target:GetPillName())
 				end
+				ourColor.a = alpha
 
-                surface.SetDrawColor(ourColor:Unpack())
-                surface.SetMaterial(material)
-                surface.DrawTexturedRect(clampedX - textureSize, clampedY - textureSize, 64, 64)
+				surface.SetDrawColor(ourColor)
+				surface.SetMaterial(material)
+				surface.DrawTexturedRect(clampedX - textureSize, clampedY - textureSize, 64, 64)
             end
         end
     end
@@ -544,18 +571,18 @@ hook.Add("PostCleanupMap", "fh_cleanup_halo", function(ply)
 end)
 
 hook.Add("HandlePillThirdperson", "no_thirdperson_yoursmine", function(ply, ent)
-	if ply.fh_target_player then
+	if ply._yoursmine_target then
 		return false
 	end
 end)
 
 net.Receive("fh_start_yoursmine_view", function()
     local target = net.ReadEntity()
-    LocalPlayer().fh_target_player = target
-    LocalPlayer().fh_start_time = CurTime()
-    LocalPlayer().fh_initial_phase_duration = 5
-    LocalPlayer().fh_rotation_duration = 0.7
-    LocalPlayer().fh_total_duration = LocalPlayer().fh_initial_phase_duration + LocalPlayer().fh_rotation_duration
+    LocalPlayer()._yoursmine_target = target
+    LocalPlayer()._yoursmine_start_time = CurTime()
+    LocalPlayer()._yoursmine_initial_phase_duration = 5
+    LocalPlayer()._yoursmine_rotation_duration = 0.7
+    LocalPlayer()._yoursmine_total_dur = LocalPlayer()._yoursmine_initial_phase_duration + LocalPlayer()._yoursmine_rotation_duration
 	
 	LocalPlayer():DrawViewModel( false, 0 )
 	
@@ -566,63 +593,40 @@ net.Receive("fh_start_yoursmine_view", function()
 	if IsValid(ent) and !table.HasValue(animatronics, ent) then
 		table.insert(animatronics, ent)
 	end
-
+	
+	--[[
     hook.Add("CalcView", "fh_yoursmine_view", function(viewer, origin, angles, fov)
         if viewer ~= LocalPlayer() then return end
-        if not IsValid(viewer.fh_target_player) then return end
+        if not IsValid(viewer._yoursmine_target) then return end
 
-        local t = CurTime() - viewer.fh_start_time
+		local eyeangles = LocalPlayer():EyeAngles()
 
-        if t < viewer.fh_initial_phase_duration then
-            local view = {}
-            view.origin = viewer.fh_target_player:EyePos()
-            view.angles = viewer.fh_target_player:EyeAngles()
-            view.fov = fov
-            return view
-        elseif t < viewer.fh_total_duration then
-            local progress = (t - viewer.fh_initial_phase_duration) / viewer.fh_rotation_duration
-            progress = math.Clamp(progress, 0, 1)
-
-            local view = {}
-            view.origin = viewer.fh_target_player:EyePos()
-
-            local targetPos = viewer:EyePos()
-            local direction = (targetPos - viewer.fh_target_player:EyePos()):GetNormalized()
-            local targetAngle = direction:Angle()
-
-            local currentAngle = viewer.fh_target_player:EyeAngles()
-            view.angles = LerpAngle(progress, currentAngle, targetAngle)
-            view.fov = fov
-            return view
-        else
-            local view = {}
-            view.origin = viewer.fh_target_player:EyePos()
-            local targetPos = viewer:EyePos()
-            local direction = (targetPos - viewer.fh_target_player:EyePos()):GetNormalized()
-            view.angles = direction:Angle()
-            view.fov = fov
-            return view
-        end
+		local view = {}
+		view.origin = viewer._yoursmine_target:EyePos()
+		view.angles = eyeangles
+		view.fov = fov
+		return view
     end)
-
-    hook.Add("PrePlayerDraw", "fh_yoursmine_ply", function(ply)
-        if not IsValid(LocalPlayer().fh_target_player) then return end
-        if ply == LocalPlayer().fh_target_player then
-            return true
-        end
-    end)
+	]]--
 	
     hook.Add("RenderScreenspaceEffects", "fh_yoursmine_fx", function()
         local lp = LocalPlayer()
-        if not IsValid(lp.fh_target_player) then return end
+        if not IsValid(lp._yoursmine_target) then return end
 
-        local t = CurTime() - lp.fh_start_time
-        local frac = 1 - math.Clamp((t / lp.fh_total_duration), 0, 1)
+        local t = CurTime() - lp._yoursmine_start_time
+        local frac = 1 - math.Clamp((t / lp._yoursmine_total_dur), 0, 1)
 
         DrawMotionBlur(0.1, 0.8 * frac, 0.01)
         DrawToyTown(2, ScrH()/2)
 		DrawBloom( 0.65, 1 * frac, 9, 9, 1, 1, 1, 1, 1 )
     end)
+
+	hook.Add("PrePlayerDraw", "fh_yoursmine_ply", function(ply)
+		if not IsValid(LocalPlayer()._yoursmine_target) then return end
+		if ply == LocalPlayer()._yoursmine_target then
+			return true
+		end
+	end)
 	
 	LocalPlayer():ScreenFade( SCREENFADE.IN, Color( 0, 0, 0, 180 ), 2, 0 )
 end)
@@ -631,13 +635,15 @@ net.Receive("fh_stop_yoursmine_view", function()
     hook.Remove("CalcView", "fh_yoursmine_view")
     hook.Remove("PrePlayerDraw", "fh_yoursmine_ply")
     hook.Remove("RenderScreenspaceEffects", "fh_yoursmine_fx")
-    LocalPlayer().fh_target_player = nil
-    LocalPlayer().fh_start_time = nil
-    LocalPlayer().fh_initial_phase_duration = nil
-    LocalPlayer().fh_rotation_duration = nil
-    LocalPlayer().fh_total_duration = nil
+    LocalPlayer()._yoursmine_target = nil
+    LocalPlayer()._yoursmine_start_time = nil
+    LocalPlayer()._yoursmine_initial_phase_duration = nil
+    LocalPlayer()._yoursmine_rotation_duration = nil
+    LocalPlayer()._yoursmine_total_dur = nil
 	
 	LocalPlayer():DrawViewModel( true, 0 )
+	
+	LocalPlayer():ScreenFade( SCREENFADE.IN, Color( 0, 0, 0, 180 ), 2, 0 )
 	
 	local ent = pills.getMappedEnt(LocalPlayer())
 	

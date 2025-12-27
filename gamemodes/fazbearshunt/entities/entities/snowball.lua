@@ -31,7 +31,7 @@ function ENT:Initialize()
 	self:PhysicsInit( SOLID_VPHYSICS )
 	self:SetMoveType( MOVETYPE_VPHYSICS )
 	self:SetSolid( SOLID_VPHYSICS )
-	self.Entity:SetCollisionGroup(COLLISION_GROUP_PROJECTILE)
+	self:SetCollisionGroup(COLLISION_GROUP_PROJECTILE)
 	local phys = self:GetPhysicsObject()
 	if (phys:IsValid()) then
 		phys:Wake()
@@ -49,7 +49,7 @@ end
 function ENT:OnRemove()
 
 	if ( CLIENT ) then return end
-	local pos = self.Entity:GetPos()
+	local pos = self:GetPos()
 	local effectdata = EffectData()
 	effectdata:SetStart( pos )
 	effectdata:SetOrigin( pos )

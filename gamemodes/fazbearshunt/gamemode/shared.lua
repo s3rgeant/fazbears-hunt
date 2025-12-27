@@ -7,7 +7,7 @@ GM.Author = "sergeant"
 GM.Email = "N/A"
 GM.Website = "N/A"
 
-local fh_version = "3.2.0"
+local fh_version = "4.0.0"
 
 function fh.GetVersion()
     return fh_version
@@ -86,7 +86,7 @@ local killerData = killerData or {
 	
 	["pill_mangle"] = {name = "mangle", fullname = "fazhunt.animatronics.mangle", color = colors.Endo},
 	
-	["pill_toychica"] = {name = "tchica", fullname = "fazhunt.animatronics.toychica", color = colors.Chica},
+	["pill_toychica"] = {name = "tchica", fullname = "fazhunt.animatronics.toychica", color = Color(255, 201, 53)},
 }
 
 killerAbilities = {
@@ -564,16 +564,11 @@ hook.Add("ShouldCollide", "fh_collisions", function(ent1, ent2)
         or (cg2 == COLLISION_GROUP_PASSABLE_DOOR and isPlayer2 and isPlayer1) then
         return false
     end
-	
-    if (cg1 == COLLISION_GROUP_PLAYER_MOVEMENT and isPlayer1 and isPlayer2)
-        or (cg2 == COLLISION_GROUP_PLAYER_MOVEMENT and isPlayer2 and isPlayer1) then
-        return false
-    end
 
-    -- Игроки с разными группами, один с PLAYER_MOVEMENT
-    if cg1 == COLLISION_GROUP_PLAYER_MOVEMENT and isPlayer2 and cg2 ~= cg1 then
+    -- Игроки с разными группами, один с COLLISION_GROUP_ALLY
+    if cg1 == COLLISION_GROUP_PASSABLE_DOOR and isPlayer2 and cg2 ~= cg1 then
         return false
-    elseif cg2 == COLLISION_GROUP_PLAYER_MOVEMENT and isPlayer1 and cg1 ~= cg2 then
+    elseif cg2 == COLLISION_GROUP_PASSABLE_DOOR and isPlayer1 and cg1 ~= cg2 then
         return false
     end
 end)

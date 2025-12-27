@@ -15,6 +15,25 @@ function getOutworldVictims()
 	return outworld_victims
 end
 
+function PlayerInOutworld(ply)
+	return outworld_victims[ply] ~= nil or wgfreddy_targets[ply] ~= nil
+end
+
+if SERVER then
+	util.AddNetworkString("fh_wgfreddy_target_outworld_start")
+	util.AddNetworkString("fh_wgfreddy_target_outworld_end")
+	
+	util.AddNetworkString("fh_wgfreddy_selecting_halo")
+	util.AddNetworkString("fh_wgfreddy_stop_selection_halo")
+	util.AddNetworkString("fh_wgfreddy_outworld_start")
+	util.AddNetworkString("fh_wgfreddy_outworld_stop")
+	
+	util.AddNetworkString("fh_net_wgfreddy_scarysound")
+	
+	util.AddNetworkString("cl_target_wgfreddy_scared")
+	util.AddNetworkString("wgfreddy_second_ambience")
+end
+
 local gfreddy_movement = {130, 130, 0, 0}
 
 --golden freddy
@@ -135,11 +154,6 @@ pills.register("pill_wgfreddy2",{
 		func = function(ply,ent)
 			if !ply:OnGround() then return end
 			
-			if !navmesh.IsLoaded() or navmesh.GetNavAreaCount() < 5 then 
-				ply:ChatPrint("Refused. No navmesh.")
-				return 
-			end
-			
 			if !wgfreddy_targets[ply] or cooldown.Exists(ply, 'appear') then return end
 			
 			if ply:GetNWBool("wgfreddy_enraged") then return end
@@ -222,6 +236,11 @@ pills.register("pill_wgfreddy2",{
 		local target = fh_get_wgfreddy_target(ply)
 		
 		if !IsValid(target) then return end
+			
+		if !navmesh.IsLoaded() or navmesh.GetNavAreaCount() < 5 then 
+			ply:ChatPrint("Refused. No navmesh.")
+			return 
+		end
 		
 		start_outworld(ply, ent, target)
 	end,
@@ -316,20 +335,28 @@ hook.Add("FH_HandleBlindRageTarget", "gf_noblindrage", function(ply, target)
 end)
 
 hook.Add("ShouldCollide", "gf_collide", function(ent1, ent2)
-	if ent1:GetNW2Bool("_OUTWORLD_target") and !ent2:GetNW2Bool("_OUTWORLD_gfreddy")  then
-		return false
-	elseif ent2:GetNW2Bool("_OUTWORLD_target") and !ent1:GetNW2Bool("_OUTWORLD_gfreddy") then
-		return false
-	end
-	
-	if ent1:GetNW2Bool("_OUTWORLD_gfreddy") and !ent2:GetNW2Bool("_OUTWORLD_target")  then
-		return false
-	elseif ent2:GetNW2Bool("_OUTWORLD_gfreddy") and !ent1:GetNW2Bool("_OUTWORLD_target") then
-		return false
+	if ent1:IsPlayer() and ent2:IsPlayer() then
+		if ent1:GetNW2Bool("_OUTWORLD_target") and !ent2:GetNW2Bool("_OUTWORLD_gfreddy")  then
+			return false
+		elseif ent2:GetNW2Bool("_OUTWORLD_target") and !ent1:GetNW2Bool("_OUTWORLD_gfreddy") then
+			return false
+		end
+		
+		if ent1:GetNW2Bool("_OUTWORLD_gfreddy") and !ent2:GetNW2Bool("_OUTWORLD_target")  then
+			return false
+		elseif ent2:GetNW2Bool("_OUTWORLD_gfreddy") and !ent1:GetNW2Bool("_OUTWORLD_target") then
+			return false
+		end
 	end
 end)
 
 hook.Add("FH_HandlePlayerGrab", "gf_victim_nograb", function(endo, ply)
+	if outworld_victims[ply] then
+		return false
+	end
+end)
+
+hook.Add("FH_HandlePlayerHold", "gf_victim_nohold", function(tchica, ply)
 	if outworld_victims[ply] then
 		return false
 	end
@@ -356,6 +383,7 @@ if SERVER then
 end
 
 function fh_spawnPlushies(ply)
+	if CLIENT then return end
 	if !IsValid(ply) then return -1 end
 
 	local origin = ply:GetPos()
@@ -1409,7 +1437,7 @@ function StopDelayedDamage(ply)
 end
 
 concommand.Add( "dev_start_outworld", function( ply, cmd, args )
-	if !ply:IsSuperAdmin() then return end
+	if CLIENT or !ply:IsSuperAdmin() then return end
 
 	local nick1 = tostring(args[1])
 	local nick2 = tostring(args[2])
@@ -1517,7 +1545,7 @@ if SERVER then
 					if IsValid(ent) and IsValid(ply) and ply:Alive() and IsValid(wgfreddy) and wgfreddy:Alive() then
 						if outworld_victims[ply] and wgfreddy_targets[wgfreddy] then
 							net.Start('fh_ent_sound_play')
-							net.WritePlayer(wgfreddy)
+							net.WriteEntity(wgfreddy)
 							net.WriteString('fnaf2/gfreddy/gfreddy_enraged.wav')
 							net.Send({ply, wgfreddy})
 						end

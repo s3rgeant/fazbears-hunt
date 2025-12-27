@@ -13,7 +13,7 @@ cupcakes = cupcakes or 0
 local scrollOffsets = {}
 local scrollSpeeds = {}
 
-local fh_ui_scale = CreateClientConVar('fh_ui_scale', 1, true, false, 'FH Ui Scale (Animatronics Hud Only)', 0, 2)
+fh_ui_scale = CreateClientConVar('fh_ui_scale', 1, true, false, 'FH Ui Scale (Animatronics Hud Only)', 0, 2)
 	
 local uiScale = fh_ui_scale:GetFloat() / (1920 / ScrW())
 
@@ -394,6 +394,7 @@ function isNotStuck()
         mins = ply:OBBMins(),
         maxs = ply:OBBMaxs(),
 		filter = ply,
+		mask = MASK_PLAYERSOLID,
 	})
 	if trace.Hit then
 		return Color(200, 32, 32, 200)
@@ -406,7 +407,7 @@ function CanMangleLunge()
 	local eyeAng = ply:EyeAngles()
 	
 	if !ply:GetNWBool("_MangleHooked") then
-		if !ply:OnGround() or ply:Crouching() or eyeAng.p > 0 then
+		if !ply:OnGround() or ply:Crouching() or eyeAng.p > 5 then
 			return Color(200, 32, 32, 200)
 		end
 	elseif ply:GetNWString("_MangleLastHookType") ~= "ceiling" then
@@ -801,4 +802,31 @@ end
 
 function RemoveRMBHint()
 	hook.Remove("HUDPaint", "FH_HudPaint_RMBHINT")
+end
+
+local fh_interact_material = Material("hud/fh_interact")
+
+local function DrawRMBHint()
+	surface.SetMaterial( fh_interact_material )
+	surface.SetDrawColor( 255, 255, 255, 255 )
+	surface.DrawTexturedRect( ScrW() / 2 - fh_rmb_halfsize, ScrH() / 2 + 32, fh_rmb_size, fh_rmb_size )
+end
+
+function INTERACT_Hint(duration)
+	hook.Add( "HUDPaint", "FH_HudPaint_E_HINT", function()
+		DrawRMBHint()
+	end )
+	
+	if duration and duration > 0 then
+		if timer.Exists("FH_DrawEHINT_TIMER") then
+			timer.Remove("FH_DrawEHINT_TIMER")
+		end
+		timer.Create("FH_DrawEHINT_TIMER", duration, 1, function()
+			hook.Remove("HUDPaint", "FH_HudPaint_E_HINT")
+		end)
+	end
+end
+
+function RemoveINTERACT_Hint()
+	hook.Remove("HUDPaint", "FH_HudPaint_E_HINT")
 end

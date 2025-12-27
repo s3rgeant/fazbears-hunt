@@ -120,7 +120,7 @@ pills.register("pill_mangle",{
 			local addVelocity = Vector(0,0,0)
 			if !ply:GetNWBool("_MangleHooked") then
 				if !ply:OnGround() or ply:Crouching() then return end
-				if eyeAng.p > 0 then return end
+				if eyeAng.p > 5 then return end
 			else
 				velocityPower = 800
 				if eyeAng.p > 40 then

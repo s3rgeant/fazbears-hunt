@@ -12,6 +12,7 @@ SWEP.WorldModel = Model( "models/fh/items/w_springbonnie_mask_hand.mdl" )
 SWEP.ViewModelFOV = 75
 SWEP.UseHands = true
 SWEP.DrawCrosshair = false
+SWEP.Spawnable = true
 
 SWEP.Primary.ClipSize = 15
 SWEP.Primary.DefaultClip = SWEP.Primary.ClipSize
@@ -124,7 +125,7 @@ function SWEP:SpringLock()
 	
 	if SERVER then
 		timer.Simple(8.5, function()
-			if !IsValid(ply) or !ply:Alive() then return end
+			if !IsValid(ply) or !ply:Alive() or !IsValid(self) then return end
 			local edata = EffectData()
 			edata:SetOrigin(ply:EyePos())
 			edata:SetEntity(ply)
@@ -147,7 +148,7 @@ function SWEP:SpringLock()
 		end)
 	
 		timer.Simple(11, function()
-			if !IsValid(ply) or !ply:Alive() then return end
+			if !IsValid(ply) or !ply:Alive() or !IsValid(self) then return end
 			for _, wep in ipairs( ply:GetWeapons() ) do
 				if !dropWeaponry[wep:GetClass()] then continue end
 				ply:DropWeapon( wep, nil, Vector(0,0,0) )
@@ -226,13 +227,11 @@ hook.Add("PostPlayerDraw", "fh_draw_killmask", function(ply)
 
 	pos = pos + ang:Forward() * 0 + ang:Up() * -5 + ang:Right() * 0
 
-	model:SetModelScale(1, 0)
+	model:SetParent(ply)
 	model:SetRenderOrigin(pos)
 	model:SetRenderAngles(ang)
 	model:SetupBones()
 	model:DrawModel()
-	model:SetRenderOrigin()
-	model:SetRenderAngles()
 end)
 
 function SWEP:DrawWorldModel( flags )

@@ -75,7 +75,7 @@ hook.Add("KeyPress", "PushInteraction", function(ply, key)
 							velAng.z = math.Clamp(velAng.z, -0.1, 0.2)
 
 							ent:SetVelocity(velAng * ( power or (ent:IsAnimatronic() and !ply:IsAnimatronic() and 250 or 450)))
-							ent:ViewPunch(Angle(math.random(-25, 25), math.random(-25, 25), 0))
+							ent:ViewPunch(Angle(math.random(-15, 15), math.random(-15, 15), 0))
 							
 							push[ply:UserID()] = true
 							timer.Simple(0.20, function()

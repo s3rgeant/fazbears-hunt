@@ -537,9 +537,9 @@ end
 
 function doGiftSpawning()
 	if timer.Exists('RandomGifts') then return end
-	timer.Create("RandomGifts", 120, 0, function()
+	timer.Create("RandomGifts", 110, 0, function()
 		SpawnGifts()
-		timer.Adjust("RandomGifts", 120)
+		timer.Adjust("RandomGifts", 110)
 	end)
 end
 
@@ -768,8 +768,10 @@ hook.Add("PlayerSpawn", "fh_spawn", function( ply, transiton )
 	
 	if !isGameOn then
 		ply:SetTeam(TEAM_SURVIVOR)
-		ply:NoPlayerCollide(0.25)
 	end
+	timer.Simple(0, function()
+		ply:NoPlayerCollide(0.25)
+	end)
 	net.Start('DeadHUDDisable')
 	net.Send(ply)
 	
@@ -922,7 +924,7 @@ local function fh_death_hook(victim)
 		
 		if timer.Exists("RandomGifts") then
 			local timertime = timer.TimeLeft("RandomGifts")
-			timer.Adjust("RandomGifts", timertime + 10)
+			timer.Adjust("RandomGifts", math.min(timertime + 8, 120))
 		end
 		
 		local animCount = table.Count(animatronics)
@@ -1214,6 +1216,71 @@ hook.Add("Tick", "fh_tick", function()
 	end
 end)
 
+function FindSuitableVictoryPos(forwardCheck, backCheck)
+	local win_location = ents.FindByClass("info_killer_win")[1]
+	local win_camera = ents.FindByClass("fh_win_camera")[1]
+	
+	forwardCheck = forwardCheck or 150
+	backCheck = backCheck or 10
+	
+	if win_location and win_camera then
+		return win_location, win_camera
+	end
+	
+	if !win_location then
+		spawns = ents.FindByClass("info_player_start")
+		spawns = updateSpawnList(spawns)
+		
+		for _, spawn in ipairs(spawns) do
+			local pos = spawn:GetPos()
+			local forward = spawn:GetForward()
+			local backward = -spawn:GetForward()
+			local up = spawn:GetUp()
+			
+			local tr = util.TraceLine( {
+				start = pos,
+				endpos = pos + (forward * forwardCheck) + (up * 60),
+				--maxs = Vector(-5,-5,-5),
+				--mins = Vector(5,5,5),
+				filter = self
+			} )
+			
+			local tr_back = util.TraceLine( {
+				start = pos,
+				endpos = pos + (backward * backCheck) + (up * 60),
+				--maxs = Vector(-5,-5,-5),
+				--mins = Vector(5,5,5),
+				filter = self
+			} )
+			
+			if !tr.Hit and !tr_back.Hit then
+				win_location = spawn
+			
+				--debugoverlay.Box( tr.HitPos, Vector(-5,-5,-5), Vector(5,5,5), 25, Color( 255, 25, 25, 20 ) )
+				--debugoverlay.Box( tr_back.HitPos, Vector(-5,-5,-5), Vector(5,5,5), 25, Color( 25, 25, 255, 20 ) )
+				--debugoverlay.Box( pos, Vector(-5,-5,-5), Vector(5,5,5), 25, Color( 255, 255, 255, 25 ) )
+				break
+			end
+		end
+	end
+	
+	if !win_camera and win_location then
+		local pos = win_location:GetPos()
+		local ang = win_location:GetAngles()
+		ang.p = ang.p + 180
+	
+		local ent = ents.Create("fh_win_camera")
+		ent:SetPos(pos + Vector(0,0,70))
+		ent:SetAngles(ang)
+		ent:Spawn()
+		
+		--debugoverlay.Box( pos + Vector(0,0,70), Vector(-5,-5,-5), Vector(5,5,5), 8, Color( 25, 255, 25, 20 ) )
+		win_camera = ent
+	end
+		
+	return win_location, win_camera
+end
+
 function fh.GetRoundCount()
 	return roundCount
 end
@@ -1474,8 +1541,7 @@ fh.AddRoundMusic(1, "music/freeze_timer_springtrap.wav")
 
 hook.Add("fh_postendgame", "springtrap_win_dance", function(victory, anims)
 	if victory then
-		local win_camera = ents.FindByClass("fh_win_camera")[1]
-		local win_location = ents.FindByClass("info_killer_win")[1]
+		local win_location, win_camera = FindSuitableVictoryPos()
 		local springtrap_ply = usedKillers["pill_springtrap"]
 				
 		if IsValid(win_location) and IsValid(win_camera) then

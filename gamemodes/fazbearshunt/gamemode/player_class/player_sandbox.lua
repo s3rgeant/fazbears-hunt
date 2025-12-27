@@ -47,7 +47,7 @@ function PLAYER:Loadout()
 
 	self.Player:Give( "weapon_pistol" )
 	if IsChristmas() then
-		self.Player:GiveAmmo( 24,	"snowball", 	true )
+		self.Player:GiveAmmo( 14,	"snowball", 	true )
 		self.Player:Give( "weapon_snowball" )
 	end
 	self.Player:Give( "weapon_frag" )

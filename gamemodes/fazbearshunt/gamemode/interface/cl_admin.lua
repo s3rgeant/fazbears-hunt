@@ -153,12 +153,14 @@ local function GetSelectedPlayers()
     return players
 end
 
+local silent_give_killer = false
 local function OpenAdminPanel()
     local selectedAnimatron = nil
 
     if IsValid(fh_admin_panel) then
 		if fh_admin_panel:IsVisible() then
 			fh_admin_panel:Hide()
+			fh_admin_panel:OnHidden()
 			gui.EnableScreenClicker(false)
 		else
 			fh_admin_panel:Show()
@@ -197,22 +199,36 @@ local function OpenAdminPanel()
 
     AnimatronicList = vgui.Create("DListView", panelPlayers)
     AnimatronicList:SetPos(210, 10)
-    AnimatronicList:SetSize(180, 360)
+    AnimatronicList:SetSize(180, 320)
     AnimatronicList:AddColumn(language.GetPhrase("fazhunt.animatronics_team"))
     AnimatronicList:SetMultiSelect(false)
     AnimatronicList.OnRowSelected = function(_, _, row)
         selectedAnimatron = row:GetValue(2)
     end
     createListAnimatronics()
+	
+    if LocalPlayer():IsSuperAdmin() then 
+		AddNetActionButton(panelPlayers, 220, 340, 160, 30, language.GetPhrase("fazhunt.adminpanel.addplayable"), "addplayable", function()
+			net.Start("AdminAction")
+			net.WriteString("addplayable")
+			net.WriteString(selectedAnimatron or "")
+			net.SendToServer()
+		end)
+		
+		AddNetActionButton(panelPlayers, 220, 380, 160, 30, language.GetPhrase("fazhunt.adminpanel.removeplayable"), "removeplayable", function()
+			net.Start("AdminAction")
+			net.WriteString("removeplayable")
+			net.WriteString(selectedAnimatron or "")
+			net.SendToServer()
+		end)
+	end
 
     local actions = {
         {text = "fazhunt.adminpanel.give_killer", action = "give_animatronic"},
+        {},
         {text = "fazhunt.adminpanel.revive", action = "resurrect"},
         {text = "fazhunt.adminpanel.kill", action = "kill"},
         {text = "fazhunt.adminpanel.highlight", action = "highlight"},
-        {},
-        {text = "fazhunt.adminpanel.addplayable", action = "addplayable", superadmin = true},
-        {text = "fazhunt.adminpanel.removeplayable", action = "removeplayable", superadmin = true}
     }
 
     local y = 10
@@ -252,14 +268,119 @@ local function OpenAdminPanel()
                 end
                 if a.action == "give_animatronic" then
                     net.WriteString(selectedAnimatron or "")
+                    net.WriteBit(silent_give_killer)
                 end
                 net.SendToServer()
             end)
         end
-        y = y + 40
+        y = y + (a.text and 40 or 20)
     end
+	
+    local checkbox = vgui.Create("DCheckBoxLabel", panelPlayers)
+	checkbox:SetPos(400, 45)
+    checkbox:SetText(language.GetPhrase("fazhunt.adminpanel.give_killer_silent"))
+    checkbox:SetDark(true)
+    checkbox:SetChecked(silent_give_killer)
+    function checkbox:OnChange(b)
+		silent_give_killer = b
+    end
+	
+	local actions = {
+		{text = "fazhunt.adminpanel.heal", action = "heal", icon = "heart"},
+		{text = "fazhunt.adminpanel.give_gift", action = "give_gift", icon = "package_green"},
+		{text = "fazhunt.adminpanel.give_all_weapons", action = "give_all_weapons", icon = "gun"},
+		{text = "fazhunt.adminpanel.return_spawn", action = "return_spawn", icon = "arrow_undo"},
+		{text = "fazhunt.adminpanel.tp_to_teammate", action = "tp_to_teammate", icon = "group_go"},
+		{text = "fazhunt.adminpanel.unstuck", action = "unstuck", icon = "arrow_out"},
+		{text = "fazhunt.adminpanel.give_immune_gfreddy", action = "immune_gfreddy", icon = "gfreddy"},
+		{text = "fazhunt.adminpanel.deprive_immune_gfreddy", action = "un_immune_gfreddy", icon = "gfreddy"},
+	}
+	
+	local actionBox = vgui.Create( "DComboBox", panelPlayers )
+	actionBox:SetPos( 400, y )
+	actionBox:SetSize( 180, 20 )
+	actionBox:SetValue( language.GetPhrase("fazhunt.adminpanel.more_actions") )
+	
+    for _, a in ipairs(actions) do
+		actionBox:AddChoice( language.GetPhrase(a.text), nil, false, a.icon and "icon16/" .. a.icon .. ".png" or nil )
+	end
+	actionBox.OnSelect = function( self, index, value )
+		
+		actionBox:SetValue( language.GetPhrase("fazhunt.adminpanel.more_actions") )
 
-    sheet:AddSheet(language.GetPhrase("fazhunt.adminpanel.players"), panelPlayers, "icon16/user.png")
+		local players = GetSelectedPlayers()
+		if #players == 0 then
+			chat.AddText(Color(255, 0, 0), language.GetPhrase("fazhunt.adminpanel.error"))
+			return
+		end
+				
+		net.Start("AdminAction")
+		net.WriteString(actions[index].action)
+		net.WriteUInt(#players, 8)
+		for _, ply in ipairs(players) do
+			net.WriteEntity(ply)
+		end
+		net.SendToServer()
+	end
+    y = y + 30
+	
+    local lblExp = vgui.Create("DLabel", panelPlayers)
+	lblExp:SetPos( 400, y )
+	lblExp:SetSize( 180, 15 )
+    lblExp:SetText(language.GetPhrase("fazhunt.adminpanel.give_weaponry") .. ":")
+    lblExp:SetDark(true)
+    lblExp:SetAutoStretchVertical(true)
+    lblExp:SetWrap(true)
+	
+    y = y + 20
+	
+	local weaponryBox = vgui.Create( "DComboBox", panelPlayers )
+	weaponryBox:SetPos( 400, y )
+	weaponryBox:SetSize( 180, 20 )
+	weaponryBox:SetValue( "..." )
+	
+	local weapons = weapons.GetList()
+	for _, wep in ipairs(weapons) do
+		if wep.ClassName and wep.Spawnable then
+			local name = wep.PrintName or wep.ClassName
+			local suffix = ""
+			local icon = nil
+			
+			if wep.ClassName:match("fh") == "fh" then
+				suffix = "(FH) "
+			end
+			
+			if name:StartsWith("#") then
+				name = language.GetPhrase(string.sub(name, 2, name:len()))
+			end
+			
+			if wep.WepSelectIcon and isnumber(wep.WepSelectIcon) then
+				icon = surface.GetTextureNameByID(wep.WepSelectIcon)
+			end
+			
+			weaponryBox:AddChoice( suffix .. name, wep.ClassName, false, icon )
+		end
+	end
+	weaponryBox.OnSelect = function( self, index, data )
+		weaponryBox:SetValue( "..." )
+
+		local players = GetSelectedPlayers()
+		if #players == 0 then
+			chat.AddText(Color(255, 0, 0), language.GetPhrase("fazhunt.adminpanel.error"))
+			return
+		end
+				
+		net.Start("AdminAction")
+		net.WriteString("give_weapon")
+		net.WriteUInt(#players, 8)
+		for _, ply in ipairs(players) do
+			net.WriteEntity(ply)
+		end
+		net.WriteString(self:GetOptionData(index))
+		net.SendToServer()
+	end
+   
+   sheet:AddSheet(language.GetPhrase("fazhunt.adminpanel.players"), panelPlayers, "icon16/user.png")
 
     -- === Панель раунда === --
     local roundPanel = vgui.Create("DPanel")
@@ -528,28 +649,24 @@ local function OpenAdminPanel()
     if IsValid(sheet) and sheet.Items[lastSelectedTab] then
         sheet:SetActiveTab(sheet.Items[lastSelectedTab].Tab)
     end
-	
-	--[[
-    sheet.OnActiveTabChanged = function(p, newTab)
-		timer.Simple(0, function()
-			for i, item in ipairs(sheet.Items) do
-				if item.Tab == p:GetActiveTab() then
-					lastSelectedTab = i
-					break
-				end
-			end
-		end)
+
+    fh_admin_panel.OnHidden = function()
+		actionBox:CloseMenu()
+		weaponryBox:CloseMenu()
     end
-	--]]
 end
 
-function createListPlayers()
+function createListPlayers(just)
     if not IsValid(fh_admin_panel) then return end
     if IsValid(PlayerList) then
         PlayerList:Clear()
         for _, v in player.Iterator() do
             local line = PlayerList:AddLine(v:Nick(), getTeam(v:Team()))
             line.Player = v
+			
+			if v == LocalPlayer() then
+				PlayerList:SelectItem(line)
+			end
         end
     end
 end

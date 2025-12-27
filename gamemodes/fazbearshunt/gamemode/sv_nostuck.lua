@@ -169,6 +169,7 @@ function PLAYER:Unstuck()
 	end
 end
 
+local ply_oldCollisions = {}
 function PLAYER:NoPlayerCollide(duration)
 	if !IsValid(self) then return end
 	
@@ -177,18 +178,22 @@ function PLAYER:NoPlayerCollide(duration)
 	if timer.Exists(timerName) then return end
 
 	duration = duration or 0.5
-	local oldCollision = self:GetCollisionGroup()
 	
-	self:SetCollisionGroup(COLLISION_GROUP_PLAYER_MOVEMENT)
+	ply_oldCollisions[self] = self:GetCollisionGroup()
+	
+	self:SetCollisionGroup(COLLISION_GROUP_PASSABLE_DOOR)
 	
 	timer.Create(timerName, duration, 0, function()
-		if !IsValid(self) or !self:Alive() or self:GetCollisionGroup() ~= COLLISION_GROUP_PLAYER_MOVEMENT then
+		if !IsValid(self) or !self:Alive() or self:GetCollisionGroup() ~= COLLISION_GROUP_PASSABLE_DOOR then
 			timer.Remove(timerName)
+			if self:IsStuck() then
+				self:NoPlayerCollide()
+			end
 			return
 		end
 		
 		if IsValid(self) and !QuickIsStuck(self) then
-			self:SetCollisionGroup(oldCollision)
+			self:SetCollisionGroup(ply_oldCollisions[self])
 			timer.Remove(timerName)
 		end
 	end)

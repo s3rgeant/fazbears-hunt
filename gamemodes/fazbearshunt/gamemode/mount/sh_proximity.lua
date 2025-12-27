@@ -4,19 +4,25 @@ local muteVolume = CreateConVar("proximity_mute", 0.3, { FCVAR_ARCHIVE,FCVAR_REP
 
 local muteSpecs = CreateConVar("proximity_hear_spectators", 1, { FCVAR_ARCHIVE,FCVAR_CLIENTDLL,FCVAR_USERINFO }, "Should local player hear other spectators? (0-1)", 0, 1)
 
+local PLAYER = FindMetaTable("Player")
+
+function PLAYER:SetAudible(state)
+	self:SetNWBool("Audible", state and true or false)
+end
+
+function PLAYER:GetAudible()
+	return self:GetNWBool("Audible")
+end
+
+function PLAYER:SetOnlyAudibleByTeammates(state)
+	self:SetNWBool("Audible_TEAMMATES", state and true or false)
+end
+
+function PLAYER:GetOnlyAudibleByTeammates()
+	return self:GetNWBool("Audible_TEAMMATES")
+end
+	
 if SERVER then
-	local PLAYER = FindMetaTable("Player")
-
-	function PLAYER:SetAudible(state)
-		self.fh_audible = state and true or false
-	end
-
-	function PLAYER:GetAudible()
-		if self.fh_audible == nil then
-			return true
-		end
-		return self.fh_audible
-	end
 
 	function PLAYER:SetDeaf(state)
 		self.fh_deaf = state and true or false
@@ -38,10 +44,9 @@ if SERVER then
 	function PLAYER:ResetListenPlayer()
 		self.fh_force_listen = nil
 	end
-	
 	hook.Add( "PlayerSpawn", "reset_proximity_onspawn", function(ply)
 		ply.fh_force_listen = nil
-		ply.fh_audible = nil
+		ply:SetAudible(true)
 		ply.fh_deaf = nil
 	end)
 	
@@ -60,6 +65,12 @@ if SERVER then
 		end
 
 		if not talker:GetAudible() and listener:Alive() then
+			if !talker:GetOnlyAudibleByTeammates() or talker:GetOnlyAudibleByTeammates() and list_team ~= talker_team then
+				return false, false
+			end
+		end
+		
+		if talker:GetOnlyAudibleByTeammates() and list_team ~= talker_team then
 			return false, false
 		end
 

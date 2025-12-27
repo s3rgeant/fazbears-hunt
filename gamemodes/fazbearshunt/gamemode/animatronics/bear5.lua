@@ -141,13 +141,16 @@ pills.clone("bear5_main", "pill_wfreddy2", {
 	},
 	
 	startFunction=function(ply,ent)
-		cooldown.Set(ply, "death", 360)
+		chaseVoicelineChecker(ply, ent, "freddy")
+		cooldown.Set(ply, "death", 60 * 7) -- 6 минут раунда
 		timer.Simple(3, function()
 			cooldown.Send(ply, "death")
 		end)
 	end,
 	
-	restore=function(ply,ent)
+	onRemove=function(ply,ent)
+		if CLIENT then return end
+		
 		cooldown.Set(ply, "death", 0)
 		
 		if IsValid(bearRequester) then
@@ -180,6 +183,17 @@ net.Receive("fox_request_complete", function(len, ply)
 	end
 	
 	bearRequester = nil
+end)
+
+hook.Add( "PillCostumeEmitSound", "bear5_footsteps", function( t )
+	if t.Entity.formTable and t.Entity.formTable.name == "bear5_main" and t.OriginalSoundName == "freddy.foot1" then
+		t.OriginalSoundName = "bear.foot1"
+		local bear_feet = sound.GetProperties("bear.foot1")
+		
+		t.SoundName = bear_feet.sound[math.random(1,#bear_feet.sound)]
+		
+		return true, t
+	end
 end)
 
 pills.register("bear5_clone",{
@@ -314,7 +328,8 @@ pills.register("fox4",{
 		end
     },
 	
-	restore=function(ply,ent)
+	onRemove=function(ent,formTable,ply)
+		if CLIENT then return end
 		net.Start("player_renderer_clear_e")
 		net.Send(ply)
 		
@@ -391,6 +406,20 @@ hook.Add( "PlayerHurt", "fh_bear_damage_bell", function( ply, attacker, healthRe
 		end
 	end
 end )
+
+hook.Add("FH_ChaseVoicelineHandler", "bear5_chasevc", function(ply,ent,name)
+	if IsValid(ent) and ent.formTable.name == "bear5_main" then
+		bearScream(ply,ent)
+		return false, nil, 3
+	end
+end)
+
+hook.Add("FH_LandTripHandler", "bear5_chasevc", function(ply,ent,name)
+	if ent.formTable.name == "bear5_main" then
+		bearScream(ply,ent)
+		return false, nil
+	end
+end)
 
 if SERVER then return end -- дальше бога нет
 

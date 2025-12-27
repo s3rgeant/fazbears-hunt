@@ -69,6 +69,8 @@ hook.Add("SetupMove", "CanMove", function(ply) -- иронично не рабо
 	end
 end)
 
+local speaker = Material("voice/icntlk_pl.vtf")
+local speaker_mute = Material("voice/muted_speaker.png")
 hook.Add("PlayerStartVoice", "HideVoicePanels", function(ply)
     local listener = LocalPlayer()
 	
@@ -77,12 +79,14 @@ hook.Add("PlayerStartVoice", "HideVoicePanels", function(ply)
     if ply == listener and listener:Team() != 2701 and listener:Team() != TEAM_SPECTATOR then
         hook.Add("HUDPaint", "DrawLocalPlayerVoiceIcon", function()
             local x, y = (ScrW() / 2) - (64 / 2), ScrH() - 50 - (64 / 2)
+			local icon = (!listener:GetAudible() and listener:GetPill()) and speaker_mute or speaker
+			
 			draw.RoundedBox(12, x, y, 64, 64, Color(0, 0, 0, 120))
 			
-            local x, y = (ScrW() / 2) - (48 / 2), ScrH() - 50 - (48 / 2)
-            surface.SetMaterial(Material("voice/icntlk_pl.vtf"))
-            surface.SetDrawColor(255, 255, 255, 255)
-            surface.DrawTexturedRect(x, y, 48, 48)
+			local x, y = (ScrW() / 2) - (48 / 2), ScrH() - 50 - (48 / 2)
+			surface.SetMaterial(icon)
+			surface.SetDrawColor(255, 255, 255, 255)
+			surface.DrawTexturedRect(x, y, 48, 48)
         end)
 		return false
     end
@@ -381,9 +385,3 @@ hook.Add("PreDrawViewModel", "fix_flying_viewmodels", function(vm, ply, weapon)
 		return true
 	end
 end)
-
---[[
-saverestore.AddRestoreHook( "fh_sp_support", function( save )
-	saverestore.WriteTable( { "test" }, save )
-end )
-]]--

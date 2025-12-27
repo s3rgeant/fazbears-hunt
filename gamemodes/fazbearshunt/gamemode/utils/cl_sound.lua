@@ -32,7 +32,7 @@ net.Receive("fh_adv_sound_play", function()
 end)
 
 net.Receive("fh_ent_sound_play", function()
-	local ent = net.ReadPlayer()
+	local ent = net.ReadEntity()
 	local snd = net.ReadString()
 	
 	if !IsValid(ent) then return end
@@ -111,10 +111,14 @@ hook.Add("EntityEmitSound", "fh_silent_anims", function(data)
 	end
 	
 	if IsValid(ent) and ent:GetClass() == "pill_costume" then
-		local handler = hook.Run("PillCostumeEmitSound", data)
+		local handler, dt = hook.Run("PillCostumeEmitSound", data)
 		
 		if handler ~= nil then
-			return handler
+			if handler == false then
+				return handler
+			else
+				data = dt
+			end
 		end
 		
 		local volume = data.Volume

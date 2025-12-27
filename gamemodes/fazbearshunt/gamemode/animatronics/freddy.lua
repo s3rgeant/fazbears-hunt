@@ -8,6 +8,9 @@ if SERVER then
 	util.AddNetworkString("fh_addaffected_stalk")
 	util.AddNetworkString("freddy_cancel_target")
 	
+	util.AddNetworkString("notify_freddys_victim")
+	util.AddNetworkString("notify_freddys_victim_norage")
+	
 	util.PrecacheModel("models/speps/pill/" .. model_prefix .. "freddy.mdl")
 end
 npc_blindrage = CreateConVar( "fh_blindrage_npcs", "0", { FCVAR_NOTIFY, FCVAR_ARCHIVE, FCVAR_REPLICATED }, 
@@ -149,16 +152,14 @@ pills.register("pill_wfreddy2",{
 	jump=function(ply,ent)
 		ent:PillSound("jump",false)
 	end,
-	restore=function(ply,ent,formtable)
+	onRemove=function(ent,formtable, ply)
+		if CLIENT then return end
+		
+		noMoreStalk(ply)
+	
 		timer.Remove("SmoothLookAt_"..ply:EntIndex())
 		timer.Remove("stalk_check"..ent:EntIndex())
-	
-		local hisTarget = stalkers[ply]
-		
-		stalkers[ply] = nil
-		if IsValid(hisTarget) then
-			stalkTargets[hisTarget] = nil
-		end
+		cooldown.Set(ply, "stalk", 1)
 		
 		net.Start('fh_sound_stop')
 		net.WriteString('freddy_raged2_looped.wav')
@@ -206,7 +207,7 @@ function startBlindRage(ply, ent)
 	end
 	
 	net.Start('fh_ent_sound_play')
-	net.WritePlayer(ply)
+	net.WriteEntity(ply)
 	net.WriteString('freddy_stalking_others.wav')
 	net.SendOmit(ply)
 
@@ -324,7 +325,7 @@ function fh_random_stalk_target(ignore)
 	local iterator = npc_blindrage:GetBool() and select( 2, ents.Iterator() ) or select( 2, player.Iterator() )
 	
     for _, ply in ipairs(iterator) do
-        if IsValid(ply) and ply:Alive() and (ply:IsPlayer() and ply:IsSurvivor() or ply:Health() > 0 and ply:IsNPC()) and ply ~= ignore and !outworld_victims[ply] then
+        if IsValid(ply) and ply:Alive() and (ply:IsPlayer() and ply:IsSurvivor() and !ply:HasGodMode() or ply:Health() > 0 and ply:IsNPC()) and ply ~= ignore and !outworld_victims[ply] then
 			local handler = hook.Run("FH_HandleBlindRageTarget", ignore, ply)
 			
 			if handler == false then
@@ -382,6 +383,8 @@ function successStalk(ply, ent, target)
 		stalkers[ply] = target
 		stalkTargets[target] = ply
 		
+		target:SetNW2Entity("_BlindRageFreddy", ply)
+		
 		ent:SetSpeed(unpack(wfreddy_stalk_movement))
 		ent:ReplaceAnimation("run", "srun")
 		
@@ -391,20 +394,8 @@ function successStalk(ply, ent, target)
 		
 		if target:IsPlayer() then
 			target:SetDSP(1)
-		
-			net.Start("fh_play_sound")
-			net.WriteString('freddy_target_stalked.wav')
-			net.Send(target)
 			
-			net.Start("fh_draw_hl_overlay")
-			net.WriteBool(false)
-			net.Send(target)
-		
-			net.Start('fh_net_display')
-			net.WriteString('fazhunt.freddy.foundrun')
-			net.WriteString('fazhunt.freddy.found')
-			net.WriteFloat(-1)
-			net.WriteFloat(6)
+			net.Start("notify_freddys_victim")
 			net.Send(target)
 		end
 			
@@ -413,7 +404,7 @@ function successStalk(ply, ent, target)
 		net.SendOmit({ply, target})
 		
 		net.Start('fh_ent_sound_play')
-		net.WritePlayer(ply)
+		net.WriteEntity(ply)
 		net.WriteString('freddy_raged2_looped.wav')
 		net.Broadcast()
 		
@@ -439,7 +430,14 @@ function noMoreStalk(ply)
 	local hisTarget = stalkers[ply]
 	
 	stalkers[ply] = nil
-	stalkTargets[hisTarget] = nil
+	if IsValid(hisTarget) then
+		hisTarget:SetNW2Entity("_BlindRageFreddy", NULL)
+		
+		net.Start("notify_freddys_victim_norage")
+		net.Send(hisTarget)
+		
+		stalkTargets[hisTarget] = nil
+	end
 
 	cooldown.Set(ply, "stalk", 80)
 	cooldown.Send(ply, "stalk")
@@ -450,12 +448,6 @@ function noMoreStalk(ply)
 	net.Start('fh_sound_stop')
 	net.WriteString('freddy_raged2_looped.wav')
 	net.Broadcast()
-	
-	if IsValid(victim) then
-		net.Start('fh_sound_stop')
-		net.WriteString('freddy_targeted_ambience.wav')
-		net.Send(victim)
-	end
 end
 
 local doors = {}
@@ -480,7 +472,7 @@ hook.Add("PlayerUse", "AccurateBlockedDoorUse", function(ply, ent)
     local isDoor = class == "func_door" or class == "func_door_rotating" or class == "prop_door_rotating"
     if not isDoor then return end
 
-    if ent:HasSpawnFlags(8192) then return end
+	if ent:HasSpawnFlags(8192) or ent:HasSpawnFlags(256) then return end
 	
     local state = ent:GetInternalVariable("m_toggle_state")
     if state ~= 1 then return end
@@ -554,7 +546,7 @@ if CLIENT then
 		local isDoor = class == "func_door" or class == "func_door_rotating" or class == "prop_door_rotating"
 		if not isDoor then return end
 
-		if ent:HasSpawnFlags(8192) then return end
+		if ent:HasSpawnFlags(8192) or ent:HasSpawnFlags(256) then return end
 
 		halo.Add({ent}, Color(255, 255, 255), 2, 2, 1, true, true)
 	end
@@ -569,7 +561,7 @@ if CLIENT then
 
 	local target
 	function fh_addpermanent_affected_freddy(ply)
-		addAffected(ply)
+		addAffected(ply, nil, nil, true)
 		target = ply
 		toggleShadows(false)
 	end
@@ -593,13 +585,54 @@ if CLIENT then
 	end)
 
 	net.Receive("freddy_cancel_target", function()
-		removeAffected(target)
-		
-		target = nil
+		if target then
+			removeAffected(target, true)
+			
+			target = nil
+		end
 		toggleShadows(true)
 	end)
+
+	net.Receive("notify_freddys_victim", function()
+		surface.PlaySound("freddy_target_stalked.wav")
+		drawHighlightTimer(false)
+		
+		fh_change_display(language.GetPhrase('fazhunt.freddy.foundrun'), language.GetPhrase('fazhunt.freddy.found'), 6)
+	end)
+
+	net.Receive("notify_freddys_victim_norage", function()
+		hook.Remove("HUDPaint", "fh_hl_overlay_draw")
+	end)
 	
-	hook.Add("PostCleanupMap", "freddy_cleanup", function(ply)
+	hook.Add("FH_HandleKillerTerrorRadius", "freddy_enraged", function(killer, theme)
+		local myself = LocalPlayer()
+		if IsValid(myself:GetNW2Entity("_BlindRageFreddy")) and killer ~= myself:GetNW2Entity("_BlindRageFreddy") then
+			return false
+		end
+	end)
+	
+	hook.Add("FH_HandleKillerTerrorLayers", "freddy_enraged", function(killer, theme, layer)
+		local myself = LocalPlayer()
+		if IsValid(myself:GetNW2Entity("_BlindRageFreddy")) and killer == myself:GetNW2Entity("_BlindRageFreddy") then
+			if layer == "second_layer" then
+				return "approaching_rage", false
+			elseif layer == "third_layer" then
+				return "near_rage", false
+			end
+		end
+	end)
+	
+	hook.Add("FH_HandlePostTerrorRadius", "freddy_enraged", function(theme, layer)
+		local myself = LocalPlayer()
+		local my_freddy = myself:GetNW2Entity("_BlindRageFreddy")
+		if IsValid(my_freddy) and !theme and !layer then
+			local theme = terror_radius.getPlayerTheme(my_freddy)
+			
+			return theme, "first_layer"
+		end
+	end)
+	
+	hook.Add("PostCleanupMap", "freddy_cleanup", function()
 		target = nil
 		toggleShadows(true)
 	end)

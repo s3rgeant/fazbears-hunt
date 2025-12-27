@@ -1,0 +1,17 @@
+"UnlitGeneric"
+{
+	"$basetexture"		"HUD/fh_interact"
+	"$vertexcolor" 		1
+	"$vertexalpha" 		1
+	"$nolod" 			1
+	
+	"Proxies"
+	{
+			"AnimatedTexture"
+			{
+			  "animatedTextureVar" "$basetexture"
+			  "animatedTextureFrameNumVar" "$frame"
+			  "animatedTextureFrameRate" "8"
+			}
+	}
+}

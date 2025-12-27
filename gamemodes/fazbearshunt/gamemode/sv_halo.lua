@@ -6,7 +6,7 @@ util.AddNetworkString("RemoveAffectedPlayer")
 util.AddNetworkString("ToggleHighlightSound")
 util.AddNetworkString("NotifySpectators")
 	
-affectedPlayers = {}
+local affectedPlayers = {}
 local haloUsers = {}
 
 hook.Add( "PostCleanupMap", "fh_halo_reset", function( name )
@@ -60,52 +60,65 @@ function highlight.ByDistance(ply, ent)
 end
 
 local function highlight_remove_Timer(maboy, ply, duration)
-	local prevTime = affectedPlayers[ply] or 0
-	
-	local newTime = ( CurTime() + duration > prevTime ) and CurTime() + duration or prevTime
-	
-	if !affectedPlayers[ply] then
-		affectedPlayers[ply] = newTime
-	end
-	
-	timer.Create("highlight_remove" .. ply:EntIndex(), newTime - CurTime(), 1, function()
-		affectedPlayers[ply] = nil
-		
-		if IsValid(ply) and ply:Alive() and IsValid(maboy) then
+	if not IsValid(maboy) or not IsValid(ply) then return end
+
+	affectedPlayers[maboy] = affectedPlayers[maboy] or {}
+
+	local curTime = CurTime()
+	local prevTime = affectedPlayers[maboy][ply] or 0
+	local newTime = math.max(prevTime, curTime + duration)
+
+	affectedPlayers[maboy][ply] = newTime
+
+	local timerName = "highlight_remove_" .. maboy:EntIndex() .. "_" .. ply:EntIndex()
+
+	timer.Remove(timerName)
+	timer.Create(timerName, newTime - curTime, 1, function()
+		if affectedPlayers[maboy] and affectedPlayers[maboy][ply] then
+			affectedPlayers[maboy][ply] = nil
+		end
+
+		if IsValid(maboy) and IsValid(ply) and ply:Alive() then
 			net.Start("RemoveAffectedPlayer")
 			net.WriteEntity(ply)
 			net.Send(maboy)
 		end
+
+		if affectedPlayers[ply] and table.IsEmpty(affectedPlayers[maboy]) then
+			affectedPlayers[maboy] = nil
+		end
 	end)
 end
 
-function highlight.Add(ply, players, duration, color)
-    assert(ply, "Can't highlight players for someone who is NOT VALID!")
-    assert(players, "Can't highlight players if they are NOT VALID!")
+function highlight.Add(maboy, players, duration, color)
+	assert(IsValid(maboy), "Can't highlight players for invalid maboy")
+	assert(players, "Players is nil")
 
-	local duration = duration or conVars.halo_time:GetFloat() or 5
+	duration = duration or conVars.halo_time:GetFloat() or 5
+	color = color or Color(255, 0, 0)
+
+	local sendTbl = {}
+
 	if istable(players) then
-		if !table.IsEmpty(players) then
-			net.Start("AddAffectedPlayers")
-			net.WriteTable(players)
-			net.WriteFloat(duration)
-			net.WriteColor(color or Color(255,0,0))
-			net.Send(ply)
-			
-			for _, v in ipairs(players) do
-				highlight_remove_Timer(ply, v, duration)
+		for _, ply in ipairs(players) do
+			if IsValid(ply) then
+				table.insert(sendTbl, ply)
+				highlight_remove_Timer(maboy, ply, duration)
 			end
 		end
 	else
-		if players:IsValid() then
-			net.Start("AddAffectedPlayers")
-			net.WriteTable( {players} )
-			net.WriteFloat(duration)
-			net.WriteColor(color or Color(255,0,0))
-			net.Send(ply)
-			
-			highlight_remove_Timer(ply, players, duration)
+		if IsValid(players) then
+			sendTbl[1] = players
+			highlight_remove_Timer(maboy, players, duration)
 		end
+	end
+
+	if #sendTbl > 0 then
+		net.Start("AddAffectedPlayers")
+		net.WriteTable(sendTbl)
+		net.WriteFloat(duration)
+		net.WriteColor(color)
+		net.Send(maboy)
 	end
 end
 
@@ -182,11 +195,13 @@ end
 				МАШКУ ЗА ЛЯЖКУ
 ]]
 hook.Add("SetupPlayerVisibility", "fh_halo_visibility", function(ply, viewent)
-	if !table.IsEmpty(affectedPlayers) then
-		for player, _ in pairs(affectedPlayers) do
-			if IsValid(player) and player ~= ply and ply:IsAnimatronic() then
-				if viewent:IsValid() and !viewent:TestPVS( player ) then
-					AddOriginToPVS(player:GetPos())
+	if ply:IsAnimatronic() and not table.IsEmpty(affectedPlayers) then
+		for maboy, targets in pairs(affectedPlayers) do
+			if IsValid(maboy) and maboy == ply then
+				for target, _ in pairs(targets) do
+					if IsValid(target) and viewent:IsValid() and not viewent:TestPVS(target) then
+						AddOriginToPVS(target:GetPos())
+					end
 				end
 			end
 		end
@@ -194,46 +209,67 @@ hook.Add("SetupPlayerVisibility", "fh_halo_visibility", function(ply, viewent)
 end)
 
 hook.Add("PlayerChangedTeam", "fh_halo_team", function(ply, oldteam, team)
-	if team != 2701 then
-		if haloUsers[ply] then
-			haloUsers[ply] = nil
-		end
+	if team ~= 2701 and haloUsers[ply] then
+		haloUsers[ply] = nil
 	end
-	
-	if affectedPlayers[ply] then
-		if team == 2701 then
-			affectedPlayers[ply] = nil
-			net.Start("RemoveAffectedPlayer")
-			net.WriteEntity(ply)
-			net.Broadcast()
+
+	for maboy, targets in pairs(affectedPlayers) do
+		if targets[ply] then
+			targets[ply] = nil
+
+			if IsValid(maboy) then
+				net.Start("RemoveAffectedPlayer")
+				net.WriteEntity(ply)
+				net.Send(maboy)
+			end
+
+			if table.IsEmpty(targets) then
+				affectedPlayers[maboy] = nil
+			end
 		end
 	end
 end)
 
-hook.Add( "PlayerDeath", "fh_halo_death_check", function( victim, inflictor, attacker )
-	if affectedPlayers[victim] then
-		affectedPlayers[victim] = nil
-		
-		net.Start("RemoveAffectedPlayer")
-		net.WriteEntity(victim)
-		net.Broadcast()
-		
-		net.Start('fh_nodraw_hl_overlay')
-		net.Send(victim)
+hook.Add("PlayerDeath", "fh_halo_death_check", function(victim, inflictor, attacker)
+	for maboy, targets in pairs(affectedPlayers) do
+		if targets[victim] then
+			targets[victim] = nil
+
+			if IsValid(maboy) then
+				net.Start("RemoveAffectedPlayer")
+				net.WriteEntity(victim)
+				net.Send(maboy)
+			end
+
+			if table.IsEmpty(targets) then
+				affectedPlayers[maboy] = nil
+			end
+		end
 	end
-	
-	if attacker:IsPlayer() and attacker:IsAnimatronic() then
+
+	net.Start('fh_nodraw_hl_overlay')
+	net.Send(victim)
+
+	if IsValid(attacker) and attacker:IsPlayer() and attacker:IsAnimatronic() then
 		highlight.Cooldown(attacker, highlight.GetCooldown(attacker) + 10)
 	end
 end)
 	
-hook.Add( "PlayerDisconnected", "fh_pill_fnaf2_disconnect", function( ply )
-	if affectedPlayers[ply] then
-		affectedPlayers[ply] = nil
-		
-		net.Start("RemoveAffectedPlayer")
-		net.WriteEntity(ply)
-		net.Broadcast()
+hook.Add("PlayerDisconnected", "fh_halo_disconnect", function(ply)
+	for maboy, targets in pairs(affectedPlayers) do
+		if targets[ply] then
+			targets[ply] = nil
+
+			if IsValid(maboy) then
+				net.Start("RemoveAffectedPlayer")
+				net.WriteEntity(ply)
+				net.Send(maboy)
+			end
+
+			if table.IsEmpty(targets) then
+				affectedPlayers[maboy] = nil
+			end
+		end
 	end
 end)
 

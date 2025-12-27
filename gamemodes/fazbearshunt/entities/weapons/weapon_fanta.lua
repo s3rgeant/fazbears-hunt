@@ -18,6 +18,7 @@ SWEP.ViewModelFOV = 54
 SWEP.UseHands = true
 SWEP.DrawCrosshair = false
 SWEP.DrawAmmo = false
+SWEP.Spawnable = true
 
 SWEP.Primary.ClipSize = 1
 SWEP.Primary.DefaultClip = 1

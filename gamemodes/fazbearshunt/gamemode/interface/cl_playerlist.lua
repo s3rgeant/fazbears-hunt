@@ -67,7 +67,7 @@ function GM:ScoreboardShow()
 	gui.EnableScreenClicker(true)
     if IsValid(customScoreboard) then
 		if CurTime() > nextTimeUpdate then
-			nextTimeUpdate = CurTime() + 5
+			nextTimeUpdate = CurTime() + 1
 			
 			UpdatePlayerList(TEAM_SURVIVOR, surv_scrollPanel)
 			UpdatePlayerList(2701, anim_scrollPanel)

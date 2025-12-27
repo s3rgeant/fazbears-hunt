@@ -6,11 +6,45 @@ if SERVER then
 	util.AddNetworkString( "ObsessorTierThreeSetup" )
 	util.AddNetworkString( "ObsessorShitDown" )
 	
+	util.AddNetworkString( "remove_tchica_bar" )
+	
 	util.AddNetworkString( "cancel_obsosi_toychica" )
 	util.AddNetworkString( "addaffected_obs_toychica" )
 	util.AddNetworkString( "remove_obsos_toychica" )
 	
 	util.PrecacheModel("models/ufmp/fnaf2/toys/toychica.mdl")
+end
+sound.Add({
+	name = 			"toychica.run",
+	channel = 		CHAN_STATIC,
+	level = 		90,
+	volume = 		1.0,
+	sound = 			{"toychica/toy_step1.mp3"
+						,"toychica/toy_step2.mp3"
+						,"toychica/toy_step3.mp3"}
+})
+
+local dr_alpha = 0
+local dr_y = 0
+local function DrawHoldingNickname()
+	if SERVER then return end
+	
+	local myself = LocalPlayer()
+	
+	local ply = myself:GetNWEntity("tchica_hold_target")
+	
+	if IsValid(ply) then
+		dr_alpha = Lerp(FrameTime() * 4, dr_alpha, 255)
+		dr_y = Lerp(FrameTime() * 4, dr_y, 6)
+		
+		local ownerName = ply:Nick()
+		local screenPos = (ply:EyePos() + Vector(0,0,dr_y)):ToScreen()
+
+		draw.SimpleText(ownerName, "timerFontBelow", screenPos.x, screenPos.y, Color(255, 255, 255, dr_alpha), TEXT_ALIGN_CENTER, TEXT_ALIGN_CENTER)
+		return
+	end
+	dr_alpha = 0
+	dr_y = 0
 end
 
 local obsessors = {}
@@ -22,18 +56,38 @@ local tchicaObsessors = {}
 local chicaHolders = {}
 local chicasHoldings = {}
 
-hook.Add("PillApply", "toychica_members_apply", function(ply, self)
-	if self.formTable and self.formTable.name and self.formTable.name == "pill_toychica" then
+function toychica_GetTargetValueByTier(tier)
+	return (tier == 0 and 0) or (tier == 1 and 25) or (tier == 2 and 60) or 100
+end
+
+hook.Add("PillApply", "toychica_members_apply", function(ply, ent)
+	if ent.formTable and ent.formTable.name and ent.formTable.name == "pill_toychica" then
 		toychicas[ply] = true
+		
+		if CLIENT and ply == LocalPlayer() then
+			hook.Add("HUDPaint", "tchica_hold_nickname", DrawHoldingNickname)
+		end
 	end
 end)
 
-hook.Add("PillRestore", "toychica_members_restore", function(ply, self)
+hook.Add("PillRestore", "toychica_members_restore", function(ply, ent)
 	toychicas[ply] = false
+		
+	if CLIENT and ply == LocalPlayer() then
+		hook.Remove("HUDPaint", "tchica_hold_nickname")
+	end
 end)
 
 local function chicaTierChange(ply, tier)
 	SetGlobal2Int("_TChicaObsessorCount", tier)
+	
+	if IsValid(ply) and ply:IsAnimatronic() then
+		if tier >= 3 then
+			ply:SprintEnable()
+		else
+			ply:SprintDisable()
+		end
+	end
 	
 	print("[toy_chica] Obsessor Count SET to " .. tier)
 end
@@ -42,6 +96,7 @@ local function obsessorTierUp(ply, tier, tchica)
 	if tier == 0 then
 		net.Start("ObsessorShitDown")
 		net.Send(ply)
+		ply:SetNW2Int("_ObsessorValue", 0)
 	elseif tier == 1 then
 		net.Start("ObsessorTierOneSetup")
 		net.Send(ply)
@@ -71,6 +126,8 @@ local function chicaRestore(ply)
 			obsessorTierUp(target, 0)
 			
 			obsessors[target] = nil
+			
+			target:SetNW2Int("_ObsessorValue", 0)
 		end
 	end
 	tchicaObsessors[ply] = nil
@@ -84,6 +141,7 @@ end
 if !timer.Exists("obsessors_check") then
     timer.Create("obsessors_check", 8, 0, function()
 		if !table.IsEmpty(obsessors) then
+			if GetGlobal2Int("_TChicaObsessorCount") < 3 then return end
 		
 			local plysNearObsos = {}
 			
@@ -154,6 +212,8 @@ local function obsessorFallOffTimer(ply)
 			local value_to_tier = curTier-1 == 0 and 0 or curTier-1 == 1 and 25 or 60
 			obsessors[ply].value = value_to_tier
 			
+			ply:SetNW2Int("_ObsessorValue", value_to_tier)
+			
 			print(ply, 'Downed a tier. Tier: ', curTier-1, value_to_tier)
 			
 			if curTier-1 <= 0 then
@@ -190,12 +250,14 @@ local function gainObsession(target, num, ply)
 			end
 			obsessors[target].tier = obs_tier + 1
 			obsessorTierUp(target, obs_tier + 1, ply)
-			print("[toy_chica] Player " .. target:Nick() .. " TIER UP --> ", obsessors[target].tier )
+			--print("[toy_chica] Player " .. target:Nick() .. " TIER UP --> ", obsessors[target].tier )
 		end
 		obsessors[target].value = new_value
 		
 		obsessorFallOffTimer(target)
 	end
+	
+	target:SetNW2Int("_ObsessorValue", new_value)
 			
 	if obsessors[target].tier == 3 then -- ТАРГЕТ СТАНОВИТСЯ ОБСЕСОЛКОЙ
 		if !tchicaObsessors[ply] then
@@ -209,7 +271,7 @@ local function gainObsession(target, num, ply)
 		return
 	end
 	
-	print("[toy_chica] Player " .. target:Nick() .. " gained obsession: ", obsessors[target].value .. " / " .. value_to_tier )
+	--print("[toy_chica] Player " .. target:Nick() .. " gained obsession: ", obsessors[target].value .. " / " .. value_to_tier )
 end
 
 local function noMoreObsessor(ply)
@@ -230,6 +292,9 @@ local function noMoreObsessor(ply)
 			net.WriteEntity(ply)
 			net.Send(toychica)
 		end
+		net.Start("remove_tchica_bar")
+		net.WriteInt(ply:UserID(), 12)
+		net.Send(toychica)
 	end
 	
 	obsessors[ply] = nil
@@ -244,7 +309,7 @@ local function noMoreObsessor(ply)
 	end
 end
 
-hook.Add("PlayerSpawn", "tchica_disconnect", noMoreObsessor)
+hook.Add("PlayerSpawn", "tchica_spawn_noobs", noMoreObsessor)
 hook.Add("PlayerDisconnected", "tchica_disconnect", noMoreObsessor)
 hook.Add("PostPlayerDeath", "tchica_death", noMoreObsessor)
 hook.Add("PillApply", "tchica_pill", noMoreObsessor)
@@ -327,7 +392,7 @@ local function chicaObsessionCheck(ply, ent)
 	end
 end
 
-local tchica_default_movement = {220, 220, 220, 250} -- обычное передвижение
+local tchica_default_movement = {220, 475, 70, 250} -- обычное передвижение
 local tchica_hold_movement = {65, 65, 65, 250} -- держит кого-то
 
 pills.register("pill_toychica",{
@@ -348,11 +413,18 @@ pills.register("pill_toychica",{
 			
 			crouch="crouch",
 			crouch_walk="crouchmove",
+			
+			damaged1="damaged1",
+			damaged2="damaged2",
+			damaged3="damaged3",
+			
+			stun="stun",
+			melee="attack",
 		},
 	},
 	moveSpeed={
 		walk=220,
-	--	run=475,
+		run=475,
 		ducked=70,
 	},
 	modelScale="1.3",
@@ -364,11 +436,11 @@ pills.register("pill_toychica",{
 	},
 	type="ply",
     camera = {
-        offset = Vector(0, 0, 80),
-		dist = 150
+        offset = Vector(0, 0, 76),
+		dist = 120
     },
 	hull=Vector(32,32,78),
-	duckBy=60,
+	duckBy=54,
 	bloodType=BLOOD_COLOR_MECH,
 	
 	viewmodel={
@@ -403,6 +475,7 @@ pills.register("pill_toychica",{
 		end)
 		
 		ply:SetJumpBoostMultiplier(0)
+		ply:SprintDisable()
 		
 		timer.Create("ObsessionCheck"..ply:EntIndex(), 1, 0, function()
 			if !IsValid(ent) then
@@ -416,10 +489,21 @@ pills.register("pill_toychica",{
 		end)
 	end,
 
-	restore=function(ply,ent)
+	onRemove=function(ent,formTable,ply)
+		if CLIENT then 
+			removeTChicaALLBARS()
+			return 
+		end
 		chicaRestore(ply)
 		
 		ply:SetJumpBoostMultiplier( getScaledJumpBoost() )
+		ply:SprintEnable()
+	end,
+
+	restore=function(ply,ent)
+		chicaRestore(ply)
+		ply:SetJumpBoostMultiplier( getScaledJumpBoost() )
+		ply:SprintEnable()
 	end,
 	
 	attack={
@@ -512,6 +596,8 @@ function holdPlayer(ply, ent, target)
 	if not IsValid(ply) or not IsValid(target) then return end
 	if chicaHolders[ply] == target then return end
 	
+	if hook.Run("FH_HandlePlayerHold", ply, target) == false then return end
+	
 	playVoiceline("tchica", 'grab', ply)
 
 	chicaHolders[ply] = target
@@ -524,10 +610,13 @@ function holdPlayer(ply, ent, target)
 	end
 	
 	ply:SetNWBool("tchica_holding", true)
+	ply:SetNWEntity("tchica_hold_target", target)
 	ent:ReplaceAnimation("idle", "hold")
 	ent:ReplaceAnimation("walk", "holdwalk")
 	ent:SetSpeed(unpack(tchica_hold_movement))
 	ent:SetUseForceAngles(true)
+	
+	target:SendLua( "INTERACT_Hint( 5 )" )
 	
 	target:SetMoveType(MOVETYPE_NONE)
 	target:SetNWBool("tchica_victim", true)
@@ -573,12 +662,15 @@ function releasePlayer(ply, cd)
 		if IsValid(wep) and wep:GetClass() == "v_toychica" then
 			wep:AddAnimation("walk", ACT_WALK)
 			wep:AddAnimation("idle", ACT_IDLE)
+			
+			wep:HandleAnimation("interrupt", 0.5)
 		end
 	
 		cooldown.Set(ply, 'hold', cd or 4)
 		cooldown.Send(ply, "hold")
 	
 		ply:SetNWBool("tchica_holding", false)
+		ply:SetNWEntity("tchica_hold_target", NULL)
 		chicaHolders[ply] = nil
 		
 		remberPushes[ply] = 0
@@ -591,6 +683,8 @@ function releasePlayer(ply, cd)
 		target:RepeatRestoreCollision(0.25)
 		
 		target:SetNWBool("tchica_victim", false)
+	
+		target:SendLua( "RemoveINTERACT_Hint()" )
 		
 		timer.Simple(0, function()
 			if target:IsStuck() then
@@ -703,6 +797,7 @@ end )
 hook.Add( "PlayerSpawn", "tchica_spawn", function(ply)
 	ply:SetNWBool("tchica_victim", false)
 	ply:SetNWBool("tchica_holding", false)
+	ply:SetNWEntity("tchica_hold_target", NULL)
 end )
 
 hook.Add("StartCommand", "tchica_holder_tick", function(ply, cmd)
@@ -717,6 +812,12 @@ hook.Add("StartCommand", "tchica_holder_tick", function(ply, cmd)
 	end
 end)
 
+local PushSound_pills = {
+	"physics/metal/metal_solid_impact_hard1.wav", "physics/metal/metal_solid_impact_hard4.wav",
+	"physics/metal/metal_solid_impact_hard5.wav", "physics/metal/metal_solid_impact_soft1.wav",
+	"physics/metal/metal_solid_impact_soft2.wav", "physics/metal/metal_solid_impact_soft3.wav",
+}
+
 local push = {}
 hook.Add("KeyPress", "toychica_push", function(ply, key)
 	if !ply:GetNWBool("tchica_victim") then return end
@@ -726,14 +827,13 @@ hook.Add("KeyPress", "toychica_push", function(ply, key)
 		local ent = chicasHoldings[ply]
 		if IsValid(ply) and IsValid(ent) then
 			if ply:IsPlayer() and ply:Team() ~= TEAM_SPECTATOR and ent:IsPlayer() then
-				local pushSounds = PushSound_pills
 				
 				if ent:Alive() and ent:GetMoveType() == MOVETYPE_WALK and not ent:IsFlagSet(FL_FROZEN) then
 					hook.Run("PlayerPush", ply, ent)
 					
-					ply:EmitSound(pushSounds[math.random(#pushSounds)], 100, 100)
+					ply:EmitSound(PushSound_pills[math.random(#PushSound_pills)], 100, 100)
 
-					ent:ViewPunch(Angle(math.random(-15, 15), math.random(-15, 15), 0))
+					ent:ViewPunch(Angle(math.random(-4, 4), math.random(-4, 4), 0))
 					
 					push[ply:UserID()] = true
 					timer.Simple(0.20, function()
@@ -743,6 +843,14 @@ hook.Add("KeyPress", "toychica_push", function(ply, key)
 					end)
 				end
 			end
+		end
+	end
+end)
+
+hook.Add("PlayerPush", "toychica_push", function(ply, target)
+	if target:GetPill() then
+		if target:GetPill():GetPillName() == "pill_toychica" then
+			target:GetPill():PillGesture('damaged' .. math.random(1,3), 1, 1, 0, 0.7)
 		end
 	end
 end)
@@ -780,7 +888,7 @@ if CLIENT then
 	
 	local KindaObsessor = false
 	hook.Add("FH_HandleKillerTerrorRadius", "toychica_handle", function(killer, theme)
-		if killer:GetPill() and killer:GetPill():GetPillName() == "pill_toychica" then
+		if IsValid(killer:GetPill()) and killer:GetPill():GetPillName() == "pill_toychica" then
 			if !KindaObsessor then
 				return false
 			end
@@ -788,9 +896,18 @@ if CLIENT then
 	end)
 	local SecondTierObsessor = false
 	hook.Add("FH_HandleKillerTerrorLayers", "toychica_handle", function(killer, theme, layer)
-		if killer:GetPill() and killer:GetPill():GetPillName() == "pill_toychica" then
+		if IsValid(killer:GetPill()) and killer:GetPill():GetPillName() == "pill_toychica" then
 			if !SecondTierObsessor and KindaObsessor and (layer == "first_layer" or layer == "second_layer") then
 				return layer, true
+			end
+		end
+	end)
+	
+	hook.Add("FH_HandleMineTerrorRadius", "toychica_handle", function(ply, theme)
+		local killer = LocalPlayer()
+		if killer:GetPill() and killer:GetPill():GetPillName() == "pill_toychica" then
+			if !killer:IsSprinting() then
+				return false
 			end
 		end
 	end)
@@ -842,6 +959,9 @@ if CLIENT then
 		local fs, fe = render.GetFogDistances()
 		local d = render.GetFogMaxDensity()
 		local r, g, b = render.GetFogColor()
+		
+		if fs == 0 then fs = 10000 end
+		if fe == 0 then fe = 10000 end
 
 		defaultFog = {
 			color = Vector(r, g, b),
@@ -933,23 +1053,24 @@ if CLIENT then
 		active = false
 		SecondTierObsessor = false
 		KindaObsessor = false
-		hook.Remove("SetupWorldFog", "ObsessorFogPulsing")
 	end)
 	
 	-- партиклы хуяртиклы
 	local PARTICLE_TEXTURE = "particles/heart"
 	local PARTICLES_PER_TICK = 2
-	local nextParticleTime = 0 
+	local nextParticleTimes = {}
 	hook.Add("PostPlayerDraw", "lovetaste_particles", function(ply)
 		if ply:GetNW2Int("_ObsessorTier") <= 0 then return end
+		
+		if !nextParticleTimes[ply] then nextParticleTimes[ply] = 0 end
 	
-		if CurTime() < nextParticleTime then return end
+		if CurTime() < nextParticleTimes[ply] then return end
 
 		local tier = ply:GetNW2Int("_ObsessorTier")
 		if tier <= 2 then
-			nextParticleTime = CurTime() + (2 / tier)
+			nextParticleTimes[ply] = CurTime() + (2 / tier)
 		else
-			nextParticleTime = CurTime() + 0.25
+			nextParticleTimes[ply] = CurTime() + 0.25
 		end
 
 		local emitter = ParticleEmitter(ply:GetPos(), false)
@@ -1004,7 +1125,172 @@ if CLIENT then
 		table.Empty(obsosi)
 		active = false
 		SecondTierObsessor = false
+		ThirdTierObsessor = false
 		KindaObsessor = false
-		hook.Remove("SetupWorldFog", "ObsessorFogPulsing")
+		
+		removeTChicaALLBARS()
+	end)
+
+	local panels = {}
+	local bg = Material("vgui/animatronics_hud/abilities/toy_chica/background.png")
+	local avatar_frame = Material("vgui/animatronics_hud/abilities/toy_chica/avatar.png")
+	local heart_full = Material("vgui/animatronics_hud/abilities/toy_chica/heart_full.png")
+	local heart_mid = Material("vgui/animatronics_hud/abilities/toy_chica/heart_mid.png")
+	local heart_low = Material("vgui/animatronics_hud/abilities/toy_chica/heart_low.png")
+
+	surface.CreateFont("tchica_victim_nick", { 
+		font = "Share Tech Mono Regular", 
+		size = 18 --[[* uiScale ]], 
+		extended = true, 
+		weight = 400, 
+		antialias = true, 
+		bold = true 
+	})
+
+	local colorWhite = Color(255,201,53,255)
+	local colorPink = Color(255,0,255,255)
+	local hearts_x = 24
+	local panel_y = 0
+	local panel_x = 32
+
+	function createTChicaPlayerBar(ply)
+		if !ply then return end
+		
+		if panels[ply:UserID()] then return end
+		
+		local nickname = ply:Nick()
+
+		local panel = vgui.Create("DFrame")
+		panel:SetSize(220, 58)
+		panel:SetTitle("")
+		panel:ShowCloseButton(false)
+		panel:SetDraggable(false)
+		panel:Center()
+		panel:SetPos(panel_x, panel:GetY() - panel_y)
+		
+		panel.Paint = function(self, w, h)
+			local myself = LocalPlayer()
+			local hold_target = myself:GetNWEntity("tchica_hold_target", nil)
+			
+			local alpha = (hold_target and hold_target == ply or !IsValid(hold_target)) and 255 or 140
+			local color = colorWhite:Copy()
+			color.a = alpha
+			local colorP = colorPink:Copy()
+			colorP.a = alpha
+			
+			surface.SetDrawColor(color)
+			surface.SetMaterial(bg)
+			surface.DrawTexturedRect(0, 0, w, h)
+			
+			surface.SetDrawColor(color)
+			surface.SetMaterial(avatar_frame)
+			surface.DrawTexturedRect(13, 7, 44, 44)
+				
+			draw.SimpleText(
+				nickname,
+				"tchica_victim_nick",
+				71,
+				7,
+				color,
+				TEXT_ALIGN_LEFT,
+				TEXT_ALIGN_TOP
+			)
+			
+			if IsValid(ply) then
+				local ply_tier = ply:GetNW2Int("_ObsessorTier")
+				local ply_value = ply:GetNW2Int("_ObsessorValue")
+				local usedMid = false
+
+				for i = 0, 2 do
+					local mate
+
+					if i < ply_tier then
+						mate = heart_full
+					elseif not usedMid and toychica_GetTargetValueByTier(ply_tier + 1) >= ply_value and toychica_GetTargetValueByTier(ply_tier) < ply_value - 10 then
+						mate = heart_mid
+						usedMid = true
+					else
+						mate = heart_low
+					end
+
+					surface.SetDrawColor(color)
+					surface.SetMaterial(mate)
+					surface.DrawTexturedRect(71 + i * 24, 35, 18, 16)
+				end
+			end
+		end
+
+		local avatar = vgui.Create( "AvatarImage", panel )
+		avatar:SetSize( 44, 44 )
+		avatar:SetPos( 13, 7 )
+		avatar:SetPlayer( ply, 44 )
+		
+		avatar.PaintOver = function(self, w, h)
+			surface.SetDrawColor(colorWhite)
+			surface.SetMaterial(avatar_frame)
+			surface.DrawTexturedRect(0, 0, w, h)
+		end
+		
+		panels[ply:UserID()] = panel
+		
+		panel_y = panel_y + 70
+	end
+	
+	function removeTChicaPlayerBar(index)
+		local panel = panels[index]
+		
+		if panel then
+			panel:Remove()
+		end
+		
+		panels[index] = nil
+		panel_y = 0
+		
+		if !table.IsEmpty(panels) then
+			for _, p in pairs(panels) do
+				p:Center()
+				p:SetPos(panel_x, p:GetY() - panel_y)
+		
+				panel_y = panel_y + 70
+			end
+		end
+	end
+	
+	function removeTChicaALLBARS()
+		if !table.IsEmpty(panels) then
+			for _, p in pairs(panels) do
+				p:Remove()
+		
+				panel_y = 0
+			end
+		
+			table.Empty(panels)
+		end
+	end
+	
+	net.Receive("remove_tchica_bar", function()
+		local index = net.ReadInt(12)
+		removeTChicaPlayerBar(index)
+	end)
+
+	hook.Add("EntityNetworkedVarChanged","toychica_obsessor", function(ply, name, old, new)
+		local myself = LocalPlayer()
+		if ply:IsPlayer() then
+			if IsValid(myself) and myself:GetPill() and myself:GetPill():GetPillName() == "pill_toychica" then
+				if name == "_ObsessorTier" then
+					if new > 0 then
+						createTChicaPlayerBar(ply)
+					else
+						removeTChicaPlayerBar(ply:UserID())
+					end
+				end
+			end
+		end
+	end)
+
+	hook.Add("PillApply", "toychica_removeobs", function(ply, ent)
+		if ply == LocalPlayer() then
+			removeTChicaALLBARS()
+		end
 	end)
 end

@@ -6,6 +6,8 @@ ENT.AutomaticFrameAdvance = true
 function ENT:SetupDataTables()
     self:NetworkVar("String", 0, "PillForm")
     self:NetworkVar("Entity", 0, "PillUser")
+    self:NetworkVar("Entity", 1, "PrevPillUser")
+	
     self:NetworkVar("Float", 0, "ChargeTime")
     self:NetworkVar("Angle", 0, "ChargeAngs")
     self:NetworkVar("Float", 1, "CloakLeft")
@@ -49,6 +51,8 @@ function ENT:Initialize()
     pills.mapEnt(ply, nil)
 		
 	hook.Run("PillApply", ply, self)
+	
+	self.justSpawned = true
 	
 	if CLIENT then
 		ply:SetRenderBounds(-Vector(hull.x / 2, hull.y / 2, 0), Vector(hull.x / 2, hull.y / 2, hull.z + 25))
@@ -277,9 +281,9 @@ function ENT:Initialize()
 		end
 
         if self.formTable.modelScale then
-            self:SetModelScale(self.formTable.modelScale, 0)
+			self:SetModelScale(self.formTable.modelScale, 0.00001)
         end
-        ply:SetModelScale(self.formTable.modelScale or 1, 0)
+        ply:SetModelScale(self.formTable.modelScale or 1, 0.00001)
 
         if self.formTable.boneMorphs then
             for k, v in pairs(self.formTable.boneMorphs) do
@@ -321,7 +325,15 @@ function ENT:OnRemove()
 
     -- compatibility
     if self.formTable.onRemove then
-        self.formTable.onRemove(self, self.formTable, ply)
+		if CLIENT and ply == LocalPlayer() then
+			self.formTable.onRemove(self, self.formTable, ply)
+		end
+    end
+	
+    if self.formTable.onRemovePost then
+		if SERVER or CLIENT and ply == LocalPlayer() then
+			self.formTable.onRemovePost(self, self.formTable, ply)
+		end
     end
 
     if SERVER then
@@ -339,7 +351,10 @@ end
 
 function ENT:Think()
     local ply = self:GetPillUser()
-    if not IsValid(self) or not IsValid(ply) then return end
+    if not IsValid(self) or not IsValid(ply) then 
+		self:NextThink(CurTime() + fh_pill_update_rate:GetFloat())
+		return 
+	end
 
     local vel = ply:GetVelocity():Length()
 
@@ -354,7 +369,7 @@ function ENT:Think()
 			self:ResetSpeed(ply)
 		end
 
-		if self.anim == "jump" and ply:IsOnGround() then
+		if self.anim == "jump" and ply:OnGround() then
 			self.anim, self.animCycle = nil, nil
 		end
 		
@@ -408,18 +423,12 @@ function ENT:Think()
 			if anim == anims["idle"] or anim == anims["crouch"] then
 				overrideRate = 1
 			end
-
-			if anim and (self:GetSequence() ~= self:LookupSequence(anim) or self.animStart or (self.formTable.autoRestartAnims and self:GetCycle() == 1)) then
-				ply:SetSequence(ply:LookupSequence(anim))
-				
-				self:ResetSequence(self:LookupSequence(anim))
-				self:SetCycle(0)
-				self.animCycle = 0
-			end
-			self.animStart = nil
+			self:PlayAnim(anim)
 			
 			self:SetNextAnimThink(CurTime() + 0.1)
 		end
+		
+		self.justSpawned = false
 		
 		local speedCap = self.formTable.anims.speedCap
 		if speedCap then
@@ -524,6 +533,25 @@ function ENT:Think()
 end
 
 if SERVER then
+	function ENT:DetachPlayer()
+		local ply = self:GetPillUser()
+	
+		self:SetPrevPillUser(ply)
+		self:SetPillUser(nil)
+		self:SetParent()
+		
+		pills.unmapEnt(ply, self)
+	end
+	function ENT:AttachPlayer()
+		local ply = self:GetPrevPillUser()
+	
+		self:SetPillUser(ply)
+		self:SetParent(ply)
+		self:SetPrevPillUser(nil)
+		
+		pills.mapEnt(ply, self)
+	end
+
     function ENT:DoKeyPress(ply, key)
         if self.animFreeze and !self.ignoreFreeze then return end
 
@@ -579,7 +607,7 @@ if SERVER then
     end
 
     function ENT:PillDie()
-        local ply = self:GetPillUser()
+        local ply = self:GetPillUser() or self:GetPrevPillUser()
 
         if self.formTable.die then
             self.formTable.die(ply, self)
@@ -588,6 +616,19 @@ if SERVER then
         self:PillSound("die")
 		
 		pills.restore(ply:Nick(), true)
+    end
+
+    function ENT:PlayAnim(anim)
+		local ply = self:GetPillUser()
+		
+		if IsValid(ply) and anim and (self:GetSequence() ~= self:LookupSequence(anim) or self.animStart or (self.formTable.autoRestartAnims and self:GetCycle() == 1)) or self.justSpawned then
+			ply:SetSequence(ply:LookupSequence(anim))
+			
+			self:ResetSequence(self:LookupSequence(anim))
+			self:SetCycle(0)
+			self.animCycle = 0
+		end
+		self.animStart = nil
     end
 
     function ENT:PillAnim(name, freeze)
@@ -599,10 +640,12 @@ if SERVER then
 		if freeze then
 			local ply = self:GetPillUser()
 		
-            ply:SetWalkSpeed(5)
-            ply:SetRunSpeed(5)
-            ply:SetSlowWalkSpeed(5)
-            ply:SetJumpPower(0)
+			if IsValid(ply) then
+				ply:SetWalkSpeed(5)
+				ply:SetRunSpeed(5)
+				ply:SetSlowWalkSpeed(5)
+				ply:SetJumpPower(0)
+			end
             self:SetFrozen(true)
 		end
     end
@@ -714,23 +757,25 @@ end
 function ENT:PillSound(name, bulk)
     if not self.formTable.sounds then return end
     local s = self.formTable.sounds[name]
+	
+	local ply = self:GetPillUser()
 
     if (istable(s)) then
         s = table.Random(s)
     end
 
-    if isstring(s) then
+    if isstring(s) and IsValid(ply) then
         if bulk then
             sound.Play(s, self:GetPos(), self.formTable.sounds[name .. "_level"] or (name == "step" and 75 or 75), self.formTable.sounds[name .. "_pitch"] or 100, 1)
         else
 			local rf = RecipientFilter()
 			rf:AddAllPlayers()
 			
-			local recipients = hook.Run("PillSound", self:GetPillUser(), self, name)
+			local recipients = hook.Run("PillSound", ply or self:GetParent(), self, name)
 			if recipients then
 				rf:RemovePlayers(recipients)
 			end
-		
+			
             self:GetPillUser():EmitSound(s, self.formTable.sounds[name .. "_level"] or 75, self.formTable.sounds[name .. "_pitch"] or 100, 1, CHAN_AUTO, 0, 0, rf)
         end
 
@@ -900,6 +945,11 @@ ENT.IsDrawn = true
 function ENT:Draw()
 	local ply = self:GetPillUser()
 	
+	if !IsValid(ply) then
+		self:DrawModel()
+		return
+	end
+	
 	--self:FrameAdvance()
 
 	ply:RemoveAllDecals()
@@ -929,8 +979,7 @@ function ENT:Draw()
 	
 	if ply == LocalPlayer() 
 	and ply:GetViewEntity() == ply
-	and !pills.convars.cl_thirdperson:GetBool() 
-	and !ply.fh_target_player then
+	and !pills.convars.cl_thirdperson:GetBool() then
 		self.IsDrawn = false
 		self:DrawShadow(false)
 		return
@@ -1006,6 +1055,7 @@ hook.Add("PrePlayerDraw", "fh_pill_costume_mirrors", function(ply)
 
     local cm = ent.mirrorPill
     if IsValid(cm) then
+		cm:SetParent(ent)
         cm:SetModel(ent:GetModel())
         cm:DrawModel()
     end

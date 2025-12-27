@@ -469,20 +469,20 @@ local negativeEffects = {
 
 if SERVER then
 	function gifts.AddPositiveEffect(name, desc, num, func, req)
-		table.insert(positiveEffects[name], {
+		positiveEffects[name] = {
 			desc = desc or "",
 			num = num or -1,
 			func = func,
 			req = req or nil
-		})
+		}
 	end
 	
 	function gifts.AddNegativeEffect(name, desc, num, func)
-		table.insert(negativeEffects[name], {
+		negativeEffects[name] = {
 			desc = desc or "",
 			num = num or -1,
 			func = func
-		})
+		}
 	end
 	
 	function gifts.GrantEffect(ply, name)

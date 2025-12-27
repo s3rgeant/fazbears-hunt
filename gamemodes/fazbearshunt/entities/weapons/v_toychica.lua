@@ -19,6 +19,7 @@ SWEP.ViewModel = "models/ufmp/fnaf2/toys/vm/toychica.mdl"
 function SWEP:SetupAnimations()
 	self:AddAnimation("draw")
 	self:AddAnimation("attack")
+	self:AddAnimation("interrupt")
 end
 
 if CLIENT then
@@ -36,9 +37,17 @@ if CLIENT then
 		
 		local pillAngleY = ply:GetPill():GetAngles().y
 		
-		if pillAngleY > 180 then
+		while EyeAng.y > 180 do
+			EyeAng.y = EyeAng.y - 360
+		end
+		while EyeAng.y < -180 do
+			EyeAng.y = EyeAng.y + 360
+		end
+		
+		while pillAngleY > 180 do
 			pillAngleY = pillAngleY - 360
-		elseif pillAngleY < -180 then
+		end
+		while pillAngleY < -180 do
 			pillAngleY = pillAngleY + 360
 		end
 

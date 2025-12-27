@@ -4,7 +4,7 @@ util.AddNetworkString("AdminAction")
 util.AddNetworkString("fh_net_scarysound")
 util.AddNetworkString("fh_change_notprefered")
 
-function GiveAnimatronic(ply, killer)
+function GiveAnimatronic(ply, killer, silent)
 	if killer == nil or killer == "" then return end
 	
 	if !ply:Alive() then
@@ -12,7 +12,11 @@ function GiveAnimatronic(ply, killer)
 		ply:UnSpectate()
 		ply:Spawn()
 	end
-	giveKiller(ply, killer, true)
+	if silent then
+		giveKillerSilent(ply, killer, true)
+	else
+		giveKiller(ply, killer, true)
+	end
 	ply:ReturnToSpawn()
 	ply:RemoveRagdoll()
 	
@@ -34,8 +38,6 @@ function RevivePlayer(ply)
 	ply:SetTeam(TEAM_SURVIVOR)
     ply:Spawn()
 	ply:RemoveRagdoll()
-	
-	ply:NoPlayerCollide(0.25)
 end
 
 function highlightSelected(targets, owner)
@@ -44,7 +46,7 @@ function highlightSelected(targets, owner)
 	local affected = {}
 	
 	for _,v in player.Iterator() do
-		if survivors[v] and !table.HasValue(affectedPlayers,v) then
+		if survivors[v] then
 			local isAffected = table.HasValue(targets, v)
 			highlight.NotifyTarget(v, nil, isAffected )
 			
@@ -353,6 +355,97 @@ addAction( "fh_max_cupcakes", setCCFloat )
 addAction( "fh_round_duration", setCCFloat )
 addAction( "morph_myself", morphGuy)
 
+local function multPlayersAction(ply, action)
+	local numTargets = net.ReadUInt(8)
+	local targets = {}
+	for i = 1, numTargets do
+		local target = net.ReadEntity()
+		if IsValid(target) and target:IsPlayer() then
+			table.insert(targets, target)
+		end
+	end
+		
+	for _, target in pairs(targets) do
+		if !target:Alive() then return end
+		
+		if action == "heal" then
+			target:SetHealth(target:GetMaxHealth())
+		elseif action == "give_gift" then
+			local gift = ents.Create("fh_gift")
+			gift:SetPos(ply:GetPos() + Vector(0, 0, 10))
+			gift:SetOwner(ply)
+			gift:Spawn()
+		elseif action == "give_all_weapons" then
+			local weapons = weapons.GetList()
+			
+			for _, wep in ipairs(weapons) do
+				if wep.ClassName and wep.Spawnable then
+					target:Give(wep.ClassName)
+				end
+			end
+		elseif action == "return_spawn" then
+			target:ReturnToSpawn()
+		elseif action == "unstuck" then
+			if target:IsStuck() then
+				target:Unstuck()
+			end
+		elseif action == "tp_to_teammate" then
+			local targetTeam = target:Team()
+			
+			local nearestPos
+			local nearestTeammate
+			
+			for _, teammate in ipairs(team.GetPlayers(targetTeam)) do
+				if target == teammate then continue end
+				if teammate.jumpscared then continue end
+				
+				local distance = target:GetPos():Distance(teammate:GetPos())
+				
+				if !nearestPos or distance < nearestPos then
+					nearestPos = distance
+					nearestTeammate = teammate
+				end
+			end
+				
+			if IsValid(nearestTeammate) then
+				target:SetPos(nearestTeammate:GetPos())
+				target:NoPlayerCollide(0.25)
+			end
+		elseif action == "immune_gfreddy" then
+			if PlayerInOutworld(target) then
+				cancel_outworld(target)
+			end
+			target:SetGFreddyImmune(true)
+		elseif action == "un_immune_gfreddy" then
+			target:SetGFreddyImmune(false)
+		end
+	end
+end
+addAction( "heal", multPlayersAction)
+addAction( "give_gift", multPlayersAction)
+addAction( "give_all_weapons", multPlayersAction)
+addAction( "return_spawn", multPlayersAction)
+addAction( "tp_to_teammate", multPlayersAction)
+addAction( "unstuck", multPlayersAction)
+addAction( "immune_gfreddy", multPlayersAction)
+addAction( "un_immune_gfreddy", multPlayersAction)
+addAction( "give_weapon", function(ply, action)
+	local numTargets = net.ReadUInt(8)
+	local targets = {}
+	for i = 1, numTargets do
+		local target = net.ReadEntity()
+		if IsValid(target) and target:IsPlayer() then
+			table.insert(targets, target)
+		end
+	end
+		
+	local weapon = net.ReadString()
+	for _, target in pairs(targets) do
+		if !target:Alive() then return end
+		target:Give(weapon)
+	end
+end)
+
 net.Receive("AdminAction", function(len, ply)
     if not ply:IsAdmin() then return end
 
@@ -373,14 +466,16 @@ net.Receive("AdminAction", function(len, ply)
 			return
 		end
 		
+		local silent = false
 		local killer = ""
 		if action == "give_animatronic" then 
 			killer = net.ReadString()
+			silent = net.ReadBit() == 1
 		end
 		
         for _, target in pairs(targets) do
             if action == "give_animatronic" then
-                GiveAnimatronic(target, killer)
+                GiveAnimatronic(target, killer, silent)
             elseif action == "resurrect" then
                 RevivePlayer(target)
             elseif action == "kill" then

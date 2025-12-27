@@ -229,9 +229,7 @@ if SERVER then
 
         local e
 
-		if t.type == "ply" then
-            e = ents.Create("pill_costume")
-        else
+		if t.type ~= "ply" then
             ply:ChatPrint("WARNING: Attempted to use invalid pill type.")
 
             return
@@ -248,9 +246,13 @@ if SERVER then
 
         --Remove old AFTER we had a chance to set the new
         if IsValid(old) then
+			if old.formTable.onRemove then
+				old.formTable.onRemove(old, old.formTable, ply)
+			end
             old:Remove()
         end
 
+		e = ents.Create("pill_costume")
 		e:SetPillForm(name)
 		e:SetPillUser(ply)
 		e.option = option
@@ -473,34 +475,6 @@ if SERVER then
 		end
 	end)
 
-    hook.Add("DoAnimationEvent", "pk_pill_triggerAnims", function(ply, event, data)
-        local ent = getMappedEnt(ply)
-        if IsValid(ent) and ent.formTable.type == "ply" then
-            if event == PLAYERANIMEVENT_JUMP and !ent.animFreeze and ply:GetJumpPower() > 0 then
-				if ply:GetJumpPower() > 0 then
-					ent:PillAnim("jump")
-			
-					ent:SetNextAnimThink(CurTime())
-				end
-                ent:DoJump()
-				ply._wereJumpingPill = true
-				ply._jumpPosPill = ply:GetPos()
-            end
-
-            if event == PLAYERANIMEVENT_ATTACK_PRIMARY then
-                ent:PillGesture("attack")
-            end
-
-            if event == PLAYERANIMEVENT_ATTACK_SECONDARY then
-                ent:PillGesture("attack2")
-            end
-
-            if event == PLAYERANIMEVENT_RELOAD then
-               ent:PillGesture("reload")
-            end
-        end
-    end)
-
     hook.Add("OnPlayerHitGround", "pk_pill_hitground", function(ply, iW, oF, speed)
         local ent = getMappedEnt(ply)
 
@@ -516,6 +490,34 @@ if SERVER then
             if ent.formTable.noFallDamage or ent.formTable.type == "phys" then return true end
         end
     end)
+
+	hook.Add("DoAnimationEvent", "pk_pill_triggerAnims", function(ply, event, data)
+		local ent = getMappedEnt(ply)
+		if IsValid(ent) and ent.formTable.type == "ply" then
+			if event == PLAYERANIMEVENT_JUMP and !ent.animFreeze and ply:GetJumpPower() > 0 then
+				if ply:GetJumpPower() > 0 then
+					ent:PillAnim("jump")
+			
+					ent:SetNextAnimThink(CurTime())
+				end
+				ent:DoJump()
+				ply._wereJumpingPill = true
+				ply._jumpPosPill = ply:GetPos()
+			end
+
+			if event == PLAYERANIMEVENT_ATTACK_PRIMARY then
+				ent:PillGesture("attack")
+			end
+
+			if event == PLAYERANIMEVENT_ATTACK_SECONDARY then
+				ent:PillGesture("attack2")
+			end
+
+			if event == PLAYERANIMEVENT_RELOAD then
+			   ent:PillGesture("reload")
+			end
+		end
+	end)
 
     hook.Add("DoPlayerDeath", "pk_pill_death", function(ply)
         if IsValid(getMappedEnt(ply)) then

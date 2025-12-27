@@ -1,7 +1,7 @@
 "VertexlitGeneric"
 {
 $basetexture "models\UFMP\FNAF3\SPRINGTRAP\Flesh"
-$bumpmap "models\UFMP\FNAF3\SPRINGTRAP/flat"
+$bumpmap "models\UFMP/flat"
 $surfaceprop metal
 $phong "1"
 $phongexponent "35"

@@ -159,17 +159,13 @@ function SWEP:DealDamage()
 				endoRelease(target, true)
 	
 				cooldown.Set(target, 'grab', 6)
-			
-				net.Start("fh_net_killer_change")
-				net.WriteString("grab")
-				net.WriteFloat(6)
-				net.Send(target)
+				cooldown.Send(ply, "grab")
 			end
 		end
 	end
 	
 	if targetIsSurv then
-		ply:EmitSound("weapons/axe/melee_axe_0" .. math.random(1,3) .. ".wav", 45, 100, 0.4, CHAN_AUTO )
+		ply:EmitSound("weapons/axe/melee_axe_0" .. math.random(1,3) .. ".wav", 45, 100, 0.7, CHAN_AUTO )
 		
 		local edata = EffectData()
 		edata:SetOrigin(tr.HitPos)
@@ -320,6 +316,8 @@ if CLIENT then
 			halo.Add(nearPlayers, Color(255, 0, 0), 1, 1, 2, true, true)
 		end
 	end)
+	
+	local red = Color(255,0,0,255)
 			
 	hook.Add("HUDPaint", "fh_kilaxe_draw_affected", function()
 		local owner = LocalPlayer()
@@ -338,7 +336,7 @@ if CLIENT then
 					if IsValid(ent) and ent.formTable.name == "pill_wgfreddy2" and !owner:GetNW2Bool("_OUTWORLD_target") then continue end
 					
 					if !IsValid(ent) then ent = ply end
-					nearPlayers[ent] = true
+					nearPlayers[ent] = red
 				end
 			end
 			draw_orbs(nearPlayers)

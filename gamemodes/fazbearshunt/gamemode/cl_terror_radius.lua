@@ -45,7 +45,11 @@ local function loadThemes()
     }
 
     local additionary = {
-        ["chase_low"] = "chase_lowhp.wav"
+        ["chase_low"] = "chase_lowhp.wav",
+        ["far_rage"] = "far_rage.wav",
+        ["approaching_rage"] = "approaching_rage.wav",
+        ["near_rage"] = "near_rage.wav",
+        ["chase_rage"] = "chase_rage.wav",
     }
 
     for _, dir in ipairs(directories) do
@@ -167,13 +171,16 @@ end
 local function isPlayerRunning(ply)
     return ply:GetVelocity():Length() > ply:GetRunSpeed() * 0.9
 end
+local function sameHeight(killer, ply)
+    return math.abs(ply:GetPos().z - killer:GetPos().z)
+end
 function checkChase(ply, killer)
     local distance = ply:GetPos():Distance(killer:GetPos())
     local killerMoving = isPlayerMoving(killer)
     local playerMoving = isPlayerMoving(ply)
     local playerVisible = !ply:GetNoDraw() and ply:GetMaterial() ~= "models/null" and !IsValid(ply:GetPill()) 
 		or IsValid(ply:GetPill()) and ply:GetPill():GetMaterial() ~= "models/null" and !ply:GetPill():GetNoDraw()
-    if distance < tr_ChaseKeep and isKillerLookingAt(ply, killer) and killerMoving and playerMoving and playerVisible and killer:GetMoveType() ~= MOVETYPE_NOCLIP then
+    if distance < tr_ChaseKeep and sameHeight(killer,ply) < 120 and isKillerLookingAt(ply, killer) and killerMoving and playerMoving and playerVisible and killer:GetMoveType() ~= MOVETYPE_NOCLIP then
         isChasing[ply] = killer
         if chaseTimers[ply] then
             timer.Remove(chaseTimers[ply])
@@ -189,7 +196,7 @@ function checkChase(ply, killer)
     end
 end
 
-local function getLayer(theme, layer)
+function terror_radius.getLayer(theme, layer)
 	if !theme or !layer then return end
 	if availableThemes[theme] and availableThemes[theme][layer] then
 		return layer
@@ -197,8 +204,17 @@ local function getLayer(theme, layer)
 	return nil
 end
 
+local function getLayer(theme, layer)
+	return terror_radius.getLayer(theme, layer)
+end
+
 local stealthDelay = 2 -- чтобы террор быстро не пропадал если аниматроник резко застелсил
 local stealthLastActive = {}
+local imChasing = false
+
+function terror_radius.imChasing()
+	return imChasing or false
+end
 
 if !timer.Exists("tr_update") then
     timer.Create("tr_update", 0.5, 0, function()
@@ -208,7 +224,7 @@ if !timer.Exists("tr_update") then
 
         local closestGuyPos, closestTheme, layer = nil, nil, nil
         local foundNoOne = true
-        local imChasing = false
+		imChasing = false
 
         hook.Run("FH_TerrorRadiusUpdate", currentKillers)
         if fh_terror_enabled:GetBool() and !table.IsEmpty(currentKillers) and (myself:Alive() or !myself:Alive() and fh_terror_spectators:GetBool()) then
@@ -267,9 +283,7 @@ if !timer.Exists("tr_update") then
 					
 					if distance > tr_Far then continue end
 					
-					if killer:GetMoveType() == MOVETYPE_NOCLIP then continue end
-					
-					if IsValid(killer:GetPill()) and killer:GetPill():GetMaterial() == "models/null" then continue end
+					--if IsValid(killer:GetPill()) and killer:GetPill():GetMaterial() == "models/null" then continue end
 
 					if stealthKillers[killer] then
 						if isPlayerRunning(killer) or isChasing[myself] then
@@ -329,6 +343,16 @@ if !timer.Exists("tr_update") then
 				end
 			end
         end
+		
+		local closestTheme_handler, layer_handler = nil, nil
+		closestTheme_handler, layer_handler = hook.Run("FH_HandlePostTerrorRadius", closestTheme, layer)
+		
+		if closestTheme_handler and layer_handler then
+			closestTheme = closestTheme_handler
+			layer = layer_handler
+			
+			foundNoOne = false
+		end
 
         if foundNoOne and !imChasing then
 			isChasing[myself] = nil
@@ -369,7 +393,7 @@ local animatronicThemes = {
     ["mask"] 				= "mask",
 	
     ["bear5_main"] 			= "bear5",
-    ["bearling5_main"] 		= "bear5",
+    ["fox4"] 				= "bear5",
 }
 
 local stealthAnims = {
@@ -397,6 +421,13 @@ function terror_radius.addTheme(name, theme)
 	if animatronicThemes[name] then return end
 	
 	animatronicThemes[name] = theme
+end
+
+function terror_radius.getPlayerTheme(ply)
+	if !ply then return "" end
+	if !currentKillers[ply] then return "" end
+	
+	return currentKillers[ply]
 end
 
 function terror_radius.setPlayerTheme(ply, theme)

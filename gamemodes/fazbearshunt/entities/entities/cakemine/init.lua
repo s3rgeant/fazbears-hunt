@@ -118,12 +118,6 @@ function ENT:CheckForPlayers()
 	net.Start("fh_draw_hl_overlay")
 	net.WriteBool(true)
 	net.Send(totalPlayers)
-	
-	for _, player in pairs(totalPlayers) do
-		if !affectedPlayers[player] then
-			affectedPlayers[player] = true
-		end
-	end
 			
 	net.Start("fh_play_sound")
 	net.WriteString("vision_success_cake.wav")

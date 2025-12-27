@@ -2,11 +2,6 @@
 {
 $basetexture "models\ufmp\fnaf3\springtrap\eyecase2"
 
-$halflambert 1
-$phong 1
-$phongboost ".5"
-$phongexponent 20
-$phongfresnelranges "[15 15 15]"
 
 $surfaceprop metal
 $vertexalpha 1
