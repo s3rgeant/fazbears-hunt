@@ -12,8 +12,8 @@ end )
 
 local function handleAFK(ply, t)
 	if ply:IsListenServerHost() or ply:IsSuperAdmin() then
-		--ply._LastActiveCommand = CurTime()
-		--return
+		ply._LastActiveCommand = CurTime()
+		return
 	end
 
 	local reallyCheck = ply:IsAnimatronic() and 45 or 90

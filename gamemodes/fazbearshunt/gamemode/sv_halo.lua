@@ -52,7 +52,7 @@ function highlight.ByDistance(ply, ent)
 			net.WriteEntity(ply)
 			net.Send( team.GetPlayers(TEAM_SPECTATOR) )
 		end
-					
+		
 		net.Start("ToggleHighlightSound") -- включаем чуваку звук что он дофига крутой со спермой под губой
 		net.WriteBool(!table.IsEmpty(totalPlayers))
 		net.Send(ply)

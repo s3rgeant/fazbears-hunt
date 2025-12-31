@@ -253,6 +253,14 @@ pills.register("bear5_clone",{
 		["bip_EyeLid_0_L"] = {scale = Vector(0,0,0)},
 		["bip_EyeLid_1_L"] = {scale = Vector(0,0,0)},
 	},
+	
+	startFunction=function(ply,ent)
+		ply:SetCollisionGroup(COLLISION_GROUP_PASSABLE_DOOR)
+	end,
+	
+	restore=function(ply,ent, formtable)
+		ply:SetCollisionGroup(COLLISION_GROUP_NONE)
+	end,
 })
 
 local fox4_victims = {}

@@ -200,6 +200,7 @@ net.Receive("ToggleHighlightSound", function()
     end
 end)
 
+local spectateColor = Color(155,0,255,255)
 hook.Add( "PreDrawHalos", "fh_affected", function()
 	-- ДЛЯ АНИМАТРОНИКОВ
 	
@@ -230,8 +231,9 @@ hook.Add( "PreDrawHalos", "fh_affected", function()
 	end
 	
 	local lp = LocalPlayer()
+	local lp_obsmode = lp:GetObserverMode()
 	
-	if IsValid(lp) and !lp:Alive() and lp:GetObserverMode() ~= OBS_MODE_NONE then
+	if IsValid(lp) and !lp:Alive() and lp_obsmode ~= OBS_MODE_NONE then
 		local spectateTargets = {}
 		for _, ply in player.Iterator() do
 			if !ply:Alive() then continue end
@@ -243,16 +245,16 @@ hook.Add( "PreDrawHalos", "fh_affected", function()
 						Игроков с SetNoDraw(true) нельзя просветить.
 			]]--
 			
-			if lp:GetObserverTarget() == ply and lp:GetObserverMode() == OBS_MODE_IN_EYE then continue end
+			if lp:GetObserverTarget() == ply and lp_obsmode == OBS_MODE_IN_EYE then continue end
 			
-			if !IsValid(ent) and (ply:GetNoDraw() or ply:GetMaterial() == "models/null") then
+			if !IsValid(ent) and ply:GetMaterial() == "models/null" then
 				table.insert(spectateTargets, ply)
-			elseif IsValid(ent) and (ent:GetNoDraw() or ent:GetMaterial() == "models/null") then
+			elseif IsValid(ent) and ent:GetMaterial() == "models/null" then
 				table.insert(spectateTargets, ent)
 			end
 		end
 		
-		halo.Add(spectateTargets, Color(155, 0, 255, 255), 1, 1, 2, true, false)
+		halo.Add(spectateTargets, spectateColor, 1, 1, 2, true, false)
 	end
 	
 	local ent = pills.getMappedEnt(LocalPlayer())
@@ -274,7 +276,10 @@ hook.Add("HUDPaint", "fh_draw_affected", function()
     cam.Start3D()
         for v, color in pairs(affectedPlayers) do
             if v ~= LocalPlayer() and v:IsValid() and v:Health() > 0 and !v:IsInvisible() then
-                v:DrawModel()
+				local pos = v:GetPos()
+				if pos:ToScreen().visible then
+					v:DrawModel()
+				end
             end
         end
     cam.End3D()

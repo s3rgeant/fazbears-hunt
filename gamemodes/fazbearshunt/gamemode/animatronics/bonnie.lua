@@ -11,38 +11,11 @@ if SERVER then
 end
 
 local bonnie_cmd = {}
---[[
 hook.Add("StartCommand", "bonnie_cmd_copying", function(ply, cmd)
-    if ply.fh_target_player then
-        bonnie_cmd[ply.fh_target_player] = {
-            buttons = cmd:GetButtons(),
-            forward = cmd:GetForwardMove(),
-            side = cmd:GetSideMove(),
-            up = cmd:GetUpMove(),
-            angles = cmd:GetViewAngles()
-        }
-		
-		cmd:ClearMovement()
-		cmd:ClearButtons()
-        return
-    end
-
 	if ply:GetNWBool("_yoursmine_target") then
-		local data = bonnie_cmd[ply]
-		if not data then return end
-		
-		cmd:ClearMovement()
-
-		cmd:SetButtons(data.buttons)
-		cmd:SetForwardMove(data.forward)
-		cmd:SetSideMove(data.side)
-		cmd:SetUpMove(data.up)
-		cmd:SetViewAngles(data.angles)
-		
-		ply:SetEyeAngles(data.angles)
+		cmd:RemoveKey(IN_DUCK)
 	end
 end)
-]]--
 
 function VaultingExists(ply)
 	return (ply.GetMantleEndPos and ply.GetMantle and ply.GetMantleLerp
@@ -230,6 +203,8 @@ function YoursMine_Start(ply, target)
 	
 	local prev_run, prev_walk, prev_duck, prev_jump = ply:GetRunSpeed(), ply:GetWalkSpeed(), ply:GetDuckSpeed(), ply:GetJumpPower()
 	
+	local wasCrouching = ply:Crouching()
+	
 	hook.Run("FH_YoursMineStart", ply, ent, target)
 	
 	ply.fh_target_player = target
@@ -331,6 +306,9 @@ function YoursMine_Start(ply, target)
 					
 					target:SetPos(endpos)
 				end
+				if ply:Crouching() then
+					target:Crouch()
+				end
 			end
 		end
 		
@@ -362,6 +340,14 @@ function YoursMine_Start(ply, target)
 			ent:AttachPlayer()
 			
 			--ply:SetViewEntity( ply )
+			
+			if wasCrouching then
+				ply:Crouch()
+			end
+			
+			if ply:IsStuck() then
+				ply:Unstuck()
+			end
 	
 			local wep = ply:GetActiveWeapon()
 			if IsValid(wep) and wep:GetClass() == "v_bonnie" then

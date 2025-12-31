@@ -144,7 +144,7 @@ function SWEP:DealDamage()
 	if targetIsAnimatronic and ent.cloaked then return end
 		
 	-- мы увеличиваем урон по аниматроникам если их больше одного
-	local damage = targetIsAnimatronic and math.random(510, 625) * 1 +((math.max(1, animsCount-1))/2) or math.random(20,30)
+	local damage = targetIsAnimatronic and math.random(550, 600) + math.max(1, animsCount-1)*15 or math.random(20,30)
 		
 	if targetIsAnimatronic then
 		target:EmitSound(PushSound_pills[math.random(#PushSound_pills)])

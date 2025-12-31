@@ -168,6 +168,7 @@ function SWEP:AlwaysRunning( )
 end
 
 if CLIENT then
+	local red = Color(255,0,0)
 	hook.Add( "PreDrawHalos", "pt_halo", function()
 		local ply = LocalPlayer()
 		local target = ply:GetObserverTarget()
@@ -183,7 +184,7 @@ if CLIENT then
 					nearPlayers[ent] = ent
 				end
 			end
-			halo.Add(nearPlayers, Color(255, 0, 0), 1, 1, 2, true, true)
+			halo.Add(nearPlayers, red, 1, 1, 2, true, true)
 		end
 	end)
 			
@@ -206,7 +207,10 @@ if CLIENT then
 			cam.Start3D()
 				for v, _ in pairs(nearPlayers) do
 					if v ~= LocalPlayer() and v:IsValid() and v:Health() > 0 then
-						v:DrawModel()
+						local pos = v:GetPos()
+						if pos:ToScreen().visible then
+							v:DrawModel()
+						end
 					end
 				end
 			cam.End3D()

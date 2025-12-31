@@ -1272,16 +1272,44 @@ if CLIENT then
 		local index = net.ReadInt(12)
 		removeTChicaPlayerBar(index)
 	end)
+	
+	local chicasObsoses = {}
 
 	hook.Add("EntityNetworkedVarChanged","toychica_obsessor", function(ply, name, old, new)
 		local myself = LocalPlayer()
 		if ply:IsPlayer() then
-			if IsValid(myself) and myself:GetPill() and myself:GetPill():GetPillName() == "pill_toychica" then
-				if name == "_ObsessorTier" then
-					if new > 0 then
-						createTChicaPlayerBar(ply)
+			if name == "_ObsessorTier" then
+				if IsValid(myself) and IsValid(myself:GetPill()) then 
+					if myself:GetPill():GetPillName() == "pill_toychica" then
+						if new > 0 then
+							createTChicaPlayerBar(ply)
+						else
+							removeTChicaPlayerBar(ply:UserID())
+						end
 					else
-						removeTChicaPlayerBar(ply:UserID())
+						if new >= 3 then
+							chicasObsoses[ply] = true
+						else
+							chicasObsoses[ply] = nil
+						end
+					end
+				end
+			end
+		end
+	end)
+	
+	hook.Add( "PreDrawHalos", "fh_toychica_obsos_helper", function()
+		local myself = LocalPlayer()
+		for ply, _ in pairs(chicasObsoses) do
+			if myself:IsAnimatronic() and IsValid(ply) and ply:Health() > 0 and not ply:IsInvisible() then
+				local pos = ply:GetPos()
+				if pos:ToScreen().visible then
+					local distance = myself:GetPos():Distance(pos)
+					
+					if distance < 800 then
+						local blur = distance / 100
+						
+						halo.Add({ply}, colorPink, blur, blur, 1, true)
 					end
 				end
 			end

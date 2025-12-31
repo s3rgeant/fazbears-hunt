@@ -90,8 +90,6 @@ end
 
 derma.DefineControl( "VoiceNotify", "", PANEL, "DPanel" )
 
-
-
 function GM:PlayerStartVoice( ply )
 
 	if ( !IsValid( g_VoicePanelList ) ) then return end
@@ -137,25 +135,63 @@ timer.Create( "VoiceClean", 10, 0, VoiceClean )
 function GM:PlayerEndVoice( ply )
 
 	if ( IsValid( PlayerVoicePanels[ ply ] ) ) then
-
 		if ( PlayerVoicePanels[ ply ].fadeAnim ) then return end
 
 		PlayerVoicePanels[ ply ].fadeAnim = Derma_Anim( "FadeOut", PlayerVoicePanels[ ply ], PlayerVoicePanels[ ply ].FadeOut )
 		PlayerVoicePanels[ ply ].fadeAnim:Start( 2 )
-
 	end
-
 end
 
 local function CreateVoiceVGUI()
-
 	g_VoicePanelList = vgui.Create( "DPanel" )
 
 	g_VoicePanelList:ParentToHUD()
 	g_VoicePanelList:SetPos( ScrW() - 300, 100 )
 	g_VoicePanelList:SetSize( 250, ScrH() - 200 )
 	g_VoicePanelList:SetPaintBackground( false )
-
 end
 
 hook.Add( "InitPostEntity", "CreateVoiceVGUI", CreateVoiceVGUI )
+
+local speaker = Material("voice/icntlk_pl.vtf")
+local speaker_mute = Material("voice/muted_speaker.png")
+hook.Add("PlayerStartVoice", "HideVoicePanels", function(ply)
+    local listener = LocalPlayer()
+	
+	if !IsValid(listener) then return end
+	
+    if ply == listener and listener:Team() != 2701 and listener:Team() != TEAM_SPECTATOR then
+        hook.Add("HUDPaint", "DrawLocalPlayerVoiceIcon", function()
+            local x, y = (ScrW() / 2) - (64 / 2), ScrH() - 50 - (64 / 2)
+			local icon = (!listener:GetAudible() and listener:GetPill()) and speaker_mute or speaker
+			
+			draw.RoundedBox(12, x, y, 64, 64, Color(0, 0, 0, 120))
+			
+			local x, y = (ScrW() / 2) - (48 / 2), ScrH() - 50 - (48 / 2)
+			surface.SetMaterial(icon)
+			surface.SetDrawColor(255, 255, 255, 255)
+			surface.DrawTexturedRect(x, y, 48, 48)
+        end)
+		return false
+    end
+	if !IsValid(ply) then return end
+	
+	local proximityEnabled = GetConVar("proximity_enabled"):GetInt()
+	
+	if proximityEnabled == 0 then
+		return
+	end
+	
+    local listenerTeam = listener:Team()
+    local speakerTeam = ply:Team() or TEAM_SURVIVOR
+	
+    if listenerTeam == TEAM_SPECTATOR and speakerTeam == TEAM_SPECTATOR then
+        return
+    end
+
+    if listenerTeam == 2701 and speakerTeam == 2701 then
+        return
+    end
+
+    return false
+end)

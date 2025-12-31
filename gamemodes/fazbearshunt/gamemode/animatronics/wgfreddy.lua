@@ -527,7 +527,7 @@ if SERVER then
 	
 	hook.Add("PlayerCanSeePlayersChat", "fh_gfreddy_chat", function(text, teamOnly, listener, speaker)
 		if isGameOn and !roundEnding then
-			if speaker:IsPlayer() and IsValid(speaker:GetPill()) and speaker:GetPill():GetName() == "pill_wgfreddy2" then
+			if speaker:IsPlayer() and IsValid(speaker:GetPill()) and speaker:GetPill():GetPillName() == "pill_wgfreddy2" then
 				return false
 			end
 		end
@@ -1056,9 +1056,11 @@ if PLAYER then
 end
 
 local function cancel_outworld_target(ply)
-	net.Start("fh_net_scarysound")
-	net.WriteBool(true)
-	net.Send(ply)
+	if isGameOn and !roundEnding then
+		net.Start("fh_net_scarysound")
+		net.WriteBool(true)
+		net.Send(ply)
+	end
 
 	ply:SetJumpBoostMultiplier(getScaledJumpBoost())
 	ply:SetRunSpeed(420)

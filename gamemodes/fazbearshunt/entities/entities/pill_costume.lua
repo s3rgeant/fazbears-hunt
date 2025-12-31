@@ -511,7 +511,7 @@ function ENT:Think()
 
     if SERVER then
         self:SetPos(ply:GetPos())
-    else
+    elseif CLIENT and self:GetParent() == ply then
         self:SetRenderOrigin(ply:GetPos())
     end
 

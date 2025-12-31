@@ -50,6 +50,8 @@ pills.register("pill_mangle",{
 			crouch_walk="crouchwalk",
 			stun="stun",
 			melee="melee",
+			
+			hook="hook",
 		},
 		speedCap={
 			walk=66,
@@ -454,6 +456,7 @@ hook.Add("FinishMove", "mangle_hook_ready", function( ply, mv )
 					end
 				end
 				
+				ply:GetPill():PillGesture('hook', 1, 1, 0, 0.7)
 				ply:EmitSound("grab_player.wav")
 				ply:SetNWBool("_MangleHookReady", false)
 				

@@ -124,8 +124,7 @@ function SWEP:SecondaryAttack()
 				self.GlobalControlSound = nil
 			end
 			if !self.GlobalControlSound then
-				self.GlobalControlSound = CreateSound(ply, "bonnie_control_others.wav", rf)
-				self.GlobalControlSound:SetSoundLevel( 0 )
+				self.GlobalControlSound = CreateSound(ply, ")bonnie_control_others.wav", rf)
 			end
 			self.GlobalControlSound:Play()
 

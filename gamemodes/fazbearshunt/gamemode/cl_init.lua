@@ -69,49 +69,6 @@ hook.Add("SetupMove", "CanMove", function(ply) -- иронично не рабо
 	end
 end)
 
-local speaker = Material("voice/icntlk_pl.vtf")
-local speaker_mute = Material("voice/muted_speaker.png")
-hook.Add("PlayerStartVoice", "HideVoicePanels", function(ply)
-    local listener = LocalPlayer()
-	
-	if !IsValid(listener) then return end
-	
-    if ply == listener and listener:Team() != 2701 and listener:Team() != TEAM_SPECTATOR then
-        hook.Add("HUDPaint", "DrawLocalPlayerVoiceIcon", function()
-            local x, y = (ScrW() / 2) - (64 / 2), ScrH() - 50 - (64 / 2)
-			local icon = (!listener:GetAudible() and listener:GetPill()) and speaker_mute or speaker
-			
-			draw.RoundedBox(12, x, y, 64, 64, Color(0, 0, 0, 120))
-			
-			local x, y = (ScrW() / 2) - (48 / 2), ScrH() - 50 - (48 / 2)
-			surface.SetMaterial(icon)
-			surface.SetDrawColor(255, 255, 255, 255)
-			surface.DrawTexturedRect(x, y, 48, 48)
-        end)
-		return false
-    end
-	if !IsValid(ply) then return end
-	
-	local proximityEnabled = GetConVar("proximity_enabled"):GetInt()
-	
-	if proximityEnabled == 0 then
-		return false
-	end
-	
-    local listenerTeam = listener:Team()
-    local speakerTeam = ply:Team() or TEAM_SURVIVOR
-	
-    if listenerTeam == TEAM_SPECTATOR and speakerTeam == TEAM_SPECTATOR then
-        return
-    end
-
-    if listenerTeam == 2701 and speakerTeam == 2701 then
-        return
-    end
-
-    return false
-end)
-
 hook.Add("PlayerEndVoice", "HideVoicePanels", function(ply)
     if ply == LocalPlayer() then
         hook.Remove("HUDPaint", "DrawLocalPlayerVoiceIcon")

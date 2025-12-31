@@ -924,7 +924,7 @@ local function fh_death_hook(victim)
 		
 		if timer.Exists("RandomGifts") then
 			local timertime = timer.TimeLeft("RandomGifts")
-			timer.Adjust("RandomGifts", math.min(timertime + 8, 120))
+			timer.Adjust("RandomGifts", math.min(timertime + 5, 120))
 		end
 		
 		local animCount = table.Count(animatronics)
