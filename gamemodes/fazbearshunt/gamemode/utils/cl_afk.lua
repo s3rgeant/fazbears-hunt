@@ -1,64 +1,83 @@
 local canCheckAfk = false
+local lp = nil
 
-hook.Add( "InitPostEntity", "afk_start", function()
+local lastActiveTime = 0
+local aboutToBeKicked = false
+
+hook.Add("InitPostEntity", "afk_start", function()
+	lp = LocalPlayer()
+	if not IsValid(lp) then return end
+
 	canCheckAfk = true
-	
-	local myself = LocalPlayer()
-	if IsValid(myself) then
-		myself._LastActiveCommand = CurTime()
-		myself._aboutToBeKicked = false
-	end
-end )
+	lastActiveTime = CurTime()
+	aboutToBeKicked = false
+end)
 
-local function handleAFK(ply, t)
+local function resetAFKState()
+	lastActiveTime = CurTime()
+	aboutToBeKicked = false
+end
+
+local function handleAFK(ply, idleTime)
 	if ply:IsListenServerHost() or ply:IsSuperAdmin() then
-		ply._LastActiveCommand = CurTime()
+		resetAFKState()
 		return
 	end
 
-	local reallyCheck = ply:IsAnimatronic() and 45 or 90
+	local kickDelay = ply:IsAnimatronic() and 45 or 90
+	local kickAfterWarn = kickDelay + 25
 
-	if ply._aboutToBeKicked then
-		if t > reallyCheck + 25 then
+	if aboutToBeKicked then
+		if idleTime >= kickAfterWarn then
 			RunConsoleCommand("disconnect")
 		end
 		return
 	end
 
-	if t > reallyCheck then
-		ply._aboutToBeKicked = true
-		ply._LastActiveCommand = CurTime()
+	if idleTime >= kickDelay then
+		aboutToBeKicked = true
+		lastActiveTime = CurTime()
 
 		surface.PlaySound("player/suit_denydevice.wav")
-		fh_change_display(language.GetPhrase("afk.kick_message"), "", 20)
+		fh_change_display(
+			language.GetPhrase("afk.kick_message"),
+			"",
+			20
+		)
 	end
 end
 
+hook.Add("SetupMove", "afk_check_last", function(ply, mv, cmd)
+	if not canCheckAfk then return end
 
-hook.Add( "SetupMove", "afk_check_last", function( ply, mv, cmd )
-	if !canCheckAfk then return end
+	lp = lp or LocalPlayer()
+	if not IsValid(lp) or ply ~= lp then return end
 
-	if ply._LastActiveCommand and CurTime() - ply._LastActiveCommand > 20 then
-		handleAFK(ply, CurTime() - ply._LastActiveCommand)
+	if
+		cmd:GetButtons() ~= 0
+		or cmd:GetMouseX() ~= 0
+		or cmd:GetMouseY() ~= 0
+		or not GetGlobal2Bool("gameOn", false)
+		or not ply:Alive()
+	then
+		resetAFKState()
+		return
 	end
-	if cmd:GetButtons() > 0 or cmd:GetMouseX() ~= 0 or cmd:GetMouseY() ~= 0 or !GetGlobal2Bool("gameOn", false) or !ply:Alive() then
-		ply._LastActiveCommand = CurTime()
-		ply._aboutToBeKicked = false
+
+	local idleTime = CurTime() - lastActiveTime
+	if idleTime > 20 then
+		handleAFK(ply, idleTime)
 	end
 end)
 
--- трогает чат значит не афк
-hook.Add( "StartChat", "afk_chat", function( )
-	local myself = LocalPlayer()
-	if IsValid(myself) then
-		myself._LastActiveCommand = CurTime()
-		myself._aboutToBeKicked = false
+hook.Add("StartChat", "afk_chat_start", function()
+	if IsValid(LocalPlayer()) then
+		resetAFKState()
 	end
 end)
-hook.Add( "FinishChat", "afk_chat", function( )
-	local myself = LocalPlayer()
-	if IsValid(myself) then
-		myself._LastActiveCommand = CurTime()
-		myself._aboutToBeKicked = false
+
+hook.Add("FinishChat", "afk_chat_finish", function()
+	if IsValid(LocalPlayer()) then
+		resetAFKState()
 	end
 end)

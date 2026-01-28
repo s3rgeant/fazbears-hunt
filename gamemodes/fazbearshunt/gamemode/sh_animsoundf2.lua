@@ -15,10 +15,10 @@ sound.Add({
 	channel = 		CHAN_STATIC,
 	level = 		90,
 	volume = 		1.0,
-	sound = 			{"bigstep1.mp3"
-						,"bigstep2.mp3"
-						,"bigstep3.mp3"
-						,"bigstep4.mp3"}
+	sound = 			{"verybigstep1.mp3"
+						,"verybigstep2.mp3"
+						,"verybigstep3.mp3"
+						,"verybigstep4.mp3"}
 })
 sound.Add({
 	name = 			"bear.foot1",

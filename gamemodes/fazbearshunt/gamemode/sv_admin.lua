@@ -96,27 +96,19 @@ roundPaused = roundPaused or false
 function ToggleGamePause()
 	if isGameOn and !roundEnding then
 		if !roundPaused then
-			if timer.Exists("EndGameTimer") then
-				net.Start("fh_pause_game_timer")
-				net.WriteFloat( timer.TimeLeft("EndGameTimer") )
-				net.WriteString( "ambient/alarms/warningbell1.wav" )
-				net.Broadcast()
+			if fh.timer.Exists() then
+				fh.timer.Pause("ambient/alarms/warningbell1.wav")
 				
-				timer.Pause("EndGameTimer")
 				if timer.Exists("RandomGifts") then
 					timer.Pause("RandomGifts")
 				end
 			end
 		else
-			timer.UnPause("EndGameTimer")
+			fh.timer.UnPause("round/time_cutback.mp3")
+			
 			if timer.Exists("RandomGifts") then
 				timer.UnPause("RandomGifts")
 			end
-			
-			net.Start("fh_timer_cutback")
-			net.WriteFloat(timer.TimeLeft("EndGameTimer"))
-			net.WriteString("round/time_cutback.mp3")
-			net.Broadcast()
 		end
 		roundPaused = not roundPaused
 	end
@@ -216,27 +208,16 @@ function EndPostRound()
 		net.SendOmit( table.GetKeys( getOutworldVictims() ) )
 		
 		local vremya = fh.GetGameDuration()
-		
-		if fh.GetRoundType() < 2 then
-			net.Start("fh_timer_cutback")
-			net.WriteFloat(vremya)
-			net.WriteString("round/time_cutback.mp3")
-			net.Broadcast()
-			
-			timer.Adjust("EndGameTimer", vremya)
-		end
+
+		fh.timer.CutBack(vremya, "round/time_cutback.mp3")
 		
 		hook.Run("fh_poststartgame", roundType, animatronics)
 	end
 end
 
 function EndLobbyTimer()
-	if timer.Exists("GameStartTimer") then
-		timer.Adjust("GameStartTimer", 1, 1, function() end)
-		timer.Remove("GameStartTimer")
-		
-		net.Start("ResetTimer")
-		net.Broadcast()
+	if !isGameOn then
+		fh.timer.RemoveTimer()
 	end
 end
 
@@ -263,14 +244,14 @@ local function spawnGifts()
 	end
 	
 	for ply, _ in pairs(survivors) do
-		if math.random(1, 100) <= GetGiftSpawnChance() and (ply:Alive() and ply:Team() != TEAM_SPECTATOR) then
+		if ply:Alive() and ply:Team() ~= TEAM_SPECTATOR then
 			local FH_ShouldPlayerReceiveGifts = hook.Run("FH_ShouldPlayerReceiveGifts", ply)
 			
 			if FH_ShouldPlayerReceiveGifts == false then continue end
 			
 			if ply:GetGiftOwnership() then continue end
 			
-			timer.Simple(util.SharedRandom( math.random(-100,100), 1, 12 ), function()
+			timer.Simple(math.random(10,100) / 10, function()
 				if !IsValid(ply) or !ply:IsSurvivor() then return end
 				local gift = ents.Create("fh_gift")
 				gift:SetPos(ply:GetPos() + Vector(0, 0, 10))
@@ -372,8 +353,8 @@ local function multPlayersAction(ply, action)
 			target:SetHealth(target:GetMaxHealth())
 		elseif action == "give_gift" then
 			local gift = ents.Create("fh_gift")
-			gift:SetPos(ply:GetPos() + Vector(0, 0, 10))
-			gift:SetOwner(ply)
+			gift:SetPos(target:GetPos() + Vector(0, 0, 10))
+			gift:SetOwner(target)
 			gift:Spawn()
 		elseif action == "give_all_weapons" then
 			local weapons = weapons.GetList()
@@ -418,6 +399,14 @@ local function multPlayersAction(ply, action)
 			target:SetGFreddyImmune(true)
 		elseif action == "un_immune_gfreddy" then
 			target:SetGFreddyImmune(false)
+		elseif action == "set_high_anim" then
+			if LastKillers and istable(LastKillers) then
+				LastKillers[LK_ToKey(tostring(target:SteamID64()))] = nil
+			end
+		elseif action == "set_low_anim" then
+			if LastKillers and istable(LastKillers) then
+				LastKillers[LK_ToKey(tostring(target:SteamID64()))] = 0
+			end
 		end
 	end
 end
@@ -429,6 +418,8 @@ addAction( "tp_to_teammate", multPlayersAction)
 addAction( "unstuck", multPlayersAction)
 addAction( "immune_gfreddy", multPlayersAction)
 addAction( "un_immune_gfreddy", multPlayersAction)
+addAction( "set_high_anim", multPlayersAction)
+addAction( "set_low_anim", multPlayersAction)
 addAction( "give_weapon", function(ply, action)
 	local numTargets = net.ReadUInt(8)
 	local targets = {}

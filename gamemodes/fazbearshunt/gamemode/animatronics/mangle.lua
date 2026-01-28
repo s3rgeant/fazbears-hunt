@@ -4,12 +4,33 @@ if SERVER then
 	util.PrecacheModel("models/ufmp/fnaf2/toys/themangle.mdl")
 end
 
+local JUMPING = {}
+
 local man_speed = {
 	[1] = {66, 475, 80, 250},
 	[2] = {66, 485, 80, 252},
 	[3] = {66, 495, 80, 254},
 	[4] = {66, 505, 80, 256}
 }
+
+local function mangleAbility(ply, ent)
+	if ply:GetNWBool("_MangleHookReady") then return end
+
+	if SERVER then
+		ent:SetUseForceAngles(false)
+		ent.anim = nil
+		ent:PillAnim("jump", false)
+		ent:PillSound("jump", false)
+
+		timer.Simple(2, function()
+			if IsValid(ply) and ply:IsStuck() then
+				ply:Unstuck()
+			end
+		end)
+	end
+
+	ply:SetViewOffset(Vector(0,0,70))
+end
 
 pills.register("pill_mangle",{
 	printName="Mangle",
@@ -116,72 +137,27 @@ pills.register("pill_mangle",{
 	attack2_sh={
 		mode="trigger",
 		func = function(ply,ent)
-			local eyeAng = ply:EyeAngles()
-		
-			local velocityPower = 600
-			local addVelocity = Vector(0,0,0)
-			if !ply:GetNWBool("_MangleHooked") then
-				if !ply:OnGround() or ply:Crouching() then return end
-				if eyeAng.p > 5 then return end
-			else
-				velocityPower = 800
-				if eyeAng.p > 40 then
-					velocityPower = 1300
-				end
-			end
-			
-			if ply:GetNWBool("_MangleHookReady") then return end
-
-			if ply:GetNWBool("_MangleHooked") and ply:GetNWString("_MangleLastHookType") ~= "ceiling" then
-				local diff = math.AngleDifference( eyeAng.y, ply:GetNWAngle("_MangleHookAngle").y )
+			if not ply:GetNWBool("_MangleHooked") then
+				local eyeAng = ply:EyeAngles()
 				
-				if diff < -90 or diff > 90 then
+				if ply:GetNWBool("_MangleHookReady") then
 					return
 				end
-			end
 			
-			if SERVER then
-				ent:SetUseForceAngles(false)
-				ent.anim = nil
+				if IsFirstTimePredicted() then
+					if (not ply:OnGround() or ply:Crouching()) then return end
+					if eyeAng.p > 0 then return end
+				end
 				
-				ent:PillAnim("jump",false)
-				ent:PillSound("jump",false)
-				
-				timer.Simple(2, function()
-					if ply:IsStuck() then
-						ply:Unstuck()
-					end
-				end)
+				JUMPING[ply] = true
 			end
-			
-			ply:SetViewOffset(Vector(0,0,70))
-			
-			if eyeAng.p > -24 then
-				addVelocity = Vector(0,0,200)
-			end
-
-			local up = eyeAng:Up()
-			up.x = 0
-			up.y = 0
-
-			local initVelVector = eyeAng:Forward() + up * 0.2
-
-			if ply:GetNWBool("_MangleHooked") then
-				initVelVector = eyeAng:Forward()
-			end
-			
-			ply:SetNWBool("_MangleHooked", false)
-			ply:SetNWBool("_MangleHookReady", true)
-			
-			ply._wereJumpingPill = true
-			
-			ply:SetMoveType(MOVETYPE_WALK)
-			
-			ply:SetLocalVelocity( ply:GetVelocity() + ((initVelVector) * velocityPower) + addVelocity )
 		end
 	},
 	
 	land=function(ply,ent)
+		ply:SetNWBool("_MangleHooked", false)
+		ply:SetNWBool("_MangleHookReady", false)
+		
 		local longerStun = ply:GetNWString("_MangleHookReady") and ply:GetNWString("_MangleLastHookType") == ""
 		
 		if ply:WaterLevel() < 2 then
@@ -218,29 +194,6 @@ pills.register("pill_mangle",{
 		ent:PillSound("jump",false)
 	end
 })
-
-hook.Add("KeyPress", "mangle_unhook", function(ply, key)
-	if ( key == IN_JUMP ) then
-		if ply:IsAnimatronic() then 
-			local ent = pills.getMappedEnt(ply)
-		
-			if IsValid(ent) then
-				if ply:GetNWBool("_MangleHooked") then 
-					ply:SetNWBool("_MangleHooked", false)
-					ply:SetNWBool("_MangleHookReady", false)
-					ply:SetNWString("_MangleLastHookType", "")
-					ply:SetMoveType(MOVETYPE_WALK)
-					
-					ply:SetViewOffset(Vector(0,0,70))
-					
-					ent:SetUseForceAngles(false)
-					ent.anim = nil
-					return
-				end
-			end
-		end
-	end
-end)
 
 local function mangleChangeSpeed(ply, tier)
 	local ent = pills.getMappedEnt(ply)
@@ -354,7 +307,108 @@ local function MangleKillCheck(ply, mv)
     return nil
 end
 
+hook.Add("SetupMove", "mangle_hooked", function(ply, mv, cmd)
+	if ply:GetNWBool("_MangleHooked") then
+		if bit.band( mv:GetButtons(), IN_ATTACK2 ) ~= 0 and bit.band( mv:GetOldButtons(), IN_ATTACK2 ) == 0 then
+			local eyeAng = ply:EyeAngles()
+
+			if ply:GetNWString("_MangleLastHookType") ~= "ceiling" then
+				local diff = math.AngleDifference(eyeAng.y, ply:GetNWAngle("_MangleHookAngle").y)
+				if diff < -90 or diff > 90 then return end
+			end
+			
+			JUMPING[ply] = true
+			return
+		end
+		
+		cmd:ClearMovement()
+		mv:SetVelocity(Vector(0,0,0))
+		return true
+	end
+end)
+
+hook.Add("Move", "mangle_hooked", function(ply, mv, cmd)
+	if ply:GetNWBool("_MangleHooked") then
+		if bit.band( mv:GetButtons(), IN_ATTACK2 ) ~= 0 and bit.band( mv:GetOldButtons(), IN_ATTACK2 ) == 0 then
+			local eyeAng = ply:EyeAngles()
+
+			if ply:GetNWString("_MangleLastHookType") ~= "ceiling" then
+				local diff = math.AngleDifference(eyeAng.y, ply:GetNWAngle("_MangleHookAngle").y)
+				if diff < -90 or diff > 90 then return end
+			end
+			
+			JUMPING[ply] = true
+		end
+	end
+end)
+
 hook.Add("FinishMove", "mangle_hook_ready", function( ply, mv )
+	if JUMPING[ply] then
+		mangleAbility(ply, ply:GetPill())
+		
+		local eyeAng = ply:EyeAngles()
+		local maxUpCheck = 150
+		local startPos = ply:EyePos()
+		local endPos   = startPos + Vector(0,0,maxUpCheck)
+
+		local tr = util.TraceHull({
+			start  = startPos,
+			endpos = endPos,
+			filter = ply,
+			mins   = Vector(-8,-8,0),
+			maxs   = Vector(8,8,8),
+			mask   = MASK_PLAYERSOLID
+		})
+
+		local freeUpDist = tr.Hit and (tr.HitPos.z - startPos.z) or maxUpCheck
+		freeUpDist = math.Clamp(freeUpDist, 0, maxUpCheck)
+
+		local ceilingFrac = math.max( freeUpDist / maxUpCheck , 0.8)
+
+		local baseUpVel = 200
+		local upVel = baseUpVel * ceilingFrac
+
+		local forwardBoost = Lerp(1 - ceilingFrac, 1, 4)
+
+		local addVelocity = Vector(0,0,0)
+		if eyeAng.p > -24 then
+			addVelocity = Vector(0,0,upVel)
+		end
+
+		local up = eyeAng:Up()
+		up.x = 0
+		up.y = 0
+
+		local initVelVector = eyeAng:Forward() * forwardBoost + up * (0.2 * ceilingFrac)
+
+		if ply:GetNWBool("_MangleHooked") then
+			initVelVector = eyeAng:Forward() * forwardBoost
+		end
+
+		ply._wereJumpingPill = true
+		ply:SetMoveType(MOVETYPE_WALK)
+
+		local velocityPower = 600
+		
+		if ply:GetNWBool("_MangleHooked") then
+			velocityPower = 1000
+			if eyeAng.p > 40 then
+				velocityPower = 1400
+			end
+		end
+
+		mv:SetVelocity(
+			mv:GetVelocity() + (initVelVector * velocityPower) +
+			addVelocity
+		)
+
+		ply:SetNWBool("_MangleHooked", false)
+		
+		if SERVER then -- prediction my beloved :pray:
+			ply:SetNWBool("_MangleHookReady", true)
+		end
+		JUMPING[ply] = nil
+	end
 
 	if ply:GetNWBool("_MangleHookReady") then
 		local hooktype = ply:GetNWString("_MangleLastHookType")
@@ -376,7 +430,7 @@ hook.Add("FinishMove", "mangle_hook_ready", function( ply, mv )
 			ply:LagCompensation(false)
 		end
 	
-		if ply:OnGround() or ply:WaterLevel() > 0 then
+		if ply:WaterLevel() > 0 then
 			ply:SetNWBool("_MangleHookReady", false)
 			ply:SetNWString("_MangleLastHookType", "")
 			return
@@ -388,10 +442,8 @@ hook.Add("FinishMove", "mangle_hook_ready", function( ply, mv )
 		
 		if !tr.HitSky and tr.Hit and tr.Entity == game.GetWorld() and tr.HitNormal.z <= 0 then
 			local ent = pills.getMappedEnt(ply)
-			if SERVER then
-				
+			if SERVER --[[ or CLIENT and !IsFirstTimePredicted() ]] then
 				--print(tr.HitNormal.z)
-				
 				-- ЗАЦЕП НА СТЕНУ
 				if tr.HitNormal.z >= -0.2 then
 				
@@ -400,10 +452,6 @@ hook.Add("FinishMove", "mangle_hook_ready", function( ply, mv )
 					local trace = { start = ply:GetPos(), endpos = ply:GetPos() + -tr.HitNormal * 50, filter = ply }
 					local trr = util.TraceLine( trace, ply ) 
 					if ( !trr.Hit or tr.Entity ~= game.GetWorld() ) then
-					
-						--debugoverlay.Line( ply:GetPos(), ply:GetPos() + -tr.HitNormal * 50 )
-						--debugoverlay.Box( ply:GetPos() + -tr.HitNormal * 50, Vector(12,12,12), Vector(-12,-12,-12), 2, Color(255,0,0) )
-						
 						debugoverlay.Box( ply:GetPos() + Vector(0,0,64), Vector(12,12,12), Vector(-12,-12,-12), 2, Color(255,0,0) )
 						
 						local trace = { start = ply:GetPos(), endpos = ply:GetPos() + Vector(0,0,64), filter = ply,
@@ -427,8 +475,8 @@ hook.Add("FinishMove", "mangle_hook_ready", function( ply, mv )
 						return
 					end
 				
-					ent:SetUseForceAngles(true)
-					if IsValid(ent) then
+					if IsValid(ent) and SERVER then
+						ent:SetUseForceAngles(true)
 						ent:PillAnim("hook_wall")
 						ent.animLoop = true
 					end
@@ -441,7 +489,7 @@ hook.Add("FinishMove", "mangle_hook_ready", function( ply, mv )
 					if ply:GetNWString("_MangleLastHookType", "wall") == "ceiling" then
 						return
 					end
-					if IsValid(ent) then
+					if IsValid(ent) and SERVER then
 						ent:PillAnim("hook_ceiling")
 						ent.animLoop = true
 					end
@@ -456,20 +504,20 @@ hook.Add("FinishMove", "mangle_hook_ready", function( ply, mv )
 					end
 				end
 				
-				ply:GetPill():PillGesture('hook', 1, 1, 0, 0.7)
-				ply:EmitSound("grab_player.wav")
+				local forceangle = tr.HitNormal:Angle()
+				
+				if SERVER then
+					ent:SetForceAngles(forceangle)
+					ply:GetPill():PillGesture('hook', 1, 1, 0, 0.7)
+					ply:EmitSound("grab_player.wav")
+				
+					forceangle.p = -forceangle.p
+				
+					ply:SetNWAngle("_MangleHookAngle", forceangle)
+				end
 				ply:SetNWBool("_MangleHookReady", false)
 				
 				ply:SetViewOffset(Vector(0,0,24))
-				
-				local forceangle = tr.HitNormal:Angle()
-				--forceangle.p = -forceangle.p
-				
-				ent:SetForceAngles(forceangle)
-				
-				forceangle.p = -forceangle.p
-			
-				ply:SetNWAngle("_MangleHookAngle", forceangle)
 				ply:SetNWBool("_MangleHooked", true)
 			end
 			ply:SetMoveType(MOVETYPE_NONE)
@@ -507,14 +555,6 @@ hook.Add("FinishMove", "mangle_hook_ready", function( ply, mv )
 	end
 end)
 
-hook.Add("SetupMove", "mangle_hooked", function(ply, mv, cmd)
-	if ply:GetNWBool("_MangleHooked") then
-		cmd:ClearMovement()
-		mv:SetVelocity(Vector(0,0,0))
-		return true
-	end
-end)
-
 hook.Add("StartCommand", "mangle_hooked_command", function(ply, cmd)
 	if ply:GetNWBool("_MangleHooked") then
 		cmd:ClearMovement()
@@ -526,6 +566,29 @@ hook.Add("StartCommand", "mangle_hooked_command", function(ply, cmd)
 		cmd:RemoveKey( IN_DUCK )
 		cmd:RemoveKey( IN_ATTACK )
 		cmd:AddKey( IN_SPEED )
+	end
+end)
+
+hook.Add("KeyPress", "mangle_unhook", function(ply, key)
+	if key == IN_JUMP then
+		if ply:IsAnimatronic() then 
+			local ent = pills.getMappedEnt(ply)
+		
+			if IsValid(ent) then
+				if ply:GetNWBool("_MangleHooked") then 
+					ply:SetNWBool("_MangleHooked", false)
+					ply:SetNWBool("_MangleHookReady", false)
+					ply:SetNWString("_MangleLastHookType", "")
+					ply:SetMoveType(MOVETYPE_WALK)
+					
+					ply:SetViewOffset(Vector(0,0,70))
+					
+					ent:SetUseForceAngles(false)
+					ent.anim = nil
+					return
+				end
+			end
+		end
 	end
 end)
 

@@ -7,7 +7,7 @@ GM.Author = "sergeant"
 GM.Email = "N/A"
 GM.Website = "N/A"
 
-local fh_version = "4.0.0"
+local fh_version = "4.0.1"
 
 function fh.GetVersion()
     return fh_version
@@ -23,8 +23,11 @@ TEAM_EDITOR = 2703
 team.SetUp(TEAM_SURVIVOR, "Survivors", Color(84, 163, 255))
 team.SetColor( TEAM_SPECTATOR, Color(117, 117, 130) )
 
-function IsHalloween() return os.date("%B") == "October" end
-function IsChristmas() local d = tonumber(os.date("%m")) return (d == 1 or d == 12) end
+local osdateB = os.date("%B")
+local osdatem = os.date("%m")
+
+function IsHalloween() return osdateB == "October" end
+function IsChristmas() local d = tonumber(osdatem) return (d == 1 or d == 12) end
 
 conVars = {
 	halo_radius = CreateConVar( "halo_radius", 2000, { FCVAR_ARCHIVE, FCVAR_REPLICATED}, "Halo radius." ),
@@ -45,6 +48,7 @@ conVars = {
 		ADMIN PANEL: EXPERIMENTS
 	]]
 	fh_animatronic_immortal = CreateConVar( "fh_animatronic_immortal", 1, { FCVAR_ARCHIVE, FCVAR_REPLICATED}, "Toggle immortality for animatronic team." ),
+	fh_animatronic_ff = CreateConVar( "fh_animatronic_ff", 0, { FCVAR_ARCHIVE, FCVAR_REPLICATED}, "Toggle friendly fire for animatronic team." ),
 	
 	fh_less_steps = CreateConVar( "fh_less_steps", 0, { FCVAR_ARCHIVE, FCVAR_REPLICATED}, "Makes footsteps silent when they're not rendered." ),
 	fh_less_steps_volume = CreateConVar( "fh_less_steps_volume", 0.3, { FCVAR_ARCHIVE, FCVAR_REPLICATED}, "Footstep volume when quiet animatronics is on." ),

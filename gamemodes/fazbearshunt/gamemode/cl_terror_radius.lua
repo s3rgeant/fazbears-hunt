@@ -165,22 +165,42 @@ local function isKillerLookingAt(ply, killer)
 
     return angleBetween <= 50 and (not tr.Hit or tr.Entity == ply)
 end
-local function isPlayerMoving(ply)
-    return ply:GetVelocity():Length() > 5
+local function isMoving(ply)
+    return ply:GetVelocity():Length() > 15
 end
-local function isPlayerRunning(ply)
+local function isRunning(ply)
     return ply:GetVelocity():Length() > ply:GetRunSpeed() * 0.9
 end
 local function sameHeight(killer, ply)
     return math.abs(ply:GetPos().z - killer:GetPos().z)
 end
+local function sameMovement(ply,killer)
+	if ply:Crouching() and isMoving(ply) then
+		if killer:Crouching() and isMoving(killer) then
+			return true
+		else return false end
+	end
+	if isRunning(ply) then
+		if isRunning(killer) then
+			return true
+		else return false end
+	end
+	
+	if isMoving(ply) then
+		if isMoving(killer) then
+			return true
+		else return false end
+	end
+	
+	return false
+end
 function checkChase(ply, killer)
     local distance = ply:GetPos():Distance(killer:GetPos())
-    local killerMoving = isPlayerMoving(killer)
-    local playerMoving = isPlayerMoving(ply)
-    local playerVisible = !ply:GetNoDraw() and ply:GetMaterial() ~= "models/null" and !IsValid(ply:GetPill()) 
-		or IsValid(ply:GetPill()) and ply:GetPill():GetMaterial() ~= "models/null" and !ply:GetPill():GetNoDraw()
-    if distance < tr_ChaseKeep and sameHeight(killer,ply) < 120 and isKillerLookingAt(ply, killer) and killerMoving and playerMoving and playerVisible and killer:GetMoveType() ~= MOVETYPE_NOCLIP then
+    local playerVisible = !ply:GetNoDraw() and ply:GetMaterial() ~= "models/null" and !IsValid(ply:GetPill()) or IsValid(ply:GetPill()) and ply:GetPill():GetMaterial() ~= "models/null" and !ply:GetPill():GetNoDraw()
+	
+    local conditions = sameMovement(ply,killer) and playerVisible
+	
+    if distance < tr_ChaseKeep and sameHeight(killer,ply) < 120 and isKillerLookingAt(ply, killer) and conditions and killer:GetMoveType() ~= MOVETYPE_NOCLIP then
         isChasing[ply] = killer
         if chaseTimers[ply] then
             timer.Remove(chaseTimers[ply])
@@ -252,10 +272,10 @@ if !timer.Exists("tr_update") then
 
                             if shouldProccessMy == false then continue end
 
-							if isChasing[ply] then
+							if isChasing[ply] == myself then
 								layer = "chase"
 								imChasing = true
-								if getLayer("chase_low") then
+								if getLayer(theme, "chase_low") then
 									if ply:Health() <= ply:GetMaxHealth() / 2 then
 										layer = "chase_low"
 									end
@@ -286,14 +306,14 @@ if !timer.Exists("tr_update") then
 					--if IsValid(killer:GetPill()) and killer:GetPill():GetMaterial() == "models/null" then continue end
 
 					if stealthKillers[killer] then
-						if isPlayerRunning(killer) or isChasing[myself] then
+						if isRunning(killer) or isChasing[myself] == killer then
 							stealthLastActive[killer] = CurTime()
 						elseif stealthLastActive[killer] and (CurTime() - stealthLastActive[killer]) < stealthDelay then
 						else
 							continue
 						end
 					elseif stealthKillers2[killer] then
-						if isPlayerMoving(killer) or isChasing[myself] then
+						if isMoving(killer) or isChasing[myself] == killer then
 							stealthLastActive[killer] = CurTime()
 						elseif stealthLastActive[killer] and (CurTime() - stealthLastActive[killer]) < stealthDelay then
 						else
@@ -302,27 +322,24 @@ if !timer.Exists("tr_update") then
 					end
 
 					foundNoOne = false
+					
+					if distance < tr_Far and distance > tr_Approach then
+						layer = "first_layer"
+					elseif distance < tr_Approach and distance > tr_Close then
+						layer = getLayer(theme, "second_layer") or getLayer(theme, "first_layer")
+					elseif distance < tr_Close then
+						layer = getLayer(theme, "third_layer") or getLayer(theme, "second_layer") or getLayer(theme, "first_layer")
+					end
+					
+					checkChase(myself, killer)
 
 					if isChasing[myself] == killer then
-						checkChase(myself, killer)
 						layer = "chase"
-						if getLayer("chase_low") then
+						if getLayer(theme, "chase_low") then
 							if myself:Health() <= myself:GetMaxHealth() / 2 then
 								layer = "chase_low"
 							end
 						end
-					else
-						if distance < tr_Far and distance > tr_Approach then
-							layer = "first_layer"
-						elseif distance < tr_Approach and distance > tr_Close then
-							layer = getLayer(theme, "second_layer") or getLayer(theme, "first_layer")
-						elseif distance < tr_Close then
-							layer = getLayer(theme, "third_layer") or getLayer(theme, "second_layer") or getLayer(theme, "first_layer")
-						end
-					end
-
-					if layer == (getLayer(theme, "third_layer") or getLayer(theme, "second_layer") or getLayer(theme, "first_layer")) and distance < tr_Close then
-						checkChase(myself, killer)
 					end
 					
 					local forceLayer, forceNotFound = nil, nil
@@ -378,7 +395,6 @@ hook.Add("fh_postendgame", "tr_allow_tr_playing", function()
 end)
 
 local animatronicThemes = {
-    ["pill_wfoxy2"] 		= "default",
     ["pill_endo02"] 		= "default",
     ["pill_wchica2"] 		= "default",
     ["pill_clown"] 			= "default",
@@ -388,6 +404,7 @@ local animatronicThemes = {
 	
     ["pill_wfreddy2"] 		= "freddy",
     ["pill_wbonnie2"] 		= "bonnie",
+	["pill_wfoxy2"] 		= "foxy",
     ["pill_sfreddy2"] 		= "sfreddy",
 	
     ["mask"] 				= "mask",

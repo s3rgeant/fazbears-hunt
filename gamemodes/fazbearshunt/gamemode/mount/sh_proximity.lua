@@ -30,7 +30,7 @@ if SERVER then
 
 	function PLAYER:GetDeaf()
 		if self.fh_deaf == nil then
-			return true
+			return false
 		end
 		return self.fh_deaf
 	end
@@ -74,7 +74,7 @@ if SERVER then
 			return false, false
 		end
 
-		if not listener:GetDeaf() then
+		if listener:GetDeaf() then
 			return false, false
 		end
 

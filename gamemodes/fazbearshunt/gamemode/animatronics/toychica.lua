@@ -26,10 +26,13 @@ sound.Add({
 
 local dr_alpha = 0
 local dr_y = 0
+	
+local myself
+
 local function DrawHoldingNickname()
 	if SERVER then return end
 	
-	local myself = LocalPlayer()
+	myself = myself or LocalPlayer()
 	
 	local ply = myself:GetNWEntity("tchica_hold_target")
 	
@@ -214,7 +217,7 @@ local function obsessorFallOffTimer(ply)
 			
 			ply:SetNW2Int("_ObsessorValue", value_to_tier)
 			
-			print(ply, 'Downed a tier. Tier: ', curTier-1, value_to_tier)
+			print("[toy_chica]", ply, 'Downed a tier. Tier: ', curTier-1, value_to_tier)
 			
 			if curTier-1 <= 0 then
 				timer.Remove(timerName)
@@ -1169,7 +1172,7 @@ if CLIENT then
 		panel:SetPos(panel_x, panel:GetY() - panel_y)
 		
 		panel.Paint = function(self, w, h)
-			local myself = LocalPlayer()
+			myself = myself or LocalPlayer()
 			local hold_target = myself:GetNWEntity("tchica_hold_target", nil)
 			
 			local alpha = (hold_target and hold_target == ply or !IsValid(hold_target)) and 255 or 140
@@ -1276,11 +1279,14 @@ if CLIENT then
 	local chicasObsoses = {}
 
 	hook.Add("EntityNetworkedVarChanged","toychica_obsessor", function(ply, name, old, new)
-		local myself = LocalPlayer()
-		if ply:IsPlayer() then
+		if !IsValid(myself) and IsValid(LocalPlayer()) then
+			myself = myself or LocalPlayer()
+		end
+		if IsValid(myself) and ply:IsPlayer() then
 			if name == "_ObsessorTier" then
-				if IsValid(myself) and IsValid(myself:GetPill()) then 
-					if myself:GetPill():GetPillName() == "pill_toychica" then
+				local ent = pills.getMappedEnt(myself)
+				if IsValid(ent) then 
+					if ent:GetPillName() == "pill_toychica" then
 						if new > 0 then
 							createTChicaPlayerBar(ply)
 						else
@@ -1299,7 +1305,7 @@ if CLIENT then
 	end)
 	
 	hook.Add( "PreDrawHalos", "fh_toychica_obsos_helper", function()
-		local myself = LocalPlayer()
+		myself = myself or LocalPlayer()
 		for ply, _ in pairs(chicasObsoses) do
 			if myself:IsAnimatronic() and IsValid(ply) and ply:Health() > 0 and not ply:IsInvisible() then
 				local pos = ply:GetPos()

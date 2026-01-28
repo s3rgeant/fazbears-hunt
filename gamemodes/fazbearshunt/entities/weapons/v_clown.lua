@@ -87,7 +87,6 @@ function SWEP:DealDamage()
 		dmgInfo:SetDamage(150)
 		dmgInfo:SetAttacker(IsValid(ply) and ply or game.GetWorld())
 		dmgInfo:SetInflictor(self)
-		dmgInfo:SetDamageType(DMG_SLASH)
 		
 		for k,prop in ipairs(props) do
 			SuppressHostEvents( NULL )
@@ -137,8 +136,15 @@ function SWEP:DealDamage()
 		local min_damage = math.random(30,32)
 		
 		local distance = target:GetPos():Distance(hitpos)
-		
-		target:TakeDamage(distance < 90 and best_damage or min_damage, ply, self)
+
+		local dmginfo = DamageInfo()
+		dmginfo:SetAttacker(ply)
+		dmginfo:SetInflictor(self)
+		dmginfo:SetDamage(distance < 90 and best_damage or min_damage)
+
+		SuppressHostEvents(NULL)
+		target:TakeDamageInfo(dmginfo)
+		SuppressHostEvents(ply)
 	
 		target:SetVelocity(target:GetUp() * 249) -- чтоб он нахуй улетел
 	end

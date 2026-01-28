@@ -138,8 +138,8 @@ function ENT:Think()
 				
 				timer.Create("pt_jump_delay".. self:EntIndex(), 2, 1, function() end)
 			end
-			for _, ply in player.Iterator() do
-				if ply:Alive() and ply:IsSurvivor() and self:GetPos():DistToSqr(ply:GetPos()) <= (75 * 75) then
+			for ply, _ in pairs(survivors) do
+				if ply:Alive() and self:GetPos():DistToSqr(ply:GetPos()) <= (75 * 75) then
 				
 					local successHit = math.random(1,100) > 8
 				

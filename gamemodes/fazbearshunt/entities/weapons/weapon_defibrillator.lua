@@ -71,7 +71,8 @@ function SWEP:Initialize()
 end
 
 function SWEP:Think()
-	if self.Owner:KeyDown(IN_ATTACK) then
+	local owner = self:GetOwner()
+	if owner:KeyDown(IN_ATTACK) then
 		if self.Incm < 85 then
 			self.Incm = self.Incm + 3
 			self.ViewModelFOV = self.Incm
@@ -90,7 +91,7 @@ function SWEP:Think()
 		self.Idle = 1
 	end
     if self.Reviving then
-        if !IsValid(self.ReviveTarget) or (IsValid(self.ReviveTarget) and IsValid(self.ReviveTarget:GetOwner()) and self.ReviveTarget:GetOwner():Alive()) or !self.Owner:KeyDown(IN_ATTACK) or self.Owner:GetPos():Distance(self.ReviveTarget:GetPos()) > 77 then
+        if !IsValid(self.ReviveTarget) or (IsValid(self.ReviveTarget) and IsValid(self.ReviveTarget:GetOwner()) and self.ReviveTarget:GetOwner():Alive()) or !owner:KeyDown(IN_ATTACK) or owner:GetPos():Distance(self.ReviveTarget:GetPos()) > 77 then
             self.Reviving = false
             self.ReviveStartTime = 0
             self.ReviveTarget = nil
@@ -100,7 +101,7 @@ function SWEP:Think()
                 self.ReviveSound:Stop()
             end
 
-            self.Owner:EmitSound("HL2Player.UseDeny")
+            owner:EmitSound("HL2Player.UseDeny")
 
             return
         end
@@ -136,7 +137,7 @@ function SWEP:Think()
                     self.ReviveSound:Stop()
                 end
 
-                self.Owner:EmitSound("defibl/charged.wav", 75, 100)
+                owner:EmitSound("defibl/charged.wav", 75, 100)
                 self:SetClip1(100)
 
                 local ply = v:GetCreator()
@@ -155,7 +156,7 @@ function SWEP:Think()
 						survivors[ply] = true
 					end
 					
-					stats.Add(self.Owner, "revived", 1)
+					stats.Add(owner, "revived", 1)
 
                     timer.Simple(1 / 100, function()
                         if IsValid(ply) and ply:IsStuck() then
@@ -163,14 +164,14 @@ function SWEP:Think()
                         end
                     end)
 					
-					hook.Run("fh_defibrillator_spawn", ply)
+					hook.Run("fh_defibrillator_spawn", ply, owner)
                 end
 
                 v:Remove()
 
                 timer.Simple(0.5, function()
-                    if IsValid(self) and IsValid(self.Owner) then
-                        self.Owner:StripWeapon(self:GetClass())
+                    if IsValid(self) and IsValid(owner) then
+                        owner:StripWeapon(self:GetClass())
                     end
                 end)
             end

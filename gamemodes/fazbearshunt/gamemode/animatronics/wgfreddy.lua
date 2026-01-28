@@ -1405,7 +1405,7 @@ function StartDelayedDamage(ply)
 			
 			local playerIsHealthy = ply:Health() > 100 
 				or ply:Armor() > 10 
-				or (timer.Exists("EndGameTimer") and timer.TimeLeft("EndGameTimer") < 180)
+				or (isGameOn and fh.timer.Exists() and fh.timer.GetTimeLeft() < 180)
 				or (ply._LastGFPlushie and ply._LastGFPlushie < CurTime() - 60)
 				
 			--print(ply._LastGFPlushie, CurTime(), CurTime() - 60)
@@ -1496,15 +1496,19 @@ if SERVER then
 			local wgfreddy = outworld_victims[ply]
 			
 			if !wgfreddy_targets[wgfreddy] then return end
+			
+			local damage = math.min(ply:Health() / 2, 20)
 		
-            ply:TakeDamage( math.min(ply:Health() / 2, 20), wgfreddy, wgfreddy:GetActiveWeapon() )
+			if ply:Health() - damage > 0 then
+				ply:TakeDamage( damage, wgfreddy, wgfreddy:GetActiveWeapon() )
+			end
 			
 			if !first_damage_received[ply] then
 				net.Start("wgfreddy_second_ambience")
 				net.Send(ply)
+				
+				first_damage_received[ply] = true
 			end
-			
-			first_damage_received[ply] = true
 			
 			local ent = pills.getMappedEnt(wgfreddy)
 			

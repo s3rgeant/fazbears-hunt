@@ -38,7 +38,7 @@ pills.register("pill_wbonnie2",{
 		
 	options=function() return {
 		["default"] = {
-			bodyGroups = math.random(1,1000) == 2 and { [0] = 1 } or { [10] = 1 }
+			bodyGroups = math.random(1,1000) == 2 and { [0] = 1 } or { [0] = 0 }
 		},
 		["halloween"] = {
 			bodyGroups = { [0] = 1 },
@@ -269,8 +269,8 @@ function YoursMine_Start(ply, target)
 			--ply:SetViewEntity( target )
 			
 			target:SetNWBool("_yoursmine_target", true)
-			
 			target:GodEnable()
+			
 			bonnies_controlled[target] = ply
 		end
 	end)
@@ -416,3 +416,41 @@ hook.Add("PlayerPostThink", "yoursmine_movement_copying", function(ply)
 		ply:SetLocalVelocity(bonnie:GetVelocity())
 	end
 end)
+
+if CLIENT then
+	local yoursmine_halors = {}
+	
+	hook.Add("PostPlayerDraw", "yoursmine_particles", function(ply)
+		if ply:GetNWBool("_yoursmine_target") then
+			if !yoursmine_halors[ply] then
+				yoursmine_halors[ply] = true
+			end
+		elseif yoursmine_halors[ply] ~= nil then
+			if ply:HasGodMode() then
+				yoursmine_halors[ply] = false
+			else
+				yoursmine_halors[ply] = nil
+			end
+		end
+	end)
+	
+	local yoursmine_clr = Color(0,70,255)
+	
+	hook.Add( "PreDrawHalos", "yoursmine_helper", function()
+		myself = myself or LocalPlayer()
+		for ply, controlled in pairs(yoursmine_halors) do
+			if myself:IsAnimatronic() and IsValid(ply) and ply:Health() > 0 and not ply:IsInvisible() then
+				local pos = ply:GetPos()
+				if pos:ToScreen().visible then
+					local distance = myself:GetPos():Distance(pos)
+					
+					if distance < 1200 then
+						local blur = distance / 100
+						
+						halo.Add({ply}, controlled and yoursmine_clr or color_white, blur, blur, 1, true)
+					end
+				end
+			end
+		end
+	end)
+end

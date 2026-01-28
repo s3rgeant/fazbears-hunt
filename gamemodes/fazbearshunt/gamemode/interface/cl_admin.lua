@@ -4,6 +4,8 @@ local lastSelectedTab = 1
 
 admin = admin or {}
 
+local errorClr = Color(255,0,0)
+
 local animSettings = {}
 
 function admin.AddAnimatronicSetting(name, panel_data)
@@ -153,6 +155,7 @@ local function GetSelectedPlayers()
     return players
 end
 
+local myself
 local silent_give_killer = false
 local function OpenAdminPanel()
     local selectedAnimatron = nil
@@ -160,7 +163,9 @@ local function OpenAdminPanel()
     if IsValid(fh_admin_panel) then
 		if fh_admin_panel:IsVisible() then
 			fh_admin_panel:Hide()
-			fh_admin_panel:OnHidden()
+			if fh_admin_panel.OnHidden then
+				fh_admin_panel:OnHidden()
+			end
 			gui.EnableScreenClicker(false)
 		else
 			fh_admin_panel:Show()
@@ -170,6 +175,8 @@ local function OpenAdminPanel()
 		end
         return
     end
+	
+	myself = myself or LocalPlayer()
 
     fh_admin_panel = vgui.Create("DFrame")
     fh_admin_panel:SetSize(600, 500)
@@ -207,7 +214,7 @@ local function OpenAdminPanel()
     end
     createListAnimatronics()
 	
-    if LocalPlayer():IsSuperAdmin() then 
+    if myself:IsSuperAdmin() then 
 		AddNetActionButton(panelPlayers, 220, 340, 160, 30, language.GetPhrase("fazhunt.adminpanel.addplayable"), "addplayable", function()
 			net.Start("AdminAction")
 			net.WriteString("addplayable")
@@ -234,7 +241,7 @@ local function OpenAdminPanel()
     local y = 10
     for _, a in ipairs(actions) do
         if a.text then
-            if a.superadmin and not LocalPlayer():IsSuperAdmin() then continue end
+            if a.superadmin and not myself:IsSuperAdmin() then continue end
 
             local phrase = language.GetPhrase(a.text)
             AddNetActionButton(panelPlayers, 400, y, 180, 30, phrase, a.action, function()
@@ -248,12 +255,12 @@ local function OpenAdminPanel()
 
                 local players = GetSelectedPlayers()
                 if #players == 0 then
-                    chat.AddText(Color(255, 0, 0), language.GetPhrase("fazhunt.adminpanel.error"))
+                    chat.AddText(errorClr, language.GetPhrase("fazhunt.adminpanel.error"))
                     return
                 end
 				
 				if a.action == "give_animatronic" and (!selectedAnimatron or selectedAnimatron:len() < 1) then
-                    chat.AddText(Color(255, 0, 0), language.GetPhrase("fazhunt.adminpanel.error_give"))
+                    chat.AddText(errorClr, language.GetPhrase("fazhunt.adminpanel.error_give"))
                     return
 				end
 
@@ -294,14 +301,18 @@ local function OpenAdminPanel()
 		{text = "fazhunt.adminpanel.unstuck", action = "unstuck", icon = "arrow_out"},
 		{text = "fazhunt.adminpanel.give_immune_gfreddy", action = "immune_gfreddy", icon = "gfreddy"},
 		{text = "fazhunt.adminpanel.deprive_immune_gfreddy", action = "un_immune_gfreddy", icon = "gfreddy"},
+		{text = "fazhunt.adminpanel.high_anim_chance", action = "set_high_anim", superadmin=true, icon="pill_add"},
+		{text = "fazhunt.adminpanel.low_anim_chance", action = "set_low_anim", superadmin=true, icon="pill_delete"},
 	}
 	
 	local actionBox = vgui.Create( "DComboBox", panelPlayers )
 	actionBox:SetPos( 400, y )
 	actionBox:SetSize( 180, 20 )
 	actionBox:SetValue( language.GetPhrase("fazhunt.adminpanel.more_actions") )
+	actionBox:SetSortItems( false )
 	
     for _, a in ipairs(actions) do
+		if a.superadmin and !myself:IsSuperAdmin() then continue end
 		actionBox:AddChoice( language.GetPhrase(a.text), nil, false, a.icon and "icon16/" .. a.icon .. ".png" or nil )
 	end
 	actionBox.OnSelect = function( self, index, value )
@@ -310,7 +321,7 @@ local function OpenAdminPanel()
 
 		local players = GetSelectedPlayers()
 		if #players == 0 then
-			chat.AddText(Color(255, 0, 0), language.GetPhrase("fazhunt.adminpanel.error"))
+			chat.AddText(errorClr, language.GetPhrase("fazhunt.adminpanel.error"))
 			return
 		end
 				
@@ -366,7 +377,7 @@ local function OpenAdminPanel()
 
 		local players = GetSelectedPlayers()
 		if #players == 0 then
-			chat.AddText(Color(255, 0, 0), language.GetPhrase("fazhunt.adminpanel.error"))
+			chat.AddText(errorClr, language.GetPhrase("fazhunt.adminpanel.error"))
 			return
 		end
 				
@@ -502,7 +513,7 @@ local function OpenAdminPanel()
 	
 	AddNetActionButton(animPanel, 10, 150, 125, 30, language.GetPhrase("fazhunt.adminpanel.morph_myself"), "morph_myself", function()
 		if !currentAnimatronic or currentAnimatronic:len() < 1 then
-			chat.AddText(Color(255, 0, 0), language.GetPhrase("fazhunt.adminpanel.error_give"))
+			chat.AddText(errorClr, language.GetPhrase("fazhunt.adminpanel.error_give"))
 			return
 		end
 	
@@ -511,7 +522,7 @@ local function OpenAdminPanel()
 		net.WriteString(currentAnimatronic or "")
 		net.SendToServer()
 		
-		updatePlayer(LocalPlayer(), "give_animatronic")
+		updatePlayer(myself, "give_animatronic")
 	end)
 
 	local w, h = fh_admin_panel:GetSize()
@@ -656,15 +667,19 @@ local function OpenAdminPanel()
     end
 end
 
-function createListPlayers(just)
+function createListPlayers()
     if not IsValid(fh_admin_panel) then return end
     if IsValid(PlayerList) then
+		local lastSelected = GetSelectedPlayers()
+		
+		myself = myself or LocalPlayer()
+	
         PlayerList:Clear()
         for _, v in player.Iterator() do
             local line = PlayerList:AddLine(v:Nick(), getTeam(v:Team()))
             line.Player = v
 			
-			if v == LocalPlayer() then
+			if #lastSelected >= 1 and table.HasValue(lastSelected,v) or #lastSelected <= 0 and v == myself then
 				PlayerList:SelectItem(line)
 			end
         end
@@ -681,6 +696,12 @@ function updatePlayer(ply, team)
     end
 end
 
+local pref_sel_clr = Color(0,125,155,200)
+local pref_unsel_clr = Color(255,0,155,200)
+
+local unpref_sel_clr = Color(0,255,0,100)
+local unpref_unsel_clr = Color(255,0,0,100)
+
 function createListAnimatronics()
     if !IsValid(AnimatronicList) then return end
     AnimatronicList:Clear()
@@ -691,7 +712,7 @@ function createListAnimatronics()
         local line = AnimatronicList:AddLine(language.GetPhrase(v.fullname), k)
         local hasPref = table.HasValue(preferred, k)
         function line:Paint(w, h)
-            local bg = self:IsLineSelected() and (hasPref and Color(0,125,155,200) or Color(255,0,155,200)) or (hasPref and Color(0,255,0,100) or Color(255,0,0,100))
+            local bg = self:IsLineSelected() and (hasPref and pref_sel_clr or pref_unsel_clr) or (hasPref and unpref_sel_clr or unpref_unsel_clr)
             draw.RoundedBox(0, 0, 0, w, h, bg)
         end
     end

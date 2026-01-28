@@ -142,18 +142,6 @@ net.Receive("JumpscareLight", function()
 		light.DieTime = CurTime() + 1.6
 	end
 end)
-	
-net.Receive("SetKillerAngle", function()
-	local ply = LocalPlayer()
-	local ent = net.ReadEntity()
-	if IsValid(ent) then
-		timer.Create('fh_rotatekiller', 0.1, 5, function()
-			if IsValid(ent) then
-				ent:ResetAngle()
-			end
-		end)
-	end
-end)
 
 hook.Add( "OnEntityCreated", "fh_RagdollColor", function( ent )
 	if ent:GetClass() == "prop_ragdoll" then
@@ -168,8 +156,6 @@ end )
 net.Receive("ragColor", function(len)
 	local rag = Entity(net.ReadInt(16))
 	local col = net.ReadVector()
-	
-	print(rag, col)
 
 	rag.GetPlayerColor = function() return col end
 end)
@@ -197,13 +183,13 @@ net.Receive("fh_animatronic_left_chatmessage", function()
 	LocalPlayer():ChatPrint(string.format(language.GetPhrase('fazhunt.chat.animleave'), imya ))
 end)
 
+local jawBones = { "bip_jaw", "Jaw", "Jaw_Bn", "Jaw_jnt", "JawInner" }
 function GM:MouthMoveAnimation(ply)
     local weight = ply:IsSpeaking() and math.Clamp(ply:VoiceVolume() * 2, 0, 2) or 0
 
-    local pillEnt = pills and pills.getMappedEnt and pills.getMappedEnt(ply)
+    local pillEnt = ply:GetPill()
 
 	if IsValid(pillEnt) then
-        local jawBones = { "bip_jaw", "Jaw", "Jaw_Bn", "Jaw_jnt", "JawInner" }
 		local mp = 1
 
         for _, boneName in ipairs(jawBones) do
@@ -337,8 +323,36 @@ hook.Add("EntityNetworkedVarChanged","fh_gamestatus_update", function(entity, na
     end
 end)
 
+local myself
+
 hook.Add("PreDrawViewModel", "fix_flying_viewmodels", function(vm, ply, weapon)
-	if ply:GetObserverMode() ~= OBS_MODE_NONE and ply:GetObserverMode() ~= OBS_MODE_IN_EYE then
-		return true
+	myself = myself or LocalPlayer()
+	local mode = myself:GetObserverMode()
+	
+	-- если я наблюдатель
+	if mode ~= OBS_MODE_NONE then
+		if ply ~= myself then
+			return true
+		end
+	-- если я живот
+	elseif mode == OBS_MODE_NONE then
+		if ply ~= myself then
+			return true
+		end
 	end
 end)
+
+--[[
+gameevent.Listen( "player_hurt" )
+hook.Add( "player_hurt", "___", function( data ) 
+	local health = data.health				-- Remaining health after injury
+	local priority = data.priority or 0 	-- Priority
+	local id = data.userid					-- Same as Player:UserID()
+	local attackerid = data.attacker		-- Same as Player:UserID() but it's the attacker id.
+	
+	local ply = Player(id)
+	local attacker = Player(attackerid)
+
+	print(ply, attacker)
+end )
+]]--

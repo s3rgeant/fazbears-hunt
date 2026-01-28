@@ -141,7 +141,10 @@ function SWEP:DealDamage()
 	local ent = pills.getMappedEnt(target)
 	local animsCount = team.NumPlayers( TEAM_PILLS )
 		
-	if targetIsAnimatronic and ent.cloaked then return end
+	if targetIsAnimatronic and IsValid(ent) and ent.cloaked then 
+		ply:LagCompensation(false)
+		return 
+	end
 		
 	-- мы увеличиваем урон по аниматроникам если их больше одного
 	local damage = targetIsAnimatronic and math.random(550, 600) + math.max(1, animsCount-1)*15 or math.random(20,30)

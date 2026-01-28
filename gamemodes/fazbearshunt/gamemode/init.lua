@@ -80,7 +80,7 @@ local function GetPlyID(ply)
     return tostring(ply:SteamID64())
 end
 
-local function ToKey(id)
+function LK_ToKey(id)
     return "sid_" .. tostring(id)
 end
 
@@ -229,31 +229,31 @@ local function giveKillerShared(ply, killer, force)
 	local killers_ = killers.getAll()
 	
 	local killerData
-	local command
+	local killerName
 	
 	for k, v in pairs(killers_) do
 		if v.name == killer or k == killer then
 			killerData = killers_[k]
-			command = k
+			killerName = k
 			break
 		end
 	end
 	
-	if !command then
-		command = killer
+	if !killerName then
+		killerName = killer
 	end
 	
 	if !force then
-		if usedKillers[command] then return end
+		if usedKillers[killerName] then return end
 		
 		for _, v in pairs(usedKillers) do
 			if ply == v then return end
 		end
 	end
 		
-	usedKillers[command] = ply
+	usedKillers[killerName] = ply
 
-	pills.apply(ply:Nick(), command, "user")
+	pills.apply(ply:Nick(), killerName, "user")
 	
 	animatronics[ply] = true
 	survivors[ply] = nil
@@ -263,7 +263,7 @@ local function giveKillerShared(ply, killer, force)
 	end
 	
 	if !killerData then
-		print(ply:Nick() .. " is " .. command.." now.")
+		print(ply:Nick() .. " is " .. killerName.." now.")
 	else
 		print(ply:Nick() .. " is " .. killerData.name.." now.")
 	end
@@ -330,8 +330,7 @@ function endRound(killerVictory, duration)
 	
 	RunConsoleCommand("proximity_enabled", 0)
 	
-    net.Start("ResetTimer")
-    net.Broadcast()
+	fh.timer.RemoveTimer()
 	
 	if timer.Exists("UnfreezeAnims") then
 		timer.Remove("UnfreezeAnims")
@@ -339,10 +338,6 @@ function endRound(killerVictory, duration)
 	
 	if timer.Exists("RandomGifts") then
 		timer.Remove("RandomGifts")
-	end
-	
-	if timer.Exists("EndGameTimer") then
-		timer.Remove("EndGameTimer")
 	end
 	
 	hook.Run("fh_postendgame", killerVictory, animatronics)
@@ -379,13 +374,9 @@ function endGame()
 			pills.restore(ply:Nick(), true)
 		end
 	end
-    net.Start("fh_start_lobby_timer")
-	net.WriteFloat(lobbyDuration)
-    net.Broadcast()
-	
 	game.CleanUpMap( false )
-
-	timer.Create("GameStartTimer", lobbyDuration, 1, function()
+	
+	fh.timer.StartDefaultTimer(lobbyDuration, function()
 		registerNewRound()
 		roundEnding = false
 		SetGlobal2Bool("roundEnding", false)
@@ -425,6 +416,7 @@ function startGame(forceid)
 	end
 	
 	for _, ply in ipairs(players) do
+		ply:SetTeam(TEAM_SURVIVOR)
 		timer.Simple(0, function()
 			if IsValid(ply) then
 				ply:NoPlayerCollide(0.25)
@@ -450,21 +442,18 @@ function startGame(forceid)
 		ply:SetJumpBoostMultiplier( getScaledJumpBoost() )
 	end
 	
-    net.Start("fh_start_game_timer")
-	net.WriteFloat( fh.GetGameDuration() )
-	net.WriteFloat(setupGameDuration)
-	net.WriteString("ambient/alarms/warningbell1.wav")
-	net.WriteString(tostring(roundCount))
-    net.Broadcast()
+	fh.timer.StartGameTimer(
+		fh.GetGameDuration(), 
+		setupGameDuration, 
+		"ambient/alarms/warningbell1.wav", 
+		tostring(roundCount), 
+		survivorsWin
+	)
 	
 	net.Start('fh_adv_sound_play')
 	net.WriteString( "#"..fh.GetRoundMusic( fh.GetRoundType() ) )
 	net.WriteString( "timer_music" )
 	net.Broadcast()
-	
-	timer.Create("EndGameTimer", fh.GetGameDuration() + setupGameDuration, 1, function()
-		survivorsWin()
-    end)
 end
 
 function RandomTaser()
@@ -480,15 +469,7 @@ function RandomTaser()
 	end)
 end
 
-function resetGameTimer()
-    net.Start("ResetTimer")
-    net.Broadcast()
-end
-
 function registerNewRound(forceid)
-	if timer.Exists("GameStartTimer") then
-		timer.Remove("GameStartTimer")
-	end
 	roundCount = roundCount + 1
 	
 	SetGlobal2Bool("gameOn", true)
@@ -623,9 +604,7 @@ hook.Add( "Initialize", "fh_init", function()
 	isGameOn = false
 	roundEnding = false
 	
-	if timer.Exists("GameStartTimer") then
-		timer.Remove("GameStartTimer")
-	end
+	fh.timer.RemoveTimerNB()
 end )
 
 hook.Add("PlayerInitialSpawn", "fh_ply_spawn", function(ply)
@@ -657,10 +636,6 @@ hook.Add( "AllowPlayerPickup", "fh_allow_pickup", function( ply, ent )
     return ply:Team() != TEAM_SPECTATOR
 end )
 
-hook.Add( "PlayerSwitchFlashlight", "fh_no_flashlight", function( ply, on )
-    return false
-end )
-
 hook.Add("SetupMove", "fh_lock_position", function(ply, mv, cmd)
 	if ply:IsAnimatronic() and !roundActive and isGameOn then
 		mv:SetVelocity(Vector(0,0,0))
@@ -681,14 +656,6 @@ hook.Add( "StartCommand", "fh_cantattack", function( ply, cmd )
 		cmd:RemoveKey(IN_ATTACK2)
 		cmd:RemoveKey(IN_RELOAD)
 		cmd:RemoveKey(IN_JUMP)
-	end
-end)
-
-hook.Add("SetupPlayerVisibility", "fh_speak_pvs", function(ply, viewent)
-	for _, sex in player.Iterator() do
-		if sex ~= ply and sex:Alive() and sex:IsSpeaking() then
-			AddOriginToPVS(sex:GetPos())
-		end
 	end
 end)
 
@@ -719,13 +686,7 @@ hook.Add("PlayerDisconnected", "fh_playerleft", function(ply)
 	winConditions(ply)
 	
     if player.GetCount() == 1 and isGameOn then
-        resetGameTimer()
-        if timer.Exists("GameStartTimer") then
-            timer.Remove("GameStartTimer")
-        end
-        if timer.Exists("EndGameTimer") then
-            timer.Remove("EndGameTimer")
-        end
+        fh.timer.RemoveTimer()
     end
 end)
 
@@ -933,13 +894,8 @@ local function fh_death_hook(victim)
 			animCount = math.max(animCount - 1, 1)
 		end
 		
-		if isGameOn and !roundEnding and table.Count(survivors) == 1 and animCount >= 2 and timer.TimeLeft("EndGameTimer") >= 200 then
-			net.Start("fh_timer_cutback")
-			net.WriteFloat(180)
-			net.WriteString("round/time_cutback.mp3")
-			net.Broadcast()
-			
-			timer.Adjust("EndGameTimer", 180)
+		if isGameOn and !roundEnding and table.Count(survivors) == 1 and animCount >= 2 and fh.timer.GetTimeLeft() >= 200 then
+			fh.timer.CutBack(180, "round/time_cutback.mp3")
 		end
 	end
 	animatronics[victim] = nil
@@ -983,7 +939,7 @@ end
 
 local function animatronicsVictory(ply)
 	local nickname = IsValid(ply) and ply:Nick() or "?"
-	local timeleft = timer.TimeLeft("EndGameTimer") or 0
+	local timeleft = fh.timer.GetTimeLeft()
 
 	net.Start("AnimatronicsWin")
 	net.WriteString(nickname)
@@ -1038,7 +994,7 @@ hook.Add( "CanPlayerSuicide", "fh_suicide", function( ply )
 	if ply:IsAnimatronic() or ply.jumpscared then
 		return false
 	end
-	if timer.Exists("EndGameTimer") and timer.TimeLeft( "EndGameTimer" ) > fh.GetGameDuration() then
+	if fh.timer.Exists() and fh.timer.GetTimeLeft() > fh.GetGameDuration() then
 		return false
 	end
 end )
@@ -1053,8 +1009,8 @@ hook.Add( "PlayerShouldTakeDamage", "fh_shouldtakedamage", function( ply, attack
 		end
 	
 		if IsValid(attacker) and 
-			(ply:Team() == attacker:Team() or 
-			ply:IsAnimatronic() and attacker:IsAnimatronic() or
+			(ply:IsSurvivor() == attacker:IsSurvivor() or 
+			ply:IsAnimatronic() and attacker:IsAnimatronic() and !conVars.fh_animatronic_ff:GetBool() or
 			ply:Team() == 2701 and conVars.fh_animatronic_immortal:GetBool()
 			or attacker:Team() == TEAM_SPECTATOR 
 			or !roundActive or roundEnding)
@@ -1083,14 +1039,14 @@ hook.Add("PillRestore", "fh_restorepill", function(ply, ent)
 	end
 end)
 
-hook.Add( "GetFallDamage", "FH_FallDamage", function(ply, speed)
+function GM:GetFallDamage( ply, speed )
 	local damage = ( speed - 526.5 ) * ( 100 / 396 )
 	local hasArmor = ply:Armor() > 0
 	if hasArmor then
-		ply:SetArmor(damage / ply:Armor())
+		ply:SetArmor(0)
 	end
 	return math.min( damage, hasArmor and 90 or 100 )
-end )
+end
 
 net.Receive("fh_selected_killer", function(len, ply)
 	local killer = net.ReadString()
@@ -1139,30 +1095,13 @@ function giveRandomKiller(ply, update)
 end
 
 net.Receive("fh_initpostentity", function(len, ply)
-	if timer.Exists('EndGameTimer') then
-		local timeLeft = timer.TimeLeft('EndGameTimer')
-		
-		net.Start('fh_start_game_timer')
-		net.WriteFloat(timeLeft)
-		net.WriteFloat(0)
-		net.WriteString("")
-		net.WriteString(tostring(roundCount))
-		net.Send(ply)
-	elseif timer.Exists('GameStartTimer') then
-		local timeLeft = timer.TimeLeft('GameStartTimer')
-		
-		net.Start("fh_start_lobby_timer")
-		net.WriteFloat(timeLeft)
-		net.Send(ply)
+	if isGameOn then
+		fh.timer.Send(ply)
+	elseif fh.timer.Exists() then
+		fh.timer.LobbySend(ply)
 	end
-	if player.GetCount() >= 2 and not isGameOn and !timer.Exists("GameStartTimer") then
-		net.Start("fh_start_lobby_timer")
-		net.WriteFloat(lobbyDuration)
-		net.Broadcast()
-	
-		timer.Create("GameStartTimer", lobbyDuration, 1, function()
-			registerNewRound()
-		end)
+	if player.GetCount() >= 2 and not isGameOn and !fh.timer.Exists() then
+		fh.timer.StartDefaultTimer(lobbyDuration, registerNewRound)
 	end
 	
 	net.Start("fh_share_notprefered")
@@ -1310,7 +1249,7 @@ hook.Add("fh_startgame", "FH_UpdateLastKillers", function(killerVictory, anims)
     for ply, _ in pairs(anims) do
         if IsValid(ply) then
 			local id = GetPlyID(ply)
-			local key = ToKey(id)
+			local key = LK_ToKey(id)
 			if id then
 				LastKillers[key] = 0
 			end
@@ -1353,7 +1292,7 @@ function fh.GetEarnedKillers(players)
 		if IsValid(ply) then
 			
 			local id = GetPlyID(ply)
-			local key = ToKey(id)
+			local key = LK_ToKey(id)
 			local val = LastKillers[key]
 			val = tonumber(val)
 	
@@ -1518,77 +1457,6 @@ fh.RegisterRoundType("regular", 0, function()
 	freezeAnimatronics()
 end, 100)
 
-fh.RegisterRoundType("springtrap", 1, function()
-	local players = player.GetAll()
-		
-	players = fh.GetEarnedKillers(players)
-	
-	if players then
-		local chosenPlayer = players[1]
-		
-		giveKiller(chosenPlayer, "pill_springtrap", true)
-		
-		chosenPlayer.lobbyFreeze = true
-		chosenPlayer:ReturnToSpawn()
-	end
-	
-	RandomTaser()
-	
-	freezeAnimatronics()
-end, 20, 6, 18)
-
-fh.AddRoundMusic(1, "music/freeze_timer_springtrap.wav")
-
-hook.Add("fh_postendgame", "springtrap_win_dance", function(victory, anims)
-	if victory then
-		local win_location, win_camera = FindSuitableVictoryPos()
-		local springtrap_ply = usedKillers["pill_springtrap"]
-				
-		if IsValid(win_location) and IsValid(win_camera) then
-			
-			if roundType == 1 and springtrap_ply then
-				
-				timer.Simple(0.5, function()
-					for _, p in player.Iterator() do
-						p:ScreenFade( SCREENFADE.OUT, Color( 0, 0, 0, 255 ), 0.5, 0 )
-					end
-				end)
-				
-				timer.Simple(1, function()
-					local ent = pills.getMappedEnt(springtrap_ply)
-					
-					springtrap_ply:SetPos(win_location:GetPos())
-					springtrap_ply:SetEyeAngles(win_location:GetAngles())
-					springtrap_ply:SetRenderAngles(win_location:GetAngles())
-					ent:SetUseForceAngles(true)
-					ent:SetForceAngles(win_location:GetAngles())
-					
-					for _, p in player.Iterator() do
-						p:SetViewEntity(win_camera)
-						p:SetFOV(65, 2)
-						
-						p:ScreenFade( SCREENFADE.IN, Color( 0, 0, 0, 255 ), 1, 0 )
-					end
-					
-					net.Start("fh_play_sound")
-					net.WriteString("#music/rampage.wav")
-					net.Broadcast()
-					
-					timer.Simple(0.01, function()
-						ent:PillAnim("egypt", true)
-						springtrap_ply:Lock()
-						ent.animLoop = true
-						
-						-- ну ещё раз на всякий
-						springtrap_ply:SetEyeAngles(win_location:GetAngles())
-						springtrap_ply:SetRenderAngles(win_location:GetAngles())
-						ent:SetAngles(win_location:GetAngles())
-					end)
-				end)
-			end
-		end
-	end
-end)
-
+include( "rounds/springtrap.lua" )
 include( "rounds/bonnie_tag.lua" )
 include( "rounds/bear5.lua" )

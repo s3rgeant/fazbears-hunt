@@ -161,7 +161,7 @@ local positiveEffects = {
             ply:Give("weapon_mask")
         end,
         req = function(ply)
-			return ( !timer.Exists("EndGameTimer") or timer.Exists("EndGameTimer") and timer.TimeLeft("EndGameTimer") >= 120 )
+			return ( !isGameOn or fh.timer.Exists() and fh.timer.GetTimeLeft() >= 120 )
 			and !ply:HasWeapon("weapon_mask")
         end
     },
@@ -401,7 +401,6 @@ local negativeEffects = {
 		desc = "",
 		silent=true,
         func = function(ply)
-
 			local pos = ply:GetPos()
 			local ang = ply:GetAngles()
 			
@@ -413,15 +412,13 @@ local negativeEffects = {
 				effectdata:SetScale(1)
 				util.Effect("Explosion", effectdata, true, true)
 			else
-
 				ragdoll = ents.Create("prop_ragdoll")
 				ragdoll:SetModel("models/player/skeleton.mdl")
 				ragdoll:SetPos(pos)
 				ragdoll:SetAngles(ang)
 				ragdoll:Spawn()
 				ragdoll:Activate()
-
-				ragdoll:SetOwner(ply)
+				--ragdoll:SetOwner(ply)
 				
 				ragdoll:SetCollisionGroup(COLLISION_GROUP_WEAPON)
 				ragdoll:SetCustomCollisionCheck( true )
@@ -464,7 +461,34 @@ local negativeEffects = {
 			ply:SpectateEntity(ragdoll)
 			ply:Spectate(OBS_MODE_CHASE)
         end
-    }
+    },
+    ["bearling_attack"] = {
+		desc = "",
+        func = function(ply)
+			local bearlings = {}
+			for i = 1,5 do
+			
+				local bearling = ents.Create("bearling")
+				if not IsValid(bearling) then return end
+				
+				bearling:SetPos(ply:GetPos())
+				bearling:Spawn()
+				bearling:Activate()
+				
+				bearling:SetTarget(ply)
+				
+				bearlings[bearling] = true
+			end
+			
+			timer.Simple(60, function()
+				for bear, _ in pairs(bearlings) do
+					if IsValid(bear) then
+						bear:Remove()
+					end
+				end
+			end)
+        end
+    },
 }
 
 if SERVER then
@@ -488,7 +512,7 @@ if SERVER then
 	function gifts.GrantEffect(ply, name)
 		if IsValid(ply) and ply:IsPlayer() then
 			if positiveEffects[name] then
-				
+				positiveEffects[name].func(ply)
 			end
 		end
 	end

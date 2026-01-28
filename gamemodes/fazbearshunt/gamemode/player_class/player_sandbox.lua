@@ -40,13 +40,15 @@ end
 
 function PLAYER:Loadout()
 
-	self.Player:RemoveAllAmmo()
+	self.Player:RemoveAmmo(9999, "Pistol")
+	self.Player:RemoveAmmo(9999, "grenade")
 
 	self.Player:GiveAmmo( 64,	"Pistol", 		true )
 	self.Player:GiveAmmo( 5,	"grenade", 		true )
 
 	self.Player:Give( "weapon_pistol" )
 	if IsChristmas() then
+		self.Player:RemoveAmmo(9999, "snowball")
 		self.Player:GiveAmmo( 14,	"snowball", 	true )
 		self.Player:Give( "weapon_snowball" )
 	end

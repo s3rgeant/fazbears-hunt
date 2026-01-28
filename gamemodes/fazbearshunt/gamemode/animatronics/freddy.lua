@@ -221,6 +221,11 @@ function startBlindRage(ply, ent)
 				ply._isStalkingActive = nil
 				ply:SetFOV(0, 1)
 
+				local wep = ply:GetActiveWeapon()
+				if IsValid(wep) and wep:GetClass() == "v_freddy" then
+					wep:HandleAnimation("idle", 0.1)
+				end
+
 				net.Start("fh_sound_stop")
 				net.WriteString("freddy_stalking.wav")
 				net.Send(ply)
@@ -229,13 +234,10 @@ function startBlindRage(ply, ent)
 				net.WriteString("freddy_stalking_others.wav")
 				net.Broadcast()
 
-				ent:EmitSound("freddy_cancelled.wav")
-
-				local wep = ply:GetActiveWeapon()
-				if IsValid(wep) and wep:GetClass() == "v_freddy" then
-					wep:HandleAnimation("idle", 0.1)
+				if IsValid(ent) then
+					ent:EmitSound("freddy_cancelled.wav")
+					ent:PillAnim("idle")
 				end
-				ent:PillAnim("idle")
 				
 				cooldown.Set(ply, "stalk", 15)
 				cooldown.Send(ply, "stalk")
@@ -384,6 +386,7 @@ function successStalk(ply, ent, target)
 		stalkTargets[target] = ply
 		
 		target:SetNW2Entity("_BlindRageFreddy", ply)
+		ply:SetNW2Bool("_BlindRaged", true)
 		
 		ent:SetSpeed(unpack(wfreddy_stalk_movement))
 		ent:ReplaceAnimation("run", "srun")
@@ -438,6 +441,8 @@ function noMoreStalk(ply)
 		
 		stalkTargets[hisTarget] = nil
 	end
+	
+	ply:SetNW2Bool("_BlindRaged", false)
 
 	cooldown.Set(ply, "stalk", 80)
 	cooldown.Send(ply, "stalk")
@@ -607,6 +612,10 @@ if CLIENT then
 	hook.Add("FH_HandleKillerTerrorRadius", "freddy_enraged", function(killer, theme)
 		local myself = LocalPlayer()
 		if IsValid(myself:GetNW2Entity("_BlindRageFreddy")) and killer ~= myself:GetNW2Entity("_BlindRageFreddy") then
+			return false
+		end
+		
+		if !IsValid(myself:GetNW2Entity("_BlindRageFreddy")) and killer:GetNW2Bool("_BlindRaged") then
 			return false
 		end
 	end)

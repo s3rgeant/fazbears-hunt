@@ -21,16 +21,13 @@ fh.RegisterRoundType("bonnie_tag", 2, function()
 	
 	freezeAnimatronics(tagSetup)
 	
-	net.Start("fh_start_game_timer") -- Включаем встроенный в режим таймер
-	net.WriteFloat(tagDuration)
-	net.WriteFloat(tagSetup)
-	net.WriteString("ambient/alarms/warningbell1.wav")
-	net.WriteString(tostring(fh.GetRoundCount()))
-	net.Broadcast()
-	
-	timer.Create("EndGameTimer", tagDuration + tagSetup, 1, function()
-		fh_tag_end()
-	end)
+	fh.timer.StartGameTimer(
+		tagDuration, 
+		tagSetup, 
+		"ambient/alarms/warningbell1.wav", 
+		tostring( fh.GetRoundCount() ), 
+		fh_tag_end
+	)
 end, 10, 8, 20)
 
 fh.SetRoundTypeBlocked(2, true)
@@ -160,18 +157,14 @@ function fh_tag_end()
 			end
 			
 			freezeAnimatronics(tagSetup)
-	
-			net.Start("fh_start_game_timer") -- Включаем встроенный в режим таймер
-			net.WriteFloat(tagDuration)
-			net.WriteFloat(tagSetup)
-			net.WriteString("ambient/alarms/warningbell1.wav")
-			net.WriteString(tostring(fh.GetRoundCount()))
-			net.Broadcast()
-		
-			timer.Create("EndGameTimer", tagDuration + tagSetup, 1, function()
-				fh_tag_end()
-			end)
 			
+			fh.timer.StartGameTimer(
+				tagDuration, 
+				tagSetup, 
+				"ambient/alarms/warningbell1.wav", 
+				tostring( fh.GetRoundCount() ), 
+				fh_tag_end
+			)
 		else 
 			tag_end = false
 		

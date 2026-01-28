@@ -458,12 +458,6 @@ if SERVER then
         end
     end)
 
-    hook.Add("SetupPlayerVisibility", "pk_pill_pvs", function(ply)
-        if IsValid(getMappedEnt(ply)) and getMappedEnt(ply).formTable.type == "phys" then
-            AddOriginToPVS(getMappedEnt(ply):GetPos())
-        end
-    end)
-
     hook.Add("PlayerDeathThink", "pk_pill_nospawn", function(ply)
         if getMappedEnt(ply) then return false end
     end)
@@ -599,8 +593,8 @@ hook.Add("SetupMove", "pk_pill_movemod", function(ply, mv, cmd)
             ent.formTable.moveMod(ply, ent, mv, cmd)
         end
 
-        if ent.GetChargeTime and ent:GetChargeTime() ~= 0 then
-            local charge = ent.formTable.charge
+        local charge = ent.formTable.charge
+        if charge and ent.GetChargeTime and ent:GetChargeTime() ~= 0 then
             --check if we should continue
             local vel = mv:GetVelocity()
 

@@ -298,7 +298,7 @@ pills.register("pill_springtrap",{
 				
 				if spring_enraged then return end
 				
-				if !timer.Exists( "EndGameTimer" ) then return end
+				if !isGameOn then return end
 				
 				if !ply:IsSprinting() or ply:GetVelocity():LengthSqr() < ply:GetRunSpeed() then
 					return
@@ -371,7 +371,7 @@ pills.register("pill_springtrap",{
 	attack2={
 		mode="trigger",
 		func=function(ply,ent)
-			if !timer.Exists( "EndGameTimer" ) then return end
+			if !isGameOn then return end
 		
 			if !ply:OnGround() or IsValid(pt_request_springtrap_ply) or IsValid(request_plushtrap) then return end
 	
@@ -733,7 +733,7 @@ function plushtrap_request_complete(springtrap, ply)
 		timer.Remove("pt_waiting" .. springtrap:EntIndex())
 	end
 	
-	if !timer.Exists( "EndGameTimer" ) then return end
+	if !isGameOn then return end
 	
 	ply:Spawn()
 	setupPlayerVars(ply)
@@ -755,7 +755,7 @@ function plushtrap_request_complete(springtrap, ply)
 		break
 	end
 	
-	giveKillerSilent(ply, "pill_plushtrap")
+	giveKillerSilent(ply, "pill_plushtrap", true)
 	
 	timer.Simple(1, function()
 		if timer.Exists("pt_kill_timer" .. springtrap:EntIndex()) then
@@ -766,11 +766,10 @@ function plushtrap_request_complete(springtrap, ply)
 		end
 	end)
 	
-	if pt_lastpos != nil then
+	if pt_lastpos ~= nil then
 		ply:SetPos(pt_lastpos)
 	end
-	
-	if pt_lastangle != nil then
+	if pt_lastangle ~= nil then
 		ply:SetEyeAngles(pt_lastangle)
 	end
 	

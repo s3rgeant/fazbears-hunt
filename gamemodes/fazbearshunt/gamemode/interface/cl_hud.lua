@@ -407,7 +407,7 @@ function CanMangleLunge()
 	local eyeAng = ply:EyeAngles()
 	
 	if !ply:GetNWBool("_MangleHooked") then
-		if !ply:OnGround() or ply:Crouching() or eyeAng.p > 5 then
+		if !ply:OnGround() or ply:Crouching() or eyeAng.p > 0 then
 			return Color(200, 32, 32, 200)
 		end
 	elseif ply:GetNWString("_MangleLastHookType") ~= "ceiling" then
@@ -518,6 +518,9 @@ hook.Add("PillRestore", "fh_removehudkiller", function(ply)
 	
 	if IsValid(myself) and ply == myself then
 		hud_RemoveKiller()
+		
+		companionColor = Color(255,255,255,255)
+		companionIcon = nil
 	end
 end)
 

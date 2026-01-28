@@ -42,7 +42,11 @@ function SWEP:SetupDataTables()
 end
 
 -- Avoid using it anywhere except SWEP:SetupAnimations()
-function SWEP:AddAnimation(anim, swagAct, swagName)
+function SWEP:AddAnimation(anim, swagAct, swagName, noForce)
+	if noForce then
+		if self.Animations[anim] then return end
+	end
+
 	local seq = self:LookupSequence( swagName or anim )
 	
 	local act = swagAct or self:GetSequenceActivity( seq )
@@ -154,14 +158,14 @@ end
 function SWEP:Deploy()
     self.CurAnim = "deploy"
 	
-	self:AddAnimation("idle")
-	self:AddAnimation("walk")
-	self:AddAnimation("run")
-	self:AddAnimation("glide")
-	self:AddAnimation("jump")
-	self:AddAnimation("land")
-	self:AddAnimation("crouch")
-	self:AddAnimation("crouchmove")
+	self:AddAnimation("idle", nil, nil, true)
+	self:AddAnimation("walk", nil, nil, true)
+	self:AddAnimation("run", nil, nil, true)
+	self:AddAnimation("glide", nil, nil, true)
+	self:AddAnimation("jump", nil, nil, true)
+	self:AddAnimation("land", nil, nil, true)
+	self:AddAnimation("crouch", nil, nil, true)
+	self:AddAnimation("crouchmove", nil, nil, true)
 	
 	self:SetupAnimations()
 end

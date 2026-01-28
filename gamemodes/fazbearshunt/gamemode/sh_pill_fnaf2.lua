@@ -261,6 +261,7 @@ pills.register("pill_sfreddy2",{
 			crouch="scrouch",
 			crouch_walk="scrouchmove",
 			walk="swalk",
+			run="srun",
 			cloak="sdisappear",
 			uncloak="sappear",
 			jump="sjump",
@@ -918,6 +919,8 @@ function performJumpscare(ply, ent, target, killDelay, voiceCharacter, jumpscare
 	
 	if target:Health() <= 0 then return end
 	
+	if target:IsJumpscared() then return end
+	
 	if hook.Run("FH_PlayerShouldJumpscare", ply, ent, target) == false then return false end
 
 	hook.Run("FH_AnimatronicJumpscare", ply, ent, target, 
@@ -964,6 +967,13 @@ function performJumpscare(ply, ent, target, killDelay, voiceCharacter, jumpscare
 	end)
 	
 	return true
+end
+
+local ENTITY = FindMetaTable("Entity")
+
+function ENTITY:IsJumpscared()
+	if not self.jumpscared then return false end
+	return self.jumpscared
 end
 
 function jumpscareEvent(ply, ent, target, dist)
@@ -1367,16 +1377,6 @@ hook.Add("FuncDoorBust", "fh_charge_doorbust", function(ply, door)
 end)
 
 if SERVER then
-	hook.Add("SetupPlayerVisibility", "fh_pill_fnaf2_visibility", function(ply, viewent)
-		if table.Count(team.GetPlayers(2701)) > 0 then
-			for _, player in ipairs(team.GetPlayers(2701)) do
-				if player ~= ply then
-					AddOriginToPVS(player:GetPos())
-				end
-			end
-		end
-	end)
-	
 	local function fnaf2pill_death_handle(victim, inflictor, attacker)
 		if victim.jumpscared then
 			victim.jumpscared = nil

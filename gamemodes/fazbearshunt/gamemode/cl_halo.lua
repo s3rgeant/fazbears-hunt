@@ -9,12 +9,14 @@ local affectedPlayers_force = {}
 local animatronics = {}
 local teammates = {}
 
+local myself
+
 local fh_halo_teammates = CreateClientConVar('fh_halo_teammates', 1, true, false, 'Highlight Teammates? (Animatronics Only) Turn Off for Performance.', 0, 1)
 
 net.Receive("NotifySpectators", function()
 	local players = net.ReadTable()
 	local ply = net.ReadEntity()
-	local player = ply:Nick()
+	local player = IsValid(ply) and ply:Nick() or "UNKNOWN USER"
 	
 	chat:AddText(Color( 255, 0, 0 ), player, Color( 180, 20, 20 ), ' ', language.GetPhrase("fuppr.highlight_specs"), ': ', Color( 170, 55, 50 ), table.concat(players, ", "))
 end)
@@ -318,7 +320,8 @@ net.Receive("fh_hl_animatronics", function()
 end)
 
 net.Receive("fh_hl_teammates", function()
-	if LocalPlayer():Team() == 2701 then
+	myself = myself or LocalPlayer()
+	if IsValid(myself) and myself:Team() == 2701 then
 		for _, ply in ipairs(team.GetPlayers(2701)) do
 			local ent = pills.getMappedEnt(ply)
 			if ply ~= LocalPlayer() and IsValid(ent) then
@@ -529,10 +532,10 @@ function draw_orbs(tbl, material, distance)
 
                     local pillMaterial = killers.GetAvatar(target:GetPillName())
                     if pillMaterial then
-                        ourColor = Color(255,255,255, alpha)
+                        ourColor = color_white
                     end
 
-                    surface.SetDrawColor(ourColor:Unpack())
+                    surface.SetDrawColor(ourColor.r, ourColor.g, ourColor.b, alpha)
                     surface.SetMaterial(pillMaterial or material)
                     surface.DrawTexturedRect(drawX - textureSize, drawY - textureSize, textureSize*2, textureSize*2)
 
@@ -549,9 +552,8 @@ function draw_orbs(tbl, material, distance)
                 if target:GetClass() == "pill_costume" and killers.GetFullName(target:GetPillName()) and ply:IsSurvivor() then
 					ourColor = IsColor(color) and color or killers.getColor(target:GetPillName())
 				end
-				ourColor.a = alpha
 
-				surface.SetDrawColor(ourColor)
+				surface.SetDrawColor(ourColor.r, ourColor.g, ourColor.b, alpha)
 				surface.SetMaterial(material)
 				surface.DrawTexturedRect(clampedX - textureSize, clampedY - textureSize, 64, 64)
             end

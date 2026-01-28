@@ -177,7 +177,7 @@ function SWEP:DealDamage()
 	local dmginfo = DamageInfo()
 	dmginfo:SetAttacker( ply )
 	dmginfo:SetInflictor( self )
-	dmginfo:SetDamage( 35 )
+	dmginfo:SetDamage( 55 )
 
 	SuppressHostEvents( NULL )
 	target:TakeDamageInfo( dmginfo )

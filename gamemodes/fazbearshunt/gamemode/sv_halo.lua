@@ -56,6 +56,8 @@ function highlight.ByDistance(ply, ent)
 		net.Start("ToggleHighlightSound") -- включаем чуваку звук что он дофига крутой со спермой под губой
 		net.WriteBool(!table.IsEmpty(totalPlayers))
 		net.Send(ply)
+		
+		hook.Run("FH_HighlightByDistance", ply, ent, totalPlayers)
 	end
 end
 
@@ -203,6 +205,7 @@ hook.Add("SetupPlayerVisibility", "fh_halo_visibility", function(ply, viewent)
 						AddOriginToPVS(target:GetPos())
 					end
 				end
+				break
 			end
 		end
 	end

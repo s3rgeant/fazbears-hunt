@@ -271,8 +271,9 @@ function foxyStun(ply)
 	if !IsValid(ent) then return end
 	
 	if SERVER then
-	ent:SetSpeed(unpack(StunnedFoxyMovementSpeed()))
-	ply:SetFOV(60, 0.5)
+		ent:SetSpeed(unpack(StunnedFoxyMovementSpeed()))
+		ply:SetFOV(60, 0.5)
+		ent:SetPlaybackRate(1)
 	end
 	
 	local wep = ply:GetActiveWeapon()
@@ -401,6 +402,7 @@ local function BlightCheckCollision(ply)
 		endpos = startPos + speedDir * traceDist,
 		mins = Vector(-hullSize, -hullSize, 0),
 		maxs = Vector(hullSize, hullSize, ply:OBBMaxs().z * 0.8),
+		mask = MASK_PLAYERSOLID,
 		filter = {"snowball", ply}
 	})
 	

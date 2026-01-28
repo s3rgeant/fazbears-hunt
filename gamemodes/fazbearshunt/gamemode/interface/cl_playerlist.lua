@@ -78,7 +78,7 @@ function GM:ScoreboardShow()
         return
     end
 	
-	nextTimeUpdate = CurTime() + 5
+	nextTimeUpdate = CurTime() + 3
 	
 	local lowres = ScrH() <= 600 
 	local highres = ScrH() > 1080 

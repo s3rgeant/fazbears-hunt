@@ -1,8 +1,10 @@
+local myself
+
 local lastSoundTime = 0
 local soundCooldown = 10
 
 local function fh_default_check_scarysound()
-    local myself = LocalPlayer()
+    myself = myself or LocalPlayer()
 	if !pills then return end
 	
     if !IsValid(myself) or pills.getMappedEnt(myself) != nil then return end
@@ -90,7 +92,7 @@ local magnetStrength = 0.1
 local function scaredNear()
     _G.fh_is_scared_lock = true
 	
-	local myself = LocalPlayer()
+	myself = myself or LocalPlayer()
 	local targetPlayer = myself:GetNWEntity("_WGoldenFreddy")
 
 	local eyePos = myself:EyePos()
@@ -144,7 +146,7 @@ local function stopScareProgress()
 end
 
 local function fh_gfreddy_check_scarysound()
-	local myself = LocalPlayer()
+	myself = myself or LocalPlayer()
 	
 	local targetPlayer = myself:GetNWEntity("_WGoldenFreddy")
 	

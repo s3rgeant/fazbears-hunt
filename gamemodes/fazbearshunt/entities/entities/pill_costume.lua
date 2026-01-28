@@ -13,9 +13,9 @@ function ENT:SetupDataTables()
     self:NetworkVar("Float", 1, "CloakLeft")
 	
     self:NetworkVar("Bool", false, "UseForceAngles")
-    self:NetworkVar("Angle", nil, "ForceAngles")
+    self:NetworkVar("Angle", 1, "ForceAngles")
 	
-    self:NetworkVar("Angle", nil, "LookAngles")
+    self:NetworkVar("Angle", 2, "LookAngles")
 	
 	self:NetworkVar( "Bool", false, "Frozen" )
 	
@@ -29,7 +29,7 @@ function ENT:Initialize()
     self.formTable = pills.getPillTable(self:GetPillForm())
     local ply = self:GetPillUser()
 
-    if not self.formTable or !IsValid(ply) then
+    if not self.formTable or !IsValid(ply) and SERVER then
         self:Remove()
         return
     end
@@ -186,7 +186,7 @@ function ENT:Initialize()
         end
 
         ply:SetArmor(0)
-        ply:DropToFloor()
+        ply:DropToFloor(MASK_ALL)
 
         if self.formTable.loadout then
             for _, v in pairs(self.formTable.loadout) do
@@ -433,7 +433,11 @@ function ENT:Think()
 		local speedCap = self.formTable.anims.speedCap
 		if speedCap then
 			if speedCap.run and anim == anims["run"] and vel > speedCap.run then
-				self:SetPlaybackRate(vel / speedCap.run)
+				self:SetPlaybackRate(math.Clamp(vel / speedCap.run, -4, 12))
+			elseif speedCap.walk and anim == anims["walk"] then
+				self:SetPlaybackRate(math.Clamp(vel / speedCap.walk, -4, 12))
+			elseif speedCap.ducked and anim == anims["crouch_walk"] and vel > speedCap.ducked then
+				self:SetPlaybackRate(math.Clamp(vel / speedCap.ducked, -4, 12))
 			end
 		end
 
@@ -515,15 +519,16 @@ function ENT:Think()
         self:SetRenderOrigin(ply:GetPos())
     end
 
-	local angs = self:GetUseForceAngles() and self:GetForceAngles() or (SERVER and ply:GetAngles() or ply:EyeAngles())
-	if not self:GetUseForceAngles() then angs.p = 0 end
+	local usef_angs = self:GetUseForceAngles()
+	local angs = usef_angs and self:GetForceAngles() or (SERVER and ply:GetAngles() or ply:EyeAngles())
+	if not usef_angs then angs.p = 0 end
 	if SERVER then 
 		self:SetAngles(angs)
 		self:SetLookAngles(angs)
 	else 
 		if vel < 5 and !self.formTable.noLookLerp then
 			self:SetRenderAngles(LerpAngle(FrameTime() * 25, self:GetAngles(), self:GetLookAngles() ))
-		elseif !self.formTable.noLookLerp or self.formTable.noLookLerp and vel > 5 then
+		elseif !self.formTable.noLookLerp or self.formTable.noLookLerp and vel > 5 or usef_angs then
 			self:SetRenderAngles(angs)
 		end
 	end
@@ -550,6 +555,11 @@ if SERVER then
 		self:SetPrevPillUser(nil)
 		
 		pills.mapEnt(ply, self)
+	end
+	
+	-- хз на будущее 
+	function ENT:UpdateTransmitState() 
+		return TRANSMIT_ALWAYS
 	end
 
     function ENT:DoKeyPress(ply, key)
