@@ -322,6 +322,11 @@ end
 
 function ENT:OnRemove()
     local ply = self:GetPillUser()
+	
+	--[[ if !IsValid(ply) then
+		ply = self:GetPrevPillUser()
+	end ]]--
+	-- не уверен
 
     -- compatibility
     if self.formTable.onRemove then
@@ -452,18 +457,30 @@ function ENT:Think()
 			if not overrideRate then
 				local velocity, pillspeed = ply:GetVelocity(), self.formTable.moveSpeed or {}
 				local fwd, right = ply:GetForward(), ply:EyeAngles():Right()
-				local moveX, moveY = fwd:Dot(velocity), right:Dot(velocity)
+
+				local moveX = fwd:Dot(velocity)
+				local moveY = right:Dot(velocity)
 
 				local maxSpeed = math.max(pillspeed.maxwalk or 80, ply:GetWalkSpeed())
-				if ply:IsSprinting() and ply:GetWalkSpeed() ~= ply:GetRunSpeed() then
+				if ply:IsSprinting() and ply:GetWalkSpeed() ~= ply:GetRunSpeed() or not ply:OnGround() then
 					maxSpeed = ply:GetRunSpeed()
 				end
 				if ply:Crouching() then maxSpeed = maxSpeed * 0.5 end
 
-				local len = math.sqrt(moveX * moveX + moveY * moveY)
-				if len > 0 then moveX, moveY = moveX / len, moveY / len end
+				moveX = moveX / maxSpeed
+				moveY = moveY / maxSpeed
+
+				-- фикс диагонали (хз у нейронеки спросил, какие то цифры ибанные написало)
+				if math.abs(moveX) > 0.01 and math.abs(moveY) > 0.01 then
+					moveX = moveX * 1.4142
+					moveY = moveY * 1.4142
+				end
+
+				moveX = math.Clamp(moveX, -1, 1)
+				moveY = math.Clamp(moveY, -1, 1)
 
 				local ratio = math.Clamp(velocity:Length2D() / maxSpeed, 0, 1)
+
 				self:SetPoseParameter("move_x", moveX * ratio)
 				self:SetPoseParameter("move_y", moveY * ratio)
 			else
@@ -526,7 +543,7 @@ function ENT:Think()
 		self:SetAngles(angs)
 		self:SetLookAngles(angs)
 	else 
-		if vel < 5 and !self.formTable.noLookLerp then
+		if (vel < 5 or !ply:OnGround()) and !self.formTable.noLookLerp then
 			self:SetRenderAngles(LerpAngle(FrameTime() * 25, self:GetAngles(), self:GetLookAngles() ))
 		elseif !self.formTable.noLookLerp or self.formTable.noLookLerp and vel > 5 or usef_angs then
 			self:SetRenderAngles(angs)
@@ -537,6 +554,16 @@ function ENT:Think()
     return true
 end
 
+function ENT:Get(name, default)
+	if !IsValid(self) or !self.formTable then return default or nil end
+	
+	local get = self.formTable[name]
+	
+	if get then return get end
+	
+	return default or nil
+end
+
 if SERVER then
 	function ENT:DetachPlayer()
 		local ply = self:GetPillUser()
@@ -544,6 +571,8 @@ if SERVER then
 		self:SetPrevPillUser(ply)
 		self:SetPillUser(nil)
 		self:SetParent()
+		
+		ply.lastFhMappedEnt = self
 		
 		pills.unmapEnt(ply, self)
 	end
@@ -554,10 +583,11 @@ if SERVER then
 		self:SetParent(ply)
 		self:SetPrevPillUser(nil)
 		
+		ply.lastFhMappedEnt = nil
+		
 		pills.mapEnt(ply, self)
 	end
 	
-	-- хз на будущее 
 	function ENT:UpdateTransmitState() 
 		return TRANSMIT_ALWAYS
 	end

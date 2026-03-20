@@ -49,51 +49,40 @@ SWEP.Secondary.DefaultClip		= 0
 SWEP.Secondary.Automatic   		= false
 SWEP.Secondary.Ammo         	= "none"
 
-SWEP.Sounds =
-{
-	Squeeze1 = Sound("weapons/bugbait/bugbait_squeeze1.wav"),
-	Squeeze2 = Sound("weapons/bugbait/bugbait_squeeze2.wav"),
-	Squeeze3 = Sound("weapons/bugbait/bugbait_squeeze3.wav")
-}
-
 function SWEP:Initialize()
 	self:SetWeaponHoldType( self.HoldType )
 end
 
 function SWEP:PrimaryAttack()
 
-	local owner = self.Owner
+	local owner = self:GetOwner()
 	owner:SetAnimation(PLAYER_ATTACK1)
 	
 	if SERVER then
 		
+		local Banana = ents.Create("banana_peel")
+		--Banana.Owner = owner
+		Banana:SetOwner(owner)
 		owner:LagCompensation(true)
+		Banana:SetPos(owner:GetShootPos() + owner:GetAimVector() * 25)
+		Banana:Spawn()
+		Banana:Activate()
 		
-		local Banana = ents.Create("banana_peel");
-
-		Banana.BananaType = 1;
-		Banana.Owner = self.Owner;
-
-		Banana:SetPos(owner:GetShootPos() + owner:GetAimVector() * 30);
-		Banana:Spawn();
-		Banana:Activate();
-		
-		local Physics = Banana:GetPhysicsObject();
-
-		if IsValid(Physics) then
-			Physics:ApplyForceCenter(owner:GetAimVector() * math.Rand(300,350) * Physics:GetMass());
-
-			self.Weapon:SendWeaponAnim(ACT_VM_THROW);
-
-			local function C()
-				if IsValid(self.Weapon) then
-					self.Weapon:SendWeaponAnim(ACT_VM_DRAW);
-				end
-			end
-			
-			timer.Simple(0.2,C);
+		local phys = Banana:GetPhysicsObject()
+		if IsValid(phys) then
+			phys:ApplyForceCenter(owner:GetAimVector() * math.Rand(300,350) * phys:GetMass())
 		end
 		owner:LagCompensation(false)
+
+		self:SendWeaponAnim(ACT_VM_THROW)
+
+		local function C()
+			if IsValid(self) then
+				self:SendWeaponAnim(ACT_VM_DRAW)
+			end
+		end
+		
+		timer.Simple(0.2,C)
 		
 		self:TakePrimaryAmmo(1)
 		self:SetNextPrimaryFire(CurTime() + self.Primary.Delay)
@@ -109,7 +98,7 @@ function SWEP:SecondaryAttack()
 end
 
 function SWEP:Deploy()
-	self.Weapon:SendWeaponAnim(ACT_VM_DRAW);
+	self.Weapon:SendWeaponAnim(ACT_VM_DRAW)
 	return true;
 end
 

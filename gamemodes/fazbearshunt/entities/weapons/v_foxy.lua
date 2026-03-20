@@ -95,10 +95,8 @@ function SWEP:DealDamage()
 	if SERVER then
 		ent:PillGesture('melee', 2, 1, 0.1, 0.7)
 		
-		net.Start("fh_net_killer_change")
-		net.WriteString("kill")
-		net.WriteFloat(2)
-		net.Send(ply)
+		cooldown.Set(ply, "kill", 2)
+		cooldown.Send(ply, "kill")
 		
 		EndRush(ply)
 		

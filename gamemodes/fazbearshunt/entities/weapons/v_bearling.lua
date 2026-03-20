@@ -98,7 +98,7 @@ function SWEP:DealDamage()
 	if SERVER then
 		ent:PillGesture('attack', 2, 1, 0.1, 0.3)
 		
-		net.Start("fh_net_killer_change")
+		net.Start("fh_cooldown_receive")
 		net.WriteString("attack")
 		net.WriteFloat(self.AttackDelay)
 		net.Send(ply)
@@ -170,11 +170,15 @@ function SWEP:DealDamage()
             end
         end
     end
+	
+    if target:IsPlayer() and !target:IsAnimatronic() or target:IsNPC() then
+        ply:EmitSound("bear/bear_knife_hit" .. math.random(1,3) .. ".mp3")
+    end
 
     local dmginfo = DamageInfo()
     dmginfo:SetAttacker(ply)
     dmginfo:SetInflictor(self)
-    dmginfo:SetDamage(2)
+    dmginfo:SetDamage(target:IsPlayer() and 2 or 10)
 
     SuppressHostEvents(NULL)
     target:TakeDamageInfo(dmginfo)
@@ -192,10 +196,6 @@ function SWEP:DealDamage()
     util.Effect("Impact_GMOD", effectData, true, true)
 
     ply:LagCompensation(false)
-	
-    if target:IsPlayer() and !target:IsAnimatronic() or target:IsNPC() then
-        ply:EmitSound("bear/bear_knife_hit" .. math.random(1,3) .. ".mp3")
-    end
 			
 	timer.Simple(0, function()
 		if IsValid(target) and target:IsPlayer() and !target:Alive() then

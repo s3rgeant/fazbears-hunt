@@ -1,11 +1,20 @@
 hook.Add("PlayerSwitchFlashlight", "fh_toggle_flashlights", function(ply, enabled)
-	--local state = not ply:GetNW2Bool("FH_Flashlight", false)
-	--ply:SetNW2Bool("FH_Flashlight", state)
+	local state = not ply:GetNW2Bool("FH_Flashlight", false)
+	ply:SetNW2Bool("FH_Flashlight", state)
+	
+	ply:EmitSound("items/flashlight1.wav")
 	
 	return false
 end)
 
---[[
+hook.Add("PlayerSpawn", "fh_toggle_flashlights", function(ply)
+	ply:SetNW2Bool("FH_Flashlight", false)
+end)
+
+hook.Add("PillApply", "fh_toggle_flashlights", function(ply)
+	ply:SetNW2Bool("FH_Flashlight", false)
+end)
+
 if CLIENT then
 	local Flashlights = Flashlights or {}
 	local myself
@@ -48,6 +57,7 @@ if CLIENT then
 	hook.Add("PostPlayerDraw", "FH_ThirdPersonFlashlight_SoftCone", function(ply)
 		if ply == LocalPlayer() and not ply:ShouldDrawLocalPlayer() then return end
 		if not ply:GetNW2Bool("FH_Flashlight", false) then return end
+		if ply:IsInvisible() or ply:IsAnimatronic() then return end
 
 		local attID = ply:LookupAttachment("anim_attachment_RH")
 		if attID <= 0 then return end
@@ -56,41 +66,17 @@ if CLIENT then
 		if not att then return end
 
 		local startPos = att.Pos + att.Ang:Forward() * 3
-		local dir      = att.Ang:Forward()
-		local right    = att.Ang:Right()
-		local up       = att.Ang:Up()
+		
+		if ( !PixVis ) then PixVis = util.GetPixelVisibleHandle() end
 
-		local length   = 750
-		local widthEnd = 120
-		local widthBeg = 12
+		local visible = util.PixelVisible( startPos, 28, PixVis )
 
-		-- Конец света (НЕ рисуем точку!)
-		local endPos = startPos + dir * length
-
-		-- ==========
-		-- МЯГКИЙ QUAD
-		-- ==========
-		render.SetMaterial(coneMat)
-
-		local a = Color(255,255,255,35)
-
-		render.DrawQuad(
-			startPos + right * widthBeg + up * widthBeg,
-			startPos - right * widthBeg + up * widthBeg,
-			endPos   - right * widthEnd,
-			endPos   + right * widthEnd,
-			a
-		)
-
-		-- ==========
-		-- ЛАМПА У РУКИ
-		-- ==========
 		render.SetMaterial(lampMat)
 		render.DrawSprite(
 			startPos,
-			14,
-			14,
-			Color(255,255,255,220)
+			20 * visible,
+			20 * visible,
+			Color(255,255,255, math.floor( visible * 100 ))
 		)
 	end)
 	
@@ -101,4 +87,3 @@ if CLIENT then
 		end
 	end)
 end
-]]--

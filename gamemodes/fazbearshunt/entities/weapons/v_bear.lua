@@ -70,10 +70,10 @@ function SWEP:DealDamage()
 
     if IsFirstTimePredicted() then
         self:HandleAnimation("melee", 0.8)
-    end
 	
-	self:SetNextPrimaryFire(now + 1.5)
-	self:SetLastAttack(now)
+		self:SetNextPrimaryFire(now + 1.5)
+		self:SetLastAttack(now)
+    end
 
     if SERVER then
         timer.Simple(0.05, function()
@@ -86,7 +86,7 @@ function SWEP:DealDamage()
 			ent:PillGesture('attack', 2, 1, 0.1, 0.7, 0.02)
 		end
 
-        net.Start("fh_net_killer_change")
+        net.Start("fh_cooldown_receive")
         net.WriteString("attack")
         net.WriteFloat(1.5)
         net.Send(ply)
@@ -158,6 +158,10 @@ function SWEP:DealDamage()
             end
         end
     end
+	
+    if target:IsPlayer() and !target:IsAnimatronic() or target:IsNPC() then
+        ply:EmitSound("bear/bear_knife_hit" .. math.random(1,3) .. ".mp3")
+    end
 
     local dmginfo = DamageInfo()
     dmginfo:SetAttacker(ply)
@@ -180,13 +184,9 @@ function SWEP:DealDamage()
     util.Effect("Impact_GMOD", effectData, true, true)
 
     ply:LagCompensation(false)
-	
-    if target:IsPlayer() and !target:IsAnimatronic() or target:IsNPC() then
-        ply:EmitSound("bear/bear_knife_hit" .. math.random(1,3) .. ".mp3")
-    end
 			
 	timer.Simple(0, function()
-		if IsValid(target) and target:IsPlayer() and !target:Alive() then
+		if IsValid(target) and target:IsPlayer() and (!target:Alive() or target:IsAnimatronic()) then
 			bearScream(ply,ent)
 		end
 	end)

@@ -4,7 +4,8 @@ AddCSLuaFile()
 
 -- Them hooks
 hook.Add("CalcView", "momo_calcview", function(ply, pos, ang, fov, nearZ, farZ)
-    local ent = pills.getMappedEnt(LocalPlayer())
+	local myself = LocalPlayer()
+    local ent = pills.getMappedEnt(myself)
 
     if IsValid(ent) and ply:GetViewEntity() == ply then
         local startpos
@@ -15,7 +16,7 @@ hook.Add("CalcView", "momo_calcview", function(ply, pos, ang, fov, nearZ, farZ)
             startpos = pos
         end
 
-        if pills.convars.cl_thirdperson:GetBool() then
+        if pills.convars.cl_thirdperson:GetBool() or CurTime() < myself:GetNW2Float("fh_pill_thirdperson") then
             local dist
 			
 			if hook.Run("HandlePillThirdperson", ply, ent) == false then return end

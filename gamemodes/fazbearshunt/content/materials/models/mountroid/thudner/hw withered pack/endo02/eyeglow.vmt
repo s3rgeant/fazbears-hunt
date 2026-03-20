@@ -1,0 +1,23 @@
+"VertexlitGeneric"
+{
+$basetexture "models/mountroid/Thudner/hw withered pack/shared/white"
+$bumpmap "models/mountroid/Thudner/hw withered pack/shared/flat"
+$nodecal 1
+$model 1
+$phong "1" 
+$phongboost "0"
+$phongexponent "50"
+$ambientocclusion "0.8523321"
+$phongfresnelranges "[0.05 0.5 1]"
+$phongalbedotint "1"
+$halflambert 1
+$diffuseexp 1.5
+$nocull 1
+$emissiveBlendEnabled "1"
+$emissiveBlendTexture "models/mountroid/Thudner/hw withered pack/shared/white"
+$emissiveBlendBaseTexture "models/mountroid/Thudner/hw withered pack/shared/white"
+$emissiveBlendFlowTexture "models/mountroid/Thudner/hw withered pack/shared/white"
+$emissiveBlendTint "[1 1 1]"
+$emissiveBlendStrength "1"
+$emissiveBlendScrollVector "[0 0]"	
+}

@@ -155,6 +155,8 @@ local function GetSelectedPlayers()
     return players
 end
 
+local blackie = Color(0,0,0,120)
+
 local myself
 local silent_give_killer = false
 local function OpenAdminPanel()
@@ -392,57 +394,90 @@ local function OpenAdminPanel()
 	end
    
    sheet:AddSheet(language.GetPhrase("fazhunt.adminpanel.players"), panelPlayers, "icon16/user.png")
-
+	
     -- === Панель раунда === --
     local roundPanel = vgui.Create("DPanel")
     roundPanel:Dock(FILL)
+	
+	local roundSheet = vgui.Create( "DPropertySheet", roundPanel )
+	roundSheet:Dock( FILL )
 
-    local roundActions = {
-        {"startgame", "start_round"},
-        {"endgame", "end_round"},
-        {"endroundstartup", "end_post_round"},
-        {"endlobbytimer", "end_lobby_timer"},
-        {"pausegame", "pause_game"},
-    }
+		--[[
+				УПРАВЛЕНИЕ
+		]]--
+		local genericPanel = vgui.Create( "DPanel", roundSheet )
+		roundSheet:AddSheet( "Управление", genericPanel, "icon16/clock.png" )
 
-    local ry = 10
-    for _, a in ipairs(roundActions) do
-        AddNetActionButton(roundPanel, 10, ry, 280, 30, language.GetPhrase("fazhunt.adminpanel." .. a[1]), a[2])
-        ry = ry + 40
-    end
+		local roundActions = {
+			{"startgame", "start_round"},
+			{"endgame", "end_round"},
+			{"endroundstartup", "end_post_round"},
+			{"endlobbytimer", "end_lobby_timer"},
+			{"pausegame", "pause_game"},
+		}
 
-    local sliders = {
-        {"highlight.cooldown", "set_highlight_delay", 10, 240, GetConVar("halo_cooldown"):GetInt()},
-        {"highlight.time", "set_highlight_duration", 3, 30, GetConVar("halo_time"):GetInt()},
-        {"highlight.radius", "set_highlight_distance", 100, 4000, GetConVar("halo_radius"):GetInt()}
-    }
+		local ry = 10
+		for _, a in ipairs(roundActions) do
+			if a[1] and a[2] then
+				local button = AddNetActionButton(genericPanel, 10, ry, 280, 30, language.GetPhrase("fazhunt.adminpanel." .. a[1]), a[2])
+				
+				local onlyGameOn = a[1] == "endgame" or a[1] == "pausegame" or a[1] == "endroundstartup"
+				local onlyLobby = a[1] == "startgame" or a[1] == "endlobbytimer"
+				local onlyGameStart = a[1] == "endroundstartup"
+				
+				function button:PaintOver( w, h )
+					if onlyGameOn and !GetGlobal2Bool("gameOn", false)
+					or onlyLobby and GetGlobal2Bool("gameOn", false)
+					or onlyGameStart and GetGlobal2Bool("roundActive", false)
+					then
+						draw.RoundedBox( 4, 0, 0, w, h, blackie )
+					end
+				end
+			end
+			ry = ry + 40
+		end
 
-    for _, s in ipairs(sliders) do
-        AddSlider(roundPanel, 10, ry, language.GetPhrase("fazhunt." .. s[1]), s[3], s[4], s[5], 0, s[2])
-        ry = ry + 25
-    end
+		AddSlider(genericPanel, 10, ry, language.GetPhrase("fazhunt.adminpanel.game_duration"), 1, 20, conVars.fh_round_duration:GetInt(), 0, "fh_round_duration")
+		--[[
+				ИВЕНТЫ
+		]]--
+		local eventsPanel = vgui.Create( "DPanel", roundSheet )
+		roundSheet:AddSheet( language.GetPhrase("fazhunt.adminpanel.events"), eventsPanel, "icon16/cog.png" )
+		
+		AddCheckbox(eventsPanel, 10, 14, language.GetPhrase("fazhunt.adminpanel.gift_spawning"), conVars.fh_gifts_spawning, "fh_gifts_spawning")
+		AddCheckbox(eventsPanel, 180, 14, language.GetPhrase("fazhunt.adminpanel.goldenfreddy_spawning"), conVars.fh_goldenfreddy_spawning, "fh_goldenfreddy_spawning")
+		AddNetActionButton(eventsPanel, 10, 40, 150, 40, language.GetPhrase("fazhunt.adminpanel.spawn_gifts"), "fh_spawn_gifts")
 
-    AddNetActionButton(roundPanel, 10, ry + 10, 150, 40, language.GetPhrase("fazhunt.adminpanel.save_settings"), "fh_auto_map_save")
-    AddCheckbox(roundPanel, 170, ry + 25, language.GetPhrase("fazhunt.adminpanel.auto_hl"), conVars.fh_automatic_highlight, "fh_automatic_highlight")
-    AddNetActionButton(roundPanel, 10, ry + 60, 150, 40, language.GetPhrase("fazhunt.adminpanel.use_map_settings"), "fh_auto_map_hl")
+		local lbl = vgui.Create("DLabel", eventsPanel)
+		lbl:SetPos(10, 84)
+		lbl:SetText(language.GetPhrase("fazhunt.adminpanel.gifts_description"))
+		lbl:SetDark(true)
+		lbl:SetSize(150, 100)
+		
+		--[[
+				КАРТА
+		]]--
+		local highlightPanel = vgui.Create( "DPanel", roundSheet )
+		roundSheet:AddSheet( "Карта", highlightPanel, "icon16/map.png" )
 
-    sheet:AddSheet(language.GetPhrase("fazhunt.adminpanel.round"), roundPanel, "icon16/joystick.png")
+		local sliders = {
+			{"highlight.cooldown", "set_highlight_delay", 10, 240, GetConVar("halo_cooldown"):GetInt()},
+			{"highlight.time", "set_highlight_duration", 3, 30, GetConVar("halo_time"):GetInt()},
+			{"highlight.radius", "set_highlight_distance", 100, 4000, GetConVar("halo_radius"):GetInt()},
+			{"adminpanel.max_cupcakes", "fh_max_cupcakes", 3, 10, conVars.fh_max_cupcakes:GetInt()},
+		}
 
-    -- === Панель ивенты === --
-    local eventsPanel = vgui.Create("DPanel")
-    eventsPanel:Dock(FILL)
+		local ry = 10
+		for _, s in ipairs(sliders) do
+			AddSlider(highlightPanel, 10, ry, language.GetPhrase("fazhunt." .. s[1]), s[3], s[4], s[5], 0, s[2])
+			ry = ry + 25
+		end
 
-    AddCheckbox(eventsPanel, 10, 14, language.GetPhrase("fazhunt.adminpanel.gift_spawning"), conVars.fh_gifts_spawning, "fh_gifts_spawning")
-    AddCheckbox(eventsPanel, 180, 14, language.GetPhrase("fazhunt.adminpanel.goldenfreddy_spawning"), conVars.fh_goldenfreddy_spawning, "fh_goldenfreddy_spawning")
-    AddNetActionButton(eventsPanel, 10, 40, 150, 40, language.GetPhrase("fazhunt.adminpanel.spawn_gifts"), "fh_spawn_gifts")
-
-    local lbl = vgui.Create("DLabel", eventsPanel)
-    lbl:SetPos(10, 84)
-    lbl:SetText(language.GetPhrase("fazhunt.adminpanel.gifts_description"))
-    lbl:SetDark(true)
-    lbl:SetSize(150, 100)
-
-    sheet:AddSheet(language.GetPhrase("fazhunt.adminpanel.events"), eventsPanel, "icon16/cog.png")
+		AddNetActionButton(highlightPanel, 10, ry + 10, 150, 40, language.GetPhrase("fazhunt.adminpanel.save_settings"), "fh_auto_map_save")
+		AddCheckbox(highlightPanel, 170, ry + 35, language.GetPhrase("fazhunt.adminpanel.auto_hl"), conVars.fh_automatic_highlight, "fh_automatic_highlight")
+		AddNetActionButton(highlightPanel, 10, ry + 60, 150, 40, language.GetPhrase("fazhunt.adminpanel.use_map_settings"), "fh_auto_map_hl")
+		
+		sheet:AddSheet(language.GetPhrase("fazhunt.adminpanel.round"), roundPanel, "icon16/joystick.png")
 
     -- === Экспериментальная панель === --
     local expPanel = vgui.Create("DPanel")
@@ -453,12 +488,10 @@ local function OpenAdminPanel()
 	local function justget(n) return ey + n end
 
     AddCheckbox(expPanel, 10, step(20), language.GetPhrase("fazhunt.adminpanel.damage_animatronics"), conVars.fh_animatronic_immortal, "fh_animatronic_immortal", true)
-    
-    AddCheckbox(expPanel, 10, step(15), language.GetPhrase("fazhunt.adminpanel.quiet_animatronics"), conVars.fh_less_steps, "fh_less_steps")
-    AddSlider(expPanel, 10, step(30), language.GetPhrase("fazhunt.adminpanel.max_cupcakes"), 3, 10, conVars.fh_max_cupcakes:GetInt(), 0, "fh_max_cupcakes")
+    AddCheckbox(expPanel, 10, step(20), language.GetPhrase("fazhunt.adminpanel.quiet_animatronics"), conVars.fh_less_steps, "fh_less_steps")
     AddCheckbox(expPanel, 10, step(20), language.GetPhrase("fazhunt.adminpanel.silent_highlight"), conVars.fh_silent_highlight, "fh_silent_highlight")
     AddCheckbox(expPanel, 10, step(20), language.GetPhrase("fazhunt.adminpanel.fh_respawn_dead_animatronics"), conVars.fh_respawn_dead_animatronics, "fh_respawn_dead_animatronics")
-	AddSlider(expPanel, 10, step(40), language.GetPhrase("fazhunt.adminpanel.game_duration"), 1, 20, conVars.fh_round_duration:GetInt(), 0, "fh_round_duration")
+    AddCheckbox(expPanel, 10, step(20), "Fair Highlight", conVars.fair_hl, "fh_fair_highlight")
 	
 	local DermaList = vgui.Create( "DScrollPanel", expPanel )
 	DermaList:SetPos( 10, justget(15) )

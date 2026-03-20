@@ -92,7 +92,6 @@ function StartRound()
 	end
 end
 
-roundPaused = roundPaused or false
 function ToggleGamePause()
 	if isGameOn and !roundEnding then
 		if !roundPaused then
@@ -328,7 +327,8 @@ end
 
 local function morphGuy(ply, action)
 	local anim = net.ReadString()
-
+	
+	if !ply:Alive() then ply:Spawn() end
 	pills.apply(ply:Nick(), anim, "user")
 end
 

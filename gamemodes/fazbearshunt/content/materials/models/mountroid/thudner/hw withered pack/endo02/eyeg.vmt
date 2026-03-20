@@ -1,0 +1,18 @@
+"UnlitGeneric"
+{
+$basetexture "models/mountroid/Thudner/HW Withered Pack/endo02/eyes"
+$bumpmap "models/mountroid/Thudner/HW Withered Pack/shared/flat"
+$basetexturetransform "center .5 .5 scale 1.04 1.06 rotate 0 translate 0 0"
+$color "1.2"
+$nodecal 1
+$model 1
+$phong "1" 
+$phongboost "0"
+$phongexponent "0"
+$phongfresnelranges "[0.05 0.5 1]"
+$phongalbedotint "1"
+$halflambert 1
+$diffuseexp 1.5
+$nocull 1
+}
+

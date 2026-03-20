@@ -116,6 +116,15 @@ pills.register("pill_mangle",{
 		yPose="aim_pitch"
 	},
 	
+	killCondition=function(ply,ent)
+		local target = FindNearestPlayer(ply:EyePos(), 125, ply, 36)
+		
+		if IsValid(target) and !target:IsInvisible() then
+			return true
+		end
+		return false
+	end,
+	
 	attack={
 		mode="trigger",
 		func=function(ply,ent)
@@ -123,7 +132,7 @@ pills.register("pill_mangle",{
 			
 			if ply:GetNWBool("_MangleHooked") or ply:GetNWBool("_MangleHookReady") then return end
 			
-			local target = FindNearestPlayer(ent:GetPos(), 130, ply, 75)
+			local target = FindNearestPlayer(ply:EyePos(), 125, ply, 36)
 			
 			local jumpscare = performJumpscare(ply, ent, target, 1.6, "mangle", 70, "v_mangle")
 			
@@ -146,7 +155,7 @@ pills.register("pill_mangle",{
 			
 				if IsFirstTimePredicted() then
 					if (not ply:OnGround() or ply:Crouching()) then return end
-					if eyeAng.p > 0 then return end
+					--if eyeAng.p > 0 then return end
 				end
 				
 				JUMPING[ply] = true
@@ -157,6 +166,23 @@ pills.register("pill_mangle",{
 	land=function(ply,ent)
 		ply:SetNWBool("_MangleHooked", false)
 		ply:SetNWBool("_MangleHookReady", false)
+		
+		local groundPly = ply:GetGroundEntity()
+		
+		if IsValid(groundPly) and groundPly:IsPlayer() and groundPly:IsSurvivor() then
+			local victim = ply:GetGroundEntity()
+			victim:TakeDamage(100, ply)
+
+			local edata = EffectData()
+			edata:SetOrigin(victim:EyePos())
+			edata:SetEntity(victim)
+			util.Effect("BloodImpact", edata, true, true)
+			
+			victim:EmitSound("physics/body/body_medium_break3.wav")
+			victim:EmitSound("player/headshot1.wav")
+			
+			mangle_tierUp(ply)
+		end
 		
 		local longerStun = ply:GetNWString("_MangleHookReady") and ply:GetNWString("_MangleLastHookType") == ""
 		
@@ -233,7 +259,7 @@ function mangle_tierUp(ply)
 		
 		mangleChangeSpeed(ply, ply._MangleTier)
 		
-		ply:SendLua('surface.PlaySound("littlereward.wav")')
+		--ply:SendLua('surface.PlaySound("littlereward.wav")')
 	end
 end
 
@@ -342,7 +368,12 @@ hook.Add("Move", "mangle_hooked", function(ply, mv, cmd)
 	end
 end)
 
+local SKIPFIRST = {}
+
 hook.Add("FinishMove", "mangle_hook_ready", function( ply, mv )
+	if SKIPFIRST[ply] then
+		SKIPFIRST[ply] = nil
+	end
 	if JUMPING[ply] then
 		mangleAbility(ply, ply:GetPill())
 		
@@ -350,6 +381,8 @@ hook.Add("FinishMove", "mangle_hook_ready", function( ply, mv )
 		local maxUpCheck = 150
 		local startPos = ply:EyePos()
 		local endPos   = startPos + Vector(0,0,maxUpCheck)
+		
+		if !ply:GetNWBool("_MangleHooked") and eyeAng.p > 0 then eyeAng.p = eyeAng.p * -1 end
 
 		local tr = util.TraceHull({
 			start  = startPos,
@@ -408,10 +441,12 @@ hook.Add("FinishMove", "mangle_hook_ready", function( ply, mv )
 			ply:SetNWBool("_MangleHookReady", true)
 		end
 		JUMPING[ply] = nil
+		SKIPFIRST[ply] = true
 	end
 
 	if ply:GetNWBool("_MangleHookReady") then
 		local hooktype = ply:GetNWString("_MangleLastHookType")
+		--[[
 		if SERVER and hooktype == "ceiling" then
 			ply:LagCompensation(true)
 			if ply:GetGroundEntity():IsPlayer() and ply:GetGroundEntity():IsSurvivor() then
@@ -423,14 +458,16 @@ hook.Add("FinishMove", "mangle_hook_ready", function( ply, mv )
 				edata:SetEntity(victim)
 				util.Effect("BloodImpact", edata)
 				
-				victim:EmitSound("physics\body\body_medium_break3.wav")
+				victim:EmitSound("physics/body/body_medium_break3.wav")
 				
 				mangle_tierUp(ply)
 			end
 			ply:LagCompensation(false)
 		end
+		
+		]]--
 	
-		if ply:WaterLevel() > 0 then
+		if ply:WaterLevel() > 0 or (!SKIPFIRST[ply] and ply:OnGround()) then
 			ply:SetNWBool("_MangleHookReady", false)
 			ply:SetNWString("_MangleLastHookType", "")
 			return
@@ -452,7 +489,7 @@ hook.Add("FinishMove", "mangle_hook_ready", function( ply, mv )
 					local trace = { start = ply:GetPos(), endpos = ply:GetPos() + -tr.HitNormal * 50, filter = ply }
 					local trr = util.TraceLine( trace, ply ) 
 					if ( !trr.Hit or tr.Entity ~= game.GetWorld() ) then
-						debugoverlay.Box( ply:GetPos() + Vector(0,0,64), Vector(12,12,12), Vector(-12,-12,-12), 2, Color(255,0,0) )
+						--debugoverlay.Box( ply:GetPos() + Vector(0,0,64), Vector(12,12,12), Vector(-12,-12,-12), 2, Color(255,0,0) )
 						
 						local trace = { start = ply:GetPos(), endpos = ply:GetPos() + Vector(0,0,64), filter = ply,
 							mins = ply:OBBMins(),
@@ -539,11 +576,22 @@ hook.Add("FinishMove", "mangle_hook_ready", function( ply, mv )
 				victim:TakeDamage(hooktype == "ceiling" and 100 or 75, ply)
 
 				local edata = EffectData()
-				edata:SetOrigin(tr.HitPos)
+				edata:SetOrigin(victim:EyePos())
 				edata:SetEntity(victim)
-				util.Effect("BloodImpact", edata)
+				util.Effect("BloodImpact", edata, true, true)
 				
-				victim:EmitSound("physics\body\body_medium_break3.wav")
+				victim:EmitSound("physics/body/body_medium_break3.wav")
+				victim:EmitSound("player/headshot1.wav")
+				
+				local wep = ply:GetActiveWeapon()
+				if IsValid(wep) and wep:GetClass() == "v_mangle" then
+					wep:HandleAnimation("bite", 0.6)
+					
+					local ent = pills.getMappedEnt(ply)
+					if IsValid(ent) then
+						ent:PillGesture('melee', 2, 1, 0.1, 0.7)
+					end
+				end
 				
 				mangle_tierUp(ply)
 				

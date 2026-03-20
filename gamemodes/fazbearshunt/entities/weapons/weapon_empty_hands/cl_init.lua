@@ -3,7 +3,7 @@ include( 'shared.lua' )
 SWEP.PrintName = "#weapon_empty_hands"
 
 SWEP.Slot             = 0
-SWEP.SlotPos          = 0
+SWEP.SlotPos          = 1
 
 SWEP.DrawAmmo         = false
 SWEP.DrawCrosshair    = false

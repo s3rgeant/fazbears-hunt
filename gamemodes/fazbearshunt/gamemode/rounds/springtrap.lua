@@ -26,7 +26,7 @@ hook.Add("fh_postendgame", "springtrap_win_dance", function(victory, anims)
 				
 		if IsValid(win_location) and IsValid(win_camera) then
 			
-			if roundType == 1 and springtrap_ply then
+			if fh.GetRoundType() == 1 and springtrap_ply then
 				
 				timer.Simple(0.5, function()
 					for _, p in player.Iterator() do

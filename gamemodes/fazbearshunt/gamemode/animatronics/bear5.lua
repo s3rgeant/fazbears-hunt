@@ -7,6 +7,9 @@ if SERVER then
 	util.AddNetworkString("fox_request_start")
 	util.AddNetworkString("fox_request_get")
 	util.AddNetworkString("fox_request_complete")
+
+	util.PrecacheModel("models/fh/animatronics/bear5.mdl")
+	util.PrecacheModel("models/fh/animatronics/fox4.mdl")
 end
 
 sound.Add({
@@ -18,7 +21,7 @@ sound.Add({
 })
 
 function bearScream(ply, ent)
-	if !ply._BearScreamSound then
+	if !ply._BearScreamSound or !IsValid(ply._BearScreamSound) then
 		ply._BearScreamSound = CreateSound(ply, ")bear/bear5_jumpscare.wav")
 	elseif ply._BearScreamSound:IsPlaying() then
 		ply._BearScreamSound:Stop()
@@ -99,6 +102,9 @@ pills.clone("bear5_main", "pill_wfreddy2", {
 		skin=5,
 		bodyGroup="Microphone",
 	},
+	
+	killCondition=function(ply,ent)
+	end,
 	
 	attack={
 		mode="trigger",
@@ -312,12 +318,21 @@ pills.register("fox4",{
 		ply:SetJumpBoostMultiplier(0)
 	end,
 	
+	killCondition=function(ply,ent)
+		local target = FindNearestPlayer(ply:EyePos(), 125, ply, 36)
+		
+		if IsValid(target) and !target:IsInvisible() then
+			return true
+		end
+		return false
+	end,
+	
 	attack={
 		mode="trigger",
 		func=function(ply,ent)
 			if IsValid(ply:GetEntityInUse()) then return end
 			
-			local target = FindNearestPlayer(ent:GetPos(), 130, ply, 75)
+			local target = FindNearestPlayer(ent:GetPos(), 125, ply, 36)
 			
 			if fox4_victims[ply] and fox4_victims[ply][target] then
 				AnimatronicBreakProp(ply, ent)

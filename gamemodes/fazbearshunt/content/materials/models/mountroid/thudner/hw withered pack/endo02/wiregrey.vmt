@@ -1,0 +1,16 @@
+"VertexlitGeneric"
+{
+$basetexture "models/mountroid/Thudner/HW Withered Pack/shared/white"
+$bumpmap "models/mountroid/Thudner/HW Withered Pack/shared/flat"
+$color .3
+$nodecal 1
+$model 1
+$phong "1" 
+$phongboost "2"
+$phongexponent "9"
+$ambientocclusion "0.95"
+$phongfresnelranges "[0.05 0.5 1]"
+$phongalbedotint "1"
+$halflambert 1
+$diffuseexp 1.5
+}

@@ -1,0 +1,23 @@
+"VertexlitGeneric"
+{
+$basetexture "models/mountroid/Thudner/HW Withered Pack/shared/endoteethspec"
+$bumpmap "models/mountroid/Thudner/HW Withered Pack/shared/flat"
+$phongexponenttexture "models/mountroid/Thudner/HW Withered Pack/shared/EndoteethSpec"
+$phongwarptexture "models/mountroid/Thudner/HW Withered Pack/shared/white"
+$basetexturetransform "center .5 .5 scale 1.4 1.4 rotate 0 translate 0 0"
+$surfaceprop metal
+$phong "1"
+$phongexponent "1"
+$phongboost "4"
+$basemapluminancephongmask "1"
+$ambientocclusion "0"
+$phongfresnelranges "[0.05 0.5 1]"
+$phongalbedotint "1"
+$color "0"
+$halflambert "1"
+$nodecal "1"
+$model "1"
+$diffuseexp "1.5"
+$normalmapalphaenvmapmask   "1"
+}
+

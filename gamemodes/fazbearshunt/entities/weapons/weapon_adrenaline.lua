@@ -17,7 +17,7 @@ SWEP.DrawWeaponInfoBox	= false
 SWEP.BounceWeaponIcon	= false 
 SWEP.Spawnable = true
 
-SWEP.Slot = 3
+SWEP.Slot = 2
 SWEP.SlotPos = 1
 SWEP.DrawCrosshair = false
 SWEP.DrawAmmo = false

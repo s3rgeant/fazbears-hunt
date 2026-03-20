@@ -120,6 +120,8 @@ roundActive = roundActive or false -- когда аниматроники раз
 isGameOn = isGameOn or false -- начинается прямо под регистрацию раунда и заканчивается после 5 секунд конца раунда
 roundEnding = roundEnding or false -- концовка раунда
 
+roundPaused = roundPaused or false -- раунд в паузе?
+
 --[[
 	0 - обыкновенный раунд
 	1 - спрингтрап
@@ -352,6 +354,8 @@ function endGame()
 	isGameOn = false
 	SetGlobal2Bool("roundActive", false)
 	roundActive = false
+	SetGlobal2Bool("roundPaused", false)
+	roundPaused = false
 	
 	forceAnimSelectTime = 0
 	table.Empty(usedKillers)
@@ -740,7 +744,6 @@ hook.Add("PlayerSpawn", "fh_spawn", function( ply, transiton )
 	net.Send(ply)
 end)
 
-
 if PLAYER then
 	function PLAYER:RemoveRagdoll()
 		if IsValid(self.DeathRagdoll) then
@@ -879,6 +882,10 @@ hook.Add("OnEntityCreated", "farz_remember", function(ent)
 	end
 end)
 
+hook.Add("PlayerDroppedWeapon", "fh_drop_glow", function(owner, wep)
+	wep:AddEffects( EF_ITEM_BLINK )
+end)
+
 local function fh_death_hook(victim)
 	if survivors[victim] then
 		survivors[victim] = nil
@@ -1011,7 +1018,7 @@ hook.Add( "PlayerShouldTakeDamage", "fh_shouldtakedamage", function( ply, attack
 		if IsValid(attacker) and 
 			(ply:IsSurvivor() == attacker:IsSurvivor() or 
 			ply:IsAnimatronic() and attacker:IsAnimatronic() and !conVars.fh_animatronic_ff:GetBool() or
-			ply:Team() == 2701 and conVars.fh_animatronic_immortal:GetBool()
+			ply:IsAnimatronic() and conVars.fh_animatronic_immortal:GetBool()
 			or attacker:Team() == TEAM_SPECTATOR 
 			or !roundActive or roundEnding)
 		then
@@ -1037,6 +1044,17 @@ hook.Add("PillRestore", "fh_restorepill", function(ply, ent)
 	if usedKillers[ent.formTable.name] then
 		usedKillers[ent.formTable.name] = nil
 	end
+end)
+
+hook.Add("GravGunPunt", "fh_gravgun_punt", function(ply,ent)
+	timer.Simple(0, function()
+		if !IsValid(ent) then return end
+		
+		local phys = ent:GetPhysicsObject()
+		if IsValid(phys) then
+			phys:SetVelocity(ply:GetAimVector() * 99999)
+		end
+	end)
 end)
 
 function GM:GetFallDamage( ply, speed )
@@ -1364,7 +1382,7 @@ function fh.RegisterRoundType(name, id, func, weight, minPlayers, maxPlayers)
 	
 	if fh.RoundTypes[id] then 
 		print("[FH] Failed to register new round type with ID: " .. id .. ". Such ID is already in use!")
-		return 
+		return nil
 	end
 
     fh.RoundTypes[id] = {
@@ -1378,6 +1396,8 @@ function fh.RegisterRoundType(name, id, func, weight, minPlayers, maxPlayers)
 
     fh.RoundTypeNameToID[name] = id
     fh.RoundTypeIDToName[id] = name
+	
+	return id, name
 end
 
 function fh.SetRoundTypeBlocked(id, block)
@@ -1387,11 +1407,23 @@ function fh.SetRoundTypeBlocked(id, block)
 	fh.RoundTypes[id].blocked = block
 end
 
+local forceAuto = {
+	"fh_force_roundtype 0",
+	"fh_force_roundtype 1",
+	"fh_force_roundtype 2",
+	"fh_force_roundtype 3",
+}
+
 concommand.Add( "fh_force_roundtype", function( ply, cmd, args )
 	if !ply:IsSuperAdmin() then return end
 	local round = tonumber(args[1]) or 0
 	registerNewRound(round)
-end )
+end,
+
+function( cmd, args )
+	return forceAuto
+	
+end)
 
 function fh.SelectRoundType(forcedID)
     local selected

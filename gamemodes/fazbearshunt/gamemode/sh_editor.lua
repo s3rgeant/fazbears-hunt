@@ -237,10 +237,14 @@ if CLIENT then
 
 	local fh_editor_menu = nil
 	function editorButtons()
-		if fh_editor_menu then
-			fh_editor_menu:Remove()
-			fh_editor_menu = nil
-			gui.EnableScreenClicker(false)
+		if IsValid(fh_editor_menu) then
+			if fh_editor_menu:IsVisible() then
+				fh_editor_menu:Hide()
+				gui.EnableScreenClicker(false)
+			else
+				fh_editor_menu:Show()
+				gui.EnableScreenClicker(true)
+			end
 			return
 		end
 
@@ -262,9 +266,22 @@ if CLIENT then
 			y = y + 40
 			return b
 		end
+		
+		local DComboBox = vgui.Create( "DComboBox", fh_editor_menu )
+		DComboBox:SetPos( 5, y )
+		DComboBox:SetSize( 240, 30 )
+		DComboBox:SetValue( "- Select -" )
+		DComboBox:AddChoice( "Survivor Spawn Point", "info_player_start")
+		DComboBox:AddChoice( "Animatronic Spawn Point", "info_player_killer")
+		DComboBox:AddChoice( "Anim. Victory Dance Point", "info_killer_win")
+		DComboBox.OnSelect = function( self, index, value, data )
+			placingType = data
+		end
+		y = y + 50
 
-		makeBtn("Add Animatronic Victory Dance Position", createEditableSpringtrapDancePos)
-		makeBtn("Add Animatronic Spawnpoint Position", createEditableSpawnPointPos)
+		makeBtn("Add", createPosShared)
+		y = y + 10
+		--makeBtn("Add Animatronic Spawnpoint Position", createEditableSpawnPointPos)
 
 		makeBtn("Save Changes", function()
 			net.Start("fh_editor_save_positions")

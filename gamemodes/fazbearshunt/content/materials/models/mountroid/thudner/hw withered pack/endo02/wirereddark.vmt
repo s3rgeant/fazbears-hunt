@@ -1,0 +1,8 @@
+"VertexlitGeneric"
+{
+$basetexture "models/mountroid/Thudner/HW Withered Pack/shared/darkred"
+$bumpmap "models/mountroid/Thudner/HW Withered Pack/shared/flat"
+$color "[0.025187 0.005605 0.005605]"
+$nodecal 1
+$model 1
+}

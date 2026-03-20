@@ -129,6 +129,17 @@ pills.register("pill_wgfreddy2",{
 		ply:ResetListenPlayer()
 	end,
 	
+	killCondition=function(ply,ent)
+		local target = FindNearestPlayer(ply:EyePos(), 125, ply, 36)
+			
+		if !ply:GetNWBool("wgfreddy_enraged") then return false end
+		
+		if IsValid(target) and !target:IsInvisible() then
+			return true
+		end
+		return false
+	end,
+	
 	attack={
 		mode="trigger",
 		func=function(ply,ent)
@@ -138,11 +149,16 @@ pills.register("pill_wgfreddy2",{
 			
 			if !ply:GetNWBool("wgfreddy_enraged") then return end
 			
-			local target = FindNearestPlayer(ent:GetPos(), 130, ply, 75)
+			local target = FindNearestPlayer(ply:EyePos(), 130, ply, 75)
+			
+			if target ~= wgfreddy_targets[ply] then
+				AnimatronicBreakProp(ply, ent)
+				return 
+			end
 
 			local jumpscare = performJumpscare(ply, ent, target, 1.6, nil, 50, "v_freddy")
 			
-			if !IsValid(target) or target ~= wgfreddy_targets[ply] or !jumpscare then 
+			if !IsValid(target) or !jumpscare then 
 				AnimatronicBreakProp(ply, ent)
 				return 
 			end
@@ -154,7 +170,7 @@ pills.register("pill_wgfreddy2",{
 		func = function(ply,ent)
 			if !ply:OnGround() then return end
 			
-			if !wgfreddy_targets[ply] or cooldown.Exists(ply, 'appear') then return end
+			if !wgfreddy_targets[ply] or cooldown.Exists(ply, 'submerge') then return end
 			
 			if ply:GetNWBool("wgfreddy_enraged") then return end
 			
@@ -164,12 +180,8 @@ pills.register("pill_wgfreddy2",{
 				if !ply:OnGround() and ply:WaterLevel() == 0 then return end
 				if !IsValid(ent) then return end
 				
-				cooldown.Set(ply, 'appear', 10)
-				
-				net.Start("fh_net_killer_change")
-				net.WriteString("submerge")
-				net.WriteFloat(10)
-				net.Send(ply)
+				cooldown.Set(ply, 'submerge', 10)
+				cooldown.Send(ply, 'submerge')
 				
 				if fh_can_see_player(wgfreddy_targets[ply], ply, 1500) then
 					wgfreddy_targets[ply]:ScreenFade(SCREENFADE.IN, Color(0,0,0), 1, 0.5)
@@ -191,12 +203,8 @@ pills.register("pill_wgfreddy2",{
 			else
 				if fh_can_see_player(wgfreddy_targets[ply], ply, 1600) then return end
 				
-				cooldown.Set(ply, 'appear', 1)
-				
-				net.Start("fh_net_killer_change")
-				net.WriteString("submerge")
-				net.WriteFloat(1)
-				net.Send(ply)
+				cooldown.Set(ply, 'submerge', 1)
+				cooldown.Send(ply, 'submerge')
 			
 				local trace = util.TraceHull({
 					start = ply:GetPos(),
@@ -311,6 +319,12 @@ hook.Add("FH_PlayerShouldJumpscare", "wgfreddy_target_jumpscare", function(ply, 
 		end
 	end
 end)
+
+hook.Add( "PlayerShouldTaunt", "gfreddy_taunt", function( ply, act )
+	if outworld_victims[ply] then
+		return false
+	end
+end )
 
 hook.Add("PlayerShouldTakeDamage", "gf_nodamage", function(ply, attacker)
 	if fh.GetActiveUsedKiller("pill_wgfreddy2") == ply then
@@ -1145,6 +1159,36 @@ local function cancel_outworld_wgfreddy(ply)
 	end
 end
 
+local function stopPrevent_outworld(wgfreddy, target)
+	for _, ply in player.Iterator() do
+		if ply ~= target and ply ~= wgfreddy then
+			RecursiveSetPreventTransmit(ply, target, true)
+			RecursiveSetPreventTransmit(ply, wgfreddy, true)
+		end
+		--if ply ~= wgfreddy and ply ~= target then RecursiveSetPreventTransmit(target, ply, true) end
+		--if ply ~= wgfreddy and ply ~= target then RecursiveSetPreventTransmit(wgfreddy, ply, true) end
+		
+		--[[ 
+			мы пока не можем отключать игроков из трансмита так как нужна логика для работы со спектаторами
+			
+			кратко говоря у спеков не будет видно золотого и жертву
+		--]]
+	end
+end
+
+local function startTransmit_outworld(wgfreddy, target)
+	for _, ply in player.Iterator() do
+		if IsValid(target) then
+			--RecursiveSetPreventTransmit(ply, target, false)
+			RecursiveSetPreventTransmit(target, ply, false)
+		end
+		if IsValid(wgfreddy) then
+			--RecursiveSetPreventTransmit(ply, wgfreddy, false)
+			RecursiveSetPreventTransmit(wgfreddy, ply, false)
+		end
+	end
+end
+
 function start_outworld(ply, ent, target)
 	local placedPlushies = fh_spawnPlushies(target)
 	
@@ -1153,6 +1197,8 @@ function start_outworld(ply, ent, target)
 		print("[GF] Plushie Error Code: " .. placedPlushies)
 		return
 	end
+	
+	stopPrevent_outworld(ply, target)
 
 	net.Start("fh_play_sound")
 	net.WriteString('fnaf2/gfreddy/gfreddy_target.wav')
@@ -1247,6 +1293,9 @@ function start_outworld(ply, ent, target)
 end
 
 function start_outworld_battle(ply, ent, target)
+	
+	stopPrevent_outworld(ply, target)
+	
 	net.Start("fh_play_sound")
 	net.WriteString('fnaf2/gfreddy/gfreddy_killermask_enter.wav')
 	net.Broadcast()
@@ -1331,6 +1380,8 @@ function cancel_outworld(ply)
 		victim:SetNWBool("can_be_gf_scared", false)
 		victim:SetNWEntity("_WGoldenFreddy", nil)
 	end
+	
+	startTransmit_outworld(wgfreddy, victim)
 		
 	net.Start('fh_sound_stop')
 	net.WriteString('fnaf2/gfreddy/gfreddy_enraged.wav')
@@ -1569,12 +1620,8 @@ if SERVER then
 					EmitSound("gfreddy.laugh", wgfreddy:GetPos())
 				end
 				
-				cooldown.Set(wgfreddy, 'appear', 12)
-				
-				net.Start("fh_net_killer_change")
-				net.WriteString("submerge")
-				net.WriteFloat(12)
-				net.Send(wgfreddy)
+				cooldown.Set(wgfreddy, 'submerge', 12)
+				cooldown.Send(wgfreddy, 'submerge')
 				
 				ent:SetSpeed(unpack(sfreddy_noclip_movement))
 				wgfreddy:DrawViewModel(false)

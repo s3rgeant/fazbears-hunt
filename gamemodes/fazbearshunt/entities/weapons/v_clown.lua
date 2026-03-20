@@ -47,7 +47,7 @@ function SWEP:PrimaryAttack()
 			ent:PillGesture('hit', 2, 1, 0.1, 0.3)
 		end
 	
-		net.Start("fh_net_killer_change")
+		net.Start("fh_cooldown_receive")
 		net.WriteString("attack")
 		net.WriteFloat(2)
 		net.Send(ply)
@@ -59,14 +59,17 @@ function SWEP:PrimaryAttack()
 	self:SetNextMeleeAttack( CurTime() + self.HitDelay )
 end
 
+local clown_boost = CreateConVar( "fh_clown_hit_boost", 4, { FCVAR_ARCHIVE, FCVAR_REPLICATED}, "Time for halo to dissolve." )
+
 function SWEP:DealDamage()
-	if CLIENT then return end
-	local ply = self.Owner
+	local ply = self:GetOwner()
 	local ent = pills.getMappedEnt(ply)
 	
 	if !IsValid(ent) then return end
-		
-	ply:LagCompensation(true)
+	
+	if SERVER then
+		ply:LagCompensation(true)
+	end
 	
 	local trace = util.TraceLine({
 		start = ply:EyePos(),
@@ -78,11 +81,13 @@ function SWEP:DealDamage()
 	
 	local hitpos = trace.HitPos
 	
-	local targets = fh_get_nearest_players(hitpos, 100, ply) or (trace.Entity:IsPlayer() and trace.Entity:Team() != 2701) and {trace.Entity}
+	local targets = fh_get_nearest_players(hitpos, 100, ply) or (trace.Entity:IsPlayer() and trace.Entity:Team() ~= 2701) and {trace.Entity}
 	
 	local props = fh_get_nearest_props(hitpos, 100)
 	
-	if props then
+	--util.BlastDamage( self, ply, hitpos, 100, 40 )
+	
+	if SERVER and props then
 		local dmgInfo = DamageInfo()
 		dmgInfo:SetDamage(150)
 		dmgInfo:SetAttacker(IsValid(ply) and ply or game.GetWorld())
@@ -125,9 +130,14 @@ function SWEP:DealDamage()
 			ply:EmitSound("hammer_hit.wav")
 		end
 	
+		ply:SetVelocity(ply:GetForward() * -100 * clown_boost:GetFloat())
 	end
+		
+	if CLIENT then return end
 	
-	ply:LagCompensation(false)
+	if SERVER then
+		ply:LagCompensation(false)
+	end
 	
 	if !targets then return end
 	

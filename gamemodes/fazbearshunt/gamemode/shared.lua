@@ -58,6 +58,8 @@ conVars = {
 	fh_respawn_dead_animatronics = CreateConVar( "fh_respawn_dead_animatronics", 1, { FCVAR_ARCHIVE, FCVAR_REPLICATED}, "Respawn animatronic if it died?" ),
 
 	opt_out_anim = CreateConVar("fh_opt_out_anim", 0, { FCVAR_ARCHIVE,FCVAR_CLIENTDLL,FCVAR_USERINFO }, "Do you wannna opt out of Animatronics?", 0, 1),
+	
+	fair_hl = CreateConVar( "fh_fair_highlight", "1", { FCVAR_ARCHIVE, FCVAR_REPLICATED }, "Force player highlight if he was not highlighted 3 times in a row?" )
 }
 
 local colors = {
@@ -73,6 +75,7 @@ local colors = {
     Plushtrap = Color(130, 119, 48),
 	
     Golden = Color(255, 210, 0),
+	ToyChica = Color(255, 201, 53)
 }
 
 local killerData = killerData or {
@@ -90,7 +93,7 @@ local killerData = killerData or {
 	
 	["pill_mangle"] = {name = "mangle", fullname = "fazhunt.animatronics.mangle", color = colors.Endo},
 	
-	["pill_toychica"] = {name = "tchica", fullname = "fazhunt.animatronics.toychica", color = Color(255, 201, 53)},
+	["pill_toychica"] = {name = "tchica", fullname = "fazhunt.animatronics.toychica", color = colors.ToyChica},
 }
 
 killerAbilities = {
@@ -376,7 +379,7 @@ pill_RequiresNavmesh("pill_wgfreddy2")
 
 pill_SetDamageAttack( {"pill_springtrap", "pill_plushtrap", "pill_clown"} )
 
-pill_makeSecondary( {"pill_endo02", "pill_sfreddy2", "pill_wgfreddy2", "pill_toychica"} )
+pill_makeSecondary( {"pill_sfreddy2", "pill_wgfreddy2", "pill_toychica"} )
 
 function save_dontPrefer(net)
 	net = net or false
@@ -575,71 +578,6 @@ hook.Add("ShouldCollide", "fh_collisions", function(ent1, ent2)
     elseif cg2 == COLLISION_GROUP_PASSABLE_DOOR and isPlayer1 and cg1 ~= cg2 then
         return false
     end
-end)
-
--- это как по мне очень ненадёжный способ пиздить пилл паки в режим,
--- но делая эту хуйню мне как то гордо на душе
-
-hook.Add("PreGamemodeLoaded", "FH_pk_pill_support", function()
-	if pk_pills then
-		if pk_pills.getPillTable and pk_pills.packStart then
-			
-			local toRegister = {}
-		
-			local name, packs = debug.getupvalue(pk_pills.packStart, 2)
-			for _,pack in ipairs(packs) do
-				if pack.name == "Fun" or pack.name == "Jake" or pack.name == "Half-Life 2" then
-					continue
-				end
-				if pack.items then
-					for _, item in pairs(pack.items) do
-						if killerData[item.name] then continue end
-						
-						if !item.name then continue end
-						toRegister[item.name] = {}
-					end
-				end
-			end
-		
-			local name, forms = debug.getupvalue(pk_pills.getPillTable, 1)
-			for name,data in pairs(forms) do
-				
-				if toRegister[name] then
-					toRegister[name] = data
-				end
-			end
-			
-			for name, data in pairs(toRegister) do
-				local betterName = name:lower()
-				if file.Exists("materials/pills/" .. betterName .. ".png", "GAME") then
-					local animImage = Material("pills/" .. betterName .. ".png", "mips")
-					if !animImage:IsError() then
-						killerAvatars[betterName] = animImage
-					end
-				end
-			
-				-- repairing various pill packs
-				if data.HandleAnimEvent_gen then
-					local olddata = data.HandleAnimEvent_gen
-					
-					data.animEvent = olddata
-					data.HandleAnimEvent_gen = nil
-				end
-				if data.init then
-					local olddata = data.init
-					
-					data.startFunction = olddata
-					data.init = nil
-				end
-			
-				pills.register(betterName, data)
-			end
-			
-		end
-
-		-- закомментировать если хуйня
-		pk_pills = pills
-	end
 end)
 
 local meta = FindMetaTable("Player")

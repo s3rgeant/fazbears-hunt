@@ -13,6 +13,8 @@ local model_prefix = IsHalloween() and "phantom" or "old"
 
 if SERVER then
 	util.PrecacheModel("models/speps/pill/" .. model_prefix .. "foxy.mdl")
+	
+	util.AddNetworkString("fh_foxycharge_sync")
 end
 
 pills.register("pill_wfoxy2",{
@@ -97,43 +99,20 @@ pills.register("pill_wfoxy2",{
 
 	noFallDamage=true,
 	
-	--[[
-	die=function(ply,ent)
-		local model = ent:GetModel()
-		local skin = ent:GetSkin()
-		
-		local pos = ply:GetPos()
-		local ang = ply:GetAngles()
-		
-		ragdoll = ents.Create("prop_ragdoll")
-		ragdoll:SetModel(model)
-		ragdoll:SetSkin(skin)
-		ragdoll:SetPos(pos)
-		ragdoll:SetAngles(ang)
-		ragdoll:SetOwner(ply)
-		ragdoll:Spawn()
-		ragdoll:Activate()
-
-		local plyvel = ply:GetVelocity()
-		for i = 0, ragdoll:GetPhysicsObjectCount() - 1 do
-			local bone = ragdoll:GetPhysicsObjectNum(i)
-			
-			if bone and bone:IsValid() then
-				local bonepos, boneang = ent:GetBonePosition(ragdoll:TranslatePhysBoneToBone(i))
-				
-				if bonepos and boneang then
-					bone:SetPos(bonepos)
-					bone:SetAngles(boneang)
-					bone:SetVelocity(plyvel)
-				end
-			end
-		end
-	end,
-	]]--
-	
 	startFunction=function(ply,ent)
 		ply.blightRushTokens = 5
 		chaseVoicelineChecker(ply, ent, "foxy")
+	end,
+	
+	killCondition=function(ply,ent)
+		if ply:GetNWBool("isBlightRushing") or ply:GetNWBool("isBlightBouncing") or ply:GetNWBool("blightRushing") then return end
+		
+		local target = FindNearestPlayer(ply:EyePos(), 125, ply, 36)
+		
+		if IsValid(target) and !target:IsInvisible() then
+			return true
+		end
+		return false
 	end,
 	
 	attack={
@@ -143,7 +122,7 @@ pills.register("pill_wfoxy2",{
 			
 			if ply:GetNWBool("isBlightRushing") or ply:GetNWBool("isBlightBouncing") or ply:GetNWBool("blightRushing") then return end
 			
-			local target = FindNearestPlayer(ent:GetPos(), 130, ply, 75)
+			local target = FindNearestPlayer(ply:EyePos(), 125, ply, 36)
 			
 			local jumpscare = performJumpscare(ply, ent, target, 1.6, "foxy", 75, "v_foxy")
 			
@@ -281,7 +260,7 @@ function foxyStun(ply)
 		wep:AddAnimation("run", ACT_VM_SPRINT_IDLE)
 	end
 	
-	timer.Simple(3, function()
+	timer.Create( "foxyUnstun" .. ply:EntIndex(), 3, 1, function()
 		if not IsValid(ply) then return end	
 		if IsValid(ent) and SERVER then
 			ent:SetDefaultSpeed()
@@ -290,6 +269,21 @@ function foxyStun(ply)
 		
 		ply:SetNWBool("Blight_BlockM1", false)
 	end)
+end
+
+function foxyUNStun(ply)
+	timer.Remove( "foxyUnstun" .. ply:EntIndex() )
+	
+	local ent = pills.getMappedEnt(ply)
+	if !IsValid(ent) then return end
+	
+	if not IsValid(ply) then return end	
+	if IsValid(ent) and SERVER then
+		ent:SetDefaultSpeed()
+	end
+	ply:SetFOV(0, 0.5)
+	
+	ply:SetNWBool("Blight_BlockM1", false)
 end
 
 --[[
@@ -322,7 +316,7 @@ function foxyRush(ply, ent)
 		ply:EmitSound("vo/foxy_charge2.mp3", 75, 100, 1, CHAN_AUTO, 0, dsp)
 	end
 
-	if ply.blightRushTokens ~= MAX_RUSH_TOKENS and not ply:GetNWBool("blightRushing") then return end
+	if not ply:GetNWBool("blightRushing") and ply.blightRushTokens ~= MAX_RUSH_TOKENS then return end
 	
 	if ply.blightRushTokens <= 4 then
 		ply:SetNWBool("Blight_BlockM1", false)
@@ -337,13 +331,13 @@ function foxyRush(ply, ent)
 	
 	if CLIENT then
 		RemoveRMBHint()
+		
+		net.Start("fh_foxycharge_sync")
+		net.SendToServer()
 	end
 
 	if SERVER then
-		net.Start("fh_net_killer_change")
-		net.WriteString("charge")
-		net.WriteFloat(0)
-		net.Send(ply)
+		cooldown.Send(ply, "charge")
 	end
 
 	ply:SetNWBool("blightRushing", true)
@@ -370,6 +364,46 @@ function foxyRush(ply, ent)
 		net.Send(ply)
 	end
 end
+
+net.Receive("fh_foxycharge_sync", function(len, ply)
+	if ply:GetNWBool("blightRushing") then return end
+	
+	if ply:GetNWBool("isBlightRushing") then return end
+
+	if not ply:OnGround() or ply:Crouching() then return end
+
+	if ply:GetNWBool("isBlightBouncing") then
+		ply:SetNWBool("isBlightBouncing", false)
+	end
+	
+	if ply.blightRushTokens > 0 then
+		foxyUNStun(ply)
+		
+		cooldown.Send(ply, "charge")
+
+		ply:SetNWBool("blightRushing", true)
+		ply:SetFOV(100, 0.5)
+		ply.blightRushTokens = ply.blightRushTokens - 1
+		ply:SetNWBool("isBlightRushing", true)
+		stopReceivingTokens(ply)
+		ply.puppet = ent
+		
+		local rushDuration = 3.5
+		ply:SetNWFloat("RushEndTime", CurTime() + rushDuration)
+
+		if ply.blightTimeoutTimer then
+			timer.Remove(ply.blightTimeoutTimer)
+			ply.blightTimeoutTimer = nil
+		end
+
+		if SERVER then
+			net.Start("fh_net_killer_change_tokens")
+			net.WriteString("charge")
+			net.WriteInt(ply.blightRushTokens, 9)
+			net.Send(ply)
+		end
+	end
+end)
 
 local function BlightCheckCollision(ply)
 	local velocity = ply:GetVelocity()
@@ -401,12 +435,12 @@ local function BlightCheckCollision(ply)
 		start = startPos,
 		endpos = startPos + speedDir * traceDist,
 		mins = Vector(-hullSize, -hullSize, 0),
-		maxs = Vector(hullSize, hullSize, ply:OBBMaxs().z * 0.8),
+		maxs = Vector(hullSize, hullSize, ply:OBBMaxs().z * 0.7),
 		mask = MASK_PLAYERSOLID,
 		filter = {"snowball", ply}
 	})
 	
-	--debugoverlay.Box( startPos + speedDir * traceDist, Vector(-hullSize, -hullSize, 0), Vector(hullSize, hullSize, ply:OBBMaxs().z * 0.8), 3, tr.Hit and Color(0, 255, 0) or Color(255,0,0))
+	debugoverlay.Box( startPos + speedDir * traceDist, Vector(-hullSize, -hullSize, 0), Vector(hullSize, hullSize, ply:OBBMaxs().z * 0.8), 3, tr.Hit and Color(0, 255, 0) or Color(255,0,0))
 
 	tr.startPos = startPos
 	return tr
@@ -683,7 +717,7 @@ function StopBleeding(ply)
 end
 
 hook.Add("SuccessTaserHit", "foxy_nocharge", function(ply)
-	if ply:GetNWBool("blightRushing") then
+	if ply:GetNWBool("blightRushing") and SERVER then
 		if ply.blightTimeoutTimer then
 			timer.Remove(ply.blightTimeoutTimer)
 		end

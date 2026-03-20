@@ -8,8 +8,6 @@ else -- CLIENT
 	SWEP.BounceWeaponIcon	= false 
 
 	SWEP.WepSelectIcon = surface.GetTextureID( "weapons/defibrillator" )
-
-	language.Add("weapon_defibrilator", "Defibrilator")
 	
 	net.Receive( "DefibrilatorMelee_NW", function()
 		local ply = net.ReadEntity()
@@ -70,6 +68,7 @@ function SWEP:Initialize()
 	self.IdleTimer = CurTime() + 1
 end
 
+local BeingRevived = {}
 function SWEP:Think()
 	local owner = self:GetOwner()
 	if owner:KeyDown(IN_ATTACK) then
@@ -142,7 +141,7 @@ function SWEP:Think()
 
                 local ply = v:GetCreator()
                 if IsValid(ply) then
-                    ply.BeingRevived = true
+					BeingRevived[ply] = true
                     ply:Spawn()
 					ply:RemoveRagdoll()
                     ply:SetPos(oldpos)	
@@ -160,7 +159,7 @@ function SWEP:Think()
 
                     timer.Simple(1 / 100, function()
                         if IsValid(ply) and ply:IsStuck() then
-                            ply:Unstuck()
+                            ply:Unstuck(owner:GetPos())
                         end
                     end)
 					
@@ -201,36 +200,38 @@ SWEP.ReviveStartTime = 0
 SWEP.ReviveTarget = nil
 SWEP.ReviveSound = nil
 function SWEP:PrimaryAttack()
-    if self.Reviving then return end
-
-    local tr = util.TraceLine({
-        start = self.Owner:GetShootPos(),
-        endpos = self.Owner:GetShootPos() + self.Owner:GetAimVector() * 60,
-        filter = self.Owner,
-        mask = MASK_SHOT_HULL,
-    })
-
-    if not IsValid(tr.Entity) then
-        tr = util.TraceHull({
-            start = self.Owner:GetShootPos(),
-            endpos = self.Owner:GetShootPos() + self.Owner:GetAimVector() * 60,
-            filter = self.Owner,
-            mins = Vector(-20, -20, 0),
-            maxs = Vector(20, 20, 0),
-            mask = MASK_SHOT_HULL,
-        })
-    end
-
-    self:SetNextPrimaryFire(CurTime() + self.Primary.Delay + 0.2)
-
-    if IsValid(tr.Entity) then
-        for k, v in pairs(ents.FindInSphere(self.Owner:GetShootPos(), 70)) do
-            if v:GetClass() == 'prop_ragdoll' and IsValid(v:GetOwner()) and !v:GetOwner():Alive() then
-                self.Reviving = true
-                self.ReviveStartTime = CurTime()
-                self.ReviveTarget = v
-                self.OldPos = v:GetPos()
-
+	if self.Reviving then return end
+	
+	local owner = self:GetOwner()
+	
+	local tr = util.TraceLine({
+		start = owner:GetShootPos(),
+		endpos = owner:GetShootPos() + owner:GetAimVector() * 60,
+		filter = owner,
+		mask = MASK_SHOT_HULL,
+	})
+	
+	if not IsValid(tr.Entity) then
+		tr = util.TraceHull({
+			start = owner:GetShootPos(),
+			endpos = owner:GetShootPos() + owner:GetAimVector() * 60,
+			filter = owner,
+			mins = Vector(-20, -20, 0),
+			maxs = Vector(20, 20, 0),
+			mask = MASK_SHOT_HULL,
+		})
+	end
+	
+	self:SetNextPrimaryFire(CurTime() + self.Primary.Delay + 0.2)
+	
+	if IsValid(tr.Entity) then
+		for k, v in pairs(ents.FindInSphere(owner:GetShootPos(), 70)) do
+			if v:GetClass() == 'prop_ragdoll' and IsValid(v:GetOwner()) and !v:GetOwner():Alive() then
+				self.Reviving = true
+				self.ReviveStartTime = CurTime()
+				self.ReviveTarget = v
+				self.OldPos = v:GetPos()
+	
 				if CLIENT then
 					return
 				end
@@ -245,24 +246,25 @@ function SWEP:PrimaryAttack()
 				spark:Fire("kill", "", 0.1)
 	
 				if not self.ReviveSound then
-					self.ReviveSound = CreateSound(self.Owner, "defibl/defibrillator_use_start.wav")
+					self.ReviveSound = CreateSound(owner, "defibl/defibrillator_use_start.wav")
 				end
 				self.ReviveSound:Play()
 	
-				self.Owner:ViewPunch(Angle(-10, 0, 0))
+				owner:ViewPunch(Angle(-10, 0, 0))
 				self:SetClip1(10)
 	
 				return
-            end
-        end
-        self.Owner:EmitSound("HL2Player.UseDeny")
-    else
-        self.Owner:EmitSound("HL2Player.UseDeny")
-    end
-
-    self.Owner:SetAnimation(PLAYER_ATTACK1)
-    self.Idle = 0
-    self.IdleTimer = CurTime() + self.Owner:GetViewModel():SequenceDuration()
+			end
+			hook.Run("DefibrillatorUse", self, owner, v)
+		end
+		owner:EmitSound("HL2Player.UseDeny")
+	else
+		owner:EmitSound("HL2Player.UseDeny")
+	end
+	
+	owner:SetAnimation(PLAYER_ATTACK1)
+	self.Idle = 0
+	self.IdleTimer = CurTime() + owner:GetViewModel():SequenceDuration()
 end
 
 function SWEP:SecondaryAttack()
@@ -374,6 +376,7 @@ end
 
 local blockedReviveWeapons = {
 	["weapon_killer_axe"] = true,
+	["weapon_taser"] = true,
 }
 
 local function SetDefibAttributes(ply)
@@ -411,19 +414,14 @@ local function SetDefibAttributes(ply)
 	end
 end
 
-hook.Add( "PlayerSilentDeath", "Defibl_Revive", function( ply )
-	SetDefibAttributes(ply)
-end)
-
-hook.Add( "DoPlayerDeath", "Defibl_Revive", function( ply )
-	SetDefibAttributes(ply)
-end)
+hook.Add( "PlayerSilentDeath", "Defibl_Revive", SetDefibAttributes)
+hook.Add( "DoPlayerDeath", "Defibl_Revive", SetDefibAttributes)
 
 hook.Add( "PlayerLoadout", "Defibl_Revive", function( ply )
 	if !IsValid( ply ) then return end
-	if !ply.BeingRevived then return end
+	if !BeingRevived[ply] then return end
 	
-	ply.BeingRevived = nil
+	BeingRevived[ply] = nil
 	
 	if ply.ReviveWeapons ~= nil then
 		for k, v in pairs( ply.ReviveWeapons ) do

@@ -108,7 +108,7 @@ function SWEP:Think()
         local walkSpeed = ply:GetWalkSpeed()
         local crouchSpeed = ply:GetCrouchedWalkSpeed()
 		
-        if self.HoldAnim > 0 and CurTime() < self.HoldAnim then
+        if self.HoldAnim > 0 and curtime < self.HoldAnim then
             return
         end
         
@@ -118,18 +118,27 @@ function SWEP:Think()
 			self:HandleAnimation("jump", self.JumpHold)
         end
 		
-        if self.HoldAnim > 0 and CurTime() < self.HoldAnim then
+        if self.HoldAnim > 0 and curtime < self.HoldAnim then
             return
         end
         
         self.PreviousOnGround = onGround
 
         if ((onGround or self:HandleGroundAnim()) and ply:WaterLevel() <= 1) and walkSpeed > 10 then
-			if ply:Crouching() and speed >= crouchSpeed * 0.9 and self.Animations['crouchmove'] then
-				self:HandleAnimation("crouchmove")
+			if ply:Crouching() and speed >= crouchSpeed * 0.9 then
+				if self.Animations['crouchmove'] then
+					self:HandleAnimation("crouchmove")
+					
+				elseif self.Animations['walk'] then
+					self:HandleAnimation("walk")
+					
+				elseif self.Animations['run'] then
+					self:HandleAnimation("run")
+					
+				end
 			elseif ply:Crouching() and speed <= crouchSpeed and self.Animations['crouch'] then
 				self:HandleAnimation("crouch")
-            elseif speed >= runSpeed * 0.9 and (walkSpeed != runSpeed or self:AlwaysRunning()) and self.Animations['run'] then
+            elseif speed >= runSpeed * 0.9 and (walkSpeed ~= runSpeed or self:AlwaysRunning()) and self.Animations['run'] then
 				self:HandleAnimation("run")
             elseif speed >= walkSpeed * 0.9 and speed > 5 or ply:Crouching() and speed >= crouchSpeed * 0.9 and self.Animations['walk'] then
 				self:HandleAnimation("walk")

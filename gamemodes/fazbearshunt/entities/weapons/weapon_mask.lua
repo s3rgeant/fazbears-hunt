@@ -4,7 +4,7 @@ AddCSLuaFile()
 SWEP.PrintName = "#weapon_bonniemask"
 SWEP.DrawWeaponInfoBox = false
 
-SWEP.Slot = 5
+SWEP.Slot = 3
 SWEP.SlotPos = 3
 
 SWEP.Spawnable = true

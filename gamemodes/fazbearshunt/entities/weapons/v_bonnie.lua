@@ -85,7 +85,8 @@ function SWEP:SecondaryAttack()
         endpos = shootPos + ang:Forward() * dist,
         mins   = Vector(-5, -5, -5),
         maxs   = Vector(5, 5, 5),
-        filter = ply
+        filter = ply,
+		mask = MASK_BLOCKLOS_AND_NPCS,
     })
 	
 	self.Picking = true

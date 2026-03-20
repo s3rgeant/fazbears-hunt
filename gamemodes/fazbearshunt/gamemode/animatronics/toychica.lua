@@ -85,7 +85,7 @@ local function chicaTierChange(ply, tier)
 	SetGlobal2Int("_TChicaObsessorCount", tier)
 	
 	if IsValid(ply) and ply:IsAnimatronic() then
-		if tier >= 3 then
+		if tier >= math.min(math.max(1, table.Count(survivors)), 2) then
 			ply:SprintEnable()
 		else
 			ply:SprintDisable()
@@ -144,7 +144,8 @@ end
 if !timer.Exists("obsessors_check") then
     timer.Create("obsessors_check", 8, 0, function()
 		if !table.IsEmpty(obsessors) then
-			if GetGlobal2Int("_TChicaObsessorCount") < 3 then return end
+			--print(math.min(math.max(1, table.Count(survivors)), 3))
+			if GetGlobal2Int("_TChicaObsessorCount") < math.min(math.max(1, table.Count(survivors)), 3) then return end
 		
 			local plysNearObsos = {}
 			
@@ -175,7 +176,7 @@ if !timer.Exists("obsessors_check") then
 			end
 			
 			if !table.IsEmpty(plysNearObsos) then
-				for ply, _ in pairs(tchicaObsessors) do
+				for ply, _ in pairs(animatronics) do
 					highlight.Add(ply, plysNearObsos, 5, Color(255,0,255))
 				end
 			end
@@ -287,7 +288,9 @@ local function noMoreObsessor(ply)
 			tchicaObsessors[toychica][ply] = nil
 			
 			local tier = table.Count( tchicaObsessors[toychica] )
-			chicaTierChange( toychica, tier )
+			timer.Simple(0, function()
+				if IsValid(toychica) then	chicaTierChange( toychica, tier )	end
+			end)
 		end
 		
 		if obsessors[ply].tier >= 3 then
@@ -554,7 +557,7 @@ hook.Add( "fh_animatronic_post_break_prop", "fh_toychica_punch", function( ply, 
 	local target = tr.Entity
 	
 	if ent and ent:GetPillName() == "pill_toychica" then
-		if target:IsPlayer() and tchicaObsessors[ply] and tchicaObsessors[ply][target] then
+		if target:IsPlayer() and tchicaObsessors[ply] and (tchicaObsessors[ply][target] or GetGlobal2Int("_TChicaObsessorCount") == math.min(math.max(1, table.Count(survivors)), 3)) then
 			local wep = ply:GetActiveWeapon()
 
 			ply:EmitSound("bonnie_punch.mp3")
@@ -562,7 +565,7 @@ hook.Add( "fh_animatronic_post_break_prop", "fh_toychica_punch", function( ply, 
 			local dmginfo = DamageInfo()
 			dmginfo:SetAttacker( ply )
 			dmginfo:SetInflictor( IsValid(wep) and wep or ply )
-			dmginfo:SetDamage( 15 )
+			dmginfo:SetDamage( 25 )
 
 			SuppressHostEvents( NULL )
 			target:TakeDamageInfo( dmginfo )
@@ -782,7 +785,7 @@ end)
 
 hook.Add( "PlayerPostThink", "tchica_obsessor_landbuff", function(ply)
 	if SERVER then
-		if GetGlobal2Int("_TChicaObsessorCount") >= 2 then
+		if GetGlobal2Int("_TChicaObsessorCount") >= math.min(math.max(1, table.Count(survivors)), 2) then
 			local pill = ply:GetPill()
 			if pill and pill.formTable and pill.anim == "land" then
 				pill:SetPlaybackRate(1.2)

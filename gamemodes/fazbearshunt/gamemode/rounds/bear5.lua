@@ -40,6 +40,47 @@ hook.Add( "EntityTakeDamage", "fh_bear_kill", function( ply, dmginfo )
 	end
 end )
 
+hook.Add( "DefibrillatorUse", "fh_bear5", function( wep, owner, ent )
+	--if fh.GetRoundType() == 3 then
+		if ent:IsPlayer() and IsValid(ent:GetPill()) and ent:GetPill():GetPillName() == "bear5_clone" then
+			pills.restore(ent:Nick(), true)
+			ent:NoPlayerCollide(0.25)
+			ent:SetTeam(TEAM_SURVIVOR)
+			
+			local effect2 = EffectData()
+			effect2:SetOrigin(ent:GetPos())
+			effect2:SetStart(ent:GetPos())
+			effect2:SetMagnitude(1)
+			effect2:SetEntity(ent)
+			util.Effect("teslaHitBoxes",effect2)
+	
+			if CLIENT then
+				return
+			end
+			
+			local spark = ents.Create("env_spark")
+			spark:SetPos(ent:GetPos())
+			spark:SetKeyValue("spawnflags", "192")
+			spark:SetKeyValue("traillength", "1")
+			spark:SetKeyValue("magnitude", "2")
+			spark:Spawn()
+			spark:Fire("SparkOnce", "", 0.05)
+			spark:Fire("kill", "", 0.1)
+	
+			owner:ViewPunch(Angle(-10, 0, 0))
+
+			owner:EmitSound("defibl/charged.wav", 75, 100)
+			wep:SetClip1(100)
+
+			timer.Simple(0.5, function()
+				if IsValid(wep) and IsValid(owner) then
+					owner:StripWeapon(wep:GetClass())
+				end
+			end)
+		end
+	--end
+end)
+
 hook.Add("fh_postendgame", "bear5_win_dance", function(victory, anims)
 	if victory then
 		local win_location, win_camera = FindSuitableVictoryPos(150, 200)

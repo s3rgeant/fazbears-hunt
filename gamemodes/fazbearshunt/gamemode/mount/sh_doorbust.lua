@@ -128,6 +128,7 @@ if SERVER then
     end
 
     local function BustFuncRotating(ply, door)
+		--PrintTable(door:GetKeyValues())
         door:SetSaveValue("m_hactivator", ply)
         door:Fire("SetSpeed", 500, 0)
         door:Fire("Open", "", 0)
@@ -156,7 +157,7 @@ if SERVER then
 				BustFuncRotating(ply, door)
 			end
 		else
-			if door:HasSpawnFlags(16) then newFlags = bit.bxor(newFlags, 16) end
+			--if door:HasSpawnFlags(16) then newFlags = bit.bxor(newFlags, 16) print('chto', newFlags) end
 			door:SetKeyValue("spawnflags", newFlags)
 			BustFuncRotating(ply, door)
 		end

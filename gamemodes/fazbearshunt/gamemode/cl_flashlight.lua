@@ -100,7 +100,7 @@ local function ToggleFlashMode()
         if ply:IsAnimatronic() or ply:Team() == TEAM_SPECTATOR then
             flashMode = "nv"
         else
-            flashMode = "normal"
+			return
         end
     elseif flashMode == "normal" then
         flashMode = "off"
@@ -112,9 +112,10 @@ local function ToggleFlashMode()
 end
 
 hook.Add("PlayerBindPress", "fh_flash_nv_normal", function(ply, bind, pressed)
-    if pressed and string.find(bind, "impulse 100") then
+    local ply = LocalPlayer()
+    if pressed and string.find(bind, "impulse 100") and (ply:IsAnimatronic() or ply:Team() == TEAM_SPECTATOR) then
         ToggleFlashMode()
-        return true
+		return true
     end
 end)
 

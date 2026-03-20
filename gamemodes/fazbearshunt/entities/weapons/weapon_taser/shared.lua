@@ -29,8 +29,8 @@ SWEP.Secondary.Automatic = false
 SWEP.Secondary.Ammo = "none"
 
 SWEP.UseHands = true
-SWEP.ViewModel	= "models/realistic_police/taser/c_taser.mdl"
-SWEP.ViewModelFOV = 60
+SWEP.ViewModel	= "models/fh/weapons/c_taser.mdl"
+SWEP.ViewModelFOV = 70
 SWEP.WorldModel = "models/realistic_police/taser/w_taser.mdl"
 
 SWEP.MinHitbox = Vector(-20,-20,-12)
@@ -57,12 +57,11 @@ function SWEP:PrimaryAttack()
 
     local owner = self:GetOwner()
     if !IsValid(owner) then return end
-	local vm = owner:GetViewModel()
 	
 	local wait = 60
 	local max_anims = 10 -- на всякий случай чтобы не перегрузить сервер, в любом случае аниматроников обычно немного
 	
-	vm:SendViewModelMatchingSequence( vm:LookupSequence( "fire" ) )
+	self:SendWeaponAnim( ACT_VM_PRIMARYATTACK )
 	
 	owner:LagCompensation(true)
 
@@ -122,6 +121,22 @@ function SWEP:PrimaryAttack()
 		stats.Add(owner, "tasered", 1)
 	end
 	
+	owner:SetAnimation(PLAYER_ATTACK1)
+	
+	if CLIENT then
+		local dlight = DynamicLight( owner:EntIndex() )
+		if ( dlight ) then
+			dlight.pos = tr.HitPos
+			dlight.r = 255
+			dlight.g = 255
+			dlight.b = 255
+			dlight.brightness = 2
+			dlight.decay = 450
+			dlight.size = 256
+			dlight.dietime = CurTime() + 3
+		end
+	end
+	
 	self:SetNextPrimaryFire(CurTime() + wait)
 	timer.Create("taser" .. owner:EntIndex(), wait / 100, 100, function()
 		if IsValid(self) then
@@ -131,6 +146,29 @@ function SWEP:PrimaryAttack()
 end
 
 function SWEP:SecondaryAttack()
+end
+
+local red = Color(255,0,0,255)
+local green = Color(0,255,0,255)
+
+function SWEP:PostDrawViewModel(vm, weapon, ply)
+	local bone = vm:LookupBone("t.base")
+	if not bone then return end
+	
+	local pos, ang = vm:GetBonePosition(bone)
+	if not pos then return end
+
+	ang:RotateAroundAxis(ang:Right(), 90)
+	ang:RotateAroundAxis(ang:Up(), 90)
+	ang:RotateAroundAxis(-ang:Right(), 90)
+	
+	local progress = math.max( 3, self:Clip1() )
+	local targetColor = progress < 100 and red or green
+
+	cam.Start3D2D(pos + ang:Up() * -0.7 + ang:Forward() * 2.46, ang, 0.02)
+		surface.SetDrawColor(targetColor)
+		surface.DrawRect(25, 20, 15, -progress /2.38)
+	cam.End3D2D()
 end
 
 net.Receive("StunEffect_Shake", function()
@@ -182,7 +220,7 @@ function TaseAnimatronic(ent)
 					local poorguy = ent.jumpscaring
 					
 					poorguy:Freeze(false)
-					poorguy.jumpscared = nil
+					poorguy:SetJumpscared(false)
 					
 					ent.jumpscaring = nil
 				end
@@ -230,5 +268,11 @@ end
 hook.Add( "PlayerShouldTakeDamage", "fh_tasered_cant_deal_damage", function( ply, attacker )
 	if attacker.tasered then
 		return false
+	end
+end )
+
+hook.Add( "DoPlayerDeath", "fh_taser_drop", function( ply, attacker )
+	if ply:HasWeapon("weapon_taser") then
+		ply:DropWeapon(ply:GetWeapon("weapon_taser"))
 	end
 end )

@@ -8,10 +8,12 @@ util.AddNetworkString("NotifySpectators")
 	
 local affectedPlayers = {}
 local haloUsers = {}
+local countNotAffected = {}
 
 hook.Add( "PostCleanupMap", "fh_halo_reset", function( name )
 	table.Empty(haloUsers)
 	table.Empty(affectedPlayers)
+	table.Empty(countNotAffected)
 end)
 
 function highlight.ByDistance(ply, ent)
@@ -29,7 +31,7 @@ function highlight.ByDistance(ply, ent)
 							and hook.Run("FH_ShouldHighlightPlayer", player, ply, ent) ~= false then
 				local distance = ply:GetPos():Distance(player:GetPos())
 				
-				local isAffected = distance <= conVars.halo_radius:GetInt()
+				local isAffected = distance <= conVars.halo_radius:GetInt() or (conVars.fair_hl:GetBool() and countNotAffected[player] and countNotAffected[player] >= 2)
 				
 				if (isAffected) then -- передаём чуваку кто подсвечивается в радиусе
 					table.insert(totalPlayers, player)
@@ -38,8 +40,11 @@ function highlight.ByDistance(ply, ent)
 					highlight.Add(ply, player)
 					
 					stats.Add(player, "got_highlighted", 1)
+					countNotAffected[player] = 0
 				else
 					stats.Add(player, "evaded_highlight", 1)
+					if !countNotAffected[player] then countNotAffected[player] = 0 end
+					countNotAffected[player] = countNotAffected[player] + 1
 				end
 				
 				highlight.NotifyTarget(player, ent, isAffected)
@@ -131,7 +136,7 @@ end
 function highlight.Cooldown(ply, duration)
 	haloUsers[ply] = {hl_Time = CurTime() + duration}
 		
-	net.Start("fh_net_killer_change")
+	net.Start("fh_cooldown_receive")
 	net.WriteString("highlight")
 	net.WriteFloat(duration)
 	net.Send(ply)

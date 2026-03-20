@@ -101,14 +101,72 @@ pills.register("pill_wfreddy2",{
 	startFunction=function(ply,ent)
 		chaseVoicelineChecker(ply, ent, "freddy")
 	end,
+	
+	moveMod=function(ply, ent, mv, cmd)
+		if SERVER and stalkers[ply] and ply:IsSprinting() then
+			if ply._breakPropAsAnimTime and ply._breakPropAsAnimTime > CurTime() then
+				return
+			end
+			local cooldown = 0.8
+			
+			local mins = ply:OBBMins()
+			local maxs = ply:OBBMaxs()
+		
+			local startpos = ply:GetPos()
+			local dir = ply:GetForward()
+			
+			local tr = util.TraceHull( {
+				start = startpos,
+				endpos = startpos + dir * 120,
+				maxs = maxs,
+				mins = mins,
+				filter = ply
+			} )
+			
+			local target = tr.Entity
+			
+			if tr.Hit and IsValid(target) and target:IsPlayer() and target:IsSurvivor() and !stalkTargets[target] then
+				
+				local wep = ply:GetActiveWeapon()
+			
+				ply:EmitSound("bonnie_punch.mp3")
+				ent:PillGesture('melee', 2, 1, 0.1, 0.7)
+				
+				local dmginfo = DamageInfo()
+				dmginfo:SetAttacker( ply )
+				dmginfo:SetInflictor( IsValid(wep) and wep or ply )
+				dmginfo:SetDamage( 30 )
+			
+				SuppressHostEvents( NULL )
+				target:TakeDamageInfo( dmginfo )
+				SuppressHostEvents( ply )
+				if IsValid(wep) then
+					wep:HandleAnimation("attack", 1, true)
+				end
+				
+				target:SetVelocity(dir * 300 + target:GetUp() * 300)
+				
+				ply._breakPropAsAnimTime = CurTime() + cooldown
+			end
+		end
+	end,
 
 	noFallDamage=true,
+	
+	killCondition=function(ply,ent)
+		local target = FindNearestPlayer(ply:EyePos(), 125, ply, 36)
+		
+		if IsValid(target) and !target:IsInvisible() then
+			return true
+		end
+		return false
+	end,
 	
 	attack={
 		mode="trigger",
 		func=function(ply,ent)
 			if IsValid(ply:GetEntityInUse()) then return end
-			local target = FindNearestPlayer(ent:GetPos(), 130, ply, 75)
+			local target = FindNearestPlayer(ply:EyePos(), 125, ply, 36)
 			
 			if stalkers[ply] and !stalkTargets[target] then 
 				AnimatronicBreakProp(ply, ent)
@@ -390,6 +448,8 @@ function successStalk(ply, ent, target)
 		
 		ent:SetSpeed(unpack(wfreddy_stalk_movement))
 		ent:ReplaceAnimation("run", "srun")
+		ent:ReplaceAnimation("walk", "ragewalk")
+		ent:ReplaceAnimation("idle", "rageidle")
 		
 		net.Start('fh_addaffected_stalk')
 		net.WriteEntity(target)
@@ -423,6 +483,8 @@ function noMoreStalk(ply)
 	if IsValid(ent) then
 		ent:SetSpeed(unpack(wfreddy_default_movement))
 		ent:ReplaceAnimation("run", "run")
+		ent:ReplaceAnimation("walk", "walk")
+		ent:ReplaceAnimation("idle", "idle")
 	end
 	
 	local wep = ply:GetActiveWeapon()

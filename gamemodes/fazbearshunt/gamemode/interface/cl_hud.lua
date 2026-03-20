@@ -407,7 +407,7 @@ function CanMangleLunge()
 	local eyeAng = ply:EyeAngles()
 	
 	if !ply:GetNWBool("_MangleHooked") then
-		if !ply:OnGround() or ply:Crouching() or eyeAng.p > 0 then
+		if !ply:OnGround() or ply:Crouching() then
 			return Color(200, 32, 32, 200)
 		end
 	elseif ply:GetNWString("_MangleLastHookType") ~= "ceiling" then
@@ -528,35 +528,52 @@ net.Receive("RemoveKiller", function()
 	hud_RemoveKiller()
 end)
 
-net.Receive("fh_net_killer_change", function()
-	local str = net.ReadString()
-    setDuration(str, net.ReadFloat())
+hook.Add("FH_CooldownReceive", "fh_net_killer_change", function(str, duration)
+    setDuration(str, duration)
 	if str == 'addmine' then
 		cupcakes = cupcakes + 1
 	end
-	--[[
-	if str == 'Submerge' then
-		hook.Add("RenderScreenspaceEffects", "NightVisionEffect", function()
-            local colorCorrection = {
-                ["$pp_colour_addr"] = 0.3,
-                ["$pp_colour_addg"] = -0.6,
-                ["$pp_colour_addb"] = 0.3,
-                ["$pp_colour_brightness"] = 0,
-                ["$pp_colour_contrast"] = 0.6,
-                ["$pp_colour_colour"] = 0.4,
-                ["$pp_colour_mulr"] = 0,
-                ["$pp_colour_mulg"] = 0,
-                ["$pp_colour_mulb"] = 0
-            }
-            DrawColorModify(colorCorrection)
-        end)
-	end
-	]]
 end)
 
 net.Receive("fh_net_killer_change_tokens", function()
 	local str = net.ReadString()
 	setTokens(str, net.ReadInt(9))
+end)
+
+surface.CreateFont("KillText", {
+    font = "Share Tech Mono Regular",
+	shadow = true,
+	extended = true,
+	antialias = true,
+    size = 24,
+    weight = 500
+})
+local killBg_mat = Material("vgui/animatronics_hud/kill_bg.png")
+local addY = 20
+
+hook.Add( "HUDPaint", "fh_killable", function()
+	myself = myself or LocalPlayer()
+	
+	local ent = pills.getMappedEnt(myself)
+	
+	if IsValid(ent) and ent:Get("killCondition") then
+		local condition = ent.formTable.killCondition(myself, ent)
+		
+		if condition then
+			surface.SetDrawColor(255, 255, 255, 255)
+			surface.SetMaterial(killBg_mat)
+			surface.DrawTexturedRect(ScrW() / 2 - 110, ScrH()/2 + 20 + addY, 220, 24)
+			
+			draw.SimpleText(
+				language.GetPhrase("fazhunt.abilities.kill"):upper(),
+				"KillText",
+				ScrW()/2,
+				ScrH()/2 + 20 + addY,
+				color_white,
+				TEXT_ALIGN_CENTER
+			)
+		end
+	end
 end)
 
 -- текст смешной сверху

@@ -82,7 +82,11 @@ local voicelines = {
     },
     sfreddy = {
         kill = generateVoicelines("sfreddy_kill", 6),
+        lastkill = generateVoicelines("sfreddy_lastkill", 4),
         chase = generateVoicelines("sfreddy_chase", 6),
+        negative = generateVoicelines("sfreddy_negative", 3),
+        positive = generateVoicelines("sfreddy_positive", 2),
+        trip = generateVoicelines("sfreddy_trip", 3),
     },
     clown = {
         kill = generateVoicelines("clown_kill", 3),

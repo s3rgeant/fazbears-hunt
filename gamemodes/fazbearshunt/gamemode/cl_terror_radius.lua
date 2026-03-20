@@ -260,6 +260,7 @@ if !timer.Exists("tr_update") then
 				if currentKillers[myself] then
 					for _, ply in player.Iterator() do
 						if !ply:Alive() or (!everyoneKillers[myself] and ply:Team() == myself:Team()) then continue end
+						if ply:IsDormant() then continue end
 
 						local distance = myself:GetPos():Distance(ply:GetPos())
 
@@ -395,7 +396,6 @@ hook.Add("fh_postendgame", "tr_allow_tr_playing", function()
 end)
 
 local animatronicThemes = {
-    ["pill_endo02"] 		= "default",
     ["pill_wchica2"] 		= "default",
     ["pill_clown"] 			= "default",
     ["pill_springtrap"] 	= "default",
@@ -406,6 +406,7 @@ local animatronicThemes = {
     ["pill_wbonnie2"] 		= "bonnie",
 	["pill_wfoxy2"] 		= "foxy",
     ["pill_sfreddy2"] 		= "sfreddy",
+    ["pill_endo02"] 		= "endo",
 	
     ["mask"] 				= "mask",
 	

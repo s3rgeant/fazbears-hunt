@@ -6,6 +6,7 @@ include( "animatronics/toychica.lua" )
 
 include( "animatronics/freddy.lua" )
 include( "animatronics/bonnie.lua" )
+include( "animatronics/chica.lua" )
 include( "animatronics/foxy.lua" )
 
 include( "animatronics/bear5.lua" )
@@ -14,8 +15,6 @@ local model_prefix = IsHalloween() and "phantom" or "old"
 
 if SERVER then
 	util.AddNetworkString("JumpscareLight")
-	
-	util.AddNetworkString("fh_net_killer_change")
 	
 	util.AddNetworkString("fh_adv_sound_play")
 	util.AddNetworkString("fh_ui_sound_play")
@@ -35,7 +34,7 @@ if SERVER then
 	util.PrecacheModel("models/speps/pill/oldchica.mdl")
 	util.PrecacheModel("models/speps/pill/oldgoldenfreddy.mdl")
 	util.PrecacheModel("models/speps/pill/oldgoldenfreddyhead.mdl")
-	util.PrecacheModel("models/speps/pill/endo02.mdl")
+	util.PrecacheModel("models/mountroid/thudner/hw withered pack/endo02.mdl")
 	
 	resource.AddFile( "materials/models/null.vmt" )
 end
@@ -56,170 +55,8 @@ function chaseVoicelineChecker(ply, ent, name)
 	end)
 end
 
-local cupcakes = {} 
-
 shadow_freddyability = CreateConVar( "fh_sfreddy_noclip", "1", { FCVAR_NOTIFY, FCVAR_ARCHIVE, FCVAR_REPLICATED }, 
 "Should Shadow Freddy Noclip or just slide throught objects while being invisible?" )
-
---chica
-
-pills.register("pill_wchica2",{
-	printName="Withered Chica",
-	model="models/speps/pill/oldchica.mdl",
-		
-	options=function() return {
-		["default"] = {
-			-- ничего
-		},
-		["halloween"] = {
-			skin = 1
-		},
-		["christmas"] = {
-			bodyGroups = { [0] = 2 },
-		},
-	} end,
-	option=IsHalloween() and "halloween" or IsChristmas() and "christmas" or "default",
-	
-	anims={
-		default={
-			idle="idle",
-			crouch="crouch",
-			crouch_walk="crouchmove",
-			walk="walk",
-			run="run",
-			cloak="special1",
-			jump="jump",
-			glide="air",
-			land="land",
-			scare="scare",
-			stun="stun",
-			melee="melee",
-		},
-	},
-	moveSpeed={
-		walk=80,
-		run=485,
-		ducked=80,
-	},
-	sounds={
-		gs="fnaf2/stareshort.wav",
-		loop_stare="fnaf2/with_s2_loop2.wav",
-		jump="jump.mp3",
-		land="land.mp3",
-		melee="fnaf2/xscream2.wav",
-		deploy="chica_deploycake.wav",
-	},
-	type="ply",
-    camera = {
-        offset = Vector(0, 0, 90),
-		dist = 150
-    },
-	hull=Vector(32,32,86),
-	duckBy=60,
-	bloodType=BLOOD_COLOR_MECH,
-	
-    jumpPower=250,
-	health=10000,
-	
-	muteSteps = true,
-	movePoseMode="xy",
-	aim = {
-		xPose="aim_yaw",
-		yPose="aim_pitch"
-	},
-
-	noFallDamage=true,
-	
-	startFunction=function(ply,ent)
-		chaseVoicelineChecker(ply, ent, "chica")
-	end,
-	
-	attack={
-		mode="trigger",
-		func=function(ply,ent)
-			if IsValid(ply:GetEntityInUse()) then return end
-			
-			local target = FindNearestPlayer(ent:GetPos(), 130, ply, 75)
-			
-			local jumpscare = performJumpscare(ply, ent, target, 1.6, "chica", 50)
-			
-			if !IsValid(target) or !jumpscare then 
-				AnimatronicBreakProp(ply, ent)
-				return 
-			end
-		end
-    },
-	
-	attack2={
-		mode="trigger",
-		func = function(ply,ent)
-			if !cupcakes[ply] then cupcakes[ply] = 0 end
-			if cupcakes[ply] < conVars.fh_max_cupcakes:GetInt() and !cooldown.Exists(ply, "mine") then
-				cooldown.Set(ply, "mine", 15)
-				cooldown.Send(ply, "mine")
-				
-				local playerPos = ply:GetPos()
-				local spawnPos = playerPos + ply:GetUp() * 10
-				local cupcake = ents.Create("cakemine")
-				
-				ent:PillSound('deploy')
-				
-				if not IsValid(cupcake) then return end
-
-				if math.random(1, 10) > 4 then playVoiceline('chica', 'plant', ply, 0.1) end
-				
-				cupcake:SetPos(spawnPos)
-				cupcake:SetAngles(ply:GetAngles())
-				cupcake:SetOwner(ply)
-				cupcake:Spawn()
-				cupcake:Activate()
-				
-				hook.Run("FH_MinePlanted", ply, ent, cupcake)
-				
-				cupcakes[ply] = cupcakes[ply] + 1
-			
-				net.Start("fh_net_killer_change")
-				net.WriteString("addmine")
-				net.WriteFloat(1)
-				net.Send(ply)
-			end
-		end
-	},
-	
-	land=function(ply,ent)
-		if !ent.cloaked and ply:WaterLevel() < 2 then
-			if ply._wereJumpingPill or !ply._wereJumpingPill and ply:GetVelocity().z < -270 then
-				if !ply._jumpPosPill or ply._jumpPosPill and ply:GetPos():Distance(ply._jumpPosPill) > 150 then
-					ent:PillAnim("land",true)
-				end
-			end
-		end
-		
-		landTripCheck(ply, ent, "chica")
-	end,
-	
-	reload=function(ply,ent)
-		highlight.ByDistance(ply, ent)
-	end,
-	
-	jump=function(ply,ent)
-		ent:PillSound("jump", false)
-	end,
-	onRemove=function(ent,formTable,ply)
-		if SERVER then
-			killCupcakes(ply)
-		end
-	end
-})
-
-
-
-
-
-
-
-
-
 
 --shadow
 
@@ -269,7 +106,10 @@ pills.register("pill_sfreddy2",{
 			scare="sscare",
 			stun="sstun",
 			melee="melee",
-			land="land",
+			land_snd="land",
+		},
+		speedCap={
+			walk=90,
 		},
 	},
 	moveSpeed={
@@ -324,6 +164,17 @@ pills.register("pill_sfreddy2",{
 		ply._SF_TouchedFloor_Uncloaked = true
 	end,
 	
+	killCondition=function(ply,ent)
+		if ply:GetMoveType() == MOVETYPE_NOCLIP then return false end
+		if cooldown.Exists(ply, "kill") then return false end
+		local target = FindNearestPlayer(ply:EyePos(), 130, ply, 36)
+		
+		if IsValid(target) and !target:IsInvisible() then
+			return true
+		end
+		return false
+	end,
+	
 	attack={
 		mode="trigger",
 		func=function(ply,ent)
@@ -331,7 +182,7 @@ pills.register("pill_sfreddy2",{
 			
 			if IsValid(ply:GetEntityInUse()) then return end
 			
-			local target = FindNearestPlayer(ent:GetPos(), 130, ply, 75)
+			local target = FindNearestPlayer(ent:GetPos(), 130, ply, 36)
 			
 			local jumpscare
 			
@@ -487,7 +338,11 @@ pills.register("pill_sfreddy2",{
 			ply._SF_TouchedFloor_Uncloaked = true
 		end
 		
+		if ent.cloaked then return end
+		
 		ent:PillGesture('land', 2, 1, 0, 0.5)
+		ent:PillSound("land_snd", false)
+		landTripCheck(ply, ent, "sfreddy")
 	end,
  
 	reload=function(ply,ent)
@@ -506,17 +361,20 @@ pills.register("pill_sfreddy2",{
 
 pills.register("pill_endo02",{
 	printName="Endo02",
-	model="models/speps/pill/endo02.mdl",
+	model="models/mountroid/thudner/hw withered pack/endo02.mdl",
 		
 	options=function() return {
 		["default"] = {
-			-- nichego
+			bodyGroups = { ["Ears"] = 1 },
+			skin = 1,
 		},
 		["halloween"] = {
+			bodyGroups = { ["Ears"] = 1, ["Eyes"] = 4 },
 			skin = 1,
 		},
 		["christmas"] = {
-			bodyGroups = { [0] = 1 },
+			bodyGroups = { ["Ears"] = 1 },
+			skin = 1,
 		},
 	} end,
 	option=IsHalloween() and "halloween" or IsChristmas() and "christmas" or "default",
@@ -525,12 +383,12 @@ pills.register("pill_endo02",{
 		default={
 			idle="idle",
 			crouch="crouch",
-			crouch_walk="movecrouch",
+			crouch_walk="crouchmove",
 			walk="walk",
 			run="run",
 			cloak="special",
 			jump="jump",
-			glide="air",
+			glide="glide",
 			land="land",
 			scare="scare",
 			stun="stun",
@@ -540,7 +398,7 @@ pills.register("pill_endo02",{
 	moveSpeed={
 		walk=120,
 		run=475,
-		ducked=200,
+		ducked=160,
 	},
 	sounds={
 		jump="jump.mp3",
@@ -549,11 +407,11 @@ pills.register("pill_endo02",{
 	},
 	type="ply",
     camera = {
-        offset = Vector(0, 0, 90),
+        offset = Vector(0, 0, 96),
 		dist = 150
     },
 	hull=Vector(32,32,86),
-	duckBy=60,
+	duckBy=66,
 	bloodType=BLOOD_COLOR_MECH,
 	
 	viewmodel={
@@ -576,12 +434,21 @@ pills.register("pill_endo02",{
 		chaseVoicelineChecker(ply, ent, "endo")
 	end,
 	
+	killCondition=function(ply,ent)
+		local target = FindNearestPlayer(ply:EyePos(), 125, ply, 36)
+		
+		if IsValid(target) and !target:IsInvisible() then
+			return true
+		end
+		return false
+	end,
+	
 	attack={
 		mode="trigger",
 		func=function(ply,ent)
 			if IsValid(ply:GetEntityInUse()) then return end
 			
-			local target = FindNearestPlayer(ent:GetPos(), 130, ply, 75)
+			local target = FindNearestPlayer(ent:GetPos(), 125, ply, 36)
 			
 			local jumpscare = performJumpscare(ply, ent, target, 1.6, "endo", 52, "v_endo")
 			
@@ -929,7 +796,7 @@ function performJumpscare(ply, ent, target, killDelay, voiceCharacter, jumpscare
 
 	ent:PillSound("melee", false)
 
-	target.jumpscared = true
+	target:SetJumpscared(true)
 	ply.jumpscaring = target
 
 	ply:LagCompensation(false)
@@ -954,7 +821,7 @@ function performJumpscare(ply, ent, target, killDelay, voiceCharacter, jumpscare
 			ply.jumpscaring = nil
 		end
 		if IsValid(target) then 
-			target.jumpscared = false
+			target:SetJumpscared(false)
 			
 			if target:IsPlayer() then
 				target:Freeze(false)
@@ -971,9 +838,12 @@ end
 
 local ENTITY = FindMetaTable("Entity")
 
+function ENTITY:SetJumpscared(bool)
+	self:SetNW2Bool("_FH_Jumpscared", bool or false)
+end
+
 function ENTITY:IsJumpscared()
-	if not self.jumpscared then return false end
-	return self.jumpscared
+	return self:GetNW2Bool("_FH_Jumpscared")
 end
 
 function jumpscareEvent(ply, ent, target, dist)
@@ -1066,11 +936,10 @@ function jumpscareEvent(ply, ent, target, dist)
 		target:TaskComplete()
 	end
 
-	local directionToTarget = (target:GetPos() - ply:GetPos()):Angle()
-	local entAngle = directionToTarget
-	entAngle.p = 0
+	local directionToTarget = (target:EyePos() - ply:EyePos()):Angle()
 	ply:SetEyeAngles(directionToTarget)
-	ent:SetForceAngles(entAngle)
+	directionToTarget.p = 0
+	ent:SetForceAngles(directionToTarget)
 	ent:SetUseForceAngles(true)
 
 	if target:IsPlayer() then
@@ -1378,8 +1247,8 @@ end)
 
 if SERVER then
 	local function fnaf2pill_death_handle(victim, inflictor, attacker)
-		if victim.jumpscared then
-			victim.jumpscared = nil
+		if victim:IsJumpscared() then
+			victim:SetJumpscared(false)
 			if IsValid(attacker) and attacker:IsPlayer() then
 				attacker.jumpscaring = nil
 			end
@@ -1397,20 +1266,6 @@ if SERVER then
 			playVoiceline(voiceCharacter, "kill", ply, vc_delay)
 		end
 	end)
-	
-	hook.Add( "PlayerDisconnected", "fh_pill_fnaf2_disconnect", function( ply )
-		killCupcakes(ply)
-	end)
-	
-	function killCupcakes(ply)
-		if table.IsEmpty(cupcakes) or !cupcakes[ply] then return end
-		for _, ent in ipairs( ents.FindByClass( "cakemine" ) ) do
-			if ent:GetOwner() == ply then
-				ent:Remove()
-			end
-		end
-		cupcakes[ply] = nil
-	end
 
 	function landTripCheck(ply, ent, name)
 		if ply:WaterLevel() > 0 then return end
@@ -1433,17 +1288,6 @@ if SERVER then
 			ent.landTimes = ent.landTimes - 1
 		end)
 	end
-	
-	hook.Add("EntityRemoved", "RemoveKilledCupcake", function(ent)
-		if ent:GetClass() == "cakemine" then
-			local owner = ent:GetOwner() 
-			if IsValid(owner) then
-				if cupcakes[owner] then
-					cupcakes[owner] = math.max(0, cupcakes[owner] - 1)
-				end
-			end
-		end
-	end)
 	
 	hook.Add("OnPlayerPhysicsDrop", "fh_endo_prop_drop", function(ply, ent, thrown)
 		local puppet = pills.getMappedEnt(ply)
@@ -1628,7 +1472,6 @@ function chaseCheck(ply, name, ent)
 	end
 end
 
-hook.Add( "PostCleanupMap", "fh_pill_fnaf2_reset", function( )
+hook.Add( "PostCleanupMap", "fh_pill_fnaf2_reset", function()
 	table.Empty(takenPlayers)
-	table.Empty(cupcakes)
 end)

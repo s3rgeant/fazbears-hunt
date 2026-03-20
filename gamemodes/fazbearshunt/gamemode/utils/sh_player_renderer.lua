@@ -33,10 +33,13 @@ if CLIENT then
 		if !IsValid(ply) then return end
 		
 		noDrawies[ply] = nil
-
+		
 		ply:SetNoDraw(false)
-		ply:DrawShadow(true)
-
+		
+		if !IsValid(ply:GetPill()) then
+			ply:DrawShadow(true)
+		end
+		
 		for _, wep in ipairs(ply:GetWeapons()) do
 			if IsValid(wep) then
 				wep:SetNoDraw(false)
@@ -119,7 +122,6 @@ if CLIENT then
 		
 		if IsValid(player) then
 			player_renderer.Draw(player)
-			print('draw very yes')
 		end
 	end)
 	net.Receive("player_renderer_clear_e", function()

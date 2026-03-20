@@ -87,7 +87,6 @@ pills.register("pill_clown",{
 		land="land.mp3",
 		loop_dance="kloun_ebanat.wav",
 		melee=pills.helpers.makeList("fnaf2/xscream2.wav",2),
-		step=pills.helpers.makeList("fnaf2/none.wav",1)
 	},
 	type="ply",
     camera = {
@@ -115,17 +114,15 @@ pills.register("pill_clown",{
 	end,
 	
 	startFunction=function(ply,ent)
-		--ply:SetJumpBoostMultiplier( math.min( getScaledJumpBoost() + 0.2, 1) )
+		--ply:SetJumpBoostMultiplier( math.min( getScaledJumpBoost() + 0.1, 1) )
 		-- дабы он баннихопил быстрее игроков в любом случае
 		
 		chaseVoicelineChecker(ply, ent, "clown")
 	end,
 	
-	--[[
 	restore=function(ply,ent)
 		ply:SetJumpBoostMultiplier( getScaledJumpBoost() )
 	end,
-	]]--
 	
 	muteSteps = true,
 	health=10000,
@@ -136,21 +133,22 @@ pills.register("pill_clown",{
 	},
 
 	noFallDamage=true,
-	
-	attack2={
-		mode="trigger",
-		func = function(ply,ent)
-			if ply.tasered then return end
-			if ent.anim != 'dance' then
+
+	taunt=function(ply,ent,act)
+		if !ent.NextAct or ent.NextAct and CurTime() > ent.NextAct then
+			if act == ACT_GMOD_TAUNT_DANCE and ent.anim ~= "dance" then
+				if !ply:OnGround() then return end
+
 				ent:PillLoopSound('dance', 0.6)
 				ent:PillAnim("dance", true)
 				ent.ignoreFreeze = true
-			else
-				ent.anim = nil
-				ent:PillLoopStop('dance')
+				
+				ent.NextAct = CurTime() + 4.5
+				ply:GoPillThirdperson(4.5)
 			end
 		end
-	},
+	end,
+	
 	animStopped=function(ply,ent, name)
 		if name == 'dance' then
 			ent:PillLoopStop('dance')
@@ -263,7 +261,7 @@ pills.register("pill_springtrap",{
 	type="ply",
     camera = {
         offset = Vector(0, 0, 88),
-		dist = 150
+		dist = 120
     },
 	hull=Vector(32,32,86),
 	duckBy=60,
@@ -483,6 +481,7 @@ pills.register("pill_springtrap",{
 			end)
 			
 			ent:PillAnim("summon", true)
+			ply:GoPillThirdperson(1.7)
 		end
     },
 

@@ -131,6 +131,12 @@ if PLAYER then
 	function PLAYER:GetPill()
 		return self.fh_pill_ent
 	end
+	
+	function PLAYER:GoPillThirdperson(dur)
+		if dur > 0 then
+			self:SetNW2Float("fh_pill_thirdperson", CurTime() + dur)
+		end
+	end
 end
 
 -- Concommands, Convars, etc.
@@ -469,30 +475,30 @@ if SERVER then
 		end
 	end)
 
-    hook.Add("OnPlayerHitGround", "pk_pill_hitground", function(ply, iW, oF, speed)
-        local ent = getMappedEnt(ply)
-
-        if IsValid(ent) then
-            if ent.formTable.land and !ply:IsFlagSet(FL_FROZEN) then
-                ent.formTable.land(ply, ent)
-                ent:PillSound("land", false)
-            end
+	hook.Add("OnPlayerHitGround", "pk_pill_hitground", function(ply, iW, oF, speed)
+		local ent = getMappedEnt(ply)
+		
+		if IsValid(ent) then
+			if ent.formTable.land and !ply:IsFlagSet(FL_FROZEN) then
+				ent.formTable.land(ply, ent)
+				ent:SetNextAnimThink(0)
+				ent:PillSound("land", false)
+			end
 			
 			ply._wereJumpingPill = nil
 			ply._jumpPosPill = nil
-
-            if ent.formTable.noFallDamage or ent.formTable.type == "phys" then return true end
-        end
-    end)
+			
+			if ent.formTable.noFallDamage or ent.formTable.type == "phys" then return true end
+		end
+	end)
 
 	hook.Add("DoAnimationEvent", "pk_pill_triggerAnims", function(ply, event, data)
 		local ent = getMappedEnt(ply)
 		if IsValid(ent) and ent.formTable.type == "ply" then
 			if event == PLAYERANIMEVENT_JUMP and !ent.animFreeze and ply:GetJumpPower() > 0 then
 				if ply:GetJumpPower() > 0 then
+					ent:SetNextAnimThink(0)
 					ent:PillAnim("jump")
-			
-					ent:SetNextAnimThink(CurTime())
 				end
 				ent:DoJump()
 				ply._wereJumpingPill = true

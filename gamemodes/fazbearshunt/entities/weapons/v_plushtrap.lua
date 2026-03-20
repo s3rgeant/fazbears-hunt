@@ -63,13 +63,10 @@ function SWEP:DealDamage()
 	self:SetLastAttack(now)
 	
 	if SERVER then
-	
-		ent:PillGesture('bite'.. (math.random(1,2) == 1 and "1" or "2"), 2, 1, 0.1, 0.3)
+		ent:PillGesture('bite'.. (math.random(2) == 1 and "1" or "2"), 2, 1, 0.1, 0.3)
 		
-		net.Start("fh_net_killer_change")
-		net.WriteString("attack")
-		net.WriteFloat(1)
-		net.Send(ply)
+		cooldown.Set(ply, "attack", 1)
+		cooldown.Send(ply, "attack")
 	end
 		
 	ply:LagCompensation(true)

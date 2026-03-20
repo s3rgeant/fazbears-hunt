@@ -99,7 +99,7 @@ function SWEP:DealDamage()
 			ent:PillGesture('attack', 2, 1, 0.1, 0.7)
 		end
 
-        net.Start("fh_net_killer_change")
+        net.Start("fh_cooldown_receive")
         net.WriteString("attack")
         net.WriteFloat(1.5)
         net.Send(ply)

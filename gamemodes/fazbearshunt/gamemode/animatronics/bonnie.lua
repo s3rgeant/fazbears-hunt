@@ -117,6 +117,17 @@ pills.register("pill_wbonnie2",{
 	onRemove=function(ent, ft, ply)
 		if CLIENT then return end
 		cooldown.Set(ply, "yoursmine", 1)
+		
+		YoursMine_ForceStop(ply)
+	end,
+	
+	killCondition=function(ply,ent)
+		local target = FindNearestPlayer(ply:EyePos(), 125, ply, 36)
+		
+		if IsValid(target) and !target:IsInvisible() then
+			return true
+		end
+		return false
 	end,
 	
 	attack={
@@ -124,7 +135,7 @@ pills.register("pill_wbonnie2",{
 		func=function(ply,ent)
 			if IsValid(ply:GetEntityInUse()) then return end
 			
-			local target = FindNearestPlayer(ent:GetPos(), 130, ply, 75)
+			local target = FindNearestPlayer(ply:EyePos(), 120, ply, 36)
 			
 			local success = performJumpscare(ply, ent, target, 1.6, "bonnie", 52, "v_bonnie")
 			
@@ -167,7 +178,7 @@ pills.register("pill_wbonnie2",{
 	
 	land=function(ply,ent)
 		if ply:WaterLevel() < 2 then
-			if ply._wereJumpingPill or !ply._wereJumpingPill and ply:GetVelocity().z < -270 and ent.anim != 'ability' then
+			if ply._wereJumpingPill or !ply._wereJumpingPill and ply:GetVelocity().z < -270 and ent.anim ~= 'ability' then
 				if !ply._jumpPosPill or ply._jumpPosPill and ply:GetPos():Distance(ply._jumpPosPill) > 150 then
 					ent:PillAnim("land",true)
 				end
@@ -186,6 +197,7 @@ pills.register("pill_wbonnie2",{
 	end
 })
 
+local bonnieSaveStats = {}
 function YoursMine_Start(ply, target)
 	if ply:IsFrozen() or !ply:OnGround() then return end
 	
@@ -194,14 +206,26 @@ function YoursMine_Start(ply, target)
 	if not IsValid(target) then return end
 	
 	local ent = ply:GetPill()
-	local prev_viewoffset, prev_viewoffset_duck = ply:GetViewOffset(), ply:GetViewOffsetDucked()
+	--local prev_viewoffset, prev_viewoffset_duck = ply:GetViewOffset(), ply:GetViewOffsetDucked()
 	
-	local prev_hull, prev_hull2 = ply:GetHull()
-	local prev_hull_duck, prev_hull_duck2 = ply:GetHullDuck()
+	if !bonnieSaveStats[ply] then bonnieSaveStats[ply] = {} end
 	
-	local prev_scale = ply:GetModelScale()
+	bonnieSaveStats[ply]["prev_viewoffset"] = ply:GetViewOffset()
+	bonnieSaveStats[ply]["prev_viewoffset_duck"] = ply:GetViewOffsetDucked()
 	
-	local prev_run, prev_walk, prev_duck, prev_jump = ply:GetRunSpeed(), ply:GetWalkSpeed(), ply:GetDuckSpeed(), ply:GetJumpPower()
+	--local prev_hull, prev_hull2 = ply:GetHull()
+	--local prev_hull_duck, prev_hull_duck2 = ply:GetHullDuck()
+	--local prev_scale = ply:GetModelScale()
+	bonnieSaveStats[ply]["prev_hull"], bonnieSaveStats[ply]["prev_hull2"] = ply:GetHull()
+	bonnieSaveStats[ply]["prev_hull_duck"], bonnieSaveStats[ply]["prev_hull_duck2"] = ply:GetHullDuck()
+	bonnieSaveStats[ply]["prev_scale"] = ply:GetModelScale()
+	
+	--local prev_run, prev_walk, prev_duck, prev_jump = ply:GetRunSpeed(), ply:GetWalkSpeed(), ply:GetDuckSpeed(), ply:GetJumpPower()
+	bonnieSaveStats[ply]["prev_run"] = ply:GetRunSpeed()
+	bonnieSaveStats[ply]["prev_walk"] = ply:GetWalkSpeed()
+	bonnieSaveStats[ply]["prev_duck"] = ply:GetDuckSpeed()
+	bonnieSaveStats[ply]["prev_jump"] = ply:GetJumpPower()
+	bonnieSaveStats[ply]["wasCrouching"] = ply:Crouching()
 	
 	local wasCrouching = ply:Crouching()
 	
@@ -238,11 +262,15 @@ function YoursMine_Start(ply, target)
 		
 			ent:DetachPlayer()
 			
+			ply:SetModelScale( target:GetModelScale(), 0 )
 			ply:SetViewOffset( target:GetViewOffset() )
 			ply:SetViewOffsetDucked( target:GetViewOffsetDucked() )
 			ply:SetHull( target:GetHull() )
 			ply:SetHullDuck( target:GetHullDuck() )
-			ply:SetModelScale( target:GetModelScale(), 0.01 )
+			
+			if target:Crouching() then
+				ply:Crouch()
+			end
 			
 			ply:SetRunSpeed( target:GetRunSpeed() )
 			ply:SetWalkSpeed( target:GetWalkSpeed() )
@@ -284,86 +312,7 @@ function YoursMine_Start(ply, target)
 	net.Send(target)
 	
 	timer.Simple(8, function()
-		hook.Run("FH_YoursMineEnd", ply, ent, target)
-			
-		if IsValid(target) then
-			target:SetCollisionGroup(COLLISION_GROUP_PLAYER)
-			target:SetSolid(SOLID_BBOX)
-			target:NoPlayerCollide(0.2)
-			
-			bonnie_cmd[target] = nil
-			target:SetNWBool("_yoursmine_target", false)
-			bonnies_controlled[target] = nil
-			
-			if IsValid(ply) then
-				if VaultingExists(ply) and ply:GetMantle() ~= 0 then
-					local endpos = ply:GetMantleEndPos()
-					if not endpos then return end
-					
-					ply:SetMantle(0)
-					ply:SetMantleLerp(1)
-					ply:SetMoveType(MOVETYPE_WALK)
-					
-					target:SetPos(endpos)
-				end
-				if ply:Crouching() then
-					target:Crouch()
-				end
-			end
-		end
-		
-		if IsValid(ply) then
-			net.Start("fh_stop_yoursmine_view")
-			net.Send(ply)
-			
-			ply:SetViewOffset( prev_viewoffset )
-			ply:SetViewOffsetDucked( prev_viewoffset_duck )
-			ply:SetHull( prev_hull, prev_hull2 )
-			ply:SetHullDuck( prev_hull_duck, prev_hull_duck2 )
-			ply:SetModelScale( prev_scale, 0.01 )
-			
-			ply:SetRunSpeed( prev_run )
-			ply:SetWalkSpeed( prev_walk )
-			ply:SetDuckSpeed( prev_duck )
-			ply:SetJumpPower( prev_jump )
-			
-			ply:NoPlayerCollide(0.2)
-			
-			ply:SetPushBlocked(false)
-			ply:SetAudible(true)
-			ply:SetOnlyAudibleByTeammates(false)
-			
-			ply:SetPos(ent:GetPos())
-			ply:SetAngles(ent:GetAngles())
-			ply:SetEyeAngles(ent:GetAngles())
-			
-			ent:AttachPlayer()
-			
-			--ply:SetViewEntity( ply )
-			
-			if wasCrouching then
-				ply:Crouch()
-			end
-			
-			if ply:IsStuck() then
-				ply:Unstuck()
-			end
-	
-			local wep = ply:GetActiveWeapon()
-			if IsValid(wep) and wep:GetClass() == "v_bonnie" then
-				wep:HandleAnimation("draw", 0.5)
-				wep.Controlling = false
-			end
-			
-			cooldown.Set(ply, "yoursmine", 55)
-			cooldown.Send(ply, "yoursmine")
-			
-			ply.fh_target_player = nil
-		end
-		
-		if IsValid(ent) then
-			ent:SetUseForceAngles(false)
-		end
+		YoursMine_ForceStop(ply, target, ent)
 	end)
 	
 	timer.Simple(10.5, function()
@@ -372,6 +321,96 @@ function YoursMine_Start(ply, target)
 			bonnies_targets[target] = nil
 		end
 	end)
+end
+
+function YoursMine_ForceStop(ply, target, ent)
+	if !bonnieSaveStats[ply] then return end
+
+	target = target or ply.fh_target_player
+	ent = ent or ply:GetPill()
+	
+	hook.Run("FH_YoursMineEnd", ply, ent, target)
+			
+	if IsValid(target) then
+		target:SetCollisionGroup(COLLISION_GROUP_PLAYER)
+		target:SetSolid(SOLID_BBOX)
+		target:NoPlayerCollide(0.2)
+		
+		bonnie_cmd[target] = nil
+		target:SetNWBool("_yoursmine_target", false)
+		bonnies_controlled[target] = nil
+		
+		if IsValid(ply) then
+			if VaultingExists(ply) and ply:GetMantle() ~= 0 then
+				local endpos = ply:GetMantleEndPos()
+				if not endpos then return end
+				
+				ply:SetMantle(0)
+				ply:SetMantleLerp(1)
+				ply:SetMoveType(MOVETYPE_WALK)
+				
+				target:SetPos(endpos)
+			end
+			if ply:Crouching() then
+				target:Crouch()
+			end
+		end
+	end
+	
+	if IsValid(ply) then
+		net.Start("fh_stop_yoursmine_view")
+		net.Send(ply)
+		
+		if IsValid(ent) then
+			ply:SetViewOffset( bonnieSaveStats[ply]["prev_viewoffset"] )
+			ply:SetViewOffsetDucked( bonnieSaveStats[ply]["prev_viewoffset_duck"] )
+			ply:SetHull( bonnieSaveStats[ply]["prev_hull"], bonnieSaveStats[ply]["prev_hull2"] )
+			ply:SetHullDuck( bonnieSaveStats[ply]["prev_hull_duck"], bonnieSaveStats[ply]["prev_hull_duck2"] )
+			ply:SetModelScale( bonnieSaveStats[ply]["prev_scale"], 0.01 )
+			
+			ply:SetRunSpeed( bonnieSaveStats[ply]["prev_run"] )
+			ply:SetWalkSpeed( bonnieSaveStats[ply]["prev_walk"] )
+			ply:SetDuckSpeed( bonnieSaveStats[ply]["prev_duck"] )
+			ply:SetJumpPower( bonnieSaveStats[ply]["prev_jump"] )
+			
+			ply:SetPos(ent:GetPos())
+			ply:SetAngles(ent:GetAngles())
+			ply:SetEyeAngles(ent:GetAngles())
+			
+			ent:AttachPlayer()
+		end
+		
+		ply:NoPlayerCollide(0.2)
+		
+		ply:SetPushBlocked(false)
+		ply:SetAudible(true)
+		ply:SetOnlyAudibleByTeammates(false)
+		
+		if bonnieSaveStats["wasCrouching"] then
+			ply:Crouch()
+		end
+		
+		bonnieSaveStats[ply] = nil
+		
+		if ply:IsStuck() then
+			ply:Unstuck()
+		end
+
+		local wep = ply:GetActiveWeapon()
+		if IsValid(wep) and wep:GetClass() == "v_bonnie" then
+			wep:HandleAnimation("draw", 0.5)
+			wep.Controlling = false
+		end
+		
+		cooldown.Set(ply, "yoursmine", 55)
+		cooldown.Send(ply, "yoursmine")
+		
+		ply.fh_target_player = nil
+	end
+	
+	if IsValid(ent) then
+		ent:SetUseForceAngles(false)
+	end
 end
 
 function fh_random_yoursmine_target(ignore)
@@ -392,6 +431,15 @@ end
 hook.Add("FH_HandlePlayerGrab", "yoursmine_targets", function(ply, target)
 	if bonnies_targets[target] then
 		return false
+	end
+end)
+
+hook.Add("PlayerSpawn", "yoursmine_targets", function(ply)
+	if ply.fh_target_player then
+		if ply.lastFhMappedEnt then
+			pills.mapEnt(ply, ply.lastFhMappedEnt)
+		end
+		YoursMine_ForceStop(ply)
 	end
 end)
 

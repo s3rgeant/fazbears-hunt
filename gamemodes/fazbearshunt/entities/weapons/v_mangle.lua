@@ -22,6 +22,7 @@ SWEP.LandHold = 0.4
 function SWEP:SetupAnimations()
 	self:AddAnimation("scare")
 	self:AddAnimation("attack")
+	self:AddAnimation("bite")
 end
 
 function SWEP:HandleGroundAnim()

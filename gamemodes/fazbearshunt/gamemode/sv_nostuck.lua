@@ -103,8 +103,10 @@ local function QuickIsStuck(ent)
 	return trace.Hit
 end
 
-local function FindSafePosition(ply)
-    local startPos = ply:GetPos()
+local function FindSafePosition(ply, startPos)
+	if !startPos then
+		startPos = ply:GetPos()
+	end
     local directions = {
         Vector(12, 0, 0),
         Vector(-12, 0, 0),
@@ -113,6 +115,9 @@ local function FindSafePosition(ply)
         Vector(0, 0, 5),
         Vector(0, 0, -5),
     }
+	
+	local Hull_OBBmins = ply:OBBMins()
+	local Hull_OBBMaxs = ply:OBBMaxs()
 
     for i = 1, 12 do
         for _, dir in ipairs(directions) do
@@ -120,10 +125,12 @@ local function FindSafePosition(ply)
             local tr = util.TraceHull({
                 start = checkPos,
                 endpos = checkPos,
-                mins = ply:OBBMins(),
-                maxs = ply:OBBMaxs(),
+                mins = Hull_OBBmins,
+                maxs = Hull_OBBMaxs,
                 filter = ply
             })
+			
+			debugoverlay.Box( checkPos, Hull_OBBmins, Hull_OBBMaxs, 10, Color( 255, 255, 255, 10 ) )
 
             if not tr.Hit then
                 return checkPos
@@ -160,12 +167,23 @@ function PLAYER:IsStuck()
 	return IsPlayerStuck(self)
 end
 
-function PLAYER:Unstuck()
+function PLAYER:Unstuck(reservedPos)
 	local safePos = FindSafePosition(self)
 	
 	if safePos then
 		self:SetPos(safePos)
 		self:DropToFloor()
+		return
+	end
+	
+	if reservedPos and isvector(reservedPos) then
+		safePos = FindSafePosition(self, reservedPos)
+		
+		if safePos then
+			self:SetPos(safePos)
+			self:DropToFloor()
+			return
+		end
 	end
 end
 

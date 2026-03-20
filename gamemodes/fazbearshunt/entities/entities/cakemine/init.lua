@@ -79,12 +79,8 @@ function ENT:CheckForPlayers()
 				stats.Add(owner, "slowed_using_cupcake", 1)
 			end
 			
-			cooldown.Set(owner, "deploycake", 10)
-			
-			net.Start("fh_net_killer_change")
-			net.WriteString("mine")
-			net.WriteFloat(10)
-			net.Send(owner)
+			cooldown.Set(owner, "mine", 10)
+			cooldown.Send(owner, "mine")
             
             timer.Simple(7, function()
                 if IsValid(ply) then
@@ -144,15 +140,15 @@ function ENT:PhysgunPickup(ply, ent)
     return false
 end
 
-hook.Add("GravGunPickupAllowed", "fh_cakemine_pickup", function(player, entity)
+hook.Add("GravGunPickupAllowed", "fh_cakemine_pickup", function(ply, entity)
     if entity:GetClass() == "cakemine" then
         return false
     end
 end)
 
-hook.Add("GravGunPunt", "fh_cakemine_punt", function(player, entity)
+hook.Add("GravGunPunt", "fh_cakemine_punt", function(ply, entity)
     if entity:GetClass() == "cakemine" then
-        return false
+		entity:TakeDamage(100, ply)
     end
 end)
 

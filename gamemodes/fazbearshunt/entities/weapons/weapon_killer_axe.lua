@@ -14,7 +14,7 @@ SWEP.SlotPos = -5
 
 SWEP.ViewModel = Model("models/fh/items/v_killer_axe.mdl")
 SWEP.WorldModel = Model("models/weapons/w_killer_axe.mdl")
-SWEP.ViewModelFOV = 80
+SWEP.ViewModelFOV = 100
 SWEP.UseHands = true
 SWEP.DrawCrosshair = true
 SWEP.DrawAmmo = false
@@ -29,7 +29,7 @@ SWEP.Secondary.Ammo = "none"
 
 SWEP.Skin = 4
 
-SWEP.HitDelay = 0.35
+SWEP.HitDelay = 0.4
 
 SWEP.HitSize = {
 	Min = Vector( -24, -24, -16 ),
@@ -70,9 +70,8 @@ function SWEP:PrimaryAttack()
     self:SetNextIdle(CurTime() + 1)
 
 	self:SendWeaponAnim(ACT_MELEE_ATTACK1)
-	self.Owner:SetAnimation(PLAYER_ATTACK1)
 	
-	self.Owner:ViewPunch(Angle(-2,4,0))
+	self.Owner:ViewPunch(Angle(-2,-3,0))
 	
 	self:SetNextMeleeAttack( CurTime() + self.HitDelay )
 end
@@ -83,13 +82,15 @@ local PushSound_pills = {
 }
 
 function SWEP:DealDamage()
-	local ply = self.Owner
+	local ply = self:GetOwner()
 
 	if !IsValid( ply:GetNWEntity("MyEndoGrabber") ) then
 		ply:LagCompensation(true)
 	end
+	
+	ply:SetAnimation(PLAYER_ATTACK1)
 		
-	self.Owner:ViewPunch(Angle(1,-3,0))
+	ply:ViewPunch(Angle(1,3,0))
 
 	local tr = util.TraceLine({
 		start = ply:GetShootPos(),
@@ -112,6 +113,9 @@ function SWEP:DealDamage()
 	local target = tr.Entity
 	if not IsValid(target) then
 		ply:LagCompensation(false)
+		
+		self:SendWeaponAnim(ACT_VM_SWINGMISS)
+		
 		return
 	end
 		
@@ -135,6 +139,8 @@ function SWEP:DealDamage()
 			end
 		end
 	end
+	
+	self:SendWeaponAnim(ACT_VM_SWINGHIT)
 		
 	local targetIsAnimatronic = (target:IsPlayer() and target:IsAnimatronic())
 	local targetIsSurv = (target:IsPlayer() and target:IsSurvivor())
@@ -157,12 +163,14 @@ function SWEP:DealDamage()
 		fx:SetStart(tr.HitPos)
 		util.Effect("cball_explode", fx, true, true)
 		
-		if ent.formTable.name == "pill_endo02" then
-			if target._endoHoldingPlayer == ply then
-				endoRelease(target, true)
-	
-				cooldown.Set(target, 'grab', 6)
-				cooldown.Send(ply, "grab")
+		if IsValid(ent) then
+			if ent:GetPillName() == "pill_endo02" then
+				if target._endoHoldingPlayer == ply then
+					endoRelease(target, true)
+		
+					cooldown.Set(target, 'grab', 6)
+					cooldown.Send(ply, "grab")
+				end
 			end
 		end
 	end
@@ -199,6 +207,10 @@ function SWEP:DealDamage()
 	util.Effect("Impact_GMOD", effectData, true, true)
 
 	ply:LagCompensation(false)
+	
+	if target:IsPlayer() then
+		self:SendWeaponAnim(ACT_MELEE_ATTACK2)
+	end
 
 	if target:IsNPC() then
 		target:TakeDamage(99999, ply)
