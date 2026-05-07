@@ -160,7 +160,7 @@ hook.Add("PlayerStartVoice", "HideVoicePanels", function(ply)
 	
 	if !IsValid(listener) then return end
 	
-    if ply == listener and listener:Team() != 2701 and listener:Team() != TEAM_SPECTATOR then
+    if ply == listener and listener:Team() ~= 2701 and listener:Team() ~= TEAM_SPECTATOR then
         hook.Add("HUDPaint", "DrawLocalPlayerVoiceIcon", function()
             local x, y = (ScrW() / 2) - (64 / 2), ScrH() - 50 - (64 / 2)
 			local icon = (!listener:GetAudible() and listener:GetPill()) and speaker_mute or speaker
@@ -194,4 +194,10 @@ hook.Add("PlayerStartVoice", "HideVoicePanels", function(ply)
     end
 
     return false
+end)
+
+hook.Add("PlayerEndVoice", "HideVoicePanels", function(ply)
+    if ply == LocalPlayer() then
+        hook.Remove("HUDPaint", "DrawLocalPlayerVoiceIcon")
+    end
 end)

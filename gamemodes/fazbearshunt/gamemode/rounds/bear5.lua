@@ -1,4 +1,7 @@
 
+fh_bear5_killermask_last = CreateConVar( "fh_bear5_killermask_last", 0, {FCVAR_ARCHIVE, FCVAR_REPLICATED}, 
+	"Give Killer's Mask to last survivor during Bear5 round?." ),
+	
 fh.RegisterRoundType("bear5", 3, function()
 	local players = player.GetAll()
 		
@@ -16,18 +19,26 @@ fh.RegisterRoundType("bear5", 3, function()
 	RandomTaser()
 	
 	freezeAnimatronics()
-end, 20, 6, 24)
+end, 10, 6, 32)
 
 fh.AddRoundMusic(3, "music/bear_timer.wav")
 
 hook.Add( "EntityTakeDamage", "fh_bear_kill", function( ply, dmginfo )
+	if not ply:IsPlayer() then return end
+	if not ply:IsSurvivor() then return end
+	
 	local attacker = dmginfo:GetAttacker()
 	if IsValid(attacker) then
-		if ply:IsPlayer() and ply:IsSurvivor() and fh.GetRoundType() == 3 and attacker:IsPlayer() and attacker:IsAnimatronic() and 
-		(attacker:GetPill():GetPillName():match("bear5") == "bear5" or attacker:GetPill():GetPillName():match("fox4") == "fox4") then
+		if not attacker:IsPlayer() then return end
+		if not attacker:IsAnimatronic() then return end
+		
+		local pillName = attacker:GetPill():GetPillName()
+		
+		if fh.GetRoundType() == 3 and (pillName:find("bear5") or pillName:find("fox4")) then
 			local damageDealt = dmginfo:GetDamage()
 			
 			if damageDealt >= ply:Health() then
+				inventory_backup.SaveCurrentInventory(ply)
 				giveKillerSilent(ply, "bear5_clone", true)
 				
 				ply:NoPlayerCollide(0.25)
@@ -43,20 +54,24 @@ end )
 hook.Add( "DefibrillatorUse", "fh_bear5", function( wep, owner, ent )
 	--if fh.GetRoundType() == 3 then
 		if ent:IsPlayer() and IsValid(ent:GetPill()) and ent:GetPill():GetPillName() == "bear5_clone" then
-			pills.restore(ent:Nick(), true)
+			restoreAnimatronic(ent)
 			ent:NoPlayerCollide(0.25)
-			ent:SetTeam(TEAM_SURVIVOR)
+			ent:SetHealth(100)
 			
 			local effect2 = EffectData()
 			effect2:SetOrigin(ent:GetPos())
 			effect2:SetStart(ent:GetPos())
 			effect2:SetMagnitude(1)
 			effect2:SetEntity(ent)
-			util.Effect("teslaHitBoxes",effect2)
+			util.Effect("teslaHitBoxes",effect2, true, true)
+			
+			ent:EmitSound("defibl/bearling_revive.mp3")
 	
 			if CLIENT then
 				return
 			end
+			
+			inventory_backup.LoadBackup(ent)
 			
 			local spark = ents.Create("env_spark")
 			spark:SetPos(ent:GetPos())
@@ -76,6 +91,12 @@ hook.Add( "DefibrillatorUse", "fh_bear5", function( wep, owner, ent )
 				if IsValid(wep) and IsValid(owner) then
 					owner:StripWeapon(wep:GetClass())
 				end
+				
+				if ent:IsValid() then
+					if ent:IsStuck() then
+						ent:SetPos(owner:GetPos())
+					end
+				end
 			end)
 		end
 	--end
@@ -89,14 +110,6 @@ hook.Add("fh_postendgame", "bear5_win_dance", function(victory, anims)
 		if IsValid(win_location) and IsValid(win_camera) then
 			
 			if fh.GetRoundType() == 3 and bear_ply then
-					
-				hook.Add("SetupPlayerVisibility", "fh_pvs_wincamera", function(ply, viewent)
-					if !IsValid(win_camera) then
-						hook.Remove("SetupPlayerVisibility", "fh_pvs_wincamera")
-						return
-					end
-					AddOriginToPVS(win_camera:GetPos())
-				end)
 				
 				timer.Simple(0.5, function()
 					for _, p in player.Iterator() do
@@ -124,7 +137,7 @@ hook.Add("fh_postendgame", "bear5_win_dance", function(victory, anims)
 					net.WriteString("#music/pumpit.mp3")
 					net.Broadcast()
 					
-					timer.Simple(0.01, function()
+					timer.Simple(0, function()
 						ent:PillAnim("pumpit", true)
 						bear_ply:Lock()
 						ent.animLoop = true

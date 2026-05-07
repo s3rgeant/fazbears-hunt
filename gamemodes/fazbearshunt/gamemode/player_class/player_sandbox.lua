@@ -157,13 +157,28 @@ end
 local meta = FindMetaTable("Player")
 
 if meta then
+	function meta:GetJumpBoost()
+		return self:GetNWFloat("JumpBoost", 1)
+	end
 
-	function meta:SetJumpBoostMultiplier(mult)
-		self:SetNWFloat("JumpBoostMult", mult or 1)
+	function meta:SetJumpBoost(val)
+		self:SetNWFloat("JumpBoost", math.Clamp(val, 0, 1))
 	end
 	
 	function meta:GetJumpBoostMultiplier()
-		return self:GetNWFloat("JumpBoostMult", 0)
+		return self:GetNWFloat("JumpBoostMult", 1)
+	end
+
+	function meta:SetJumpBoostMultiplier(val)
+		self:SetNWFloat("JumpBoostMult", math.Clamp(val, 0, 1))
+	end
+
+	function meta:GetLastJumpTime()
+		return self:GetNWFloat("LastJumpTime", 0)
+	end
+
+	function meta:SetLastJumpTime(t)
+		self:SetNWFloat("LastJumpTime", t)
 	end
 
 	function meta:Crouch()
@@ -175,42 +190,65 @@ if meta then
 	end
 end
 
-function PLAYER:FinishMove( move )
+local function UpdateJumpBoost(ply)
+	local curTime = CurTime()
+	local lastJump = ply:GetLastJumpTime()
 
-	-- If the player has jumped this frame
-	if ( JUMPING ) then
-		-- Get their orientation
+	if lastJump == 0 then return end
+
+	local delta = curTime - lastJump
+	
+	local regen = delta * 0.10
+	
+	local newBoost = ply:GetJumpBoostMultiplier() + regen
+	
+	if newBoost >= 1 then
+		newBoost = 1
+		ply:SetLastJumpTime(0)
+	else
+		ply:SetLastJumpTime(curTime)
+	end
+
+	ply:SetJumpBoostMultiplier(newBoost)
+end
+
+function PLAYER:FinishMove(move)
+	local ply = self.Player
+
+	UpdateJumpBoost(ply)
+
+	if JUMPING then
+		local boost = ply:GetJumpBoostMultiplier()
+		boost = math.Clamp(boost - 0.08, 0, ply:GetJumpBoost())
+		
+		--print(boost)
+
+		if IsFirstTimePredicted() then
+			ply:SetJumpBoostMultiplier(boost)
+		end
+		ply:SetLastJumpTime(CurTime())
+
 		local forward = move:GetAngles()
 		forward.p = 0
 		forward = forward:Forward()
 
-		-- Compute the speed boost
+		local speedBoostPerc = ((not ply:Crouching()) and 0.5 or 0) * boost
 
-		-- HL2 normally provides a much weaker jump boost when sprinting
-		-- For some reason this never applied to GMod, so we won't perform
-		-- this check here to preserve the "authentic" feeling
-		local speedBoostPerc = (( ( not self.Player:Crouching() ) and 0.5 ) or 0.1) * self.Player:GetJumpBoostMultiplier()
-
-		local speedAddition = math.abs( move:GetForwardSpeed() * speedBoostPerc )
-		local maxSpeed = move:GetMaxSpeed() * ( 1 + speedBoostPerc )
+		local speedAddition = math.abs(move:GetForwardSpeed() * speedBoostPerc)
+		local maxSpeed = move:GetMaxSpeed() * (1 + speedBoostPerc)
 		local newSpeed = speedAddition + move:GetVelocity():Length2D()
 
-		-- Clamp it to make sure they can't bunnyhop to ludicrous speed
 		if newSpeed > maxSpeed then
-			speedAddition = speedAddition - ( newSpeed - maxSpeed )
+			speedAddition = speedAddition - (newSpeed - maxSpeed)
 		end
 
-		-- Reverse it if the player is running backwards
-		if move:GetVelocity():Dot( forward ) < 0 then
+		if move:GetVelocity():Dot(forward) < 0 then
 			speedAddition = -speedAddition
 		end
 
-		-- Apply the speed boost
-		move:SetVelocity( forward * speedAddition + move:GetVelocity() )
+		move:SetVelocity(forward * speedAddition + move:GetVelocity())
 	end
-
-	JUMPING = nil
-
+	JUMPING = false
 end
 
 player_manager.RegisterClass( "player_sandbox", PLAYER, "player_default" )

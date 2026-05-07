@@ -52,6 +52,8 @@ pills.register("pill_wgfreddy2",{
 			inn="tonormal",
 			scare="sscare",
 			rage="rage",
+		},
+		gestures={
 			melee="melee",
 		},
 	},
@@ -118,7 +120,6 @@ pills.register("pill_wgfreddy2",{
 	
 	onRemove=function(ent,formTable,ply)
 		if CLIENT then
-			hook.Remove("PreDrawHalos", "fh_wgfreddy_draw_halo")
 			hook.Remove("PostDrawTranslucentRenderables", "fh_draw_gfreddy_target_text")
 			return 
 		end
@@ -663,7 +664,7 @@ if CLIENT then
 			return false
 		end
 
-		if myself:GetPill() and myself:GetPill():GetPillName() == "pill_wgfreddy2" and !myself:GetNW2Bool("_OUTWORLD_gfreddy")
+		if IsValid(myself:GetPill()) and myself:GetPill():GetPillName() == "pill_wgfreddy2" and !myself:GetNW2Bool("_OUTWORLD_gfreddy")
 		or myself:GetNW2Bool("_OUTWORLD_gfreddy") and !killer:GetNW2Bool("_OUTWORLD_target") then
 			return false
 		end
@@ -719,58 +720,109 @@ if CLIENT then
 			end
 		end)
 	end)
+
+	local GFREDDY_COLOR   = Color(255, 200, 0, 255)
+	local function getGFreddyTarget(lp, rule)
+		if not lp:GetNW2Bool("_OUTWORLD_gfreddy") then return nil end
+
+		local outTarget = nil
+
+		for _, ply in player.Iterator() do
+			if IsValid(ply) and ply:GetNW2Bool("_OUTWORLD_target") then
+				outTarget = ply
+				break
+			end
+		end
+
+		if not IsValid(outTarget) then return nil end
+
+		local maxDist = tonumber(rule.render_max_dist) or math.huge
+		local maxDistSqr = maxDist > 0 and (maxDist * maxDist) or math.huge
+		local pos = outTarget:GetPos()
+		if !pos:ToScreen().visible then return end
+
+		local entry = OUTLINE.NormalizeEntry(rule, {
+			ent = outTarget,
+			outline_color = GFREDDY_COLOR
+		})
+
+		return entry and { entry } or nil
+	end
+
+	OUTLINE.RegisterRule("gfreddy_outworld_target", {
+		priority = 155,
+		render_max_dist = 9000,
+
+		outline_color = GFREDDY_COLOR,
+		outline_width = 1.5,
+		outline_min_dist = 0,
+		outline_max_dist = 0,
+
+		fill_color = GFREDDY_COLOR,
+		fill_min_dist = 0,
+		fill_max_dist = 0,
+
+		mode = OUTLINE_MODE_BOTH,
+		collect = getGFreddyTarget
+	})
+
+	local function getGFreddySelectie(lp, rule)
+		if not isfunction(fh_get_wgfreddy_target) then return nil end
+		if not lp.GetPill then return nil end
+
+		local pill = lp:GetPill()
+		if not IsValid(pill) or pill:GetPillName() ~= "pill_wgfreddy2" then return nil end
+		if lp:GetNW2Bool("_OUTWORLD_gfreddy") then return nil end
+
+		local target = fh_get_wgfreddy_target(lp)
+		if not IsValid(target) then return nil end
+
+		local maxDist = tonumber(rule.render_max_dist) or math.huge
+		local maxDistSqr = maxDist > 0 and (maxDist * maxDist) or math.huge
+		local pos = target:GetPos()
+		if !pos:ToScreen().visible then return nil end
+
+		local entry = OUTLINE.NormalizeEntry(rule, {
+			ent = target,
+			outline_color = GFREDDY_COLOR
+		})
+
+		return entry and { entry } or nil
+	end
+
+	OUTLINE.RegisterRule("gfreddy_selecting", {
+		priority = 150,
+		render_max_dist = 600,
+
+		outline_color = GFREDDY_COLOR,
+		outline_width = 2,
+		outline_min_dist = 0,
+		outline_max_dist = 0,
+		
+		fill_color = GFREDDY_COLOR,
+		fill_min_dist = 0,
+		fill_max_dist = 0,
+
+		mode = OUTLINE_MODE_BOTH,
+		collect = getGFreddySelectie
+	})
 	
 	local function fh_wgfreddy_selecting_halo()
-		hook.Add("PreDrawHalos", "fh_wgfreddy_draw_halo", function()
+		hook.Add("PostDrawTranslucentRenderables", "fh_draw_gfreddy_target_text", function()
 			local ply = LocalPlayer()
 			if not IsValid(ply) then return end
+
+			local target = fh_get_wgfreddy_target(ply)
+			if not IsValid(target) then return end
 		
-			local eyePos = ply:EyePos()
-			local aimDir = ply:GetAimVector()
+			local pos = target:GetPos() + Vector(0, 0, 85)
+			local ang = LocalPlayer():EyeAngles()
+			ang:RotateAroundAxis(ang:Up(), -90)
+			ang:RotateAroundAxis(ang:Forward(), 90)
 		
-			local closestPlayer = nil
-			local closestDist = math.huge
-			local maxDistToLine = 50
-			local maxRadius = 300
-		
-			for _, target in player.Iterator() do
-				if target == ply or !IsValid(target) or !target:Alive() or target:Team() != TEAM_SURVIVOR then continue end
-				
-				if target:GetGFreddyImmune() then continue end
-		
-				local targetPos = target:GetPos() + Vector(0, 0, 40)
-				local toTarget = targetPos - eyePos
-				local projLength = toTarget:Dot(aimDir)
-				local closestPoint = eyePos + aimDir * projLength
-		
-				local distToLine = targetPos:Distance(closestPoint)
-				local distToPlayer = ply:GetPos():Distance(target:GetPos())
-		
-				if distToLine <= maxDistToLine and distToPlayer <= maxRadius then
-					if distToLine < closestDist then
-						closestDist = distToLine
-						closestPlayer = target
-					end
-				end
-			end
-		
-			if IsValid(closestPlayer) then
-				halo.Add({closestPlayer}, Color(255, 200, 0), 2, 2, 1, true, true)
-				hook.Add("PostDrawTranslucentRenderables", "fh_draw_gfreddy_target_text", function()
-					if not IsValid(closestPlayer) then return end
-				
-					local pos = closestPlayer:GetPos() + Vector(0, 0, 85)
-					local ang = LocalPlayer():EyeAngles()
-					ang:RotateAroundAxis(ang:Up(), -90)
-					ang:RotateAroundAxis(ang:Forward(), 90)
-				
-					cam.Start3D2D(pos, ang, 0.1)
-						draw.SimpleText(language.GetPhrase("fazhunt.wgfreddy.press_r"), "timerFontBelow", 0, 0, Color(255, 200, 0), TEXT_ALIGN_CENTER, TEXT_ALIGN_CENTER)
-					cam.End3D2D()
-				end)
-			else
-				hook.Remove("PostDrawTranslucentRenderables", "fh_draw_gfreddy_target_text")
-			end
+			cam.Start3D2D(pos, ang, 0.1)
+				draw.SimpleText(language.GetPhrase("fazhunt.wgfreddy.press_r"), "timerFontBelow", 0, 0, Color(255, 200, 0), TEXT_ALIGN_CENTER, TEXT_ALIGN_CENTER)
+			cam.End3D2D()
 		end)
 	end
 	
@@ -783,7 +835,6 @@ if CLIENT then
 	net.Receive("fh_wgfreddy_selecting_halo", fh_wgfreddy_selecting_halo)
 	
 	net.Receive("fh_wgfreddy_stop_selection_halo", function()
-		hook.Remove("PreDrawHalos", "fh_wgfreddy_draw_halo")
 		hook.Remove("PostDrawTranslucentRenderables", "fh_draw_gfreddy_target_text")
 	end)
 	
@@ -953,7 +1004,6 @@ if CLIENT then
 		
 		fh_cl_draw_plushies()
 		
-		hook.Remove("PreDrawHalos", "fh_wgfreddy_draw_halo")
 		hook.Remove("PostDrawTranslucentRenderables", "fh_draw_gfreddy_target_text")
 		
 		myself:ScreenFade(SCREENFADE.IN, Color(0,0,0), 4, 0.5)
@@ -970,9 +1020,6 @@ if CLIENT then
             DOFModeHack(true)
             return true
         end)
-		hook.Add( "PreDrawHalos", "fh_wgfreddy_halo", function()
-			halo.Add({target}, Color(255, 200, 0, 255), 0.5, 0.5, 1, true, true)
-		end)
 
 		local wgf_target_orb = Material("vgui/wgfreddy_target_orb.png", "noclamp smooth")
 		hook.Add("HUDPaint", "fh_draw_wgfreddy_target_orb", function()
@@ -997,13 +1044,11 @@ if CLIENT then
 		local myself = LocalPlayer()
 		
 		startDrawingEveryone()
-		hook.Remove("PreDrawHalos", "fh_wgfreddy_draw_halo")
 		hook.Remove("PostDrawTranslucentRenderables", "fh_draw_gfreddy_target_text")
 		
 		myself:ScreenFade(SCREENFADE.IN, Color(0,0,0), 1, 0.5)
         hook.Remove("RenderScreenspaceEffects", "merc_grayscale_hook")
         hook.Remove("NeedsDepthPass", "merc_grayscale_depth")
-		hook.Remove( "PreDrawHalos", "fh_wgfreddy_halo")
 		hook.Remove("HUDPaint", "fh_draw_wgfreddy_target_orb")
 		
 		fh_cl_dontdraw_plushies()
@@ -1012,9 +1057,7 @@ if CLIENT then
 	hook.Add( "PostCleanupMap", "fh_pill_wgfreddy_reset", function( name )
         hook.Remove("RenderScreenspaceEffects", "merc_grayscale_hook")
         hook.Remove("NeedsDepthPass", "merc_grayscale_depth")
-		hook.Remove( "PreDrawHalos", "fh_wgfreddy_halo")
 		hook.Remove("HUDPaint", "fh_draw_wgfreddy_target_orb")
-		hook.Remove("PreDrawHalos", "fh_wgfreddy_draw_halo")
 		hook.Remove("PostDrawTranslucentRenderables", "fh_draw_gfreddy_target_text")
 		hook.Remove("SetupWorldFog", "WhiteFogEffect")
 		hook.Remove("SetupSkyboxFog", "WhiteFogEffectSkybox")
@@ -1076,7 +1119,7 @@ local function cancel_outworld_target(ply)
 		net.Send(ply)
 	end
 
-	ply:SetJumpBoostMultiplier(getScaledJumpBoost())
+	ply:SetJumpBoost(getScaledJumpBoost())
 	ply:SetRunSpeed(420)
 	ply:SetWalkSpeed(200)
 	ply:SetCollisionGroup(COLLISION_GROUP_PLAYER)
@@ -1229,7 +1272,7 @@ function start_outworld(ply, ent, target)
 	--target:SetCollisionGroup(COLLISION_GROUP_PLAYER_MOVEMENT)
 	target:SetRunSpeed(240)
 	target:SetWalkSpeed(120)
-	target:SetJumpBoostMultiplier(0)
+	target:SetJumpBoost(0)
 	target:SetFOV(75, 0, game.GetWorld())
 	
 	target._LastGFPlushie = CurTime()
@@ -1594,7 +1637,7 @@ if SERVER then
 				net.WriteString('fnaf2/gfreddy/gfreddy_rage_start.wav')
 				net.Send({ply, wgfreddy})
 				
-				ply:SetJumpBoostMultiplier(getScaledJumpBoost())
+				ply:SetJumpBoost(getScaledJumpBoost())
 				ply:SetRunSpeed(420)
 				ply:SetWalkSpeed(200)
 				

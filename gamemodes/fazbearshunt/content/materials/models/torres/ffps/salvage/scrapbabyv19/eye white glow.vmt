@@ -1,0 +1,8 @@
+"UnlitGeneric"
+{
+	"$basetexture" "models/torres/ffps/salvage/scrapbabyv19/eyewhite"
+        $color "19"
+        $nodecal 1
+        $model 1
+
+}

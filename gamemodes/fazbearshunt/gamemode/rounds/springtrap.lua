@@ -54,7 +54,7 @@ hook.Add("fh_postendgame", "springtrap_win_dance", function(victory, anims)
 					net.WriteString("#music/rampage.wav")
 					net.Broadcast()
 					
-					timer.Simple(0.01, function()
+					timer.Simple(0, function()
 						ent:PillAnim("egypt", true)
 						springtrap_ply:Lock()
 						ent.animLoop = true

@@ -21,6 +21,7 @@ recursive_include("fazbearshunt/gamemode/utils/")
 recursive_include("fazbearshunt/gamemode/")
 recursive_include("fazbearshunt/gamemode/interface/")
 recursive_include("fazbearshunt/gamemode/mount/")
+recursive_include("fazbearshunt/gamemode/events/")
 
 function getTeam(team)
 	local teamname = language.GetPhrase("fazhunt.survivors_team")
@@ -63,16 +64,14 @@ hook.Add("HUDDrawTargetID", "HidePlayerNames", function()
 	end
 end)
 
-hook.Add("SetupMove", "CanMove", function(ply) -- иронично не работает)
-	if ply:Team() == 2701 and ply:IsFlagSet(FL_FROZEN) then
-		return true
+hook.Add( "StartCommand", "fh_cantattack", function( ply, cmd )
+	if ply:IsAnimatronic() and !GetGlobal2Bool("roundActive") and GetGlobal2Bool("gameOn") then
+		cmd:ClearMovement()
+		cmd:RemoveKey(IN_ATTACK)
+		cmd:RemoveKey(IN_ATTACK2)
+		cmd:RemoveKey(IN_RELOAD)
+		cmd:RemoveKey(IN_JUMP)
 	end
-end)
-
-hook.Add("PlayerEndVoice", "HideVoicePanels", function(ply)
-    if ply == LocalPlayer() then
-        hook.Remove("HUDPaint", "DrawLocalPlayerVoiceIcon")
-    end
 end)
 
 hook.Add("InitPostEntity", "fh_player_fullconnect", function(ent)
@@ -127,21 +126,6 @@ net.Receive("fh_top_stats", function()
         )
     end
 end)
-	
-net.Receive("JumpscareLight", function()
-	local ply = LocalPlayer()
-	local light = DynamicLight(ply:EntIndex())
-	if light then
-		light.pos = ply:LocalToWorld(ply:OBBCenter())
-		light.r = 255
-		light.g = 255
-		light.b = 255
-		light.brightness = 1.3
-		light.Decay = 20
-		light.Size = 128
-		light.DieTime = CurTime() + 1.6
-	end
-end)
 
 hook.Add( "OnEntityCreated", "fh_RagdollColor", function( ent )
 	if ent:GetClass() == "prop_ragdoll" then
@@ -152,13 +136,6 @@ hook.Add( "OnEntityCreated", "fh_RagdollColor", function( ent )
 		end
 	end
 end )
-
-net.Receive("ragColor", function(len)
-	local rag = Entity(net.ReadInt(16))
-	local col = net.ReadVector()
-
-	rag.GetPlayerColor = function() return col end
-end)
 
 net.Receive("fh_set_calcview_entity", function(len)
 	local entity = net.ReadEntity()
@@ -236,36 +213,6 @@ hook.Add("OnPlayerChat", "fh_chat_message", function(ply, text, p_team, dead)
     )
 
     return true
-end)
-
-local lastHeld
-
-hook.Add("PreDrawEffects", "fh_endo_translucent_heldprop", function()
-    local ply = LocalPlayer()
-    if not IsValid(ply) then return end
-
-    local heldEnt = ply:GetNW2Entity("HeldEnt")
-
-    if lastHeld ~= heldEnt then
-        if IsValid(lastHeld) then
-            lastHeld.RenderOverride = nil
-        end
-
-        if IsValid(heldEnt) then
-            heldEnt.RenderOverride = function(self)
-				if heldEnt:GetRenderGroup() == 8 then
-					render.OverrideColorWriteEnable( true, false )
-					self:DrawModel()
-					render.OverrideColorWriteEnable( false, false )
-				end
-                render.SetBlend(0.5)
-                self:DrawModel()
-                render.SetBlend(1)
-            end
-        end
-
-        lastHeld = heldEnt
-    end
 end)
 
 local halloweenColorCorrection = {

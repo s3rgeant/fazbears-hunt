@@ -502,19 +502,6 @@ teamColors = {
 	[TEAM_SURVIVOR] = Color(84, 163, 255)
 }
 
-function GetScaledPlayerValue(countMin, countMax, valueMin, valueMax)
-    local count = player.GetCount()
-
-    if count <= countMin then
-        return valueMin
-    elseif count >= countMax then
-        return valueMax
-    else
-        local ratio = (count - countMin) / (countMax - countMin)
-        return valueMin + ratio * (valueMax - valueMin)
-    end
-end
-
 utf8.sub = function(str, startChar, endChar)
     local startByte = utf8.offset(str, startChar)
     local endByte = utf8.offset(str, endChar + 1) and (utf8.offset(str, endChar + 1) - 1) or #str
@@ -583,7 +570,6 @@ end)
 local meta = FindMetaTable("Player")
 
 if meta then
-
 	function meta:IsSurvivor()
 		return self:Alive() and self:Team() == TEAM_SURVIVOR and !IsValid(self:GetPill())
 	end
@@ -596,7 +582,6 @@ end
 local meta = FindMetaTable("Entity")
 
 if meta then
-	
 	function meta:IsInvisible()
 		return self:GetMaterial() == "models/null" or self:GetNoDraw()
 	end

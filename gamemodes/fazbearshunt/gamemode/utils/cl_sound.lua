@@ -97,18 +97,18 @@ net.Receive("fh_3d_sound_play", function()
 	end)
 end)
 
+	-- дабы не было двойных шагов из-за того что мы установили игроку модельку аниматроника
+hook.Add("PlayerFireAnimationEvent", "fh_skip_anim_sounds", function(ply, pos, ang, event, str)
+	if IsValid(ply:GetPill()) then
+		return true
+	end
+end)
+
 hook.Add("EntityEmitSound", "fh_silent_anims", function(data)
 	local ply = LocalPlayer()
 	if !IsValid(ply) then return end
 	
 	local ent = data.Entity
-	
-	-- дабы не было двойных шагов из-за того что мы установили игроку модельку аниматроника
-	if IsValid(ent) and ent:IsPlayer() then
-		if IsValid(ent:GetPill()) and data.OriginalSoundName:match("foot") == "foot" then
-			return false
-		end
-	end
 	
 	if IsValid(ent) and ent:GetClass() == "pill_costume" then
 		local handler, dt = hook.Run("PillCostumeEmitSound", data)

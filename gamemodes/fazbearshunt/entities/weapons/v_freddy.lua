@@ -22,3 +22,18 @@ function SWEP:SetupAnimations()
 	self:AddAnimation("deploy")
 	self:AddAnimation("draw")
 end
+
+-- крутотень
+--[[
+function SWEP:GetViewModelPosition( pos, ang )
+	local ply = self:GetOwner()
+	
+	local right = ply:EyeAngles():Right()
+	
+	local vel = ply:GetVelocity()
+	local moveY = right:Dot(vel)
+	
+	ang = ang + Angle(0,moveY*-0.1,0)
+	return pos, ang
+end
+]]--

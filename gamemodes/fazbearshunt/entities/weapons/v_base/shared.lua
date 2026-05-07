@@ -91,6 +91,11 @@ function SWEP:HandleAnimation(anim, hold, force)
 	
 	if hold and hold > 0 then
 		self.HoldAnim = CurTime() + hold
+	elseif hold == -1 then
+		local seq = self:SelectWeightedSequence( act )
+		local len = self:SequenceDuration( seq )
+		
+		self.HoldAnim = CurTime() + len
 	end
 end
 
@@ -101,7 +106,7 @@ end
 function SWEP:Think()
     if SERVER then
 		local curtime = CurTime()
-        local ply = self.Owner
+        local ply = self:GetOwner()
         local speed = ply:GetAbsVelocity():Length()
         local onGround = ply:OnGround()
         local runSpeed = ply:GetRunSpeed()
@@ -109,6 +114,9 @@ function SWEP:Think()
         local crouchSpeed = ply:GetCrouchedWalkSpeed()
 		
         if self.HoldAnim > 0 and curtime < self.HoldAnim then
+			if ply:GetViewModel():IsSequenceFinished() and self.CurAnim and self.CurAnim ~= "" and self.Animations[self.CurAnim .. "-loop"] then
+				self:HandleAnimation(self.CurAnim .. "-loop")
+			end
             return
         end
         

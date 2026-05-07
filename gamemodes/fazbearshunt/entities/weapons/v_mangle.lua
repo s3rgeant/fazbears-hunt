@@ -31,16 +31,5 @@ function SWEP:HandleGroundAnim()
 	return ply:GetNWBool("_MangleHooked")
 end
 
-local lastmangle_CL_viewoffset = nil
-function SWEP:CalcViewModelView( vm, oldpos, oldangles, pos, angles )
-	local ply = self.Owner
-	if !lastmangle_CL_viewoffset then
-		lastmangle_CL_viewoffset = ply:GetCurrentViewOffset()
-	end
-	
-	local plypos = ply:GetPos()
-	
-	lastmangle_CL_viewoffset = LerpVector(FrameTime() * 10, lastmangle_CL_viewoffset, ply:GetCurrentViewOffset())
-
-	return plypos + lastmangle_CL_viewoffset, angles
-end
+-- не, не нахуй. и так нормально выглядит.
+--function SWEP:GetViewModelPosition( pos, ang )

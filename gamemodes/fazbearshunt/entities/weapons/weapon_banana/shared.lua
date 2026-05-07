@@ -61,10 +61,10 @@ function SWEP:PrimaryAttack()
 	if SERVER then
 		
 		local Banana = ents.Create("banana_peel")
-		--Banana.Owner = owner
 		Banana:SetOwner(owner)
 		owner:LagCompensation(true)
-		Banana:SetPos(owner:GetShootPos() + owner:GetAimVector() * 25)
+		local pos = owner:GetShootPos()
+		Banana:SetPos(pos + owner:GetAimVector() * 25)
 		Banana:Spawn()
 		Banana:Activate()
 		
@@ -75,14 +75,12 @@ function SWEP:PrimaryAttack()
 		owner:LagCompensation(false)
 
 		self:SendWeaponAnim(ACT_VM_THROW)
-
-		local function C()
+		
+		timer.Simple(0.2,function()
 			if IsValid(self) then
 				self:SendWeaponAnim(ACT_VM_DRAW)
 			end
-		end
-		
-		timer.Simple(0.2,C)
+		end)
 		
 		self:TakePrimaryAmmo(1)
 		self:SetNextPrimaryFire(CurTime() + self.Primary.Delay)

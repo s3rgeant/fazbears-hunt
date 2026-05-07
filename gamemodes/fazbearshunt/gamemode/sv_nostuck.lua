@@ -1,3 +1,5 @@
+fhspawns = fhspawns or {}
+
 local spawnOffset = 70
 local maxAttempts = 20
 local hullMin = Vector(-16, -16, 0)
@@ -10,16 +12,39 @@ hook.Add("PlayerSelectSpawn", "PreventPlayerStuckSpawn", function(ply)
 
     local spawns = {}
 
-    if ply:Team() == 2701 or ply:Team() == 27 or team.GetName(ply:Team()):lower():match("animatronic") then
-        spawns = ents.FindByClass("info_player_killer") -- кастомные спавны для аниматроников
-        if #spawns == 0 then
-            spawns = ents.FindByClass("info_player_start")
-            spawns = updateSpawnList(spawns)
+    if ply:IsAnimatronic() or team.GetName(ply:Team()):lower():match("animatronic") then
+		local anim_spawns = ents.FindByClass("info_player_killer") -- кастомные спавны для аниматроников
+		
+        if #anim_spawns ~= 0 then
+			local foundSpawns = false
+			
+			for _, ent in ipairs(anim_spawns) do
+				local pill = ply:GetPill()
+				if !IsValid(pill) then continue end
+			
+				if ent.AnimType and pill:GetPillName() == ent.AnimType then
+					table.insert(spawns, ent)
+					foundSpawns = true
+				end
+			end
+			
+			if #spawns == 0 then
+				for _, ent in ipairs(anim_spawns) do
+					if !ent.AnimType or ent.AnimType:len() < 1 then
+						table.insert(spawns, ent)
+					end
+				end
+			end
+			
+			if #spawns == 0 then
+				spawns = anim_spawns
+			end
         end
     end
 
     if #spawns == 0 then
         spawns = ents.FindByClass("info_player_start")
+        spawns = updateSpawnList(spawns)
     end
 
     if #spawns == 0 then
@@ -28,6 +53,23 @@ hook.Add("PlayerSelectSpawn", "PreventPlayerStuckSpawn", function(ply)
 	
 	return spawns[math.random(#spawns)]
 end)
+
+local hasSpawns = {}
+hook.Add("EntityKeyValue", "rember_spawns", function(ent)
+	if ent:GetClass() == "info_player_killer" then
+		if ent.AnimType then
+			if !hasSpawns[ent.AnimType] then hasSpawns[ent.AnimType] = {} end
+			hasSpawns[ent.AnimType][ent] = true
+		end
+	end
+end)
+
+function fhspawns.GetSpawnsFor(name)
+	if hasSpawns[name] then
+		return hasSpawns[name]
+	end
+	return nil
+end
 
 function updateSpawnList(tab)
 	spws = tab
@@ -77,10 +119,10 @@ local function IsPlayerStuck(ply)
         mins = ply:OBBMins(),
         maxs = ply:OBBMaxs(),
 		filter = function(ent)
-			return ent != ply and !table.HasValue(ignoredCollisionGroups, ent:GetCollisionGroup()) and 
+			return ent ~= ply and !table.HasValue(ignoredCollisionGroups, ent:GetCollisionGroup()) and 
 			
-				(ent:IsPlayer() and ent:GetCollisionGroup() != COLLISION_GROUP_NONE 
-				and ply:GetCollisionGroup() != COLLISION_GROUP_PASSABLE_DOOR) and
+				(ent:IsPlayer() and ent:GetCollisionGroup() ~= COLLISION_GROUP_NONE 
+				and ply:GetCollisionGroup() ~= COLLISION_GROUP_PASSABLE_DOOR) and
 			
 				(ent:IsPlayer() and ent:GetCollisionGroup() ~= COLLISION_GROUP_PLAYER_MOVEMENT)
 				
@@ -137,6 +179,12 @@ local function FindSafePosition(ply, startPos)
             end
         end
     end
+	
+	local area = navmesh.GetNearestNavArea( startPos, nil, nil, nil, false )
+	
+	if IsValid(area) then
+		return area:GetCenter()
+	end
 
     return nil
 end
@@ -172,7 +220,9 @@ function PLAYER:Unstuck(reservedPos)
 	
 	if safePos then
 		self:SetPos(safePos)
-		self:DropToFloor()
+		if !self:GetNWBool("_MangleHooked") then
+			self:DropToFloor()
+		end
 		return
 	end
 	
@@ -181,7 +231,9 @@ function PLAYER:Unstuck(reservedPos)
 		
 		if safePos then
 			self:SetPos(safePos)
-			self:DropToFloor()
+			if !self:GetNWBool("_MangleHooked") then
+				self:DropToFloor()
+			end
 			return
 		end
 	end

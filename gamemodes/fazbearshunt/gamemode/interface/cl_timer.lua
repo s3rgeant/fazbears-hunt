@@ -81,9 +81,9 @@ end)
 -- #### ТАЙМЕР!!!
 net.Receive("fh_start_lobby_timer", function()
     local timerDuration = net.ReadFloat()
-    timerTitle = language.SafeGetPhrase("fazhunt.generic.startup")
 	local soundtoplay = net.ReadString()
     
+    timerTitle = language.GetPhrase("fazhunt.generic.startup")
     timerMode = "lobby"
 	
     postlobbytimer_alpha = 0
@@ -120,7 +120,7 @@ net.Receive("fh_start_game_timer", function()
     local startupDuration = net.ReadFloat()
 	local soundtoplay = net.ReadString()
 	
-    timerTitle = language.SafeGetPhrase("fazhunt.generic.round") .. ' ' .. net.ReadString()
+    timerTitle = language.GetPhrase("fazhunt.generic.round") .. ' ' .. net.ReadString()
 	
 	timerTotal = timerDuration
     

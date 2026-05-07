@@ -25,7 +25,6 @@ end
 local fh_pill_update_rate = CreateConVar( "fh_pill_update_rate", 0, { FCVAR_ARCHIVE, FCVAR_REPLICATED}, "Increasing this will result in better performance with a lot of pill_costume running. (Animation errors might occure)" )
 
 function ENT:Initialize()
-	self.usedLayers = {}
     self.formTable = pills.getPillTable(self:GetPillForm())
     local ply = self:GetPillUser()
 
@@ -46,9 +45,11 @@ function ENT:Initialize()
     ply:SetHullDuck(-Vector(hull.x / 2, hull.y / 2, 0), Vector(hull.x / 2, hull.y / 2, hull.z - duckBy or 0))
 	ply:SetMaterial("models/null")
 	ply:DrawShadow(false)
-	--ply:SetNoDraw(true)
+	
     --Do this so weapon equips are not blocked
-    pills.mapEnt(ply, nil)
+	if SERVER then
+		pills.mapEnt(ply, nil)
+	end
 		
 	hook.Run("PillApply", ply, self)
 	
@@ -304,6 +305,16 @@ function ENT:Initialize()
                 end
             end
         end
+		
+		if !self.usedLayers then self.usedLayers = {} end
+		if self.formTable.anims and self.formTable.anims.gestures then
+			for k,v in ipairs(self.formTable.anims.gestures) do
+				local seq = self:LookupSequence(v)
+				
+				id = self:AddLayeredSequence(seq, priority or 1)
+				self.usedLayers[seq] = id
+			end
+		end
 
         if self.formTable.cloak then
             self:SetCloakLeft(self.formTable.cloak.max)
@@ -345,7 +356,7 @@ function ENT:OnRemove()
         self:PillLoopStopAll()
     end
 
-    local newType, newName = pills.unmapEnt(self:GetPillUser(), self)
+    local newType, newName = pills.unmapEnt(ply, self)
 
     if newType ~= "ply" and IsValid(ply) then
         ply:ResetHull()
@@ -364,7 +375,7 @@ function ENT:Think()
     local vel = ply:GetVelocity():Length()
 
     if SERVER then
-		local anims = table.Copy(self.formTable.anims.default or {})
+		local anims = table.Copy(self.formTable.anims["default"] or {})
 
 		if not self.anim or not anims[self.anim] then
 			self.animFreeze, self.ignoreFreeze, self.animStart = nil, nil, nil
@@ -695,13 +706,15 @@ if SERVER then
 	
     function ENT:PillGesture(name, priority, rate, blendin, out, start)
         local ply = self:GetPillUser()
-        if not IsValid(self) then return end
-        local anims = table.Copy(self.formTable.anims.default or {})
+        if not IsValid(ply) then return end
+        local anims = table.Copy(self.formTable.anims.gestures or {})
         local gesture = anims[name]
 		if !gesture then return end
 		
 		local seq = self:LookupSequence(gesture)
 		local id = nil
+		
+		if !self.usedLayers then self.usedLayers = {} end
 		
 		if self.usedLayers[seq] then
 			id = self.usedLayers[seq]
@@ -709,11 +722,10 @@ if SERVER then
 		if !id then
 			id = self:AddLayeredSequence(seq, priority or 1)
 			self.usedLayers[seq] = id
-			//print('созда')
 		else
-			//print('использа')
 			self:SetLayerSequence(id, seq)
 		end
+		self:SetLayerPriority(id, priority or 1)
 		self:SetLayerPlaybackRate(id, (rate or 1))
 		self:SetLayerCycle(id, start or 0)
 		
@@ -731,14 +743,16 @@ if SERVER then
 	
     function ENT:PillStopGesture(name)
         local ply = self:GetPillUser()
-        if not IsValid(self) then return end
-        local anims = table.Copy(self.formTable.anims.default or {})
+        if not IsValid(ply) then return end
+        local anims = table.Copy(self.formTable.anims['gestures'] or {})
         local gesture = anims[name]
 		
 		if !gesture then return end
 		
 		local seq = self:LookupSequence(gesture)
 		local id = nil
+		
+		if !self.usedLayers then self.usedLayers = {} end
 		
 		if self.usedLayers[seq] then
 			id = self.usedLayers[seq]
@@ -934,8 +948,8 @@ function ENT:ResetSpeed()
 end
 
 function ENT:ReplaceAnimation(old, new)
-	if self.formTable.anims.default ~= nil then
-		self.formTable.anims.default[old] = new
+	if self.formTable.anims['default'] ~= nil then
+		self.formTable.anims['default'][old] = new
 	end
 end
 
@@ -991,7 +1005,6 @@ function ENT:Draw()
 	end
 	
 	--self:FrameAdvance()
-
 	ply:RemoveAllDecals()
 	
 	if self:GetNoDraw() then
@@ -1034,7 +1047,7 @@ function ENT:Draw()
 	self:DrawModel()
 	self.IsDrawn = true
 	
-	if ply == LocalPlayer() and !invisible then
+	if ply == LocalPlayer() and not invisible then
 		self:DrawShadow(true)
 	end
 end
@@ -1050,12 +1063,12 @@ hook.Add("PrePlayerDraw", "fh_pill_costume_mirrors", function(ply)
     if not IsValid(ent) then return end
     if ent.IsDrawn or ent:GetNoDraw() or ent:GetMaterial() == "models/null" then return end
 
-    if not IsValid(ent.mirrorPill) then
-        local m = ClientsideModel(ent:GetModel(), RENDERGROUP_OPAQUE)
+    if not ent.mirrorPill or not IsValid(ent.mirrorPill) then
+        local m = ClientsideModel(ent:GetModel(), RENDERMODE_NORMAL)
         if IsValid(m) then
             m:SetParent(ent)
             m:SetSkin(ent:GetSkin())
-            m:AddEffects(EF_BONEMERGE)
+            m:AddEffects(bit.bor(EF_BONEMERGE, EF_BONEMERGE_FASTCULL))
             m:SetNoDraw(true)
             ent.mirrorPill = m
 
@@ -1097,6 +1110,6 @@ hook.Add("PrePlayerDraw", "fh_pill_costume_mirrors", function(ply)
     if IsValid(cm) then
 		cm:SetParent(ent)
         cm:SetModel(ent:GetModel())
-        cm:DrawModel()
+		cm:DrawModel()
     end
 end)

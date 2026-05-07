@@ -62,10 +62,11 @@ pills.register("pill_wbonnie2",{
 			glide="jumpidle",
 			land="jumpend",
 			scare="scare",
-			point="point",
 			ability="yoursmine",
 			stun="stun",
-			
+		},
+		gestures={
+			point="point",
 			melee="melee",
 			negative="negative",
 			positive="positive",
@@ -77,8 +78,6 @@ pills.register("pill_wbonnie2",{
 		ducked=80,
 	},
 	sounds={
-		gs="fnaf2/stareshort.wav",
-		loop_stare="fnaf2/with_s2_loop2.wav",
 		scream="fnaf2/bonniescream.wav",
 		melee="fnaf2/xscream2.wav",
 		jump="jump.mp3",
@@ -124,7 +123,7 @@ pills.register("pill_wbonnie2",{
 	killCondition=function(ply,ent)
 		local target = FindNearestPlayer(ply:EyePos(), 125, ply, 36)
 		
-		if IsValid(target) and !target:IsInvisible() then
+		if IsValid(target) and !target:IsInvisible() and !target:IsJumpscared() then
 			return true
 		end
 		return false
@@ -206,21 +205,16 @@ function YoursMine_Start(ply, target)
 	if not IsValid(target) then return end
 	
 	local ent = ply:GetPill()
-	--local prev_viewoffset, prev_viewoffset_duck = ply:GetViewOffset(), ply:GetViewOffsetDucked()
 	
 	if !bonnieSaveStats[ply] then bonnieSaveStats[ply] = {} end
 	
 	bonnieSaveStats[ply]["prev_viewoffset"] = ply:GetViewOffset()
 	bonnieSaveStats[ply]["prev_viewoffset_duck"] = ply:GetViewOffsetDucked()
 	
-	--local prev_hull, prev_hull2 = ply:GetHull()
-	--local prev_hull_duck, prev_hull_duck2 = ply:GetHullDuck()
-	--local prev_scale = ply:GetModelScale()
 	bonnieSaveStats[ply]["prev_hull"], bonnieSaveStats[ply]["prev_hull2"] = ply:GetHull()
 	bonnieSaveStats[ply]["prev_hull_duck"], bonnieSaveStats[ply]["prev_hull_duck2"] = ply:GetHullDuck()
 	bonnieSaveStats[ply]["prev_scale"] = ply:GetModelScale()
 	
-	--local prev_run, prev_walk, prev_duck, prev_jump = ply:GetRunSpeed(), ply:GetWalkSpeed(), ply:GetDuckSpeed(), ply:GetJumpPower()
 	bonnieSaveStats[ply]["prev_run"] = ply:GetRunSpeed()
 	bonnieSaveStats[ply]["prev_walk"] = ply:GetWalkSpeed()
 	bonnieSaveStats[ply]["prev_duck"] = ply:GetDuckSpeed()
@@ -352,7 +346,19 @@ function YoursMine_ForceStop(ply, target, ent)
 				target:SetPos(endpos)
 			end
 			if ply:Crouching() then
-				target:Crouch()
+				local mins, maxs = ply:GetHull()
+				local tr = util.TraceHull( {
+					start = target:GetPos(),
+					endpos = target:GetPos(),
+					maxs = maxs,
+					mins = mins,
+					filter = function(e)
+						return not e:IsPlayer()
+					end,
+				})
+				if tr.Hit then
+					target:Crouch()
+				end
 			end
 		end
 	end
@@ -443,6 +449,24 @@ hook.Add("PlayerSpawn", "yoursmine_targets", function(ply)
 	end
 end)
 
+hook.Add("DoPlayerDeath", "yoursmine_targets", function(ply)
+	if ply.fh_target_player then
+		if ply.lastFhMappedEnt then
+			pills.mapEnt(ply, ply.lastFhMappedEnt)
+		end
+		YoursMine_ForceStop(ply)
+	end
+end)
+
+hook.Add("PlayerDisconnected", "yoursmine_targets", function(ply)
+	if ply.fh_target_player then
+		if ply.lastFhMappedEnt then
+			pills.mapEnt(ply, ply.lastFhMappedEnt)
+		end
+		YoursMine_ForceStop(ply)
+	end
+end)
+
 hook.Add("ShouldPlayerPush", "yoursmine_targets", function(ply, target)
 	if target.fh_target_player then
 		return false
@@ -459,6 +483,8 @@ hook.Add("PlayerPostThink", "yoursmine_movement_copying", function(ply)
     if bonnies_controlled[ply] then
 		local bonnie = bonnies_controlled[ply]
 		
+		if not IsValid(bonnie) then return end
+		
 		ply:SetPos(bonnie:GetPos())
 		ply:SetEyeAngles(bonnie:LocalEyeAngles())
 		ply:SetLocalVelocity(bonnie:GetVelocity())
@@ -466,6 +492,7 @@ hook.Add("PlayerPostThink", "yoursmine_movement_copying", function(ply)
 end)
 
 if CLIENT then
+	local YOURSMINE_COLOR = Color(0, 70, 255, 255)
 	local yoursmine_halors = {}
 	
 	hook.Add("PostPlayerDraw", "yoursmine_particles", function(ply)
@@ -481,24 +508,48 @@ if CLIENT then
 			end
 		end
 	end)
-	
-	local yoursmine_clr = Color(0,70,255)
-	
-	hook.Add( "PreDrawHalos", "yoursmine_helper", function()
-		myself = myself or LocalPlayer()
+
+	local function getBonnieActiveTargets(lp, rule)
+		if not lp:IsAnimatronic() then return nil end
+
+		local out = {}
+		local maxDist = tonumber(rule.render_max_dist) or math.huge
+		local maxDistSqr = maxDist > 0 and (maxDist * maxDist) or math.huge
+
 		for ply, controlled in pairs(yoursmine_halors) do
-			if myself:IsAnimatronic() and IsValid(ply) and ply:Health() > 0 and not ply:IsInvisible() then
-				local pos = ply:GetPos()
-				if pos:ToScreen().visible then
-					local distance = myself:GetPos():Distance(pos)
-					
-					if distance < 1200 then
-						local blur = distance / 100
-						
-						halo.Add({ply}, controlled and yoursmine_clr or color_white, blur, blur, 1, true)
-					end
-				end
+			if not IsValid(ply) then continue end
+			if ply:Health() <= 0 then continue end
+			if ply:IsInvisible() then continue end
+			local pos = ply:GetPos()
+			if !pos:ToScreen().visible then continue end
+
+			local entry = OUTLINE.NormalizeEntry(rule, {
+				ent = ply,
+				outline_color = controlled and YOURSMINE_COLOR or color_white
+			})
+
+			if entry then
+				out[#out + 1] = entry
 			end
 		end
-	end)
+
+		return (#out > 0) and out or nil
+	end
+	
+	OUTLINE.RegisterRule("bonnie_targets", {
+		priority = 120,
+		render_max_dist = 1200,
+
+		outline_color = YOURSMINE_COLOR,
+		outline_width = 5,
+		outline_min_dist = 0,
+		outline_max_dist = 0,
+		
+		fill_color = YOURSMINE_COLOR,
+		fill_min_dist = 0,
+		fill_max_dist = 0,
+
+		mode = OUTLINE_MODE_VISIBLE,
+		collect = getBonnieActiveTargets
+	})
 end

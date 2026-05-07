@@ -1,7 +1,5 @@
 local meta = FindMetaTable("Player")
 
-util.AddNetworkString("ragColor")
-
 if not meta then return end
 
 function meta:CreateRagdoll()

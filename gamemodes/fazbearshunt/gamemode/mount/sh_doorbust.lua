@@ -54,6 +54,7 @@ if SERVER then
 		return false
     end
 
+	local tr_t = {}
     hook.Add("SetupMove", "DoorBustSetup", function(ply, mv, cmd)
         local notSolid = ply:GetMoveType() == MOVETYPE_NOCLIP 
             or ply:GetCollisionGroup() == COLLISION_GROUP_WORLD
@@ -62,36 +63,42 @@ if SERVER then
         if not IsFirstTimePredicted() or not GetConVar("bust_enabled"):GetBool() or not ply:Alive() then return end
 
         local vel = mv:GetVelocity()
-		if vel:Length() < 600 then
-			if vel:Length() < ply:GetRunSpeed() * 0.7 or (not cmd:KeyDown(IN_SPEED) and ply:GetRunSpeed() ~= ply:GetWalkSpeed() and vel:Length() < 400) or vel:Length() < 300 then return end
+		if (!ply:Crouching() or !ply:OnGround()) and (ply:IsSprinting() and vel:Length() > 50 or !ply:IsSprinting() and vel:Length() > 300) then
+
+			local dir = vel:GetNormalized()
+			local pos = ply:GetPos() + Vector(0, 0, ply:GetStepSize() + 1)
+			local pos2 = ply:GetPos() + (ply:OBBMins() + ply:OBBMaxs())
+			local fwd, rt = dir, Vector(dir.y, -dir.x, dir.z)
+
+			tr_t.start = pos2
+			tr_t.endpos = pos2 + fwd * 40
+			tr_t.filter = function(ent)
+				return not ent:IsPlayer()
+			end
+			
+			et1 = util.TraceLine(tr_t)
+			local ent, ent2 = {et1.Entity, util.GetSurfacePropName(et1.SurfaceProps)}
+			tr_t.start = pos
+			et1 = util.TraceLine(tr_t)
+
+			if et1.HitNonWorld and not notSolid then
+				if et1.Entity == ent[1] then
+					BustDoorTest(ply, ent, true)
+				end
+				if not IsValid(et1.Entity) or (string.find(ent[2], "glass") or string.find(ent[2], "default")) then return end
+
+				local et2 = util.QuickTrace(pos - (rt * 16), fwd * 45, ply)
+				if not IsValid(et2.Entity) or et2.Entity == ent[1] then
+					et2 = util.QuickTrace(pos + (rt * 16), fwd * 45, ply)
+				end
+				if not IsValid(et2.Entity) or et2.Entity == ent[1] then return end
+
+				ent2 = {et2.Entity, util.GetSurfacePropName(et2.SurfaceProps)}
+				if ent2 and ent2 ~= ent then
+					BustDoorTest(ply, ent2, false)
+				end
+			end
 		end
-
-        local dir = vel:GetNormalized()
-        local pos = ply:GetPos() + Vector(0, 0, ply:GetStepSize() + 1)
-        local pos2 = ply:GetPos() + (ply:OBBMins() + ply:OBBMaxs())
-        local fwd, rt = dir, Vector(dir.y, -dir.x, dir.z)
-
-        et1 = util.QuickTrace(pos2, fwd * 30, ply)
-        local ent, ent2 = {et1.Entity, util.GetSurfacePropName(et1.SurfaceProps)}
-        et1 = util.QuickTrace(pos, fwd * 30, ply)
-
-        if et1.HitNonWorld and not notSolid then
-            if et1.Entity == ent[1] then
-                BustDoorTest(ply, ent, true)
-            end
-            if not IsValid(et1.Entity) or (string.find(ent[2], "glass") or string.find(ent[2], "default")) then return end
-
-            local et2 = util.QuickTrace(pos - (rt * 16), fwd * 45, ply)
-            if not IsValid(et2.Entity) or et2.Entity == ent[1] then
-                et2 = util.QuickTrace(pos + (rt * 16), fwd * 45, ply)
-            end
-            if not IsValid(et2.Entity) or et2.Entity == ent[1] then return end
-
-            ent2 = {et2.Entity, util.GetSurfacePropName(et2.SurfaceProps)}
-            if ent2 and ent2 ~= ent then
-                BustDoorTest(ply, ent2, false)
-            end
-        end
     end)
 
     function BustRotatingDoor(ply, door, fx)
@@ -102,9 +109,7 @@ if SERVER then
         local oldDir = door:GetInternalVariable("opendir")
         local oldSpeed = door:GetInternalVariable("speed")
 
-        if isLocked then
-			return
-        end
+        if isLocked then return end
 		
 		door:SetKeyValue("opendir", 0)
 		door:Fire("SetSpeed", 420, 0)
@@ -197,8 +202,6 @@ if SERVER then
         ply:ViewPunch(Angle(10, bustYaw, bustRoll))
     end
 end
-
-
 
 if CLIENT then
     net.Receive("BustEffect", function()

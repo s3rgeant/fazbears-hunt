@@ -10,22 +10,14 @@ hook.Add("CalcView", "momo_calcview", function(ply, pos, ang, fov, nearZ, farZ)
     if IsValid(ent) and ply:GetViewEntity() == ply then
         local startpos
 
-        if ent.formTable.type == "phys" then
-            startpos = ent:LocalToWorld(ent.formTable.camera and ent.formTable.camera.offset or Vector(0, 0, 0))
-        else
-            startpos = pos
-        end
+		startpos = pos
 
         if pills.convars.cl_thirdperson:GetBool() or CurTime() < myself:GetNW2Float("fh_pill_thirdperson") then
             local dist
 			
 			if hook.Run("HandlePillThirdperson", ply, ent) == false then return end
 
-            if ent.formTable.type == "phys" and ent.formTable.camera and ent.formTable.camera.distFromSize then
-                dist = ent:BoundingRadius() * 5
-            else
-                dist = ent.formTable.camera and ent.formTable.camera.dist or 100
-            end
+            dist = ent.formTable.camera and ent.formTable.camera.dist or 100
 
             local underslung = ent.formTable.camera and ent.formTable.camera.underslung
             local offset = LocalToWorld(Vector(-dist, 0, underslung and -dist / 5 or dist / 5), Angle(0, 0, 0), Vector(0, 0, 0), ang)

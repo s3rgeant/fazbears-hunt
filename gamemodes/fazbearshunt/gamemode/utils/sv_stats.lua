@@ -20,7 +20,7 @@ stats.SetMin("got_hit_by_plushtrap", 12)
 stats.SetMin("broke_cupcakes", 6)
 stats.SetMin("evaded_sfreddy_appearance", 5)
 
-stats.SetMin("jumped", 200)
+stats.SetMin("jumped", 500)
 stats.SetMin("slipped_on_banana", 15)
 stats.SetMin("broke_props", 45)
 

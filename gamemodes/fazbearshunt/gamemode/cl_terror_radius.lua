@@ -85,53 +85,62 @@ hook.Add( "InitPostEntity", "tr_create_music", function()
     if !table.IsEmpty(availableThemes) then
         for dir,layers in pairs(availableThemes) do 
             for layer,filepath in pairs(layers) do 
-
-                local uniqueName = (dir .. layer)
-
-                if loadedMusic[uniqueName] then
-                    loadedMusic[uniqueName]:Stop()
+                if loadedMusic[dir] and loadedMusic[dir][layer] then
+                    loadedMusic[dir][layer]:Stop()
                 end
+				
+				if not loadedMusic[dir] then loadedMusic[dir] = {} end
             
-                loadedMusic[uniqueName] = CreateSound(game.GetWorld(), "#music/chase/" .. dir .. "/" .. filepath)
-                loadedMusic[uniqueName]:SetSoundLevel(0)
+                loadedMusic[dir][layer] = CreateSound(game.GetWorld(), "#music/chase/" .. dir .. "/" .. filepath)
+                loadedMusic[dir][layer]:SetSoundLevel(0)
             end
         end
     end
 end )
 
-terrorRadiusLastMusic = terrorRadiusLastMusic or nil
+lastTheme = lastTheme or nil
+lastTerror = lastTerror or nil
 
 local function terrorStop(dur)
-    if terrorRadiusLastMusic and loadedMusic[terrorRadiusLastMusic] then
-        loadedMusic[terrorRadiusLastMusic]:ChangeVolume(0, dur)
+    if lastTheme and lastTerror and loadedMusic[lastTheme][lastTerror] then
+        loadedMusic[lastTheme][lastTerror]:ChangeVolume(0, dur)
 
-        local rember = terrorRadiusLastMusic
+        local theme = lastTheme
+        local rember = lastTerror
 
-        timer.Create("StopTRMusic_" .. rember, dur + 0.05, 1, function()
-            if loadedMusic[rember] then
-                loadedMusic[rember]:Stop()
+        timer.Create("StopTRMusic_" .. theme..rember, dur + 0.05, 1, function()
+            if loadedMusic[theme][rember] then
+                loadedMusic[theme][rember]:Stop()
             end
         end)
 
-        terrorRadiusLastMusic = nil
+        lastTheme = nil
+        lastTerror = nil
     end
 end
 
-function terrorSetVolume(name, volume, dur)
+cvars.AddChangeCallback("fh_terror_volume", function(convar_name, value_old, value_new)
+	if lastTheme and lastTerror then
+		terrorSetVolume(lastTheme, lastTerror, tonumber(value_new) or 0)
+	end
+end)
+
+function terrorSetVolume(theme, name, volume, dur)
     dur = dur or 0
+	local comName = theme .. name
 
-    if timer.Exists("StopTRMusic_" .. name) then
-        timer.Remove("STopTRMusic_" .. name)
+    if timer.Exists("StopTRMusic_" .. comName) then
+        timer.Remove("STopTRMusic_" .. comName)
     end
 
-    if terrorRadiusLastMusic and name ~= terrorRadiusLastMusic and loadedMusic[terrorRadiusLastMusic] then
-        loadedMusic[terrorRadiusLastMusic]:ChangeVolume(0, dur)
+    if lastTheme and lastTerror and comName ~= lastTheme..lastTerror and loadedMusic[lastTheme][lastTerror] then
+        loadedMusic[lastTheme][lastTerror]:ChangeVolume(0, dur)
     end
 
-    local soundObj = loadedMusic[name]
+    local soundObj = loadedMusic[theme][name]
     if not soundObj then return end
 
-    if soundObj:IsPlaying() then
+    if soundObj:IsPlaying() and comName ~= lastTheme .. lastTerror then
         soundObj:Stop()
     end
 
@@ -142,13 +151,14 @@ function terrorSetVolume(name, volume, dur)
     soundObj:ChangeVolume(volume, dur)
 
     if volume <= 0 then
-        timer.Create("StopTRMusic_" .. name, dur + 0.05, 1, function()
-            if loadedMusic[name] then 
-                loadedMusic[name]:Stop()
+        timer.Create("StopTRMusic_" .. theme..name, dur + 0.05, 1, function()
+            if loadedMusic[theme][name] then 
+                loadedMusic[theme][name]:Stop()
             end
         end)
     else
-        terrorRadiusLastMusic = name
+		lastTheme = theme
+        lastTerror = name
     end
 end
 
@@ -186,11 +196,12 @@ local function sameMovement(ply,killer)
 		else return false end
 	end
 	
-	if isMoving(ply) then
+	--
+	--[[ if isMoving(ply) then
 		if isMoving(killer) then
 			return true
 		else return false end
-	end
+	end --]]
 	
 	return false
 end
@@ -209,7 +220,7 @@ function checkChase(ply, killer)
     elseif isChasing[ply] then
         if not chaseTimers[ply] then
             chaseTimers[ply] = "ChaseEndTimer_" .. ply:EntIndex()
-            timer.Create(chaseTimers[ply], 5, 1, function()
+            timer.Create(chaseTimers[ply], 4.5, 1, function()
                 isChasing[ply] = nil
             end)
         end
@@ -379,9 +390,9 @@ if !timer.Exists("tr_update") then
 
         if !closestTheme or !layer then return end
 
-        if (closestTheme .. layer) == terrorRadiusLastMusic then return end
+        if closestTheme == lastTheme and layer == lastTerror then return end
         
-        terrorSetVolume(closestTheme .. layer, fh_terror_volume:GetFloat(), 0.5)
+        terrorSetVolume(closestTheme, layer, fh_terror_volume:GetFloat(), 0.5)
     end)
 end
 
@@ -475,6 +486,11 @@ end
 
 hook.Add("PillApply", "tr_apply_chase", function(ply, ent)
     if IsValid(ply) then
+		if ent.formTable and ent.formTable.chaseTheme then
+			terror_radius.setPlayerTheme(ply, ent.formTable.chaseTheme)
+			return
+		end
+		
 		local name = ent.formTable and ent.formTable.name
 	
 		terror_radius.setPlayerTheme(ply, name)

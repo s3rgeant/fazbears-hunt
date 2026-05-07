@@ -66,13 +66,15 @@ pills.clone("bear5_main", "pill_wfreddy2", {
 			land="land",
 			stalk="stalk",
 			stun="stun",
+			
+			pumpit="pumpit",
+		},
+		gestures={
 			melee="melee",
 			
 			swing="preattack",
 			attack="attack",
 			scream="scream",
-			
-			pumpit="pumpit",
 		},
 	},
 	option="default",
@@ -233,7 +235,8 @@ pills.register("bear5_clone",{
 			run="run",
 			jump="jump",
 			glide="glide",
-			
+		},
+		gestures={
 			attack="attack",
 		},
 	},
@@ -315,13 +318,13 @@ pills.register("fox4",{
 	},
 	
 	startFunction=function(ply,ent)
-		ply:SetJumpBoostMultiplier(0)
+		ply:SetJumpBoost(0)
 	end,
 	
 	killCondition=function(ply,ent)
 		local target = FindNearestPlayer(ply:EyePos(), 125, ply, 36)
 		
-		if IsValid(target) and !target:IsInvisible() then
+		if IsValid(target) and !target:IsInvisible() and !target:IsJumpscared() then
 			return true
 		end
 		return false
@@ -362,7 +365,7 @@ pills.register("fox4",{
 			foxPlayerReq = nil
 		end
 		
-		ply:SetJumpBoostMultiplier( getScaledJumpBoost() )
+		ply:SetJumpBoost( getScaledJumpBoost() )
 	end,
 })
 

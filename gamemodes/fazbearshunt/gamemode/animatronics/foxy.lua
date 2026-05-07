@@ -1,6 +1,8 @@
 AddCSLuaFile()
 
 local MAX_RUSH_TOKENS = 5
+local CHARGING = {}
+local FIRST_TICK_CHARGE = {}
 
 --foxy
 local stunned_foxy_movement_speed = {120, 120, 70, 100}
@@ -47,10 +49,11 @@ pills.register("pill_wfoxy2",{
 			glide="air",
 			run="run",
 			laugh="taunt",
-			teleport="zombie_leap_mid",
 			land="land",
 			scare="scare",
 			stun="stun",
+		},
+		gestures={
 			chargestun="chargestun",
 			swing="preattack",
 			melee="melee",
@@ -71,7 +74,7 @@ pills.register("pill_wfoxy2",{
 		regular_land="land.mp3",
 		land="land.mp3",
 		taunt="foxy_laugh.wav",
-		melee=pills.helpers.makeList("fnaf2/xscream2.wav",2),
+		melee="fnaf2/xscream2.wav",
 	},
 	type="ply",
     camera = {
@@ -100,7 +103,7 @@ pills.register("pill_wfoxy2",{
 	noFallDamage=true,
 	
 	startFunction=function(ply,ent)
-		ply.blightRushTokens = 5
+		ply:SetNWInt("RushTokens", MAX_RUSH_TOKENS)
 		chaseVoicelineChecker(ply, ent, "foxy")
 	end,
 	
@@ -109,7 +112,7 @@ pills.register("pill_wfoxy2",{
 		
 		local target = FindNearestPlayer(ply:EyePos(), 125, ply, 36)
 		
-		if IsValid(target) and !target:IsInvisible() then
+		if IsValid(target) and !target:IsInvisible() and !target:IsJumpscared() then
 			return true
 		end
 		return false
@@ -130,13 +133,13 @@ pills.register("pill_wfoxy2",{
 				AnimatronicBreakProp(ply, ent)
 				return 
 			end
-			
 		end
     },
 	
 	attack2_sh_nolc={
 		mode="trigger",
 		func = function(ply,ent)
+			CHARGING[ply] = true	
 			foxyRush(ply, ent)
 		end
 	},
@@ -182,20 +185,21 @@ if SERVER then
 	util.AddNetworkString("fh_net_killer_change_tokens")
 
 	function receiveTokensBack(ply)
-		timer.Create("receiving_tokens" .. ply:EntIndex(), 2.5, 5, function()
+		timer.Create("receiving_tokens" .. ply:EntIndex(), 2.5, MAX_RUSH_TOKENS, function()
 			if not IsValid(ply) then return end
-			if ply.blightRushTokens == MAX_RUSH_TOKENS then
+		
+			if ply:GetNWInt("RushTokens") == MAX_RUSH_TOKENS then
 				timer.Remove("receiving_tokens" .. ply:EntIndex())
 				return
 			end
 
-			ply.blightRushTokens = ply.blightRushTokens + 1
+			ply:SetNWInt("RushTokens", ply:GetNWInt("RushTokens") + 1)
 			
 			ply:SendLua("surface.PlaySound('buttons/blip1.wav')")
 			
 			net.Start("fh_net_killer_change_tokens")
 			net.WriteString("charge")
-			net.WriteInt(ply.blightRushTokens, 9)
+			net.WriteInt(ply:GetNWInt("RushTokens"), 9)
 			net.Send(ply)
 		end)
 	end
@@ -294,14 +298,12 @@ function foxyRush(ply, ent)
 
 	if not ply:OnGround() or ply:Crouching() then return end
 
-	if ply:GetNWBool("isBlightBouncing") then
-		ply:SetNWBool("isBlightBouncing", false)
-	end
+	ply:SetNWBool("isBlightBouncing", false)
 	
 	local dsp = IsHalloween() and 38 or 0
 
-	if not ply.blightRushTokens or ply.blightRushTokens == MAX_RUSH_TOKENS then
-		ply.blightRushTokens = MAX_RUSH_TOKENS
+	if not ply:GetNWInt("RushTokens") or ply:GetNWInt("RushTokens") == MAX_RUSH_TOKENS then
+		ply:SetNWInt("RushTokens", MAX_RUSH_TOKENS)
 		ply:SetNWBool("Blight_BlockM1", true)
 		
 		if SERVER then
@@ -312,13 +314,13 @@ function foxyRush(ply, ent)
 				wep:AddAnimation("run", ACT_MP_RUN_MELEE)
 			end
 		end
-	elseif ply.blightRushTokens == 4 and ply:GetNWBool("blightRushing") and SERVER then
+	elseif ply:GetNWInt("RushTokens") == 4 and ply:GetNWBool("blightRushing") and SERVER then
 		ply:EmitSound("vo/foxy_charge2.mp3", 75, 100, 1, CHAN_AUTO, 0, dsp)
 	end
 
-	if not ply:GetNWBool("blightRushing") and ply.blightRushTokens ~= MAX_RUSH_TOKENS then return end
+	if not ply:GetNWBool("blightRushing") and ply:GetNWInt("RushTokens") ~= MAX_RUSH_TOKENS then return end
 	
-	if ply.blightRushTokens <= 4 then
+	if ply:GetNWInt("RushTokens") <= 4 then
 		ply:SetNWBool("Blight_BlockM1", false)
 	
 		if SERVER then
@@ -342,12 +344,11 @@ function foxyRush(ply, ent)
 
 	ply:SetNWBool("blightRushing", true)
 	ply:SetFOV(100, 0.5)
-	ply.blightRushTokens = ply.blightRushTokens - 1
+	ply:SetNWInt("RushTokens", ply:GetNWInt("RushTokens") - 1) 
 	ply:SetNWBool("isBlightRushing", true)
 	if SERVER then
 		stopReceivingTokens(ply)
 	end
-	ply.puppet = ent
 	
 	local rushDuration = 3.5
 	ply:SetNWFloat("RushEndTime", CurTime() + rushDuration)
@@ -360,7 +361,7 @@ function foxyRush(ply, ent)
 	if SERVER then
 		net.Start("fh_net_killer_change_tokens")
 		net.WriteString("charge")
-		net.WriteInt(ply.blightRushTokens, 9)
+		net.WriteInt(ply:GetNWInt("RushTokens"), 9)
 		net.Send(ply)
 	end
 end
@@ -372,21 +373,18 @@ net.Receive("fh_foxycharge_sync", function(len, ply)
 
 	if not ply:OnGround() or ply:Crouching() then return end
 
-	if ply:GetNWBool("isBlightBouncing") then
-		ply:SetNWBool("isBlightBouncing", false)
-	end
+	ply:SetNWBool("isBlightBouncing", false)
 	
-	if ply.blightRushTokens > 0 then
+	if ply:GetNWInt("RushTokens") > 0 then
 		foxyUNStun(ply)
 		
 		cooldown.Send(ply, "charge")
 
 		ply:SetNWBool("blightRushing", true)
 		ply:SetFOV(100, 0.5)
-		ply.blightRushTokens = ply.blightRushTokens - 1
+		ply:SetNWInt("RushTokens", ply:GetNWInt("RushTokens") - 1)
 		ply:SetNWBool("isBlightRushing", true)
 		stopReceivingTokens(ply)
-		ply.puppet = ent
 		
 		local rushDuration = 3.5
 		ply:SetNWFloat("RushEndTime", CurTime() + rushDuration)
@@ -399,7 +397,7 @@ net.Receive("fh_foxycharge_sync", function(len, ply)
 		if SERVER then
 			net.Start("fh_net_killer_change_tokens")
 			net.WriteString("charge")
-			net.WriteInt(ply.blightRushTokens, 9)
+			net.WriteInt(ply:GetNWInt("RushTokens"), 9)
 			net.Send(ply)
 		end
 	end
@@ -440,7 +438,7 @@ local function BlightCheckCollision(ply)
 		filter = {"snowball", ply}
 	})
 	
-	debugoverlay.Box( startPos + speedDir * traceDist, Vector(-hullSize, -hullSize, 0), Vector(hullSize, hullSize, ply:OBBMaxs().z * 0.8), 3, tr.Hit and Color(0, 255, 0) or Color(255,0,0))
+	--debugoverlay.Box( startPos + speedDir * traceDist, Vector(-hullSize, -hullSize, 0), Vector(hullSize, hullSize, ply:OBBMaxs().z * 0.8), 3, tr.Hit and Color(0, 255, 0) or Color(255,0,0))
 
 	tr.startPos = startPos
 	return tr
@@ -455,126 +453,142 @@ function EndRush(ply)
 	end
 end
 
-hook.Add("SetupMove", "BlightPredictionMove", function(ply, mv, cmd)
-
-	if not ply:GetNWBool("isBlightRushing") or ply:GetNWBool("isBlightBouncing") then return end
-	
-	if !ply:OnGround() then return end
-	
-	local rushEnd = ply:GetNWFloat("RushEndTime", 0)
-	if CurTime() > rushEnd or ply:WaterLevel() >= 2 or ply:Crouching() then
-		EndRush(ply) 
-		return
-	end
-
-	local dir = mv:GetMoveAngles():Forward()
-	dir.z = 0
-	dir:Normalize()
-
-	mv:SetVelocity(dir * 900)
-	mv:SetMaxClientSpeed(900)
-	mv:SetMaxSpeed(900)
-
-	mv:SetForwardSpeed(1000)
-
-	local wep = ply:GetViewModel(0)
-	if IsValid(wep) and not wep.IsCharging then
-		wep:SetPlaybackRate(1.3)
-	end
-	
-	if ply:KeyDown(IN_ATTACK) then return end
-
-	ply:LagCompensation(true)
-	local tr = BlightCheckCollision(ply)
-	ply:LagCompensation(false)
-	
-	if tr.Hit and (!IsValid(tr.Entity) or not tr.Entity:IsPlayer() or tr.Entity:IsAnimatronic()) then
+local BOUNCING = {}
+hook.Add("Move", "foxy_charge_prediction", function(ply, mv)
+	if ply:GetNWBool("isBlightRushing") and CHARGING[ply] then
+		if !ply:OnGround() then return end
 		
-		if CLIENT and tr.Entity ~= game.GetWorld() and !tr.Entity:IsPlayer() then
+		local rushEnd = ply:GetNWFloat("RushEndTime", 0)
+		if CurTime() > rushEnd or ply:WaterLevel() >= 2 or ply:Crouching() then
+			EndRush(ply) 
 			return
 		end
+
+		local pos = mv:GetOrigin()
+		local ang = mv:GetMoveAngles()
 		
-		if IsValid(tr.Entity) and !tr.Entity:IsPlayer() then
+		local dir = ang:Forward()
+		dir.z = 0
+		dir:Normalize()
 		
-			local ent = tr.Entity
-			local physobj = ent:GetPhysicsObject()
-			if IsValid(physobj) and ent:Health() > 0 then
-				local wep = ply:GetActiveWeapon()
-				
-				local dmginfo = DamageInfo()
-				dmginfo:SetAttacker(ply)
-				dmginfo:SetInflictor(IsValid(wep) and wep or ply)
-				dmginfo:SetDamage(100)
-			
-				SuppressHostEvents(NULL)
-				ent:TakeDamageInfo(dmginfo)
-				SuppressHostEvents(ply)
-				
+		local vel = dir * 900
+		if not BOUNCING[ply] then
+			mv:SetVelocity(vel)
+		end
+		BOUNCING[ply] = nil
+
+		local wep = ply:GetViewModel(0)
+		if IsValid(wep) and not wep.IsCharging then
+			wep:SetPlaybackRate(1.3)
+		end
+		
+		if ply:KeyDown(IN_ATTACK) then return end
+
+		local tr = BlightCheckCollision(ply)
+		
+		if tr.Hit and (!IsValid(tr.Entity) or not tr.Entity:IsPlayer() or tr.Entity:IsAnimatronic()) then
+			if CLIENT and tr.Entity ~= game.GetWorld() and !tr.Entity:IsPlayer() then
 				return
 			end
 			
-			if tr.Entity:GetClass() == "prop_door_rotating" then
-				breakBustDoor(ply, tr.Entity, 45)
-				return
-			end
-		end
-		
-		local bounceDir = tr.HitNormal
-		bounceDir.z = 0
-		bounceDir:Normalize()
-
-		if IsFirstTimePredicted() then
-			ply:SetNWBool("isBlightRushing", false)
-			ply:SetNWBool("isBlightBouncing", true)
-
-			local effectData = EffectData()
-			effectData:SetOrigin(tr.HitPos + Vector(0,0,32))
-			effectData:SetStart(tr.startPos)
-			effectData:SetEntity(tr.Entity or ply)
-			effectData:SetNormal(tr.HitNormal)
-			effectData:SetSurfaceProp(tr.SurfaceProps or 0)
-			effectData:SetDamageType(DMG_CLUB)
-			effectData:SetHitBox(tr.HitBox or 0)
-			effectData:SetScale(1)
-			util.Effect("Impact_GMOD", effectData, true, true)
-		end
+			if IsValid(tr.Entity) and !tr.Entity:IsPlayer() then
 			
-		ply:SetVelocity(bounceDir * 1500)
-		
-		if CLIENT then
-			if getAbilityTokens("charge") > 0 then
-				RMBHint(2)
-			end
-		end
-
-		if SERVER then
-			ply:EmitSound("blight/impact.wav")
-
-			if IsValid(ply.puppet) then
-				ply.puppet:PillGesture("chargestun", 1, 0.8, 0.1, 0.3)
-			end
-		end
-		
-		if ply.blightRushTokens == 0 then
-			EndRush(ply)
-			return
-		end
-		
-		if CLIENT then return end
-
-		ply.blightTimeoutTimer = "BlightTimeout_" .. ply:SteamID()
-		timer.Create(ply.blightTimeoutTimer, 2, 1, function()
-			if not IsValid(ply) then return end
-			ply.blightTimeoutTimer = nil
-		
-			foxyStun(ply)
-
-			timer.Simple(5, function()
-				if IsValid(ply) then
-					receiveTokensBack(ply)
+				local ent = tr.Entity
+				local physobj = ent:GetPhysicsObject()
+				if IsValid(physobj) and ent:Health() > 0 then
+					local wep = ply:GetActiveWeapon()
+					
+					local dmginfo = DamageInfo()
+					dmginfo:SetAttacker(ply)
+					dmginfo:SetInflictor(IsValid(wep) and wep or ply)
+					dmginfo:SetDamage(100)
+				
+					SuppressHostEvents(NULL)
+					ent:TakeDamageInfo(dmginfo)
+					SuppressHostEvents(ply)
+					
+					return
 				end
+				
+				if tr.Entity:GetClass() == "prop_door_rotating" then
+					breakBustDoor(ply, tr.Entity, 45)
+					return
+				end
+			end
+			
+			local bounceDir = tr.HitNormal
+			bounceDir.z = 0
+			bounceDir:Normalize()
+
+			if IsFirstTimePredicted() then
+				if SERVER then
+					ply:SetNWBool("isBlightRushing", false)
+					CHARGING[ply] = nil
+				end
+				ply:SetNWBool("isBlightBouncing", true)
+
+				local effectData = EffectData()
+				effectData:SetOrigin(tr.HitPos + Vector(0,0,32))
+				effectData:SetStart(tr.startPos)
+				effectData:SetEntity(tr.Entity or ply)
+				effectData:SetNormal(tr.HitNormal)
+				effectData:SetSurfaceProp(tr.SurfaceProps or 0)
+				effectData:SetDamageType(DMG_CLUB)
+				effectData:SetHitBox(tr.HitBox or 0)
+				effectData:SetScale(1)
+				util.Effect("Impact_GMOD", effectData, true, true)
+			end
+			
+			ply:SetVelocity(bounceDir * 1500)
+			BOUNCING[ply] = true
+			
+			if CLIENT then
+				if getAbilityTokens("charge") > 0 then
+					RMBHint(2)
+				end
+			end
+
+			if SERVER then
+				ply:EmitSound("blight/impact.wav")
+				
+				local ent = ply:GetPill()
+				if IsValid(ent) then
+					ent:PillGesture("chargestun", 1, 0.8, 0.1, 0.3)
+				end
+			end
+			
+			if ply:GetNWInt("RushTokens") == 0 then
+				EndRush(ply)
+				return
+			end
+			
+			if CLIENT then return end
+
+			ply.blightTimeoutTimer = "BlightTimeout_" .. ply:SteamID()
+			timer.Create(ply.blightTimeoutTimer, 2, 1, function()
+				if not IsValid(ply) then return end
+				ply.blightTimeoutTimer = nil
+			
+				foxyStun(ply)
+
+				timer.Simple(5, function()
+					if IsValid(ply) then
+						receiveTokensBack(ply)
+					end
+				end)
 			end)
-		end)
+			return
+		end
+	end
+end)
+
+hook.Add("FuncDoorBust", "fh_charge_doorbust", function(ply, door)
+	local pill = pills.getMappedEnt(ply)
+	if not IsValid(pill) then return end
+	local name = pill.formTable.name
+
+	if name == "pill_wfoxy" and ply:GetNWBool("isBlightRushing") then
+		breakBustDoor(ply, door)
 	end
 end)
 
@@ -661,10 +675,6 @@ function StartBleeding(ply, dealer)
 			return
 		end
 
-		if ply._damagePausedUntil and CurTime() < ply._damagePausedUntil then
-			return
-		end
-
 		local dmg = DamageInfo()
 		dmg:SetDamage(2)
 		dmg:SetAttacker(IsValid(dealer) and dealer or game.GetWorld())
@@ -672,7 +682,7 @@ function StartBleeding(ply, dealer)
 		ply:TakeDamageInfo(dmg)
 	end)
 
-	timer.Create(decaltimerName, 0.5, 0, function()
+	timer.Create(decaltimerName, 0.2, 0, function()
 		if not IsValid(ply) or !ply:Alive() or !ply:IsSurvivor() then
 			StopBleeding(ply)
 			return
@@ -691,11 +701,6 @@ function StartBleeding(ply, dealer)
 	end)
 end
 
-function PauseBleeding(ply, duration)
-    if not IsValid(ply) or not ply:IsPlayer() then return end
-    ply._damagePausedUntil = CurTime() + duration
-end
-
 function StopBleeding(ply)
     if not IsValid(ply) or not ply:IsPlayer() then return end
 
@@ -712,8 +717,6 @@ function StopBleeding(ply)
         timer.Remove(decaltimerName)
         DecalTimers[steamID] = nil
     end
-
-    ply._damagePausedUntil = nil
 end
 
 hook.Add("SuccessTaserHit", "foxy_nocharge", function(ply)
@@ -730,3 +733,15 @@ hook.Add("SuccessTaserHit", "foxy_nocharge", function(ply)
 		end
 	end
 end)
+
+if CLIENT then
+	hook.Add("ShouldCollide", "foyx_collide", function(ent1, ent2)
+		if ent1:IsPlayer() and !ent2:IsPlayer() or !ent1:IsPlayer() and ent2:IsPlayer() then
+			if ent1:GetNWBool("isBlightRushing") and ent2:GetClass() == "prop_door_rotating"  then
+				return false
+			elseif ent2:GetNWBool("isBlightRushing") and ent1:GetClass() == "prop_door_rotating"  then
+				return false
+			end
+		end
+	end)
+end

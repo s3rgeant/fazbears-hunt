@@ -37,9 +37,7 @@ else
 end
 
 function SWEP:Initialize()
-
 	self:SetHoldType( self.HoldType )
-
 end
 
 function SWEP:SetupDataTables()
@@ -222,12 +220,12 @@ function SWEP:TranslateFOV( fov )
 end
 
 hook.Add("fh_createragdoll", "bonnie_mask_onragdoll", function(ply, rag)
-	if ply.invisible then
-		ent = ents.Create("prop_physics")
-		ent:SetModel("models/weapons/w_bonmask.mdl")
-		ent:SetPos( rag:GetPos() )
-		ent:SetCollisionGroup(COLLISION_GROUP_DEBRIS)
-		ent:Spawn()
+	if ply.invisible and ply:HasWeapon("weapon_mask") then
+		local wep = ply:GetWeapon("weapon_mask")
+		ply:DropWeapon(wep)
+		wep:SetBlockSwap(false)
+		
+		inventory_backup.RemoveItem(ply, "weapon_mask")
 		
 		rag:SetMaterial("")
 	end

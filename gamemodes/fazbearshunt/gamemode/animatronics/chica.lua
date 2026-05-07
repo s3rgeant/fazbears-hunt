@@ -1,5 +1,9 @@
 AddCSLuaFile()
 
+if SERVER then
+	util.PrecacheModel("models/speps/pill/oldchica.mdl")
+end
+
 local cupcakes = {} 
 
 pills.register("pill_wchica2",{
@@ -32,6 +36,8 @@ pills.register("pill_wchica2",{
 			land="land",
 			scare="scare",
 			stun="stun",
+		},
+		gestures={
 			melee="melee",
 		},
 	},
@@ -76,7 +82,7 @@ pills.register("pill_wchica2",{
 	killCondition=function(ply,ent)
 		local target = FindNearestPlayer(ply:EyePos(), 125, ply, 36)
 		
-		if IsValid(target) and !target:IsInvisible() then
+		if IsValid(target) and !target:IsInvisible() and !target:IsJumpscared() then
 			return true
 		end
 		return false
@@ -173,15 +179,28 @@ function killCupcakes(ply)
 	end
 	cupcakes[ply] = nil
 end
+
+local fh_cupcake_blast = CreateConVar( "fh_cupcake_blast", "0", { FCVAR_ARCHIVE, FCVAR_REPLICATED }, 
+"Should Chica's cupcakes blast damage when destroyed?" )
 	
 hook.Add("EntityRemoved", "RemoveKilledCupcake", function(ent)
 	if ent:GetClass() == "cakemine" then
 		local owner = ent:GetOwner() 
+		
+		if fh_cupcake_blast:GetBool() then
+			util.BlastDamage( ent, IsValid(owner) and owner or ent, ent:GetPos(), 300, math.Clamp( 300, 0, 1500 ) )
+		end
+		
 		if IsValid(owner) then
 			if cupcakes[owner] then
 				cupcakes[owner] = math.max(0, cupcakes[owner] - 1)
 			end
 		end
+	end
+end)
+
+hook.Add( "EntityRemoved", "fh_go_cakemine", function( ent )
+	if ent:GetClass() == "cakemine" then
 	end
 end)
 

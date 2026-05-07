@@ -1,0 +1,18 @@
+"VertexlitGeneric"
+{
+	"$basetexture" "models/torres/ffps/salvage/ScrapBabyv19/black"
+   "$bumpmap" "models/torres/ffps/salvage/ScrapBabyv19/bumpflat"
+"$phong"    "1"
+    "$phongboost"    "20"
+    "$phongexponent"    "6"
+    "$phongfresnelranges"    "[0.05 0.5 1]"
+    "$phongtint" "[1.0   0.040567   0.072779]"
+
+$halflambert 0
+$diffuseexp 1.5
+$diffuseexp 1.5
+$rimlight 1
+$rimlightexponent 4
+$rimlightboost 0.3
+$halflambert 0
+}

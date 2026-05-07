@@ -4,7 +4,7 @@ util.AddNetworkString("AdminAction")
 util.AddNetworkString("fh_net_scarysound")
 util.AddNetworkString("fh_change_notprefered")
 
-function GiveAnimatronic(ply, killer, silent)
+function GiveAnimatronic(ply, killer, silent, onplace, secretly)
 	if killer == nil or killer == "" then return end
 	
 	if !ply:Alive() then
@@ -17,8 +17,14 @@ function GiveAnimatronic(ply, killer, silent)
 	else
 		giveKiller(ply, killer, true)
 	end
-	ply:ReturnToSpawn()
+	if !onplace then
+		ply:ReturnToSpawn()
+	end
 	ply:RemoveRagdoll()
+	
+	if secretly then
+		ply:SetTeam(27)
+	end
 	
 	ply:NoPlayerCollide(0.25)
 end
@@ -462,11 +468,13 @@ net.Receive("AdminAction", function(len, ply)
 		if action == "give_animatronic" then 
 			killer = net.ReadString()
 			silent = net.ReadBit() == 1
+			onplace = net.ReadBit() == 1
+			secretly = net.ReadBit() == 1
 		end
 		
         for _, target in pairs(targets) do
             if action == "give_animatronic" then
-                GiveAnimatronic(target, killer, silent)
+                GiveAnimatronic(target, killer, silent, onplace, secretly)
             elseif action == "resurrect" then
                 RevivePlayer(target)
             elseif action == "kill" then

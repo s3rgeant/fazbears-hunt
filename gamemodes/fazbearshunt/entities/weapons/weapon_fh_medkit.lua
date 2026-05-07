@@ -170,19 +170,46 @@ if CLIENT then
     end
     hook.Add("HUDPaint", "MedkitHealthInfo", DrawHealthInfo)
 
-    hook.Add("PreDrawHalos", "MedkitHealAura", function()
-        local ply = LocalPlayer()
+	local MEDKIT_COLOR    = Color(0, 255, 0, 255)
+	local function getMedkitTargets(ply, rule)
         local wep = ply:GetActiveWeapon()
         if not IsValid(wep) or wep:GetClass() ~= "weapon_fh_medkit" then return end
 
         local tr = ply:GetEyeTrace()
 		
 		local ent = tr.Entity
+			
+		if not IsValid(ent) then return nil end
+		if not ent:IsPlayer() then return nil end
+		if not ent:IsSurvivor() then return nil end
+		if ent:GetNW2Bool("_OUTWORLD_target") then return nil end
+		if ent:IsInvisible() then return nil end
+		if ply:GetPos():Distance(ent:GetPos()) > wep.HealRange then return nil end
 		
-        if IsValid(ent) and ent:IsPlayer() and ent:IsSurvivor() and !ent:IsInvisible() and !ent:GetNW2Bool("_OUTWORLD_target") and ply:GetPos():Distance(ent:GetPos()) <= wep.HealRange then
-            halo.Add({ent}, Color(0, 255, 0), 2, 2, 2, true, false)
-        end
-    end)
+		local entry = NormalizeEntry(rule, {
+			ent = ent,
+			outline_color = MEDKIT_COLOR
+		})
+
+		return entry and { entry } or nil
+    end
+		
+	OUTLINE.RegisterRule("medkit_target", {
+		priority = 140,
+		render_max_dist = 128,
+
+		outline_color = MEDKIT_COLOR,
+		outline_width = 2,
+		outline_min_dist = 0,
+		outline_max_dist = 0,
+
+		fill_color = MEDKIT_COLOR,
+		fill_min_dist = 0,
+		fill_max_dist = 0,
+
+		mode = OUTLINE_MODE_VISIBLE,
+		collect = getMedkitTargets
+	})
 	
 	function SWEP:CustomAmmoDisplay()
 

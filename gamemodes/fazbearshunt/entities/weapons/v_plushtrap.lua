@@ -34,7 +34,7 @@ function SWEP:SetupAnimations()
 end
 
 function SWEP:PrimaryAttack()
-	local ply = self.Owner
+    local ply = self:GetOwner()
 	local ent = pills.getMappedEnt(ply)
 	
 	if !IsValid(ent) then return end
@@ -54,7 +54,7 @@ function SWEP:PrimaryAttack()
 end
 
 function SWEP:DealDamage()
-	local ply = self.Owner
+    local ply = self:GetOwner()
 	local ent = pills.getMappedEnt(ply)
 	if !IsValid(ent) then return end
 	local now = CurTime()
@@ -166,24 +166,46 @@ end
 
 if CLIENT then
 	local red = Color(255,0,0)
-	hook.Add( "PreDrawHalos", "pt_halo", function()
-		local ply = LocalPlayer()
+	local function getPlushtrapAffected(ply, rule)
 		local target = ply:GetObserverTarget()
 		if IsValid(target) and target:IsPlayer() then ply = target end
 		local wep = ply:GetActiveWeapon()
+		local out = {}
 		
 		if IsValid(wep) and wep:GetClass() == "v_plushtrap" then
-			local nearPlayers = {}
-			
 			for _, ent in pairs(team.GetPlayers( TEAM_SURVIVOR )) do
 				if !ent:Alive() or ent:GetNoDraw() or ent:IsInvisible() then continue end
 				if ent ~= ply and ent:GetPos():Distance(ply:GetPos()) <= plushtrap_visionrange:GetInt() then
-					nearPlayers[ent] = ent
+					local entry = OUTLINE.NormalizeEntry(rule, {
+						ent = ent,
+						outline_color = red,
+						fill_color = red
+					})
+
+					if entry then
+						out[#out + 1] = entry
+					end
 				end
 			end
-			halo.Add(nearPlayers, red, 1, 1, 2, true, true)
 		end
-	end)
+		return (#out > 0) and out or nil
+	end
+
+	OUTLINE.RegisterRule("plushtrap_higlight", {
+		priority = 100,
+		render_max_dist = 9000,
+
+		outline_color = red,
+		outline_width = 3,
+		outline_min_dist = 1000,
+		outline_max_dist = 2200,
+
+		fill_color = red,
+		fill_min_dist = 1000,
+		fill_max_dist = 2000,
+
+		collect = getPlushtrapAffected
+	})
 			
 	hook.Add("HUDPaint", "fh_pt_draw_affected", function()
 		local ply = LocalPlayer()

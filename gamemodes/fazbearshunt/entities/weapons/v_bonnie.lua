@@ -233,23 +233,45 @@ function SWEP:Think()
 end
 
 if CLIENT then
-	hook.Add("PreDrawHalos", "yoursmine_weapon", function()
-		local ply = LocalPlayer()
+	local YOURSMINE_COLOR = Color(0, 70, 255, 255)
+	local function getYoursMineTarget(ply, rule)
 		local target = ply:GetObserverTarget()
 		if IsValid(target) and target:IsPlayer() then ply = target end
 
+		local out = {}
 		local wep = ply:GetActiveWeapon()
 		if not (IsValid(wep) and wep:GetClass() == "v_bonnie") then return end
 		if not ply:KeyDown(IN_ATTACK2) then return end
 
 		local ent = wep:GetLastTarget()
-		if IsValid(ent) and ent:IsPlayer() and ent:IsSurvivor() and !ent:IsInvisible() then
-			halo.Add({ ent }, Color(55, 25, 255), 1, 1, 2, true, false)
-		end
-	end)
+		
+        if not IsValid(ent) then return end
+        if not ent:IsPlayer() then return end
+        if ent:Health() <= 0 then return end
+        if ent:IsInvisible() then return end
+	
+        local entry = OUTLINE.NormalizeEntry(rule, {
+            ent = ent,
+            outline_color = YOURSMINE_COLOR
+        })
+		
+		return entry and {entry} or nil
+	end
+	
+	OUTLINE.RegisterRule("bonnie_yoursmine", {
+		priority = 120,
+		render_max_dist = 1200,
+
+		outline_color = YOURSMINE_COLOR,
+		outline_width = 4,
+		outline_min_dist = 0,
+		outline_max_dist = 0,
+
+		mode = OUTLINE_MODE_VISIBLE,
+		collect = getYoursMineTarget
+	})
 	
     local crouchFactor = 0
-
     function SWEP:CalcViewModelView(ViewModel, OldEyePos, OldEyeAng, EyePos, EyeAng)
         local ply = self.Owner
         if not IsValid(ply) then return EyePos, EyeAng end

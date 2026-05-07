@@ -333,6 +333,7 @@ local function chicaObsessionCheck(ply, ent)
 	-- ОНО НЕ РАБОТАЕТ ВНЕ РАУНДА ПОТОМУ ЧТО ИГРОКИ НЕ ВНОСЯТСЯ В ТАБЛИЦУ SURVIVORS ПРИ СПАВНЕ
 	local hasLos = {}
 	for target, _ in pairs(survivors) do
+		if !IsValid(target) then continue end
 		if not target:Alive() then continue end
 		if target == ply then continue end
 		if target == dumbass then continue end
@@ -411,7 +412,6 @@ pills.register("pill_toychica",{
 			run="run",
 			
 			jump="jump",
-			land="land",
 			glide="glide",
 			
 			hold="hold",
@@ -419,12 +419,15 @@ pills.register("pill_toychica",{
 			
 			crouch="crouch",
 			crouch_walk="crouchmove",
+			stun="stun",
+		},
+		gestures={
+			land="land",
 			
 			damaged1="damaged1",
 			damaged2="damaged2",
 			damaged3="damaged3",
 			
-			stun="stun",
 			melee="attack",
 		},
 	},
@@ -480,7 +483,7 @@ pills.register("pill_toychica",{
 			chaseCheck(ply, 'tchica')
 		end)
 		
-		ply:SetJumpBoostMultiplier(0)
+		ply:SetJumpBoost(0)
 		ply:SprintDisable()
 		
 		timer.Create("ObsessionCheck"..ply:EntIndex(), 1, 0, function()
@@ -502,13 +505,13 @@ pills.register("pill_toychica",{
 		end
 		chicaRestore(ply)
 		
-		ply:SetJumpBoostMultiplier( getScaledJumpBoost() )
+		ply:SetJumpBoost( getScaledJumpBoost() )
 		ply:SprintEnable()
 	end,
 
 	restore=function(ply,ent)
 		chicaRestore(ply)
-		ply:SetJumpBoostMultiplier( getScaledJumpBoost() )
+		ply:SetJumpBoost( getScaledJumpBoost() )
 		ply:SprintEnable()
 	end,
 	
@@ -737,8 +740,10 @@ hook.Add("SetupMove", "tchica_holding_tick", function(ply, mv, cmd)
 		finalPos.z = startPos.z
 	end
 	
+	
+	
 	if startPos:Distance(trace.HitPos - forward * 5) <= 22 then
-		--holder:SetPos(startPos - forward)
+		holder:SetVelocity(-forward * 15)
 	end
 	
 	mv:SetOrigin(finalPos)
@@ -751,6 +756,8 @@ hook.Add("SetupMove", "tchica_holding_tick", function(ply, mv, cmd)
 		local ang2 = (finalPos - holder:GetPos()):Angle()
 		ang2.p = 0
 		ent:SetForceAngles(ang2)
+		
+		ent:SetPoseParameter("hold_far", startPos:Distance(trace.HitPos))
 	end
 end)
 
@@ -854,7 +861,7 @@ hook.Add("KeyPress", "toychica_push", function(ply, key)
 end)
 
 hook.Add("PlayerPush", "toychica_push", function(ply, target)
-	if target:GetPill() then
+	if IsValid(target:GetPill()) then
 		if target:GetPill():GetPillName() == "pill_toychica" then
 			target:GetPill():PillGesture('damaged' .. math.random(1,3), 1, 1, 0, 0.7)
 		end
@@ -911,7 +918,7 @@ if CLIENT then
 	
 	hook.Add("FH_HandleMineTerrorRadius", "toychica_handle", function(ply, theme)
 		local killer = LocalPlayer()
-		if killer:GetPill() and killer:GetPill():GetPillName() == "pill_toychica" then
+		if IsValid(killer:GetPill()) and killer:GetPill():GetPillName() == "pill_toychica" then
 			if !killer:IsSprinting() then
 				return false
 			end
@@ -966,7 +973,7 @@ if CLIENT then
 		local d = render.GetFogMaxDensity()
 		local r, g, b = render.GetFogColor()
 		
-		if fs == 0 then fs = 10000 end
+		--if fs == 0 then fs = 10000 end
 		if fe == 0 then fe = 10000 end
 
 		defaultFog = {
@@ -996,7 +1003,9 @@ if CLIENT then
 			if IsValid(ply) and ply:Alive() and ply:GetPill() then
 				local ent = ply:GetPill()
 				
-				ent:SetBodygroup(1, 1)
+				if IsValid(ent) then
+					ent:SetBodygroup(1, 1)
+				end
 			end
 		end
 	end)

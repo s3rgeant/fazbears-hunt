@@ -144,6 +144,20 @@ admin.AddAnimatronicSetting("pill_wfreddy2", {
 	description = language.GetPhrase("fazhunt.adminpanel.not_supported")
 })
 
+local dermaActionMenu
+local playerActions = {
+	{text = "fazhunt.adminpanel.heal", action = "heal", icon = "heart"},
+	{text = "fazhunt.adminpanel.give_gift", action = "give_gift", icon = "package_green"},
+	{text = "fazhunt.adminpanel.give_all_weapons", action = "give_all_weapons", icon = "gun"},
+	{text = "fazhunt.adminpanel.return_spawn", action = "return_spawn", icon = "arrow_undo"},
+	{text = "fazhunt.adminpanel.tp_to_teammate", action = "tp_to_teammate", icon = "group_go"},
+	{text = "fazhunt.adminpanel.unstuck", action = "unstuck", icon = "arrow_out"},
+	{text = "fazhunt.adminpanel.give_immune_gfreddy", action = "immune_gfreddy", icon = "gfreddy"},
+	{text = "fazhunt.adminpanel.deprive_immune_gfreddy", action = "un_immune_gfreddy", icon = "gfreddy"},
+	{text = "fazhunt.adminpanel.high_anim_chance", action = "set_high_anim", superadmin=true, icon="pill_add"},
+	{text = "fazhunt.adminpanel.low_anim_chance", action = "set_low_anim", superadmin=true, icon="pill_delete"},
+}
+
 local function GetSelectedPlayers()
     local selectedLines = PlayerList:GetSelected()
     local players = {}
@@ -159,6 +173,8 @@ local blackie = Color(0,0,0,120)
 
 local myself
 local silent_give_killer = false
+local onplace_give_killer = false
+local secretly_give_killer = false
 local function OpenAdminPanel()
     local selectedAnimatron = nil
 
@@ -235,6 +251,8 @@ local function OpenAdminPanel()
     local actions = {
         {text = "fazhunt.adminpanel.give_killer", action = "give_animatronic"},
         {},
+        {},
+        {},
         {text = "fazhunt.adminpanel.revive", action = "resurrect"},
         {text = "fazhunt.adminpanel.kill", action = "kill"},
         {text = "fazhunt.adminpanel.highlight", action = "highlight"},
@@ -278,6 +296,8 @@ local function OpenAdminPanel()
                 if a.action == "give_animatronic" then
                     net.WriteString(selectedAnimatron or "")
                     net.WriteBit(silent_give_killer)
+                    net.WriteBit(onplace_give_killer)
+                    net.WriteBit(secretly_give_killer)
                 end
                 net.SendToServer()
             end)
@@ -294,18 +314,23 @@ local function OpenAdminPanel()
 		silent_give_killer = b
     end
 	
-	local actions = {
-		{text = "fazhunt.adminpanel.heal", action = "heal", icon = "heart"},
-		{text = "fazhunt.adminpanel.give_gift", action = "give_gift", icon = "package_green"},
-		{text = "fazhunt.adminpanel.give_all_weapons", action = "give_all_weapons", icon = "gun"},
-		{text = "fazhunt.adminpanel.return_spawn", action = "return_spawn", icon = "arrow_undo"},
-		{text = "fazhunt.adminpanel.tp_to_teammate", action = "tp_to_teammate", icon = "group_go"},
-		{text = "fazhunt.adminpanel.unstuck", action = "unstuck", icon = "arrow_out"},
-		{text = "fazhunt.adminpanel.give_immune_gfreddy", action = "immune_gfreddy", icon = "gfreddy"},
-		{text = "fazhunt.adminpanel.deprive_immune_gfreddy", action = "un_immune_gfreddy", icon = "gfreddy"},
-		{text = "fazhunt.adminpanel.high_anim_chance", action = "set_high_anim", superadmin=true, icon="pill_add"},
-		{text = "fazhunt.adminpanel.low_anim_chance", action = "set_low_anim", superadmin=true, icon="pill_delete"},
-	}
+    local checkbox = vgui.Create("DCheckBoxLabel", panelPlayers)
+	checkbox:SetPos(400, 65)
+    checkbox:SetText(language.GetPhrase("fazhunt.adminpanel.give_killer_onplace"))
+    checkbox:SetDark(true)
+    checkbox:SetChecked(onplace_give_killer)
+    function checkbox:OnChange(b)
+		onplace_give_killer = b
+    end
+	
+    local checkbox = vgui.Create("DCheckBoxLabel", panelPlayers)
+	checkbox:SetPos(400, 85)
+    checkbox:SetText(language.GetPhrase("fazhunt.adminpanel.give_killer_secretly"))
+    checkbox:SetDark(true)
+    checkbox:SetChecked(secretly_give_killer)
+    function checkbox:OnChange(b)
+		secretly_give_killer = b
+    end
 	
 	local actionBox = vgui.Create( "DComboBox", panelPlayers )
 	actionBox:SetPos( 400, y )
@@ -313,12 +338,11 @@ local function OpenAdminPanel()
 	actionBox:SetValue( language.GetPhrase("fazhunt.adminpanel.more_actions") )
 	actionBox:SetSortItems( false )
 	
-    for _, a in ipairs(actions) do
+    for _, a in ipairs(playerActions) do
 		if a.superadmin and !myself:IsSuperAdmin() then continue end
 		actionBox:AddChoice( language.GetPhrase(a.text), nil, false, a.icon and "icon16/" .. a.icon .. ".png" or nil )
 	end
 	actionBox.OnSelect = function( self, index, value )
-		
 		actionBox:SetValue( language.GetPhrase("fazhunt.adminpanel.more_actions") )
 
 		local players = GetSelectedPlayers()
@@ -328,7 +352,7 @@ local function OpenAdminPanel()
 		end
 				
 		net.Start("AdminAction")
-		net.WriteString(actions[index].action)
+		net.WriteString(playerActions[index].action)
 		net.WriteUInt(#players, 8)
 		for _, ply in ipairs(players) do
 			net.WriteEntity(ply)
@@ -491,7 +515,10 @@ local function OpenAdminPanel()
     AddCheckbox(expPanel, 10, step(20), language.GetPhrase("fazhunt.adminpanel.quiet_animatronics"), conVars.fh_less_steps, "fh_less_steps")
     AddCheckbox(expPanel, 10, step(20), language.GetPhrase("fazhunt.adminpanel.silent_highlight"), conVars.fh_silent_highlight, "fh_silent_highlight")
     AddCheckbox(expPanel, 10, step(20), language.GetPhrase("fazhunt.adminpanel.fh_respawn_dead_animatronics"), conVars.fh_respawn_dead_animatronics, "fh_respawn_dead_animatronics")
-    AddCheckbox(expPanel, 10, step(20), "Fair Highlight", conVars.fair_hl, "fh_fair_highlight")
+    AddCheckbox(expPanel, 10, step(20), language.GetPhrase("fazhunt.adminpanel.fair_highlight"), conVars.fair_hl, "fh_fair_highlight")
+    AddCheckbox(expPanel, 10, step(20), language.GetPhrase("fazhunt.adminpanel.dangerous_cupcakes"), GetConVar("fh_cupcake_blast"), "fh_cupcake_blast")
+    AddCheckbox(expPanel, 10, step(20), language.GetPhrase("fazhunt.adminpanel.bear5_killermask_last"), GetConVar("fh_bear5_killermask_last"), "fh_bear5_killermask_last")
+    AddCheckbox(expPanel, 10, step(20), language.GetPhrase("fazhunt.adminpanel.fast_roundrestart"), GetConVar("fh_fast_roundrestart"), "fh_fast_roundrestart")
 	
 	local DermaList = vgui.Create( "DScrollPanel", expPanel )
 	DermaList:SetPos( 10, justget(15) )
@@ -697,6 +724,9 @@ local function OpenAdminPanel()
     fh_admin_panel.OnHidden = function()
 		actionBox:CloseMenu()
 		weaponryBox:CloseMenu()
+		if dermaActionMenu and IsValid(dermaActionMenu) then
+			dermaActionMenu:Hide()
+		end
     end
 end
 
@@ -715,6 +745,38 @@ function createListPlayers()
 			if #lastSelected >= 1 and table.HasValue(lastSelected,v) or #lastSelected <= 0 and v == myself then
 				PlayerList:SelectItem(line)
 			end
+		
+			line.OnRightClick = function()
+				local menu = DermaMenu()
+				
+				local players = GetSelectedPlayers()
+				if #players == 1 then
+					menu:AddOption( "#spawnmenu.menu.copy", function() SetClipboardText( v:Nick() ) end ):SetIcon( "icon16/page_copy.png" )
+				end
+				for _, a in ipairs(playerActions) do
+					if a.superadmin and !myself:IsSuperAdmin() then continue end
+					
+					local function optionFunc(self, index)
+						local players = GetSelectedPlayers()
+						if #players == 0 then
+							chat.AddText(errorClr, language.GetPhrase("fazhunt.adminpanel.error"))
+							return
+						end
+								
+						net.Start("AdminAction")
+						net.WriteString(a.action)
+						net.WriteUInt(#players, 8)
+						for _, ply in ipairs(players) do
+							net.WriteEntity(ply)
+						end
+						net.SendToServer()
+					end
+					
+					local panel = menu:AddOption( language.GetPhrase(a.text), optionFunc):SetIcon(a.icon and "icon16/" .. a.icon .. ".png" or nil)
+				end
+				menu:Open()
+				dermaActionMenu = menu
+			end
         end
     end
 end
@@ -729,11 +791,19 @@ function updatePlayer(ply, team)
     end
 end
 
-local pref_sel_clr = Color(0,125,155,200)
-local pref_unsel_clr = Color(255,0,155,200)
+-- Selected
+local clrs = {
+	[0] = Color(255,0,155,200), -- Unpreferred
+	[1] = Color(0,125,155,200), -- Preferred
+	[2] = Color(190,92,0,200), -- Preferred Secondary
+}
 
-local unpref_sel_clr = Color(0,255,0,100)
-local unpref_unsel_clr = Color(255,0,0,100)
+-- UnSelected
+local clrs_d = {
+	[0] = Color(255,0,0,100), -- Unreferred
+	[1] = Color(0,255,0,100), -- Preferred
+	[2] = Color(229,220,0,200), -- Preferred Secondary
+}
 
 function createListAnimatronics()
     if !IsValid(AnimatronicList) then return end
@@ -742,13 +812,22 @@ function createListAnimatronics()
     local preferred = table.GetKeys(killers.getAllPreferables(true))
 
     for k, v in pairs(killers_) do
-        local line = AnimatronicList:AddLine(language.GetPhrase(v.fullname), k)
-        local hasPref = table.HasValue(preferred, k)
+        local line = AnimatronicList:AddLine(language.GetPhrase(v.fullname), k, v.category or "")
+		local hasPref = v.preferable == true
+		local isSecondary = v.secondary == true
         function line:Paint(w, h)
-            local bg = self:IsLineSelected() and (hasPref and pref_sel_clr or pref_unsel_clr) or (hasPref and unpref_sel_clr or unpref_unsel_clr)
+            local bg = self:IsLineSelected() and (hasPref and (isSecondary and clrs[2] or clrs[1]) or clrs[0]) or (hasPref and (isSecondary and clrs_d[2] or clrs_d[1]) or clrs_d[0])
             draw.RoundedBox(0, 0, 0, w, h, bg)
         end
+		
+		line.OnRightClick = function()
+			local menu = DermaMenu()
+			menu:AddOption( "#spawnmenu.menu.copy", function() SetClipboardText( k ) end ):SetIcon( "icon16/page_copy.png" )
+			menu:Open()
+		end
     end
+	
+	AnimatronicList:SortByColumn(3)
 end
 
 -- Команды

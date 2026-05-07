@@ -23,7 +23,6 @@ SWEP.HitDelay = 1.4	-- через сколько удар будет произ�
 SWEP.Arm = "LEFT"
 
 SWEP.IsCharging = false -- переменная для отслеживания удержания ЛКМ
-SWEP.ChargeStartTime = 0 -- время начала удержания ЛКМ
 
 SWEP.HitSize = {
 	Min = Vector( -24, -24, -16 ),
@@ -45,7 +44,7 @@ function SWEP:SetupAnimations()
 end
 
 function SWEP:PrimaryAttack()
-    local ply = self.Owner
+    local ply = self:GetOwner()
     local ent = pills.getMappedEnt(ply)
     if not IsValid(ent) then return end
     if self.IsCharging or ply.tasered then return end
@@ -65,12 +64,11 @@ function SWEP:PrimaryAttack()
     end
 
     self.IsCharging = true
-    self.ChargeStartTime = CurTime()
     self:SetNextMeleeAttack(CurTime() + self.HitDelay)
 end
 
 function SWEP:DealDamage()
-    local ply = self.Owner
+    local ply = self:GetOwner()
     local ent = pills.getMappedEnt(ply)
     if not IsValid(ent) then return end
 
@@ -181,6 +179,21 @@ function SWEP:DealDamage()
     effectData:SetHitBox(tr.HitBox or 0)
     effectData:SetScale(1)
     util.Effect("Impact_GMOD", effectData, true, true)
+		
+	if GetConVar("bust_doors"):GetBool() then
+		if target:GetClass() == "prop_door_rotating" then
+			BustRotatingDoor(ply, target)
+			sound.Play("Wood_Furniture.Break", tr.HitPos, 100, math.random(95,105), 1)
+			sound.Play("Plastic_Box.Break", tr.HitPos, 100, math.random(95,105), 1)
+			return true
+		elseif target:GetClass() == "func_door_rotating" then
+			
+			sound.Play("Wood_Furniture.Break", tr.HitPos, 100, math.random(95,105), 1)
+			sound.Play("Plastic_Box.Break", tr.HitPos, 100, math.random(95,105), 1)
+			BustFuncDoor(ply, target)
+			return true
+		end
+	end
 
     ply:LagCompensation(false)
 

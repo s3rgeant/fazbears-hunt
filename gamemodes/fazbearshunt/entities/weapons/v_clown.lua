@@ -116,7 +116,7 @@ function SWEP:DealDamage()
 		filter = ply,ent
 	})
 	
-	if trace.Hit or targets then
+	if SERVER and (trace.Hit or targets) then
 	
 		local effectdata = EffectData()
 		effectdata:SetOrigin(trace.HitPos)

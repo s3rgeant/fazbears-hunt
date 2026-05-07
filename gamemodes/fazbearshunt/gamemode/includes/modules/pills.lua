@@ -110,26 +110,31 @@ end
 
 -- Player to Pill Entity Mapping
 function mapEnt(ply, ent)
-    ply.fh_pill_ent = ent
+    ply:SetNWEntity("fh_pill_ent", ent)
 end
 
 function unmapEnt(ply, ent)
-    if ply.fh_pill_ent == ent then
-        ply.fh_pill_ent = nil
-    elseif IsValid(ply.fh_pill_ent) then
-        return ply.fh_pill_ent.formTable.type, ply.fh_pill_ent.formTable.name
+	if CLIENT then return end
+	if !IsValid(ply) then return end
+    if ply:GetNWEntity("fh_pill_ent") == ent then
+		ply:SetNWEntity("fh_pill_ent", NULL)
+    elseif IsValid( ply:GetNWEntity("fh_pill_ent") ) then
+        return ply:GetNWEntity("fh_pill_ent").formTable.type, ply:GetNWEntity("fh_pill_ent").formTable.name
     end
 end
 
 function getMappedEnt(ply)
-    return ply.fh_pill_ent
+	if !IsValid(ply) then return NULL end
+	local ent = ply:GetNWEntity("fh_pill_ent", false)
+	if CLIENT and ent and !ent.formTable then return NULL end
+    return ent
 end
 
 local PLAYER = FindMetaTable("Player")
 
 if PLAYER then
 	function PLAYER:GetPill()
-		return self.fh_pill_ent
+		return self:GetNWEntity("fh_pill_ent", false)
 	end
 	
 	function PLAYER:GoPillThirdperson(dur)
@@ -538,9 +543,10 @@ if SERVER then
     end)
 	
     hook.Add("PlayerCanPickupWeapon", "pk_pill_pickupWeapon", function(ply, wep)
-        if IsValid(getMappedEnt(ply)) then
-            if getMappedEnt(ply).formTable.type == "ply" then
-                if (getMappedEnt(ply).formTable.validHoldTypes and table.HasValue(getMappedEnt(ply).formTable.validHoldTypes, wep:GetHoldType())) or string.StartWith(wep:GetClass(), "v_") then return true end
+		local ent = getMappedEnt(ply)
+        if IsValid(ent) then
+            if ent.formTable.type == "ply" then
+                if (ent.formTable.validHoldTypes and table.HasValue(ent.formTable.validHoldTypes, wep:GetHoldType())) or string.StartWith(wep:GetClass(), "v_") then return true end
 
                 return false
             else
@@ -583,11 +589,6 @@ if SERVER then
 else -- CLIENT HOOKS
 	-- чтобы скачанные базы пилл паков не конфликтовали
     hook.Remove("HUDPaint", "pk_pill_hud")
-
-    -- IGNORE THIS NONSENSE: Just use the default HUD from now on
-    hook.Add("HUDShouldDraw", "pk_pill_hideHud", function(name)
-        if (getMappedEnt(LocalPlayer()) and (name == "CHudHealth" or name == "CHudBattery")) then return false end
-    end)
 end
 
 -- Shared hooks

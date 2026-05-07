@@ -183,9 +183,13 @@ local positiveEffects = {
             net.Send(ply)
 			
 			anim_visibility_users[ply] = true
+			ply:SetNWBool("AnimVisibilityFH", true)
 			
-			timer.Simple(30, function()
+			timer.Simple(35, function()
 				anim_visibility_users[ply] = nil
+				if IsValid(ply) then
+					ply:SetNWBool("AnimVisibilityFH", false)
+				end
 			end)
         end,
 		req = function(ply)
@@ -264,6 +268,11 @@ local positiveEffects = {
 					fuck = true
 					break
 				end
+			end
+			
+			if not killermask.IsGiftingAllowed() then
+				print('NELZYA')
+				return false
 			end
 			
 			if fuck then

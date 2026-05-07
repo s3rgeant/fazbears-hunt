@@ -15,15 +15,13 @@ local scrollSpeeds = {}
 
 fh_ui_scale = CreateClientConVar('fh_ui_scale', 1, true, false, 'FH Ui Scale (Animatronics Hud Only)', 0, 2)
 	
-local uiScale = fh_ui_scale:GetFloat() / (1920 / ScrW())
+local uiScale = fh_ui_scale:GetFloat() --[[ / (1920 / ScrW()) ]]--
 
---[[
 cvars.AddChangeCallback("fh_ui_scale", function(name, value_old, value_new)
 	hook.Remove("HUDPaint", "DrawKillerInterface")
-	uiScale = (1920 / ScrW()) * value_new
+	uiScale = value_new
 	hook.Add("HUDPaint", "DrawKillerInterface", DrawKillerInterface)
 end)
---]]
 
 local killerIcon
 local cake = Material( "vgui/cake.png", "smooth" )
@@ -48,6 +46,11 @@ surface.CreateFont("fh_hud_ability_time", { font = "Share Tech Mono Regular", si
 
 local button_ability_mat = Material( "vgui/animatronics_hud/abilities/button_ability.png", "smooth" )
 local mouse_ability_mat = Material( "vgui/animatronics_hud/abilities/mouse_ability.png", "smooth" )
+
+hook.Add("HUDShouldDraw", "pk_pill_hideHud", function(name)
+	local myself = LocalPlayer()
+	if IsValid(myself) and (IsValid(myself:GetPill()) or currentKiller:len() > 0) and (name == "CHudHealth" or name == "CHudBattery") then 	return false end
+end)
 
 function DrawKillerInterface()
 	if currentKiller == "" or not currentKiller or not GetConVar("cl_drawhud"):GetBool() then return end
@@ -540,16 +543,11 @@ net.Receive("fh_net_killer_change_tokens", function()
 	setTokens(str, net.ReadInt(9))
 end)
 
-surface.CreateFont("KillText", {
-    font = "Share Tech Mono Regular",
-	shadow = true,
-	extended = true,
-	antialias = true,
-    size = 24,
-    weight = 500
-})
 local killBg_mat = Material("vgui/animatronics_hud/kill_bg.png")
+local killcross = Material("vgui/kill-crosshair.png", "smooth")
 local addY = 20
+local size = 24
+local halfs = size/2
 
 hook.Add( "HUDPaint", "fh_killable", function()
 	myself = myself or LocalPlayer()
@@ -560,18 +558,9 @@ hook.Add( "HUDPaint", "fh_killable", function()
 		local condition = ent.formTable.killCondition(myself, ent)
 		
 		if condition then
-			surface.SetDrawColor(255, 255, 255, 255)
-			surface.SetMaterial(killBg_mat)
-			surface.DrawTexturedRect(ScrW() / 2 - 110, ScrH()/2 + 20 + addY, 220, 24)
-			
-			draw.SimpleText(
-				language.GetPhrase("fazhunt.abilities.kill"):upper(),
-				"KillText",
-				ScrW()/2,
-				ScrH()/2 + 20 + addY,
-				color_white,
-				TEXT_ALIGN_CENTER
-			)
+			surface.SetDrawColor(255, 0, 0, 255)
+			surface.SetMaterial(killcross)
+			surface.DrawTexturedRect(ScrW() / 2 - halfs, ScrH()/2 - halfs, size, size)
 		end
 	end
 end)

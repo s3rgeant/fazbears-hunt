@@ -134,31 +134,45 @@ local real_zoom = 1
 local zoom = 1
 local add_fov = 0
 
+local minZoom = -75
+local maxZoom = 90
+
 hook.Add( "InputMouseApply", "fh_zooming_mwheel", function( cmd )
-	real_zoom = real_zoom + cmd:GetMouseWheel()
+	real_zoom = real_zoom - cmd:GetMouseWheel()
 	
-	if real_zoom < 0 then
-		real_zoom = math.Clamp(real_zoom, -15, 70)
-		add_fov = math.Clamp(-real_zoom, 0, 25)
+	if real_zoom > maxZoom-20 then
+		real_zoom = math.Clamp(real_zoom, minZoom, maxZoom)
+		add_fov = math.Clamp(real_zoom - maxZoom+20, 0, 20)
 	end
 	
-	if real_zoom > 70 then
-		real_zoom = 70
+	if real_zoom < minZoom then
+		real_zoom = minZoom
 	end
 	
-	zoom = math.Clamp(real_zoom, 0, 70)
+	zoom = math.Clamp(real_zoom, minZoom, 70)
 end )
 
-hook.Add("CalcView", "fh_spec_calcview", function(ply, pos, angles, fov)
-    if ply:GetObserverTarget():IsValid() then 
+hook.Add("CalcView", "fh_spec_calcview", function(ply, pos, ang, fov)
+    if ply:GetObserverTarget():IsValid() and ply:GetViewEntity() == ply then 
 		local observermode = ply:GetObserverMode()
 		local target = ply:GetObserverTarget()
 		if IsValid(target) and observermode == OBS_MODE_CHASE then
+			local startpos = target:EyePos()
+			local dist = target:GetRenderBounds().z
+            local offset = -ang:Forward() *100
+			
+            local tr = util.TraceHull({
+                start = startpos,
+                endpos = startpos + offset - ang:Forward() * zoom,
+                filter = target,
+                mins = Vector(-5, -5, -5),
+                maxs = Vector(5, 5, 5),
+				mask = MASK_SOLID,
+            })
 			
 			local view = {}
-
-			view.angles = angles
-			view.origin = pos - view.angles:Forward() * -zoom
+			view.origin =  tr.HitPos
+			view.ang = ang
 			view.fov = fov + add_fov
 			return view
 		end

@@ -182,6 +182,21 @@ function SWEP:DealDamage()
     effectData:SetHitBox(tr.HitBox or 0)
     effectData:SetScale(1)
     util.Effect("Impact_GMOD", effectData, true, true)
+		
+	if GetConVar("bust_doors"):GetBool() then
+		if target:GetClass() == "prop_door_rotating" then
+			BustRotatingDoor(ply, target)
+			sound.Play("Wood_Furniture.Break", tr.HitPos, 100, math.random(95,105), 1)
+			sound.Play("Plastic_Box.Break", tr.HitPos, 100, math.random(95,105), 1)
+			return true
+		elseif target:GetClass() == "func_door_rotating" then
+			
+			sound.Play("Wood_Furniture.Break", tr.HitPos, 100, math.random(95,105), 1)
+			sound.Play("Plastic_Box.Break", tr.HitPos, 100, math.random(95,105), 1)
+			BustFuncDoor(ply, target)
+			return true
+		end
+	end
 
     ply:LagCompensation(false)
 			

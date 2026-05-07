@@ -73,34 +73,36 @@ function SWEP:PrimaryAttack()
 		start = shootPos,
 		endpos = endPos,
 		filter = function(ent)
-			return ent ~= owner and (ent:IsPlayer() and ent:Team() != owner:Team())
+			return ent ~= owner and (ent:IsPlayer() and ent:Team() ~= owner:Team())
 		end
 	})
 	
-	for _, anim in ipairs( team.GetPlayers(2701) ) do
-		local distance, nearest, linedist = util.DistanceToLine( shootPos, tr.HitPos, anim:GetPos() )
-		
-		if distance > 100 then continue end
-		
-		local trah = util.TraceLine({
-			start = nearest,
-			endpos = anim:GetPos(),
-			filter = function(ent)
-				return ent ~= owner and !ent:IsPlayer()
+	if SERVER then
+		for anim, _ in pairs(animatronics) do
+			local distance, nearest, linedist = util.DistanceToLine( shootPos, tr.HitPos, anim:GetPos() + anim:OBBCenter() )
+			
+			if distance > 100 then continue end
+			
+			local trah = util.TraceLine({
+				start = nearest,
+				endpos = anim:GetPos() + anim:OBBCenter(),
+				filter = function(ent)
+					return ent ~= owner and !ent:IsPlayer()
+				end
+			})
+			
+			if trah.Hit then continue end
+			
+			if anim:Alive() and !anim.tasered and !anim.lobbyFreeze then
+			
+				wait = 90
+				
+				TaseAnimatronic(anim)
+				
+				max_anims = max_anims - 1
+				
+				if max_anims == 0 then break end
 			end
-		})
-		
-		if trah.Hit then continue end
-		
-		if anim:Alive() and !anim.tasered and !anim.lobbyFreeze then
-		
-			wait = 90
-			
-			TaseAnimatronic(anim)
-			
-			max_anims = max_anims - 1
-			
-			if max_anims == 0 then break end
 		end
 	end
 	

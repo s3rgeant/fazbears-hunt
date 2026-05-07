@@ -25,7 +25,7 @@ function SWEP:Initialize()
 end
 
 function SWEP:PrimaryAttack()
-	local ply = self.Owner
+	local ply = self:GetOwner()
 	local Pos = ply:GetShootPos()
 	local Aim = ply:GetAimVector()
 
@@ -67,7 +67,16 @@ function SWEP:PrimaryAttack()
 			Entity = HitEnt,
 			Fraction = Tr.Fraction,
 		}
-		HitEnt.IsBeingDragged = true
+		
+		if IsValid(HitEnt.IsBeingDragged) and HitEnt.IsBeingDragged ~= ply then
+			local wep = HitEnt.IsBeingDragged:GetActiveWeapon()
+			
+			if wep:GetClass() == self:GetClass() then
+				if wep.StopDrag then wep:StopDrag() end
+			end
+		end
+		
+		HitEnt.IsBeingDragged = ply
 	end
 
 	if CLIENT or not IsValid(HitEnt) then return end
@@ -112,14 +121,20 @@ function SWEP:SetupDataTables( )
 	self:NetworkVar( "Bool", 1, "ShouldDrawCrosshair" )
 end
 
+function SWEP:StopDrag()
+	if IsValid(self.Drag.Entity) then
+		if !IsValid(self.Drag.Entity.IsBeingDragged) or self.Drag.Entity.IsBeingDragged == self:GetOwner() then
+			self.Drag.Entity.IsBeingDragged = nil
+		end
+		hook.Run("OnPlayerPhysicsDrop", ply, self.Drag.Entity, false)
+	end
+	self.Drag = nil
+end
+
 function SWEP:Think()
-    local ply = self.Owner
+    local ply = self:GetOwner()
     if self.Drag and (not ply:KeyDown(IN_ATTACK) or not IsValid(self.Drag.Entity)) then
-        if IsValid(self.Drag.Entity) then
-            self.Drag.Entity.IsBeingDragged = nil
-			hook.Run("OnPlayerPhysicsDrop", ply, self.Drag.Entity, false)
-        end
-        self.Drag = nil
+		self:StopDrag()
     end
 end
 
@@ -146,9 +161,10 @@ if CLIENT then
 	local Col = Color( 255, 255, 255, 255 )
 
 	function SWEP:DrawHUD()
-		if IsValid( self.Owner:GetVehicle() ) then return end
-		local Pos = self.Owner:GetShootPos()
-		local Aim = self.Owner:GetAimVector()
+		local ply = self:GetOwner()
+		if IsValid( ply:GetVehicle() ) then return end
+		local Pos = ply:GetShootPos()
+		local Aim = ply:GetAimVector()
 
 		local Tr = util.TraceLine{
 			start = Pos,

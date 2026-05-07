@@ -1,5 +1,3 @@
-local highlightEnabled = false
-
 -- звук для аниматронов
 local visionSuccessSound = "vision_success.wav"
 local visionUnsuccessSound = "vision_unsuccess.wav"
@@ -8,6 +6,59 @@ local affectedPlayers = {}
 local affectedPlayers_force = {}
 local animatronics = {}
 local teammates = {}
+
+include("halo_module.lua")
+
+hook.Add("PillApply", "fh_joinpill", function(ply, ent)
+	timer.Simple(1, function()
+		if IsValid(ent) then
+			ply = ent:GetPillUser()
+			
+			if IsValid(ply) then
+				animatronics[ply] = true
+			end
+		end
+	end)
+end)
+
+hook.Add("OnReloaded", "reloaded_clhalo", function()
+	for _, ent in ents.Iterator() do
+		if ent:GetClass() == "pill_costume" then
+			ply = ent:GetPillUser()
+			
+			if IsValid(ply) then
+				animatronics[ply] = true
+			end
+		end
+	end
+end)
+
+hook.Add("OnEntityCreated", "fh_plushtrap_halo", function(ent)
+	if ent:GetClass() == "plushtrap" then
+		if IsValid(ent) then
+			animatronics[ent] = true
+		end
+	end
+end)
+
+hook.Add("EntityRemoved", "fh_plushtrap_hao", function(ent)
+	if ent:GetClass() == "plushtrap" then
+		animatronics[ent] = nil
+	end
+end)
+
+hook.Add("PillRestore", "fh_restorepill", function(ply, ent)
+	animatronics[ply] = nil
+end)
+
+hook.Add( "NotifyShouldTransmit", "fh_animatronic_transmit", function( entity, started )
+	if entity:IsPlayer() then
+		local ply = entity
+		if !animatronics[ply] and ply:GetPill() then
+			animatronics[ply] = true
+		end
+	end
+end)
 
 local myself
 
@@ -203,37 +254,9 @@ net.Receive("ToggleHighlightSound", function()
 end)
 
 local spectateColor = Color(155,0,255,255)
-hook.Add( "PreDrawHalos", "fh_affected", function()
-	-- ДЛЯ АНИМАТРОНИКОВ
-	
-	local coloredHalo = {}
-
-	for ply, color in pairs(affectedPlayers) do
-		if ply ~= LocalPlayer() and IsValid(ply) and ply:Health() > 0 and not ply:IsInvisible() then
-			local pos = ply:GetPos()
-			if pos:ToScreen().visible then
-				local key = ("%d_%d_%d"):format(color.r, color.g, color.b)
-
-				if not coloredHalo[key] then
-					coloredHalo[key] = {
-						color = color,
-						players = {}
-					}
-				end
-
-				table.insert(coloredHalo[key].players, ply)
-			end
-		end
-	end
-
-	for _, data in pairs(coloredHalo) do
-		local c = data.color
-		c.a = 255
-		halo.Add(data.players, c, 0.5, 0.5, 1, true, true)
-	end
-	
-	local lp = LocalPlayer()
+local function collectSpects(lp, rule)
 	local lp_obsmode = lp:GetObserverMode()
+	local out = {}
 	
 	if IsValid(lp) and !lp:Alive() and lp_obsmode ~= OBS_MODE_NONE then
 		local spectateTargets = {}
@@ -249,26 +272,166 @@ hook.Add( "PreDrawHalos", "fh_affected", function()
 			
 			if lp:GetObserverTarget() == ply and lp_obsmode == OBS_MODE_IN_EYE then continue end
 			
+			local entry
 			if !IsValid(ent) and ply:GetMaterial() == "models/null" then
-				table.insert(spectateTargets, ply)
+				entry = OUTLINE.NormalizeEntry(rule, {
+					ent = ply,
+					outline_color = SPECTATOR_COLOR,
+					fill_color = SPECTATOR_COLOR
+				})
 			elseif IsValid(ent) and ent:GetMaterial() == "models/null" then
-				table.insert(spectateTargets, ent)
+				entry = OUTLINE.NormalizeEntry(rule, {
+					ent = ent,
+					outline_color = SPECTATOR_COLOR,
+					fill_color = SPECTATOR_COLOR
+				})
+			end
+			if entry then
+				out[#out + 1] = entry
 			end
 		end
-		
-		halo.Add(spectateTargets, spectateColor, 1, 1, 2, true, false)
 	end
-	
-	local ent = pills.getMappedEnt(LocalPlayer())
-	
-	if ent and ent.formTable then
-		if ent.formTable.name == "pill_wchica2" then -- ДЛЯ ЧИКИ
-			halo.Add(ents.FindByClass("cakemine"), Color(255, 155, 0, 255), 0.5, 0.5, 1, true, true)
-		end
-	end
-end)
+	return (#out > 0) and out or nil
+end 
 
-local teammateColor = Color(0, 255, 0)
+local SPECTATOR_COLOR = Color(155, 0, 255, 255)
+OUTLINE.RegisterRule("spectators", {
+    priority = 10,
+    render_max_dist = 3000,
+
+    outline_color = SPECTATOR_COLOR,
+    outline_width = 3,
+    outline_min_dist = 1000,
+    outline_max_dist = 2200,
+
+    fill_color = SPECTATOR_COLOR,
+    fill_min_dist = 1500,
+    fill_max_dist = 2600,
+
+    mode = OUTLINE_MODE_VISIBLE,
+    collect = collectSpects
+})
+
+local function getAffected(lp, rule)
+    if not istable(affectedPlayers) then return nil end
+
+    local out = {}
+    local maxDist = tonumber(rule.render_max_dist) or math.huge
+    local maxDistSqr = maxDist > 0 and (maxDist * maxDist) or math.huge
+
+    for ent, color in pairs(affectedPlayers) do
+        if not IsValid(ent) then continue end
+        if not ent:IsPlayer() then continue end
+        if ent == lp then continue end
+        if not ent:Alive() then continue end
+        if ent:Team() == TEAM_SPECTATOR then continue end
+        if ent:Health() <= 0 then continue end
+        if ent.IsInvisible and ent:IsInvisible() then continue end
+		local pos = ent:GetPos()
+		if !pos:ToScreen().visible then continue end
+
+        local entry = OUTLINE.NormalizeEntry(rule, {
+            ent = ent,
+            outline_color = color or color_white,
+            fill_color = color or color_white
+        })
+
+        if entry then
+            out[#out + 1] = entry
+        end
+    end
+
+    return (#out > 0) and out or nil
+end
+
+OUTLINE.RegisterRule("affected_players", {
+    priority = 100,
+    render_max_dist = 9000,
+
+    outline_color = Color(255, 0, 0, 255),
+    outline_width = 3,
+    outline_min_dist = 800,
+    outline_max_dist = 1800,
+
+    fill_color = Color(255, 0, 0, 255),
+    fill_min_dist = 1000,
+    fill_max_dist = 1800,
+
+    mode = OUTLINE_MODE_BOTH,
+    collect = getAffected
+})
+local function GetViewOrigin(ply)
+    local viewEnt = ply:GetViewEntity()
+
+    if IsValid(viewEnt) then
+        if viewEnt:IsPlayer() then
+            return viewEnt:EyePos()
+        end
+
+        return viewEnt:GetPos()
+    end
+
+    return ply:EyePos()
+end
+
+local CUPCAKE_COLOR   = Color(255, 155, 0, 255)
+local function getCupcakes(lp, rule)
+    local pillEnt = pills.getMappedEnt(lp)
+    if not IsValid(pillEnt) or not pillEnt.formTable then return nil end
+    if pillEnt.formTable.name ~= "pill_wchica2" then return nil end
+
+    local out = {}
+    local viewOrigin = GetViewOrigin(lp)
+    local maxDist = tonumber(rule.render_max_dist) or math.huge
+    local maxDistSqr = maxDist > 0 and (maxDist * maxDist) or math.huge
+
+    for _, ent in ipairs(ents.FindByClass("cakemine")) do
+        if not IsValid(ent) then continue end
+        if not ent.DrawModel then continue end
+
+        local mdl = ent:GetModel()
+        if not mdl or mdl == "" then continue end
+
+        if ent:GetPos():DistToSqr(viewOrigin) > maxDistSqr then
+            continue
+        end
+
+        if not ent:GetPos():ToScreen().visible then
+            continue
+        end
+
+        local entry = OUTLINE.NormalizeEntry(rule, {
+            ent = ent,
+            outline_color = CUPCAKE_COLOR,
+            fill_color = CUPCAKE_COLOR
+        })
+
+        if entry then
+            out[#out + 1] = entry
+        end
+    end
+
+    return (#out > 0) and out or nil
+end
+
+OUTLINE.RegisterRule("cupcakes", {
+    priority = 20,
+    render_max_dist = 9000,
+
+    outline_color = CUPCAKE_COLOR,
+    outline_width = 4,
+    outline_min_dist = 500,
+    outline_max_dist = 2000,
+    
+    fill_color = CUPCAKE_COLOR,
+    fill_min_dist = 400,
+    fill_max_dist = 2000,
+
+    mode = OUTLINE_MODE_BOTH,
+    collect = getCupcakes
+})
+
+local TEAMMATE_COLOR = Color(0, 255, 0)
 local enemyColor = Color(255, 155, 0)
 local outlineMaterial = Material("models/debug/debugwhite")
 
@@ -303,20 +466,7 @@ hook.Add("HUDPaint", "fh_draw_affected", function()
 end)
 
 net.Receive("fh_hl_animatronics", function()
-	for _, ply in ipairs(team.GetPlayers(2701)) do
-		if !table.HasValue(animatronics, ply) then
-			local ent = pills.getMappedEnt(ply)
-			table.insert(animatronics, ent)
-			teammatesColors[ent] = 0
-		end
-	end
 	surface.PlaySound("human_gift_vision.wav")
-	timer.Simple(30, function()
-		table.Empty(animatronics)
-		if !LocalPlayer():IsAnimatronic() then
-			table.Empty(teammatesColors)
-		end
-	end)
 end)
 
 net.Receive("fh_hl_teammates", function()
@@ -325,7 +475,7 @@ net.Receive("fh_hl_teammates", function()
 		for _, ply in ipairs(team.GetPlayers(2701)) do
 			local ent = pills.getMappedEnt(ply)
 			if ply ~= LocalPlayer() and IsValid(ent) then
-				teammatesColors[ent] = teammateColor
+				teammatesColors[ent] = TEAMMATE_COLOR
 			end
 			
 			if ply ~= LocalPlayer() then
@@ -335,92 +485,106 @@ net.Receive("fh_hl_teammates", function()
 	end
 end)
 
-net.Receive("fh_uhl_teammates", function()
-	table.Empty(teammatesColors)
-	table.Empty(teammates)
-end)
+local function ResolveTeammateColor(lp, ent, storedColor)
+    if IsColor(storedColor) then
+        return storedColor
+    end
 
-hook.Add("PostDrawOpaqueRenderables", "fh_draw_teammates", function(depth, skybox, skybox3d )
-    local ply = LocalPlayer()
-    if not IsValid(ply) then return end
-	
-	if skybox3d then return end
-	
-	local function drawAnimatronics(tbl, color)
-		local viewEntity = ply:GetViewEntity()
-		local eyePos = IsValid(viewEntity) and (viewEntity:IsPlayer() and viewEntity:EyePos() or viewEntity:GetPos() ) or ply:EyePos()
-		for _, ent in pairs(tbl) do
-			if not IsValid(ent) or not ent.DrawModel then continue end
-			
-			local pos = ent:GetPos()
-			local distance = pos:Distance(LocalPlayer():GetPos())
-			
-			if distance > GetGlobal2Float("FarZ", 8000) + 50 then continue end
-			
-			local toScreen = pos:ToScreen()
-			if toScreen.visible then
-				local tr = util.TraceLine( {
-					start = eyePos,
-					endpos = pos + ent:OBBCenter(),
-					filter = function(ent)
-						return !ent:IsPlayer() and ent ~= ply
-					end,
-					mask = MASK_SHOT_HULL,
-				} )
-				
-				local entIsPill = ( ent == pills.getMappedEnt(tr.Entity) )
-				
-				if ( !tr.Hit or entIsPill ) and !ent:IsInvisible() then continue end
-				
-				if !ent:IsInvisible() and pos:Distance(eyePos) < 250 then continue end
+    if !lp:IsAnimatronic() and killers and killers.getColor and ent.GetPillName then
+        local pillName = ent:GetPillName()
+        if pillName then
+            local killerColor = killers.getColor(pillName)
+            if IsColor(killerColor) then
+                return killerColor
+            end
+        end
+    end
 
-				cam.IgnoreZ(true)
-				local oldfogmode = render.GetFogMode()
-				render.FogMode( 0 )
-				
-				local clr = color or killers.getColor(ent:GetPillName())
-				
-				render.SuppressEngineLighting(true)
-				render.SetColorModulation(clr.r / 255, clr.g / 255, clr.b / 255)
-				render.SetBlend(0.5)
-				render.MaterialOverride(outlineMaterial)
+    return TEAMMATE_COLOR
+end
 
-				ent:SetLOD(8) -- мы делаем модельку обводки "уёбищной" чтобы она не жрала фпс
-				ent:DrawShadow( false )
-				ent:DrawModel()
+local forcetmdistance = 1100
+local function getTeammates(lp, rule)
+    local haloTeammates = GetConVar("fh_halo_teammates")
+    if haloTeammates and not haloTeammates:GetBool() and lp:IsAnimatronic() then return nil end
+    if not lp:IsAnimatronic() and not lp:GetNWBool("AnimVisibilityFH") then return nil end
 
-				render.MaterialOverride(nil)
-				render.SetColorModulation(1, 1, 1)
-				render.SetBlend(1)
-				render.SuppressEngineLighting(false)
-				render.FogMode( oldfogmode )
+    if not istable(animatronics) or table.IsEmpty(animatronics) then return nil end
 
-				ent:SetLOD(-1)
-				ent:DrawShadow( true )
-				cam.IgnoreZ(false)
-			end
+    local out = {}
+    local viewOrigin = GetViewOrigin(lp)
+    local maxDist = tonumber(rule.render_max_dist) or math.huge
+    local maxDistSqr = maxDist > 0 and (maxDist * maxDist) or math.huge
+
+    for ent, storedColor in pairs(animatronics) do
+		if !IsValid(ent) then continue end
+		if ent:IsPlayer() then 
+			if ent:Team() ~= TEAM_PILLS then continue end
+			if ent == lp then continue end 
+			ent = ent:GetPill() 
 		end
-	end
-	
-	if fh_halo_teammates:GetBool() then 
-		if !table.IsEmpty(teammates) then
-			drawAnimatronics(teammates, teammateColor)
-		end
-	
-		if LocalPlayer():IsAnimatronic() then
-			drawAnimatronics(ents.FindByClass("plushtrap"), teammateColor)
-		end
-	end
-	
-	if !table.IsEmpty(animatronics) then
-		drawAnimatronics(animatronics)
-	end
-end)
+        if not IsValid(ent) then continue end
+        if not ent.DrawModel then continue end
+		
+		local pos = ent:GetPos() + ent:OBBCenter()
+		
+		local distance = pos:DistToSqr(viewOrigin)
+        if distance > maxDistSqr then
+            continue
+        end
+		
+		local tr = util.TraceLine( {
+			start = viewOrigin,
+			endpos = pos,
+			filter = function(ent)
+				return not ent:IsPlayer()
+			end,
+			mask = MASK_VISIBLE_AND_NPCS,
+		})
+		
+		if not tr.Hit and distance < forcetmdistance*forcetmdistance then continue end
+		
+        if not pos:ToScreen().visible then
+            continue
+        end
+
+        local resolvedColor = ResolveTeammateColor(lp, ent, storedColor)
+		
+        local entry = OUTLINE.NormalizeEntry(rule, {
+            ent = ent,
+            outline_color = resolvedColor,
+            fill_color = resolvedColor
+        })
+
+        if entry then
+            out[#out + 1] = entry
+        end
+    end
+
+    return (#out > 0) and out or nil
+end
+
+OUTLINE.RegisterRule("animatronics", {
+    priority = 30,
+    render_max_dist = 9000,
+
+    outline_color = TEAMMATE_COLOR,
+    outline_width = 3,
+    outline_min_dist = 1000,
+    outline_max_dist = 2200,
+    
+    fill_color = TEAMMATE_COLOR,
+    fill_min_dist = 1500,
+    fill_max_dist = 2600,
+
+    mode = OUTLINE_MODE_BOTH,
+    collect = getTeammates
+})
 
 hook.Add("HUDPaint", "fh_cupcake_count_draw", function()
 	local ent = pills.getMappedEnt(LocalPlayer())
 	if !ent then return end
-	if ent.formTable and ent.formTable.name != "pill_wchica2" then return end
+	if ent.formTable and ent.formTable.name ~= "pill_wchica2" then return end
     local cakemines = ents.FindByClass("cakemine")
 
     for i, ent in ipairs(cakemines) do
@@ -452,6 +616,7 @@ local function IsOverlapping(x, y, size)
     return false
 end
 
+local speaker = Material("voice/icntlk_pl.vtf")
 local function RegisterIcon(x, y)
     drawnIcons[#drawnIcons + 1] = { x = x, y = y }
 end
@@ -489,6 +654,7 @@ function draw_orbs(tbl, material, distance)
                 local ourColor = IsColor(color) and color:Copy() or Color(255,0,0,255)
 				
                 if target:GetClass() == "pill_costume" and killers.GetFullName(target:GetPillName()) and ply:IsAnimatronic() then
+					local owner = target:GetPillUser()
                     
 					local textureSize = 16
 
@@ -526,8 +692,8 @@ function draw_orbs(tbl, material, distance)
 					
                     local nickname = nil
                     local name = killers.GetFullName(target:GetPillName())
-                    if IsValid(target:GetParent()) and target:GetParent():IsPlayer() then
-                        nickname = target:GetParent():Nick()
+                    if IsValid(owner) and owner:IsPlayer() then
+                        nickname = owner:Nick()
                     end
 
                     local pillMaterial = killers.GetAvatar(target:GetPillName())
@@ -535,6 +701,12 @@ function draw_orbs(tbl, material, distance)
                         ourColor = color_white
                     end
 
+					if IsValid(owner) and owner:VoiceVolume() > 0 then
+						local aa = owner:VoiceVolume() * 255
+						surface.SetDrawColor(aa, aa, aa, 255)
+						surface.SetMaterial(speaker)
+						surface.DrawTexturedRect(drawX - textureSize, drawY - textureSize*2, textureSize*2, textureSize*2)
+					end
                     surface.SetDrawColor(ourColor.r, ourColor.g, ourColor.b, alpha)
                     surface.SetMaterial(pillMaterial or material)
                     surface.DrawTexturedRect(drawX - textureSize, drawY - textureSize, textureSize*2, textureSize*2)
@@ -584,22 +756,22 @@ hook.Add("HandlePillThirdperson", "no_thirdperson_yoursmine", function(ply, ent)
 end)
 
 net.Receive("fh_start_yoursmine_view", function()
+	local myself = LocalPlayer()
+
     local target = net.ReadEntity()
-    LocalPlayer()._yoursmine_target = target
-    LocalPlayer()._yoursmine_start_time = CurTime()
-    LocalPlayer()._yoursmine_initial_phase_duration = 5
-    LocalPlayer()._yoursmine_rotation_duration = 0.7
-    LocalPlayer()._yoursmine_total_dur = LocalPlayer()._yoursmine_initial_phase_duration + LocalPlayer()._yoursmine_rotation_duration
+    myself._yoursmine_target = target
+    myself._yoursmine_start_time = CurTime()
+    myself._yoursmine_initial_phase_duration = 5
+    myself._yoursmine_rotation_duration = 0.7
+    myself._yoursmine_total_dur = LocalPlayer()._yoursmine_initial_phase_duration + LocalPlayer()._yoursmine_rotation_duration
 	
-	LocalPlayer():DrawViewModel( false, 0 )
+	myself:DrawViewModel( false, 0 )
 	
-	LocalPlayer():SetFOV(0, 0)
+	myself:SetFOV(0, 0)
 	
-	local ent = pills.getMappedEnt(LocalPlayer())
+	local ent = pills.getMappedEnt(myself)
 	
-	if IsValid(ent) and !table.HasValue(animatronics, ent) then
-		table.insert(animatronics, ent)
-	end
+	animatronics[myself] = true
 	
 	--[[
     hook.Add("CalcView", "fh_yoursmine_view", function(viewer, origin, angles, fov)

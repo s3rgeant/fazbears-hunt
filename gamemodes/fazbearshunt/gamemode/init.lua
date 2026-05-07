@@ -26,11 +26,13 @@ local function recursive_include(path)
         end
     end
 end
+AddCSLuaFile("halo_module.lua")
 
 recursive_include("fazbearshunt/gamemode/utils/")
 recursive_include("fazbearshunt/gamemode/")
 recursive_include("fazbearshunt/gamemode/interface/")
 recursive_include("fazbearshunt/gamemode/mount/")
+recursive_include("fazbearshunt/gamemode/events/")
 
 util.AddNetworkString("KillerPicked")
 util.AddNetworkString("ApplyKillerCompanion")
@@ -39,9 +41,6 @@ util.AddNetworkString("RemoveKillerCompanion")
 util.AddNetworkString("nv_off")
 
 util.AddNetworkString("fh_initpostentity")
-
-util.AddNetworkString("fh_hl_teammates")
-util.AddNetworkString("fh_uhl_teammates")
 
 util.AddNetworkString("fh_net_display")
 
@@ -209,12 +208,13 @@ function freezeAnimatronics(duration)
 		end
 		SetGlobal2Bool("roundActive", true)
 		roundActive = true
+		modifiers.Start()
 		
 		hook.Run("fh_poststartgame", roundType, animatronics)
     end)
 end
 
-hook.Add("fh_poststartgame", "gifts_spawning", function(pusher, victim)
+hook.Add("fh_poststartgame", "gifts_spawning", function()
 	if conVars.fh_gifts_spawning:GetBool() then
 		doGiftSpawning()
 	end
@@ -270,15 +270,38 @@ local function giveKillerShared(ply, killer, force)
 		print(ply:Nick() .. " is " .. killerData.name.." now.")
 	end
 	
+	killerData.ogName = killerName
+	
 	return killerData
 end
 
-function giveKiller(ply, killer, force)
+function giveKiller(ply, killer, force, tpSpawn)
 	force = force or false
 	
 	local killerData = giveKillerShared(ply, killer, force)
 	
 	if !killerData then return end
+	
+	if tpSpawn then
+		local curSpawn
+		
+		local animSpawns = fhspawns.GetSpawnsFor(killerData.ogName)
+		
+		if animSpawns then
+			table.Shuffle(animSpawns)
+			
+			for ent, _ in pairs(animSpawns) do
+				curSpawn = ent
+				break
+			end
+		end
+		timer.Simple(0, function()
+			if IsValid(curSpawn) and IsValid(ply) then
+				ply:SetPos(curSpawn:GetPos())
+				ply:SetEyeAngles(curSpawn:GetAngles())
+			end
+		end)
+	end
 
     net.Start("KillerPicked")
     net.WriteString(ply:Nick())
@@ -310,7 +333,7 @@ function setupPlayerVars(ply)
 	ply:SetViewOffset(Vector(0, 0, 64))
 	ply:SetViewOffsetDucked(Vector(0, 0, 28))
 	
-	ply:SetJumpBoostMultiplier( 0.5 )
+	ply:SetJumpBoost( 0.5 )
 end
 
 hook.Add("PlayerCanSeePlayersChat", "fh_chat", function(text, teamOnly, listener, speaker)
@@ -334,21 +357,20 @@ function endRound(killerVictory, duration)
 	
 	fh.timer.RemoveTimer()
 	
-	if timer.Exists("UnfreezeAnims") then
-		timer.Remove("UnfreezeAnims")
-	end
+	timer.Remove("UnfreezeAnims")
+	timer.Remove("RandomGifts")
 	
-	if timer.Exists("RandomGifts") then
-		timer.Remove("RandomGifts")
-	end
+	modifiers.End()
 	
 	hook.Run("fh_postendgame", killerVictory, animatronics)
 	
 	timer.Create("endGameWait", duration, 1, function() 
 		endGame()
-	end )
+	end)
 end
 
+local fh_fast_roundrestart = CreateConVar( "fh_fast_roundrestart", "0", { FCVAR_ARCHIVE, FCVAR_REPLICATED }, 
+"Make round restarts be faster?" )
 function endGame()
 	SetGlobal2Bool("gameOn", false)
 	isGameOn = false
@@ -357,11 +379,16 @@ function endGame()
 	SetGlobal2Bool("roundPaused", false)
 	roundPaused = false
 	
+	modifiers.DeactivateAll()
+	
 	forceAnimSelectTime = 0
 	table.Empty(usedKillers)
 	
 	for _, ply in player.Iterator() do
 		ply:SetTeam(TEAM_SURVIVOR)
+		if ply:GetPill() then
+			pills.restore(ply:Nick(), true)
+		end
 		ply:Spawn()
 		setupPlayerVars(ply)
 		if ply:HasWeapon("weapon_taser") then
@@ -373,12 +400,8 @@ function endGame()
 				ply:NoPlayerCollide(0.25)
 			end
 		end)
-
-		if ply:GetPill() then
-			pills.restore(ply:Nick(), true)
-		end
 	end
-	game.CleanUpMap( false )
+	game.CleanUpMap( fh_fast_roundrestart:GetBool() and true or false )
 	
 	fh.timer.StartDefaultTimer(lobbyDuration, function()
 		registerNewRound()
@@ -393,7 +416,7 @@ function getScaledJumpBoost()
 	local count = player.GetCount()
 	
 	if count < 8 then
-		return 0.3
+		return 0.4
 	elseif count < 18 then
 		return 0.5
 	end
@@ -413,7 +436,7 @@ function startGame(forceid)
 	local _, players = player.Iterator()
 
 	RunConsoleCommand("proximity_enabled", 1)
-	lobbyDuration = 30
+	lobbyDuration = fh_fast_roundrestart:GetBool() and 5 or 30
 	
 	if timer.Exists("endGameWait") then
 		timer.Remove("endGameWait")
@@ -430,20 +453,20 @@ function startGame(forceid)
 	
 	local fh_prestartgame = hook.Run("fh_prestartgame")
 	
-	if fh_prestartgame != nil and fh_prestartgame == false then 
+	if fh_prestartgame ~= nil and fh_prestartgame == false then 
 		return 
 	end
 	
-	fh.SelectRoundType(forceid or nil)
+	local roundType = fh.SelectRoundType(forceid or nil)
 	
 	local fh_startgame = hook.Run("fh_startgame", roundType, animatronics)
 	
-	if fh_startgame != nil and fh_startgame == false then 
+	if fh_startgame ~= nil and fh_startgame == false then 
 		return 
 	end
 	
 	for _, ply in ipairs(players) do
-		ply:SetJumpBoostMultiplier( getScaledJumpBoost() )
+		ply:SetJumpBoost( getScaledJumpBoost() )
 	end
 	
 	fh.timer.StartGameTimer(
@@ -458,19 +481,9 @@ function startGame(forceid)
 	net.WriteString( "#"..fh.GetRoundMusic( fh.GetRoundType() ) )
 	net.WriteString( "timer_music" )
 	net.Broadcast()
-end
-
-function RandomTaser()
-	-- для золотого фредди скипаем первый тик
-	timer.Simple(0, function()
-		local random_taser = team.GetPlayers( TEAM_SURVIVOR )
-		local random_taserer = fh.randomChoice( random_taser )
-		
-		if IsValid(random_taserer) then
-			random_taserer:Give("weapon_taser")
-			random_taserer:SendLua( "LocalPlayer():ChatPrint(language.GetPhrase('fazhunt.give_taser'))" )
-		end
-	end)
+	
+	modifiers.Setup(roundType)
+	modifiers.Startup()
 end
 
 function registerNewRound(forceid)
@@ -520,11 +533,26 @@ function restoreAnimatronic(ply)
 	ply:SetTeam(TEAM_SURVIVOR)
 end
 
+function RandomTaser()
+	-- для золотого фредди скипаем первый тик
+	timer.Simple(0, function()
+		local random_taser = team.GetPlayers( TEAM_SURVIVOR )
+		local random_taserer = fh.randomChoice( random_taser )
+		
+		if IsValid(random_taserer) then
+			random_taserer:Give("weapon_taser")
+			random_taserer:SendLua( "LocalPlayer():ChatPrint(language.GetPhrase('fazhunt.give_taser'))" )
+		end
+	end)
+end
+
+local sub_timer = 0
 function doGiftSpawning()
 	if timer.Exists('RandomGifts') then return end
-	timer.Create("RandomGifts", 110, 0, function()
+	timer.Create("RandomGifts", 120, 0, function()
 		SpawnGifts()
-		timer.Adjust("RandomGifts", 110)
+		timer.Adjust("RandomGifts", 120 - sub_timer)
+		sub_timer = 0
 	end)
 end
 
@@ -756,14 +784,20 @@ hook.Add("PostPlayerDeath", "fh_killmask_outworld", function()
 	if isGameOn and !roundEnding and table.Count(survivors) == 1 and table.Count(animatronics) == 1 then
 		local goldenfreddy = fh.GetActiveUsedKiller("pill_wgfreddy2")
 		local lastsurvivor
+		
+		if not IsValid(goldenfreddy) then return end
 
 		for ply, _ in pairs(survivors) do
-			lastsurvivor = ply
+			if IsValid(ply) then
+				lastsurvivor = ply
+			end
 		end
+		
+		if not lastsurvivor then return end
 
 		if !lastsurvivor:GetNW2Bool("KillerObsessed") then return end
 
-		if IsValid(goldenfreddy) and IsValid(goldenfreddy:GetPill()) then
+		if IsValid(goldenfreddy:GetPill()) then
 			start_outworld_battle(goldenfreddy, goldenfreddy:GetPill(), lastsurvivor)
 		end
 	end
@@ -821,7 +855,7 @@ end)
 hook.Add("EntityTakeDamage", "fh_anims_only_breakable_props", function(ent, dmginfo)
 	local attacker = dmginfo:GetAttacker()
 	
-	if IsValid(attacker) and attacker:IsPlayer() and attacker:IsAnimatronic() then
+	if IsValid(attacker) and (attacker:IsPlayer() and attacker:IsAnimatronic() or !attacker:IsPlayer()) then
 		local phys = ent:GetPhysicsObject()
 		if ent.PropHealth and IsValid(phys) and phys:IsMotionEnabled() then
 			ent.PropHealth = ent.PropHealth - dmginfo:GetDamage()
@@ -892,7 +926,7 @@ local function fh_death_hook(victim)
 		
 		if timer.Exists("RandomGifts") then
 			local timertime = timer.TimeLeft("RandomGifts")
-			timer.Adjust("RandomGifts", math.min(timertime + 5, 120))
+			timer.Adjust("RandomGifts", math.max(timertime - 5, 10))
 		end
 		
 		local animCount = table.Count(animatronics)
@@ -903,6 +937,7 @@ local function fh_death_hook(victim)
 		
 		if isGameOn and !roundEnding and table.Count(survivors) == 1 and animCount >= 2 and fh.timer.GetTimeLeft() >= 200 then
 			fh.timer.CutBack(180, "round/time_cutback.mp3")
+			hook.Run("fh_timercutback")
 		end
 	end
 	animatronics[victim] = nil
@@ -961,6 +996,7 @@ end
 function survivorsWin()
 	local plys = {}
 	for ply, _ in pairs(survivors) do
+		if not ply:IsValid() then return end
 		table.insert(plys, ply:Nick())
 	end
 	
@@ -1030,17 +1066,9 @@ end )
 hook.Add("PillApply", "fh_joinpill", function(ply, ent)
 	animatronics[ply] = true
 	survivors[ply] = nil
-	
-	timer.Simple(1, function()
-		net.Start("fh_hl_teammates")
-		net.Broadcast()
-	end)
 end)
 
 hook.Add("PillRestore", "fh_restorepill", function(ply, ent)
-	net.Start("fh_uhl_teammates")
-	net.Send(ply)
-	
 	if usedKillers[ent.formTable.name] then
 		usedKillers[ent.formTable.name] = nil
 	end
@@ -1070,7 +1098,7 @@ net.Receive("fh_selected_killer", function(len, ply)
 	local killer = net.ReadString()
 	
 	if !usedKillers[killer] then
-		giveKiller(ply, killer)
+		giveKiller(ply, killer, nil, true)
 		
 		for v, _ in pairs(animatronics) do
 			net.Start("fh_update_killer_selector")
@@ -1098,7 +1126,7 @@ function giveRandomKiller(ply, update)
 	
 	local killer = fh.randomChoice(availableKillers)
 	
-	giveKiller(ply, killer)
+	giveKiller(ply, killer, nil, true)
 	
 	if update then
 		for v, _ in pairs(animatronics) do
@@ -1197,16 +1225,12 @@ function FindSuitableVictoryPos(forwardCheck, backCheck)
 			local tr = util.TraceLine( {
 				start = pos,
 				endpos = pos + (forward * forwardCheck) + (up * 60),
-				--maxs = Vector(-5,-5,-5),
-				--mins = Vector(5,5,5),
 				filter = self
 			} )
 			
 			local tr_back = util.TraceLine( {
 				start = pos,
 				endpos = pos + (backward * backCheck) + (up * 60),
-				--maxs = Vector(-5,-5,-5),
-				--mins = Vector(5,5,5),
 				filter = self
 			} )
 			
@@ -1263,7 +1287,7 @@ function fh.GetGameDuration()
 	return conVars.fh_round_duration:GetInt() * 60
 end
 
-hook.Add("fh_startgame", "FH_UpdateLastKillers", function(killerVictory, anims)
+hook.Add("fh_startgame", "FH_UpdateLastKillers", function(roundType, anims)
     for ply, _ in pairs(anims) do
         if IsValid(ply) then
 			local id = GetPlyID(ply)
@@ -1462,8 +1486,10 @@ function fh.SelectRoundType(forcedID)
     if selected then
         fh.SetRoundType(selected.id)
         selected.func()
+		return selected.id
     else
         ErrorNoHalt("[fh] Couldn't select round type!\n")
+		return -1
     end
 end
 

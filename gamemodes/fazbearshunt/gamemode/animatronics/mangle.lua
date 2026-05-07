@@ -70,8 +70,9 @@ pills.register("pill_mangle",{
 			crouch="crouch",
 			crouch_walk="crouchwalk",
 			stun="stun",
+		},
+		gestures={
 			melee="melee",
-			
 			hook="hook",
 		},
 		speedCap={
@@ -117,9 +118,11 @@ pills.register("pill_mangle",{
 	},
 	
 	killCondition=function(ply,ent)
+		if ply:GetNWBool("_MangleHooked") or ply:GetNWBool("_MangleHookReady") then return end
+		
 		local target = FindNearestPlayer(ply:EyePos(), 125, ply, 36)
 		
-		if IsValid(target) and !target:IsInvisible() then
+		if IsValid(target) and !target:IsInvisible() and !target:IsJumpscared() then
 			return true
 		end
 		return false
@@ -164,8 +167,10 @@ pills.register("pill_mangle",{
 	},
 	
 	land=function(ply,ent)
+	
 		ply:SetNWBool("_MangleHooked", false)
 		ply:SetNWBool("_MangleHookReady", false)
+		ply:SetNWString("_MangleLastHookType", "")
 		
 		local groundPly = ply:GetGroundEntity()
 		
@@ -269,12 +274,14 @@ local function MangleHookUpCheck(ply, mv)
 
 	local startPos = ply:EyePos()
 	local endPos = startPos + eyeDir * traceDist
+	
+	local filter = {ply, "prop_physics", "prop_door_rotating", "func_door", "func_door_rotating"}
 
 	local tr = util.TraceLine({
 		start = startPos,
 		endpos = endPos,
-		mask = MASK_VISIBLE,
-		filter = ply
+		mask = MASK_PLAYERSOLID,
+		filter = filter
 	})
 
 	if not tr.Hit then
@@ -283,8 +290,8 @@ local function MangleHookUpCheck(ply, mv)
 			tr = util.TraceLine({
 				start = startPos,
 				endpos = startPos + offsetDir * traceDist,
-				mask = MASK_VISIBLE,
-				filter = ply
+				mask = MASK_PLAYERSOLID,
+				filter = filter
 			})
 			if tr.Hit then break end
 		end
@@ -353,6 +360,16 @@ hook.Add("SetupMove", "mangle_hooked", function(ply, mv, cmd)
 	end
 end)
 
+local crouching = {}
+hook.Add( "PlayerButtonDown", "mangle_ctrl", function( ply, button )
+	if button != KEY_LCONTROL then return end
+	crouching[ply] = true
+end)
+hook.Add( "PlayerButtonUp", "mangle_ctrl", function( ply, button )
+	if button != KEY_LCONTROL then return end
+	crouching[ply] = nil
+end)
+
 hook.Add("Move", "mangle_hooked", function(ply, mv, cmd)
 	if ply:GetNWBool("_MangleHooked") then
 		if bit.band( mv:GetButtons(), IN_ATTACK2 ) ~= 0 and bit.band( mv:GetOldButtons(), IN_ATTACK2 ) == 0 then
@@ -366,9 +383,15 @@ hook.Add("Move", "mangle_hooked", function(ply, mv, cmd)
 			JUMPING[ply] = true
 		end
 	end
+	
+	if ply:GetNWBool("_MangleHookReady") and crouching[ply] then
+		mv:SetVelocity(mv:GetVelocity() - Vector(0,0,12))
+	end
 end)
 
 local SKIPFIRST = {}
+local START_VELOCITY = {}
+local ENDGOAL = {}
 
 hook.Add("FinishMove", "mangle_hook_ready", function( ply, mv )
 	if SKIPFIRST[ply] then
@@ -423,16 +446,20 @@ hook.Add("FinishMove", "mangle_hook_ready", function( ply, mv )
 
 		local velocityPower = 600
 		
-		if ply:GetNWBool("_MangleHooked") then
+		if ply:GetNWBool("_MangleHooked") or CLIENT and SKIPFIRST[ply] then
 			velocityPower = 1000
 			if eyeAng.p > 40 then
 				velocityPower = 1400
 			end
 		end
+		
+		if IsFirstTimePredicted() then
+			START_VELOCITY[ply] = mv:GetVelocity() + (initVelVector * velocityPower) +
+			addVelocity
+		end
 
 		mv:SetVelocity(
-			mv:GetVelocity() + (initVelVector * velocityPower) +
-			addVelocity
+			START_VELOCITY[ply]
 		)
 
 		ply:SetNWBool("_MangleHooked", false)
@@ -442,30 +469,19 @@ hook.Add("FinishMove", "mangle_hook_ready", function( ply, mv )
 		end
 		JUMPING[ply] = nil
 		SKIPFIRST[ply] = true
+		ENDGOAL[ply] = nil
+	end
+		
+	--print(343, ply:GetVelocity())
+	
+	if CLIENT and ply:GetNWBool("_MangleHooked") and ENDGOAL[ply] and !IsFirstTimePredicted() then
+		ply:SetLocalVelocity(Vector(0,0,0))
+		mv:SetOrigin(ENDGOAL[ply])
+		return
 	end
 
 	if ply:GetNWBool("_MangleHookReady") then
 		local hooktype = ply:GetNWString("_MangleLastHookType")
-		--[[
-		if SERVER and hooktype == "ceiling" then
-			ply:LagCompensation(true)
-			if ply:GetGroundEntity():IsPlayer() and ply:GetGroundEntity():IsSurvivor() then
-				local victim = ply:GetGroundEntity()
-				victim:TakeDamage(100, ply)
-
-				local edata = EffectData()
-				edata:SetOrigin(victim:GetPos() + victim:GetCurrentViewOffset())
-				edata:SetEntity(victim)
-				util.Effect("BloodImpact", edata)
-				
-				victim:EmitSound("physics/body/body_medium_break3.wav")
-				
-				mangle_tierUp(ply)
-			end
-			ply:LagCompensation(false)
-		end
-		
-		]]--
 	
 		if ply:WaterLevel() > 0 or (!SKIPFIRST[ply] and ply:OnGround()) then
 			ply:SetNWBool("_MangleHookReady", false)
@@ -477,9 +493,12 @@ hook.Add("FinishMove", "mangle_hook_ready", function( ply, mv )
 		local tr = MangleHookUpCheck(ply, mv)
 		ply:LagCompensation(false)
 		
-		if !tr.HitSky and tr.Hit and tr.Entity == game.GetWorld() and tr.HitNormal.z <= 0 then
+		--print(tr.HitNormal.z)
+		
+		if !tr.HitSky and tr.Hit and tr.Entity == game.GetWorld() and tr.HitNormal.z <= 0.29 then
 			local ent = pills.getMappedEnt(ply)
-			if SERVER --[[ or CLIENT and !IsFirstTimePredicted() ]] then
+			if SERVER or CLIENT then
+				local pos
 				--print(tr.HitNormal.z)
 				-- ЗАЦЕП НА СТЕНУ
 				if tr.HitNormal.z >= -0.2 then
@@ -489,7 +508,7 @@ hook.Add("FinishMove", "mangle_hook_ready", function( ply, mv )
 					local trace = { start = ply:GetPos(), endpos = ply:GetPos() + -tr.HitNormal * 50, filter = ply }
 					local trr = util.TraceLine( trace, ply ) 
 					if ( !trr.Hit or tr.Entity ~= game.GetWorld() ) then
-						--debugoverlay.Box( ply:GetPos() + Vector(0,0,64), Vector(12,12,12), Vector(-12,-12,-12), 2, Color(255,0,0) )
+						debugoverlay.Box( ply:GetPos() + Vector(0,0,64), Vector(12,12,12), Vector(-12,-12,-12), 2, Color(255,0,0) )
 						
 						local trace = { start = ply:GetPos(), endpos = ply:GetPos() + Vector(0,0,64), filter = ply,
 							mins = ply:OBBMins(),
@@ -520,7 +539,8 @@ hook.Add("FinishMove", "mangle_hook_ready", function( ply, mv )
 					
 					ply:SetNWString("_MangleLastHookType", "wall")
 					
-					mv:SetOrigin( vectoradd + tr.HitPos + -ply:GetViewOffset() + tr.HitNormal * 28 )
+					pos = vectoradd + tr.HitPos + -ply:GetViewOffset() + tr.HitNormal * 28
+					mv:SetOrigin( pos )
 					
 				else -- ЗАЦЕП НА ПОТОЛОК
 					if ply:GetNWString("_MangleLastHookType", "wall") == "ceiling" then
@@ -535,24 +555,40 @@ hook.Add("FinishMove", "mangle_hook_ready", function( ply, mv )
 					local trace = { start = ply:GetPos(), endpos = ply:GetPos() + Vector(0,0,80), filter = ply }
 					local trr = util.TraceEntity( trace, ply ) 
 					if ( trr.Hit ) then
-						mv:SetOrigin( trr.HitPos + trr.HitNormal * 2 )
+						pos = trr.HitPos + trr.HitNormal * 2
 					else
-						mv:SetOrigin( tr.HitPos + -ply:GetViewOffset() + tr.HitNormal * 7 )
+						pos = tr.HitPos + -ply:GetViewOffset() + tr.HitNormal * 7
 					end
+					mv:SetOrigin( pos )
 				end
 				
 				local forceangle = tr.HitNormal:Angle()
 				
+				if CLIENT then
+					ENDGOAL[ply] = pos
+					surface.PlaySound("grab_player.wav")
+					ply:SetPos( pos )
+					ply:SetLocalVelocity(Vector(0,0,0))
+				end
+				
+				--print(tr.HitPos)
+				
 				if SERVER then
+					local rf = RecipientFilter()
+					rf:AddAllPlayers()
+					rf:RemovePlayer(ply)
+					ply:EmitSound("grab_player.wav", nil, nil, nil, nil, nil, nil, rf)
+				
 					ent:SetForceAngles(forceangle)
 					ply:GetPill():PillGesture('hook', 1, 1, 0, 0.7)
-					ply:EmitSound("grab_player.wav")
 				
 					forceangle.p = -forceangle.p
 				
 					ply:SetNWAngle("_MangleHookAngle", forceangle)
 				end
-				ply:SetNWBool("_MangleHookReady", false)
+				--if SERVER --[[or CLIENT and !IsFirstTimePredicted()--]] then
+					ply:SetNWBool("_MangleHookReady", false)
+				--end
 				
 				ply:SetViewOffset(Vector(0,0,24))
 				ply:SetNWBool("_MangleHooked", true)

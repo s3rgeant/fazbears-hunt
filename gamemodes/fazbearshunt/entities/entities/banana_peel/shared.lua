@@ -53,14 +53,21 @@ if SERVER then
 						ent:SetEyeAngles(ent:EyeAngles() + Angle(-1,0,0))
 					end) 
 				end
+				
+				timer.Simple(0.1, function()
+					if ent:OnGround() and ent:GetNWBool("banana_slipped", false) then
+						ent:SetNWBool("banana_slipped", nil)
+						ent:TakeDamage(math.random(1,2), self, self)
+						ent:EmitSound("slip_end.wav")
+					end
+				end)
 			end
 		end 
 	end
 	
     function ENT:StartTouch(v)
-		if CurTime() - self.SpawnTime > 0.1 and v:IsPlayer() and v:GetMoveType() != MOVETYPE_NOCLIP 
-		and !v:GetNWBool("banana_slipped", false) and CurTime() - v:GetNWBool("banana_slipped_time", 0) > 0.2 then
-			
+		if v:IsPlayer() and v:GetMoveType() ~= MOVETYPE_NOCLIP and !v:GetNWBool("banana_slipped", false) and CurTime() - v:GetNWBool("banana_slipped_time", 0) > 0.2 then
+			if CurTime() - self.SpawnTime <= 0.1 and v == self:GetOwner() then return end
 			self:SlipPlayer(v) 
 		end
 	end
@@ -77,14 +84,13 @@ if SERVER then
 		end
 	end)
 
-    hook.Add("Think", "IsBananaSlipped", function()
-        for _, v in player.Iterator() do
-            if (v:IsPlayer()) and v:Alive() and v:OnGround() 
-			and v:GetNWBool("banana_slipped", false) and CurTime() - v:GetNWBool("banana_slipped_time", 0) > 0.2 then
-                v:SetNWBool("banana_slipped", nil)
+    hook.Add("OnPlayerHitGround", "IsBananaSlipped", function(v, inwater)
+        if v:GetNWBool("banana_slipped", false) then
+			v:SetNWBool("banana_slipped", nil)
+			if not inwater then
 				v:TakeDamage(math.random(1,2), self, self)
-                v:EmitSound("slip_end.wav") 
-            end
+				v:EmitSound("slip_end.wav")
+			end
         end
 	end)
 end

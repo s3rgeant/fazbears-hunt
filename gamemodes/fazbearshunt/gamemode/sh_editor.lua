@@ -205,11 +205,15 @@ if CLIENT then
 		placingType = ""
 	end
 
-	local function createPosShared()
+	local models_pos = {
+		["info_player_killer"] = "models/speps/pill/oldfreddy.mdl"
+	}
+	local function createPosShared(self)
 		if IsValid(placingEntity) then placingEntity:Remove() end
+		local mdl = --[[ models_pos[placingType] or --]] "models/editor/playerstart.mdl"
 
 		local trace = LocalPlayer():GetEyeTrace()
-		local ent = ClientsideModel("models/editor/playerstart.mdl")
+		local ent = ClientsideModel(mdl)
 		ent:SetPos(trace.HitPos)
 		ent:SetAngles(Angle(0, 0, 0))
 		ent:Spawn()
@@ -221,18 +225,6 @@ if CLIENT then
 		placingEntity = ent
 		gui.EnableScreenClicker(false)
 		editorButtons()
-	end
-
-	local function createEditableSpringtrapDancePos()
-		createPosShared()
-
-		placingType = "info_killer_win"
-	end
-
-	local function createEditableSpawnPointPos()
-		createPosShared()
-
-		placingType = "info_player_killer"
 	end
 
 	local fh_editor_menu = nil

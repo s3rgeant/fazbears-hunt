@@ -51,8 +51,26 @@ function ENT:Initialize()
 	
 	self.usedLayers = {}
 	self.Target = nil
+	
+	if CLIENT then
+		if istable(animatronics) then
+			animatronics[self] = true
+		end
+	end
 
     self.CrouchSpeed = 200
+end
+	
+function ENT:UpdateTransmitState() 
+	return TRANSMIT_ALWAYS
+end
+
+function ENT:OnRemove()
+	if CLIENT then
+		if istable(animatronics) then
+			animatronics[self] = nil
+		end
+	end
 end
 
 function ENT:RunBehaviour()

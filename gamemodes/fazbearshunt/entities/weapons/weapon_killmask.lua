@@ -101,7 +101,7 @@ local dropWeaponry = {
 }
 
 function SWEP:SpringLock()
-	local ply = self.Owner
+	local ply = self:GetOwner()
 	
 	ply:SetNW2Bool("KillerMaskEquiped", true)
 
@@ -143,6 +143,8 @@ function SWEP:SpringLock()
 			ply:Freeze(true)
 			ply:SetNW2Bool("KillerObsessed", true)
 			ply:SetGFreddyImmune(true)
+			
+			hook.Run("FH_KillerObsessed", ply)
 			
 			ply:AllowFlashlight(false)
 		end)

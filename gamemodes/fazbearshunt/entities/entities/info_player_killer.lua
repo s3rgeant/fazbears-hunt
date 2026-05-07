@@ -12,3 +12,11 @@ ENT.Type = "point"
 
 function ENT:Initialize()
 end
+
+function ENT:KeyValue(key, value)
+	key = string.lower(key)
+	
+	if key == "animatronic_name" then
+		self.AnimType = tostring(value)
+	end
+end

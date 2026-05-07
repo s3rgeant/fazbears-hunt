@@ -374,96 +374,75 @@ function SWEP:OnDrop()
 	self:Holster()
 end
 
-local blockedReviveWeapons = {
-	["weapon_killer_axe"] = true,
-	["weapon_taser"] = true,
-}
-
 local function SetDefibAttributes(ply)
 	if ply:GetPill() then return end
-
+	
 	ply.LastDeathTime = CurTime()
 	ply.CrouchedBeforeDeath = ply:Crouching()
 	
-	if IsValid( ply:GetActiveWeapon() ) then
-		ply.ReviveActiveWeapon = ply:GetActiveWeapon():GetClass()
-	end
-	
-	ply.ReviveWeapons = {}
-	for k, v in ipairs( ply:GetWeapons() ) do
-		local class = v:GetClass()
-		if blockedReviveWeapons[class] then continue end
-		
-		table.insert( ply.ReviveWeapons, v:GetClass() )
-	end
-	
 	ply.RevivePos = ply:GetPos()
-	
 	ply.ReviveAng = ply:EyeAngles()
 	
-	ply.RevivalPreviousAmmo = {}
-	for k, v in pairs( ply:GetWeapons() ) do
-		local primary = v:GetPrimaryAmmoType()
-		local secondary = v:GetSecondaryAmmoType()
-		
-		local newPrimary = math.floor( ply:GetAmmoCount( primary ) * 0.5 )
-		local newSecondary = math.floor( ply:GetAmmoCount( secondary ) * 0.5 )
-		
-		ply.RevivalPreviousAmmo[primary] = newPrimary
-		ply.RevivalPreviousAmmo[secondary] = newSecondary
-	end
+	inventory_backup.SaveCurrentInventory(ply)
 end
 
 hook.Add( "PlayerSilentDeath", "Defibl_Revive", SetDefibAttributes)
 hook.Add( "DoPlayerDeath", "Defibl_Revive", SetDefibAttributes)
 
 hook.Add( "PlayerLoadout", "Defibl_Revive", function( ply )
-	if !IsValid( ply ) then return end
 	if !BeingRevived[ply] then return end
 	
 	BeingRevived[ply] = nil
 	
-	if ply.ReviveWeapons ~= nil then
-		for k, v in pairs( ply.ReviveWeapons ) do
-			ply:Give(v)
-		end
-	end
-	
-	if ply.ReviveActiveWeapon ~= nil then
-		ply:SelectWeapon( ply.ReviveActiveWeapon )
-	end
-	
-	if ply.RevivalPreviousAmmo ~= nil then
-		for k, v in pairs( ply.RevivalPreviousAmmo ) do
-			ply:GiveAmmo( v, k, true )
-		end
-	end
-	
+	inventory_backup.LoadBackup(ply)
 	return true
 end)
 
 if CLIENT then
-    hook.Add("PreDrawHalos", "DefibrillatorHighlightCorpses", function()
-		local lply = LocalPlayer()
+	local DEFIB_COLOR = Color(255, 0, 0, 255)
+	local function getCorpses(lply, rule)
 		local target = lply:GetObserverTarget()
 	
         local ply = (IsValid(target) and target:IsPlayer()) and target or lply
         local wep = ply:GetActiveWeapon()
+		
+		local out = {}
 
         if IsValid(wep) and wep:GetClass() == "weapon_defibrillator" then
-            local corpses = {}
-
             for _, ent in pairs(ents.FindByClass("prop_ragdoll")) do
 				if !IsValid(ent:GetOwner()) or (IsValid(ent:GetOwner()) and ent:GetOwner():Alive()) then continue end
 				
-                if ent:GetPos():Distance(ply:GetPos()) <= 3064 then
-                    table.insert(corpses, ent)
-                end
+				local entry = OUTLINE.NormalizeEntry(rule, {
+					ent = ent,
+					outline_color = DEFIB_COLOR
+				})
+				
+				if entry then
+					out[#out + 1] = entry
+				end
             end
 
-            halo.Add(corpses, Color(255, 0, 0), 1, 1, 2, true, true)
         end
-    end)
+
+		return (#out > 0) and out or nil
+    end
+
+	OUTLINE.RegisterRule("defib_corpses", {
+		priority = 145,
+		render_max_dist = 3064,
+
+		outline_color = DEFIB_COLOR,
+		outline_width = 3,
+		outline_min_dist = 700,
+		outline_max_dist = 3064,
+
+		fill_color = DEFIB_COLOR,
+		fill_min_dist = 0,
+		fill_max_dist = 0,
+
+		mode = OUTLINE_MODE_BOTH,
+		collect = getCorpses
+	})
 
 	hook.Add("HUDPaint", "DefibDrawNames", function()
 		local lply = LocalPlayer()

@@ -65,14 +65,16 @@ pills.register("pill_clown",{
 			idle="idle",
 			walk="walk",
 			run="run",
-			hit="hit",
-			land="land",
 			jump="jump",
 			glide="glide",
 			dance="dance",
 			crouch="crouch",
 			crouch_walk="crouchmove",
 			stun="stun",
+		},
+		gestures={
+			hit="hit",
+			land="land",
 		},
 	},
 	moveSpeed={
@@ -163,7 +165,7 @@ pills.register("pill_clown",{
 		ent.anim = nil
 		if ply.lobbyFreeze != nil and ply.lobbyFreeze then return end
 		if ply:WaterLevel() < 1 and ply:GetVelocity().z < -100 then
-			ent:PillGesture('land', 1, 2, 0.1, 0.3, 0.06)
+			ent:PillGesture('land', 1, 2, 0.15, 0.3, 0.06)
 			ent:PillLoopStop('dance')
 		end
 	end,
@@ -206,19 +208,7 @@ pills.register("pill_springtrap",{
 		},
 	} end,
 	option=IsHalloween() and "halloween" or IsChristmas() and "christmas" or "default",
-	--[[
-	bodyGroups=IsHalloween() and {[24] = 1} or {},
-	boneMorphs={
-		["bip_eyelid_0_R"] = {scale = Vector(0,0,0)},
-		["bip_eyelid_1_R"] = {scale = Vector(0,0,0)},
-		["bip_eyelid_0_L"] = {scale = Vector(0,0,0)},
-		["bip_eyelid_1_L"] = {scale = Vector(0,0,0)},
-		["bip_eyecase_L"] = {scale = Vector(0,0,0)},
-		["bip_eyecase_R"] = {scale = Vector(0,0,0)},
-		["bip_jaw"] = {scale = Vector(0,0,0)},
-		["bip_skull_jaw"] = {scale = Vector(1.5,1.5,1.5)},
-	},
-	]]--
+
 	modelScale="0.85",
 	model="models/UFMP/FNAF3/Springtrap.mdl",
 	anims={
@@ -231,8 +221,6 @@ pills.register("pill_springtrap",{
 			glide="glide",
 			
 			summon="summon",
-			swing="preattack",
-			attack="attack",
 			
 			turnleft="turnleft",
 			turnright="turnright",
@@ -242,6 +230,10 @@ pills.register("pill_springtrap",{
 			
 			egypt="egypt",
 			stun="stun",
+		},
+		gestures={
+			swing="preattack",
+			attack="attack",
 		},
 		speedCap={
 			run=500,
@@ -256,7 +248,6 @@ pills.register("pill_springtrap",{
 		jump="fnaf3/sprjump.mp3",
 		land="fnaf3/sprland.mp3",
 		loop_breathing="springtrap.breath",
-		step=pills.helpers.makeList("fnaf2/none.wav",1)
 	},
 	type="ply",
     camera = {
@@ -426,10 +417,8 @@ pills.register("pill_springtrap",{
 			
 			pt_request_springtrap_ply = ply
 	
-			net.Start("fh_net_killer_change")
-			net.WriteString("summon")
-			net.WriteFloat(plushtrap_summon_cd)
-			net.Send(ply)
+			cooldown.Set(ply, "summon", plushtrap_summon_cd)
+			cooldown.Send(ply, "summon")
 	
 			timer.Create('fh_pt_summon' .. ply:EntIndex(), plushtrap_summon_cd, 1, function() 
 			end)
@@ -600,13 +589,15 @@ pills.register("pill_plushtrap",{
 			run="run",
 			crouch="crouchidle",
 			crouch_walk="crouch",
-			bite1="bite1",
-			bite2="bite2",
 			summon="summon",
 			land="land",
 			jump="jump",
 			glide="glide",
 			stun="stun",
+		},
+		gestures={
+			bite1="bite1",
+			bite2="bite2",
 		},
 	},
 	moveSpeed={
@@ -809,12 +800,6 @@ end)
 
 if SERVER then
 	hook.Add("SetupPlayerVisibility", "fh_pill_fnaf3_visibility", function(ply, viewent)
-		if !conVars.fh_less_steps:GetBool() then
-			for _, ent in ipairs(ents.FindByClass("plushtrap")) do
-				AddOriginToPVS(ent:GetPos())
-			end
-		end
-		
 		if IsValid(request_plushtrap) then
 			for _, ent in pairs(team.GetPlayers( TEAM_SURVIVOR )) do
 				if ent:GetPos():Distance(request_plushtrap:GetPos()) <= plushtrap_visionrange:GetInt() then

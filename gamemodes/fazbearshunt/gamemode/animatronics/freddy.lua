@@ -13,221 +13,220 @@ if SERVER then
 	
 	util.PrecacheModel("models/speps/pill/" .. model_prefix .. "freddy.mdl")
 end
+
 npc_blindrage = CreateConVar( "fh_blindrage_npcs", "0", { FCVAR_NOTIFY, FCVAR_ARCHIVE, FCVAR_REPLICATED }, 
 "Should Withered Freddy be able to use Blind Rage on npcs?" )
 
+local norageFuncs = {}
 local stalkers = {}
 local stalkTargets = {}
 
 local wfreddy_default_movement = {150, 490, 70, 250} -- обычное передвижение
-local wfreddy_stalk_movement = {150, 600, 75, 255} -- сталкер дохуя
+local wfreddy_stalk_movement = {150, 600, 75, 260} -- сталкер дохуя
 
-pills.register("pill_wfreddy2",{
-	printName="Withered Freddy",
-	model="models/speps/pill/" .. model_prefix .. "freddy.mdl",
-	options=function() return {
+local function enrageChanges(ply, ent, target)
+	local wep = ply:GetActiveWeapon()
+	if IsValid(wep) and wep:GetClass() == "v_freddy" then
+		wep:AddAnimation("run", ACT_RUN_AIM)
+	end
+		
+	ent:SetSpeed(unpack(wfreddy_stalk_movement))
+	ent:ReplaceAnimation("run", "srun")
+	ent:ReplaceAnimation("walk", "ragewalk")
+	ent:ReplaceAnimation("idle", "rageidle")
+end
+
+local function norageChanges(ply, ent, target)
+	local wep = ply:GetActiveWeapon()
+	if IsValid(wep) and wep:GetClass() == "v_freddy" then
+		wep:AddAnimation("run", nil, "run")
+	end
+	
+	if IsValid(ent) then
+		ent:SetSpeed(unpack(wfreddy_default_movement))
+		ent:ReplaceAnimation("run", "run")
+		ent:ReplaceAnimation("walk", "walk")
+		ent:ReplaceAnimation("idle", "idle")
+	end
+end
+
+local FREDDY = GetPillTemplate()
+
+FREDDY.printName="Withered Freddy"
+FREDDY.model="models/speps/pill/" .. model_prefix .. "freddy.mdl"
+FREDDY.option=IsHalloween() and "halloween" or IsChristmas() and "christmas" or "default"
+FREDDY.options=function() 
+	return {
 		["default"] = {
-			bodyGroups = {[0] = 1},
+			bodyGroups = { [0] = 1 },
 		},
 		["halloween"] = {
 			skin=2,
 		},
 		["christmas"] = {
-			bodyGroups = {
-				[0] = 1,
-				[1] = 1,
-			},
+			bodyGroups = { [0] = 1, [1] = 1, },
 		},
-	} end,
-	option=IsHalloween() and "halloween" or IsChristmas() and "christmas" or "default",
-	anims={
-		default={
-			idle="idle",
-			crouch="crouch",
-			crouch_walk="crouchmove",
-			walk="walk",
-			run="run",
-			cloak="special",
-			scare="scare",
-			jump="jump",
-			glide="air",
-			land="land",
-			stalk="stalk",
-			stun="stun",
-			doorbreak="doorbreak",
-			melee="melee",
-		},
+	} 
+end
+FREDDY.anims={
+	default={
+		idle="idle",
+		crouch="crouch",
+		crouch_walk="crouchmove",
+		walk="walk",
+		run="run",
+		scare="scare",
+		jump="jump",
+		glide="air",
+		land="land",
+		stalk="stalk",
+		stun="stun",
+		doorbreak="doorbreak",
 	},
-	moveSpeed={
-		walk=wfreddy_default_movement[1],
-		run=wfreddy_default_movement[2],
-		ducked=wfreddy_default_movement[3],
+	gestures={
+		melee="melee",
 	},
-	sounds={
-		jump="jump.mp3",
-		land="land.mp3",
-		melee="fnaf2/xscream2.wav",
-	},
-	type="ply",
-    camera = {
-        offset = Vector(0, 0, 90),
-		dist = 150
-    },
-	hull=Vector(32,32,86),
-	duckBy=60,
-	
-	viewmodel={
-		weapon="v_freddy",
-		skin=IsHalloween() and 3 or 0
-	},
-	
-	animEvent=function(ply,ent,event)
-		if event == "FREDDY_DOOR_BREAK" then
-			ply:EmitSound("physics/metal/metal_sheet_impact_hard8.wav")
+}
+FREDDY.moveSpeed={
+	walk=wfreddy_default_movement[1],
+	run=wfreddy_default_movement[2],
+	ducked=wfreddy_default_movement[3],
+}
+FREDDY.viewmodel={
+	weapon="v_freddy",
+	skin=IsHalloween() and 3 or 0
+}
+FREDDY.animEvent=function(ply,ent,event)
+	if event == "FREDDY_DOOR_BREAK" then
+		ply:EmitSound("physics/metal/metal_sheet_impact_hard8.wav")
+	end
+end
+FREDDY.startFunction=function(ply,ent)
+	chaseVoicelineChecker(ply, ent, "freddy")
+end
+FREDDY.moveMod=function(ply, ent, mv, cmd)
+	if SERVER and stalkers[ply] and ply:IsSprinting() then
+		if ply._breakPropAsAnimTime and ply._breakPropAsAnimTime > CurTime() then
+			return
 		end
-	end,
-
-    jumpPower=250,
-	bloodType=BLOOD_COLOR_MECH,
-	
-	muteSteps = true,
-	health=10000,
-	movePoseMode="xy",
-	aim = {
-		xPose="aim_yaw",
-		yPose="aim_pitch"
-	},
-	
-	startFunction=function(ply,ent)
-		chaseVoicelineChecker(ply, ent, "freddy")
-	end,
-	
-	moveMod=function(ply, ent, mv, cmd)
-		if SERVER and stalkers[ply] and ply:IsSprinting() then
-			if ply._breakPropAsAnimTime and ply._breakPropAsAnimTime > CurTime() then
-				return
-			end
-			local cooldown = 0.8
-			
-			local mins = ply:OBBMins()
-			local maxs = ply:OBBMaxs()
+		local cooldown = 0.8
 		
-			local startpos = ply:GetPos()
-			local dir = ply:GetForward()
-			
-			local tr = util.TraceHull( {
-				start = startpos,
-				endpos = startpos + dir * 120,
-				maxs = maxs,
-				mins = mins,
-				filter = ply
-			} )
-			
-			local target = tr.Entity
-			
-			if tr.Hit and IsValid(target) and target:IsPlayer() and target:IsSurvivor() and !stalkTargets[target] then
-				
-				local wep = ply:GetActiveWeapon()
-			
-				ply:EmitSound("bonnie_punch.mp3")
-				ent:PillGesture('melee', 2, 1, 0.1, 0.7)
-				
-				local dmginfo = DamageInfo()
-				dmginfo:SetAttacker( ply )
-				dmginfo:SetInflictor( IsValid(wep) and wep or ply )
-				dmginfo:SetDamage( 30 )
-			
-				SuppressHostEvents( NULL )
-				target:TakeDamageInfo( dmginfo )
-				SuppressHostEvents( ply )
-				if IsValid(wep) then
-					wep:HandleAnimation("attack", 1, true)
-				end
-				
-				target:SetVelocity(dir * 300 + target:GetUp() * 300)
-				
-				ply._breakPropAsAnimTime = CurTime() + cooldown
-			end
-		end
-	end,
-
-	noFallDamage=true,
+		local mins = ply:OBBMins()
+		local maxs = ply:OBBMaxs()
 	
-	killCondition=function(ply,ent)
+		local startpos = ply:GetPos()
+		local dir = ply:GetForward()
+		
+		local tr = util.TraceHull( {
+			start = startpos,
+			endpos = startpos + dir * 120,
+			maxs = maxs,
+			mins = mins,
+			filter = ply
+		} )
+		
+		local target = tr.Entity
+		
+		if tr.Hit and IsValid(target) and target:IsPlayer() and target:IsSurvivor() and !stalkTargets[target] then
+			
+			local wep = ply:GetActiveWeapon()
+		
+			ply:EmitSound("bonnie_punch.mp3")
+			ent:PillGesture('melee', 2, 1, 0.1, 0.7)
+			
+			local dmginfo = DamageInfo()
+			dmginfo:SetAttacker( ply )
+			dmginfo:SetInflictor( IsValid(wep) and wep or ply )
+			dmginfo:SetDamage( 30 )
+		
+			SuppressHostEvents( NULL )
+			target:TakeDamageInfo( dmginfo )
+			SuppressHostEvents( ply )
+			if IsValid(wep) then
+				wep:HandleAnimation("attack", 1, true)
+			end
+			
+			target:SetVelocity(dir * 300 + target:GetUp() * 300)
+			
+			ply._breakPropAsAnimTime = CurTime() + cooldown
+		end
+	end
+end
+
+FREDDY.killCondition=function(ply,ent)
+	local target = FindNearestPlayer(ply:EyePos(), 125, ply, 36)
+	
+	if IsValid(target) and !target:IsInvisible() and !target:IsJumpscared() then
+		return true
+	end
+	return false
+end
+
+FREDDY.attack={
+	mode="trigger",
+	func=function(ply,ent)
+		if IsValid(ply:GetEntityInUse()) then return end
 		local target = FindNearestPlayer(ply:EyePos(), 125, ply, 36)
 		
-		if IsValid(target) and !target:IsInvisible() then
-			return true
+		if stalkers[ply] and !stalkTargets[target] then 
+			AnimatronicBreakProp(ply, ent)
+			return 
 		end
-		return false
-	end,
-	
-	attack={
-		mode="trigger",
-		func=function(ply,ent)
-			if IsValid(ply:GetEntityInUse()) then return end
-			local target = FindNearestPlayer(ply:EyePos(), 125, ply, 36)
-			
-			if stalkers[ply] and !stalkTargets[target] then 
-				AnimatronicBreakProp(ply, ent)
-				return 
-			end
-			
-			local jumpscare = performJumpscare(ply, ent, target, 1.6, "freddy", 50, "v_freddy")
-			
-			if !IsValid(target) or !jumpscare then 
-				AnimatronicBreakProp(ply, ent)
-				return 
-			end
-		end
-    },
-	
-	attack2 = {
-		mode = "trigger",
-		func = function(ply, ent)
-			if !ply:OnGround() then return end
-			
-			startBlindRage(ply, ent)
-		end
-	}, 
-
-	reload=function(ply,ent)
-		if !stalkers[ply] then
-			highlight.ByDistance(ply, ent)
-		end
-	end,
-	
-	land=function(ply,ent)
-		if ply:WaterLevel() < 2 then
-			if ply._wereJumpingPill or !ply._wereJumpingPill and ply:GetVelocity().z < -270 and ent.anim != 'stalk' then
-				if !ply._jumpPosPill or ply._jumpPosPill and ply:GetPos():Distance(ply._jumpPosPill) > 150 then
-					ent:PillAnim("land",true)
-				end
-			end
-		end
-		landTripCheck(ply, ent, "freddy")
-	end,
-	jump=function(ply,ent)
-		ent:PillSound("jump",false)
-	end,
-	onRemove=function(ent,formtable, ply)
-		if CLIENT then return end
 		
-		noMoreStalk(ply)
-	
-		timer.Remove("SmoothLookAt_"..ply:EntIndex())
-		timer.Remove("stalk_check"..ent:EntIndex())
-		cooldown.Set(ply, "stalk", 1)
+		local jumpscare = performJumpscare(ply, ent, target, 1.6, "freddy", 50, "v_freddy")
 		
-		net.Start('fh_sound_stop')
-		net.WriteString('freddy_raged2_looped.wav')
-		net.Broadcast()
-		
-		ply:SendLua("wfreddy_stalker_door_halo_OFF()")
+		if !IsValid(target) or !jumpscare then 
+			AnimatronicBreakProp(ply, ent)
+			return 
+		end
 	end
-})
+}
 
-function startBlindRage(ply, ent)
+FREDDY.attack2 = {
+	mode = "trigger",
+	func = function(ply, ent)
+		if !ply:OnGround() then return end
+		
+		startBlindRage(ply, ent, enrageChanges, norageChanges)
+	end
+}
+
+FREDDY.reload=function(ply,ent)
+	if !stalkers[ply] then
+		highlight.ByDistance(ply, ent)
+	end
+end
+
+FREDDY.land=function(ply,ent)
+	if ply:WaterLevel() < 2 then
+		if ply._wereJumpingPill or !ply._wereJumpingPill and ply:GetVelocity().z < -270 and ent.anim ~= 'stalk' then
+			if !ply._jumpPosPill or ply._jumpPosPill and ply:GetPos():Distance(ply._jumpPosPill) > 150 then
+				ent:PillAnim("land",true)
+			end
+		end
+	end
+	landTripCheck(ply, ent, "freddy")
+end
+
+FREDDY.onRemove=function(ent,formtable, ply)
+	if CLIENT then return end
+	
+	noMoreStalk(ply)
+
+	timer.Remove("SmoothLookAt_"..ply:EntIndex())
+	timer.Remove("stalk_check"..ent:EntIndex())
+	cooldown.Set(ply, "stalk", 1)
+	
+	net.Start('fh_sound_stop')
+	net.WriteString('freddy_raged2_looped.wav')
+	net.Broadcast()
+	
+	ply:SendLua("wfreddy_stalker_door_halo_OFF()")
+end
+
+pills.register("pill_wfreddy2", FREDDY)
+
+function startBlindRage(ply, ent, succFunc, endFunc)
 	if cooldown.Exists(ply, "stalk") then return false end
 
 	if ply._isStalkingActive or stalkers[ply] then return false end
@@ -307,11 +306,12 @@ function startBlindRage(ply, ent)
 
 		if not ply._isStalkingActive then return end
 
-		if timer.RepsLeft(stalkTimerName) == 8 and target:IsPlayer() then
-			target:SetDSP(22)
-		end
-		if timer.RepsLeft(stalkTimerName) == 6 and target:IsPlayer() then
-			target:SetDSP(25)
+		if target:IsPlayer() then
+			if timer.RepsLeft(stalkTimerName) == 8 then
+				target:SetDSP(22)
+			elseif timer.RepsLeft(stalkTimerName) == 6 then
+				target:SetDSP(25)
+			end
 		end
 
 		if timer.RepsLeft(stalkTimerName) == 1 then
@@ -323,6 +323,12 @@ function startBlindRage(ply, ent)
 				ply:SetFOV(0, 1)
 
 				successStalk(ply, ent, target)
+				if succFunc and isfunction(succFunc) then
+					succFunc(ply, ent, target)
+				end
+				if endFunc and isfunction(endFunc) then
+					norageFuncs[ply] = endFunc
+				end
 				return 
 			end
 		end
@@ -336,7 +342,7 @@ function startBlindRage(ply, ent)
 					if not ply._isStalkingActive then return end
 					ply._isStalkingActive = nil
 
-					ent:PillAnim("idle")
+					ent.anim = nil
 					timer.Remove("SmoothLookAt_" .. ply:EntIndex())
 					timer.Remove(stalkTimerName)
 					ply:SetFOV(0, 1)
@@ -408,36 +414,30 @@ function fh_random_stalk_target(ignore)
     end
 end
 
-function smoothLookAt(anim, targetPlayer)
-    if not IsValid(anim) or not IsValid(targetPlayer) then return end
+function smoothLookAt(ply, target)
+    if not IsValid(ply) or not IsValid(target) then return end
 
-    timer.Create("SmoothLookAt_" .. anim:EntIndex(), 0.01, 0, function()
-        if not IsValid(anim) or not IsValid(targetPlayer) or !targetPlayer:Alive() then
-            timer.Remove("SmoothLookAt_" .. anim:EntIndex())
+    timer.Create("SmoothLookAt_" .. ply:EntIndex(), 0.01, 0, function()
+        if not IsValid(ply) or not IsValid(target) or !target:Alive() then
+            timer.Remove("SmoothLookAt_" .. ply:EntIndex())
             return
         end
 
-        local currentAngle = anim:EyeAngles()
+        local currentAngle = ply:EyeAngles()
 
-        local targetPos = targetPlayer:GetPos()
-        local direction = (targetPos - anim:GetPos()):GetNormalized()
+        local targetPos = target:EyePos()
+        local direction = (targetPos - ply:EyePos()):GetNormalized()
 
         local targetAngle = direction:Angle()
 
         local newAngle = LerpAngle(0.05, currentAngle, targetAngle)
 
-        anim:SetEyeAngles(newAngle)
+        ply:SetEyeAngles(newAngle)
     end)
 end
 
 function successStalk(ply, ent, target)
 	if IsValid(target) and target:Alive() and (target:IsPlayer() and target:IsSurvivor() or target:IsNPC()) then
-	
-		local wep = ply:GetActiveWeapon()
-		if IsValid(wep) and wep:GetClass() == "v_freddy" then
-			wep:AddAnimation("run", ACT_RUN_AIM)
-		end
-		
 		ply:SendLua("wfreddy_stalker_door_halo_ON()")
 		
 		stalkers[ply] = target
@@ -445,11 +445,6 @@ function successStalk(ply, ent, target)
 		
 		target:SetNW2Entity("_BlindRageFreddy", ply)
 		ply:SetNW2Bool("_BlindRaged", true)
-		
-		ent:SetSpeed(unpack(wfreddy_stalk_movement))
-		ent:ReplaceAnimation("run", "srun")
-		ent:ReplaceAnimation("walk", "ragewalk")
-		ent:ReplaceAnimation("idle", "rageidle")
 		
 		net.Start('fh_addaffected_stalk')
 		net.WriteEntity(target)
@@ -475,26 +470,20 @@ function successStalk(ply, ent, target)
 	end
 end
 
-function noMoreStalk(ply)
+function noMoreStalk(ply, ent, target)
 	local ent = ply:GetPill()
+	
+	if norageFuncs[ply] then
+		if isfunction(norageFuncs[ply]) then
+			norageFuncs[ply](ply, ent, target)
+		end
+		norageFuncs[ply] = nil
+	end
 	
 	ply:SendLua("wfreddy_stalker_door_halo_OFF()")
 	
-	if IsValid(ent) then
-		ent:SetSpeed(unpack(wfreddy_default_movement))
-		ent:ReplaceAnimation("run", "run")
-		ent:ReplaceAnimation("walk", "walk")
-		ent:ReplaceAnimation("idle", "idle")
-	end
-	
-	local wep = ply:GetActiveWeapon()
-	if IsValid(wep) and wep:GetClass() == "v_freddy" then
-		wep:AddAnimation("run", nil, "run")
-	end
-	
 	local hisTarget = stalkers[ply]
 	
-	stalkers[ply] = nil
 	if IsValid(hisTarget) then
 		hisTarget:SetNW2Entity("_BlindRageFreddy", NULL)
 		
@@ -515,6 +504,8 @@ function noMoreStalk(ply)
 	net.Start('fh_sound_stop')
 	net.WriteString('freddy_raged2_looped.wav')
 	net.Broadcast()
+	
+	stalkers[ply] = nil
 end
 
 local doors = {}
@@ -602,8 +593,10 @@ hook.Add("FuncDoorBust", "fh_blindrage_doorbust", function(ply, door)
 end)
 
 if CLIENT then
-	local function halo_breakable_doors()
-		local ply = LocalPlayer()
+	local yeahBreak = false
+	local FREDDY_DOOR_COLOR = Color(255, 255, 255, 255)
+	local function halo_breakable_doors(ply)
+		if not yeahBreak then return end
 		if not IsValid(ply) then return end
 
 		local ent = ply:GetUseEntity()
@@ -615,15 +608,37 @@ if CLIENT then
 
 		if ent:HasSpawnFlags(8192) or ent:HasSpawnFlags(256) then return end
 
-		halo.Add({ent}, Color(255, 255, 255), 2, 2, 1, true, true)
+		local entry = OUTLINE.NormalizeEntry(rule, {
+			ent = ent,
+			outline_color = FREDDY_DOOR_COLOR
+		})
+
+		return entry and { entry } or nil
 	end
+
+	OUTLINE.RegisterRule("freddy_rage_door", {
+		priority = 157,
+		render_max_dist = 180,
+
+		outline_color = FREDDY_DOOR_COLOR,
+		outline_width = 2,
+		outline_min_dist = 0,
+		outline_max_dist = 0,
+
+		fill_color = FREDDY_DOOR_COLOR,
+		fill_min_dist = 0,
+		fill_max_dist = 0,
+
+		mode = OUTLINE_MODE_VISIBLE,
+		collect = halo_breakable_doors
+	})
 	
 	function wfreddy_stalker_door_halo_ON()
-		hook.Add("PreDrawHalos", "fh_highlight_breakdoor_stalker", halo_breakable_doors)
+		yeahBreak=true
 	end
 	
 	function wfreddy_stalker_door_halo_OFF()
-		hook.Remove("PreDrawHalos", "fh_highlight_breakdoor_stalker")
+		yeahBreak=false
 	end
 
 	local target
