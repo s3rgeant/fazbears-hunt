@@ -700,7 +700,7 @@ function AnimatronicBreakProp(ply, ent, cooldown)
 			endpos = endPos,
 			maxs = killMaxs,
 			mins = killMins,
-			--mask = MASK_SHOT,
+			mask = MASK_ALL,
 			filter = ply
 		})
 
@@ -855,7 +855,6 @@ include( "animatronics/bonnie.lua" )
 include( "animatronics/chica.lua" )
 include( "animatronics/foxy.lua" )
 
-include( "animatronics/scrapbaby.lua" )
 include( "animatronics/sfreddy.lua" )
 
 include( "animatronics/bear5.lua" )

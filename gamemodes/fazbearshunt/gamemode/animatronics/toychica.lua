@@ -74,7 +74,7 @@ hook.Add("PillApply", "toychica_members_apply", function(ply, ent)
 end)
 
 hook.Add("PillRestore", "toychica_members_restore", function(ply, ent)
-	toychicas[ply] = false
+	toychicas[ply] = nil
 		
 	if CLIENT and ply == LocalPlayer() then
 		hook.Remove("HUDPaint", "tchica_hold_nickname")

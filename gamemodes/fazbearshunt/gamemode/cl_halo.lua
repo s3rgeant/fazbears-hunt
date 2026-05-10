@@ -351,7 +351,7 @@ OUTLINE.RegisterRule("affected_players", {
     outline_color = Color(255, 0, 0, 255),
     outline_width = 3,
     outline_min_dist = 800,
-    outline_max_dist = 1800,
+    outline_max_dist = 2000,
 
     fill_color = Color(255, 0, 0, 255),
     fill_min_dist = 1000,
@@ -458,31 +458,21 @@ hook.Add("HUDPaint", "fh_draw_affected", function()
 	end
 	draw_orbs(affectedPlayersReal)
 	
-	if fh_halo_teammates:GetBool() then 
-		if !table.IsEmpty(teammatesColors) then
-			draw_orbs(teammatesColors, nil, GetGlobal2Float("FarZ", 8000))
-		end
+    local ply = LocalPlayer()
+    if not IsValid(ply) then return end
+	
+    local haloTeammates = GetConVar("fh_halo_teammates")
+    if haloTeammates and not haloTeammates:GetBool() and ply:IsAnimatronic() then return end
+	
+	if table.IsEmpty(animatronics) then return end
+	
+    if ply:IsAnimatronic() or ply:GetNWBool("AnimVisibilityFH") then
+		draw_orbs(animatronics, nil, GetGlobal2Float("FarZ", 8000))
 	end
 end)
 
 net.Receive("fh_hl_animatronics", function()
 	surface.PlaySound("human_gift_vision.wav")
-end)
-
-net.Receive("fh_hl_teammates", function()
-	myself = myself or LocalPlayer()
-	if IsValid(myself) and myself:Team() == 2701 then
-		for _, ply in ipairs(team.GetPlayers(2701)) do
-			local ent = pills.getMappedEnt(ply)
-			if ply ~= LocalPlayer() and IsValid(ent) then
-				teammatesColors[ent] = TEAMMATE_COLOR
-			end
-			
-			if ply ~= LocalPlayer() then
-				teammates[ply] = ent
-			end
-		end
-	end
 end)
 
 local function ResolveTeammateColor(lp, ent, storedColor)
@@ -583,7 +573,7 @@ OUTLINE.RegisterRule("animatronics", {
 
 hook.Add("HUDPaint", "fh_cupcake_count_draw", function()
 	local ent = pills.getMappedEnt(LocalPlayer())
-	if !ent then return end
+	if not IsValid(ent) then return end
 	if ent.formTable and ent.formTable.name ~= "pill_wchica2" then return end
     local cakemines = ents.FindByClass("cakemine")
 
@@ -653,8 +643,10 @@ function draw_orbs(tbl, material, distance)
                 
                 local ourColor = IsColor(color) and color:Copy() or Color(255,0,0,255)
 				
-                if target:GetClass() == "pill_costume" and killers.GetFullName(target:GetPillName()) and ply:IsAnimatronic() then
-					local owner = target:GetPillUser()
+				local ent = target:GetPill()
+				
+                if IsValid(ent) and killers.GetFullName(ent:GetPillName()) and ply:IsAnimatronic() then
+					local owner = ent:GetPillUser()
                     
 					local textureSize = 16
 
@@ -691,12 +683,12 @@ function draw_orbs(tbl, material, distance)
 					RegisterIcon(drawX, drawY)
 					
                     local nickname = nil
-                    local name = killers.GetFullName(target:GetPillName())
+                    local name = killers.GetFullName(ent:GetPillName())
                     if IsValid(owner) and owner:IsPlayer() then
                         nickname = owner:Nick()
                     end
 
-                    local pillMaterial = killers.GetAvatar(target:GetPillName())
+                    local pillMaterial = killers.GetAvatar(ent:GetPillName())
                     if pillMaterial then
                         ourColor = color_white
                     end
@@ -721,8 +713,8 @@ function draw_orbs(tbl, material, distance)
                     continue
                 end
 				
-                if target:GetClass() == "pill_costume" and killers.GetFullName(target:GetPillName()) and ply:IsSurvivor() then
-					ourColor = IsColor(color) and color or killers.getColor(target:GetPillName())
+                if IsValid(ent) and killers.GetFullName(ent:GetPillName()) and ply:IsSurvivor() then
+					ourColor = IsColor(color) and color or killers.getColor(ent:GetPillName())
 				end
 
 				surface.SetDrawColor(ourColor.r, ourColor.g, ourColor.b, alpha)

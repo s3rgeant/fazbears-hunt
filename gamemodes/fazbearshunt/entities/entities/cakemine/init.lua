@@ -16,7 +16,7 @@ function ENT:Initialize()
     self:SetSolid(SOLID_VPHYSICS)
     self:SetCollisionGroup(COLLISION_GROUP_DEBRIS)
 	
-	//self:SetColor(Color(255, 255, 255, 100))
+	--self:SetColor(Color(255, 255, 255, 100))
 	self:SetRenderMode( RENDERMODE_TRANSCOLOR )
 	
     local phys = self:GetPhysicsObject()
@@ -77,10 +77,10 @@ function ENT:CheckForPlayers()
 			
 			if IsValid(owner) then
 				stats.Add(owner, "slowed_using_cupcake", 1)
-			end
 			
-			cooldown.Set(owner, "mine", 10)
-			cooldown.Send(owner, "mine")
+				cooldown.Set(owner, "mine", 10)
+				cooldown.Send(owner, "mine")
+			end
             
             timer.Simple(7, function()
                 if IsValid(ply) then
@@ -109,7 +109,9 @@ function ENT:CheckForPlayers()
 
 	self:EmitSound(")cupcake_triggered.wav", 75, 100, 1, CHAN_AUTO, 0, 1, rf)
 	
-	highlight.Add(owner, totalPlayers)
+	if IsValid(owner) then
+		highlight.Add(owner, totalPlayers)
+	end
 			
 	net.Start("fh_draw_hl_overlay")
 	net.WriteBool(true)
@@ -122,8 +124,9 @@ end
 
 function ENT:OnTakeDamage(dmginfo)
 	local attacker = dmginfo:GetAttacker()
+	local owner = self:GetOwner()
 	
-	if !attacker:IsSurvivor() and self.Owner and attacker ~= self.Owner then return end
+	if !attacker:IsSurvivor() and IsValid(v) and attacker ~= owner then return end
 
     self:TakePhysicsDamage(dmginfo)
 	

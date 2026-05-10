@@ -272,14 +272,14 @@ pills.register("pill_sfreddy2",{
 	},
 	
 	land=function(ply,ent)
+		if ent.cloaked then return end
+		
 		if !ply._SF_TouchedFloor_Uncloaked then
 			cooldown.Set(ply, "kill", sfreddy_cooldowns[1])
 			cooldown.Send(ply, "kill")
 			
 			ply._SF_TouchedFloor_Uncloaked = true
 		end
-		
-		if ent.cloaked then return end
 		
 		ent:PillGesture('land', 2, 1, 0, 0.5)
 		ent:PillSound("land_snd", false)

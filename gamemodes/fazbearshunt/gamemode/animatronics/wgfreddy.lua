@@ -284,7 +284,7 @@ hook.Add("fh_startgame", "spawn_wgfreddy", function(roundType)
 			local players = team.GetPlayers(TEAM_SURVIVOR)
 			local count = table.Count(players)
 			
-			if count >= 8 or ( GetConVar( "developer" ):GetBool() and count > 2 ) then
+			if count >= 12 or ( GetConVar( "developer" ):GetBool() and count > 2 ) then
 				players = fh.GetEarnedKillers(players)
 				
 				local chosenPlayer = players[1]
@@ -681,16 +681,6 @@ if CLIENT then
 			return true
 		end
 	end)
-	
-	--[[
-	hook.Add( "NotifyShouldTransmit", "fh_wgfreddy_drawing_handler", function( entity, started )
-		if entity:IsPlayer() then
-			if entity:GetNW2Bool("_OUTWORLD_target") then
-				
-			end
-		end
-	end)
-	]]--
 	
 	hook.Add( "EntityNetworkedVarChanged", "fh_wgfreddy_network_handler", function( ent, name, oldval, newval )
 		if !ent:IsPlayer() then return end
@@ -1223,11 +1213,11 @@ local function startTransmit_outworld(wgfreddy, target)
 	for _, ply in player.Iterator() do
 		if IsValid(target) then
 			--RecursiveSetPreventTransmit(ply, target, false)
-			RecursiveSetPreventTransmit(target, ply, false)
+			RecursiveSetPreventTransmit(ply, target, false)
 		end
 		if IsValid(wgfreddy) then
 			--RecursiveSetPreventTransmit(ply, wgfreddy, false)
-			RecursiveSetPreventTransmit(wgfreddy, ply, false)
+			RecursiveSetPreventTransmit(ply, wgfreddy, false)
 		end
 	end
 end

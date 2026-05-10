@@ -124,9 +124,10 @@ function unmapEnt(ply, ent)
 end
 
 function getMappedEnt(ply)
-	if !IsValid(ply) then return NULL end
+	if not IsValid(ply) then return NULL end
 	local ent = ply:GetNWEntity("fh_pill_ent", false)
-	if CLIENT and ent and !ent.formTable then return NULL end
+	if CLIENT and ent and not ent.formTable then return NULL end
+	if CLIENT and ent and not ent.GetPillName then return NULL end
     return ent
 end
 

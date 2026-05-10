@@ -11,17 +11,19 @@ function inventory_backup.SaveCurrentInventory(ply)
 	end
 	
 	local weapons = ply:GetWeapons()
+	local count=0
 	
 	ply.ReviveWeapons = {}
 	for _, v in ipairs( weapons ) do
 		local class = v:GetClass()
 		if blockedReviveWeapons[class] then continue end
 		
-		ply.ReviveWeapons[v:GetClass()] = true
+		ply.ReviveWeapons[class] = true
+		count=count+1
 	end
 	
 	ply.RevivalPreviousAmmo = {}
-	for _, v in pairs( weapons ) do
+	for _, v in ipairs( weapons ) do
 		local primary = v:GetPrimaryAmmoType()
 		local secondary = v:GetSecondaryAmmoType()
 		
@@ -31,6 +33,8 @@ function inventory_backup.SaveCurrentInventory(ply)
 		ply.RevivalPreviousAmmo[primary] = newPrimary
 		ply.RevivalPreviousAmmo[secondary] = newSecondary
 	end
+	
+	print("[FH] Saved inventory for " .. ply:Nick() .. ". He has " .. count .. " weapons")
 end
 
 function inventory_backup.RemoveItem(ply, item)
@@ -42,10 +46,14 @@ function inventory_backup.RemoveItem(ply, item)
 end
 
 function inventory_backup.LoadBackup(ply)
+	print("[FH] Trying to load inventory for " .. ply:Nick())
 	if ply.ReviveWeapons ~= nil then
+		local count=0
 		for wep, _ in pairs( ply.ReviveWeapons ) do
 			ply:Give(wep)
+			count=count+1
 		end
+		print("[FH] Loaded inventory for " .. ply:Nick() .. ". He has " .. count .. " weapons", ply:Alive())
 	end
 	
 	if ply.ReviveActiveWeapon ~= nil then

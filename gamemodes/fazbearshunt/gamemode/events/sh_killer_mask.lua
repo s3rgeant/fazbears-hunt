@@ -141,7 +141,7 @@ hook.Add( "PlayerDeath", "fh_axe_anim_death", function( ply, inflictor, attacker
 	end
 end)
 
-hook.Add( "EntityTakeDamage", "EntityDamageExample", function( target, dmginfo )
+hook.Add( "EntityTakeDamage", "fh_killmask_damage", function( target, dmginfo )
 	if target:IsPlayer() and target:GetNW2Bool("KillerObsessed") then
 		dmginfo:SetDamage( math.min(dmginfo:GetDamage(), math.random(5,6) ) )
 	end

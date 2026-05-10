@@ -595,7 +595,7 @@ end)
 if CLIENT then
 	local yeahBreak = false
 	local FREDDY_DOOR_COLOR = Color(255, 255, 255, 255)
-	local function halo_breakable_doors(ply)
+	local function halo_breakable_doors(ply, rule)
 		if not yeahBreak then return end
 		if not IsValid(ply) then return end
 
@@ -655,7 +655,7 @@ if CLIENT then
 			end
 		else
 			for _, ply in player.Iterator() do
-				if ply ~= target and ply:Team() != 2701 then
+				if ply ~= target and ply:Team() ~= 2701 then
 					player_renderer.NoDraw(ply)
 				end
 			end

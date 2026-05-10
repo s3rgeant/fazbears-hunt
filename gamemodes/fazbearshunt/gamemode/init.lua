@@ -369,8 +369,6 @@ function endRound(killerVictory, duration)
 	end)
 end
 
-local fh_fast_roundrestart = CreateConVar( "fh_fast_roundrestart", "0", { FCVAR_ARCHIVE, FCVAR_REPLICATED }, 
-"Make round restarts be faster?" )
 function endGame()
 	SetGlobal2Bool("gameOn", false)
 	isGameOn = false
@@ -401,7 +399,7 @@ function endGame()
 			end
 		end)
 	end
-	game.CleanUpMap( fh_fast_roundrestart:GetBool() and true or false )
+	game.CleanUpMap( false )
 	
 	fh.timer.StartDefaultTimer(lobbyDuration, function()
 		registerNewRound()
@@ -434,6 +432,7 @@ end
 
 function startGame(forceid)
 	local _, players = player.Iterator()
+	local fh_fast_roundrestart = conVars.fh_fast_roundrestart
 
 	RunConsoleCommand("proximity_enabled", 1)
 	lobbyDuration = fh_fast_roundrestart:GetBool() and 5 or 30
@@ -896,11 +895,14 @@ hook.Add("EntityTakeDamage", "fh_no_grenade_teamkill", function(ent, dmginfo)
 		end
 	end
 	
-	attacker = attacker._ImpulseOwner
-	if ent:IsPlayer() and IsValid(attacker) then
-		if attacker:IsPlayer() and ent:Team() == attacker:Team() then
-			return true
+	if attacker == ent then
+		if dmginfo:IsExplosionDamage() then
+			dmginfo:ScaleDamage(0.25)
 		end
+	end
+	
+	if attacker._ImpulseOwner then
+		dmginfo:SetAttacker(attacker._ImpulseOwner)
 	end
 end)
 
@@ -926,7 +928,9 @@ local function fh_death_hook(victim)
 		
 		if timer.Exists("RandomGifts") then
 			local timertime = timer.TimeLeft("RandomGifts")
-			timer.Adjust("RandomGifts", math.max(timertime - 5, 10))
+			if timertime >= 5 then
+				timer.Adjust("RandomGifts", math.max(timertime - 5, 1))
+			end
 		end
 		
 		local animCount = table.Count(animatronics)
@@ -935,9 +939,13 @@ local function fh_death_hook(victim)
 			animCount = math.max(animCount - 1, 1)
 		end
 		
-		if isGameOn and !roundEnding and table.Count(survivors) == 1 and animCount >= 2 and fh.timer.GetTimeLeft() >= 200 then
-			fh.timer.CutBack(180, "round/time_cutback.mp3")
-			hook.Run("fh_timercutback")
+		if isGameOn and !roundEnding then 
+			if table.Count(survivors) == 1 then
+				hook.Run("FH_LastManStanding")
+				if roundType == 0 and animCount >= 2 and fh.timer.GetTimeLeft() >= 200 then
+					fh.timer.CutBack(180, "round/time_cutback.mp3")
+				end
+			end
 		end
 	end
 	animatronics[victim] = nil
@@ -1051,7 +1059,7 @@ hook.Add( "PlayerShouldTakeDamage", "fh_shouldtakedamage", function( ply, attack
 			return custom_cond
 		end
 	
-		if IsValid(attacker) and 
+		if IsValid(attacker) and attacker ~= ply and 
 			(ply:IsSurvivor() == attacker:IsSurvivor() or 
 			ply:IsAnimatronic() and attacker:IsAnimatronic() and !conVars.fh_animatronic_ff:GetBool() or
 			ply:IsAnimatronic() and conVars.fh_animatronic_immortal:GetBool()

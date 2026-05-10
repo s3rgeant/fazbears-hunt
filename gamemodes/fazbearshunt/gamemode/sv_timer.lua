@@ -31,6 +31,8 @@ function fh.timer.CutBack(dur, sound)
 	net.Broadcast()
 			
 	timer.Adjust(timerName, dur)
+	
+	hook.Run("fh_timercutback", dur)
 end
 
 function fh.timer.Pause(sound)

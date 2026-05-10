@@ -1,7 +1,4 @@
 
-fh_bear5_killermask_last = CreateConVar( "fh_bear5_killermask_last", 0, {FCVAR_ARCHIVE, FCVAR_REPLICATED}, 
-	"Give Killer's Mask to last survivor during Bear5 round?." ),
-	
 fh.RegisterRoundType("bear5", 3, function()
 	local players = player.GetAll()
 		
@@ -35,6 +32,10 @@ hook.Add( "EntityTakeDamage", "fh_bear_kill", function( ply, dmginfo )
 		local pillName = attacker:GetPill():GetPillName()
 		
 		if fh.GetRoundType() == 3 and (pillName:find("bear5") or pillName:find("fox4")) then
+			if ply:GetNW2Bool("KillerObsessed") then
+				dmginfo:SetDamage( math.min(dmginfo:GetDamage(), math.random(5,6) ) )
+			end
+			
 			local damageDealt = dmginfo:GetDamage()
 			
 			if damageDealt >= ply:Health() then
@@ -44,6 +45,10 @@ hook.Add( "EntityTakeDamage", "fh_bear_kill", function( ply, dmginfo )
 				ply:NoPlayerCollide(0.25)
 				
 				hook.Run("SendDeathNotice", attacker, attacker:GetActiveWeapon():GetClass(), ply, 1)
+				
+				if table.Count(survivors) == 1 then
+					hook.Run("FH_LastManStanding")
+				end
 				
 				winConditions()
 			end
@@ -100,6 +105,42 @@ hook.Add( "DefibrillatorUse", "fh_bear5", function( wep, owner, ent )
 			end)
 		end
 	--end
+end)
+
+hook.Add("FH_LastManStanding", "bear5", function()
+	if fh.GetRoundType() == 3 then 
+		local timecheck = 200
+		local fh_bear5_killermask_last = conVars.fh_bear5_killermask_last
+		
+		if fh_bear5_killermask_last:GetBool() then
+			local ply
+			for p, _ in pairs(survivors) do
+				ply = p
+				break
+			end
+			if IsValid(ply) then
+				ply:Give("weapon_killmask", true)
+				ply:SelectWeapon("weapon_killmask")
+		
+				local wep = ply:GetActiveWeapon()
+				
+				if IsValid(wep) then
+					ply:SetHealth(100)
+					ply:Freeze(true)
+					ply:GodEnable()
+					ply:SetGFreddyImmune(true)
+					if wep.PrimaryAttack then
+						wep:PrimaryAttack(wep)
+					end
+				end
+				
+				timecheck = 320
+			end
+		end
+		if table.Count(animatronics) >= 2 and fh.timer.GetTimeLeft() >= timecheck then
+			fh.timer.CutBack(timecheck-20, "round/time_cutback.mp3")
+		end
+	end
 end)
 
 hook.Add("fh_postendgame", "bear5_win_dance", function(victory, anims)

@@ -7,7 +7,7 @@ GM.Author = "sergeant"
 GM.Email = "N/A"
 GM.Website = "N/A"
 
-local fh_version = "4.0.1"
+local fh_version = "4.1.0"
 
 function fh.GetVersion()
     return fh_version
@@ -56,6 +56,11 @@ conVars = {
 	fh_max_cupcakes = CreateConVar( "fh_max_cupcakes", 3, { FCVAR_ARCHIVE, FCVAR_REPLICATED}, "Maximum amount of cupcakes Chica can spawn." ),
 	fh_silent_highlight = CreateConVar( "fh_silent_highlight", 0, { FCVAR_ARCHIVE, FCVAR_REPLICATED}, "Makes highlights fully mute, and removes its overlay." ),
 	fh_respawn_dead_animatronics = CreateConVar( "fh_respawn_dead_animatronics", 1, { FCVAR_ARCHIVE, FCVAR_REPLICATED}, "Respawn animatronic if it died?" ),
+	
+	fh_bear5_killermask_last = CreateConVar( "fh_bear5_killermask_last", 0, {FCVAR_ARCHIVE, FCVAR_REPLICATED}, 
+	"Give Killer's Mask to last survivor during Bear5 round?." ),
+	fh_fast_roundrestart = CreateConVar( "fh_fast_roundrestart", "0", { FCVAR_ARCHIVE, FCVAR_REPLICATED }, 
+	"Make round restarts be faster?" ),
 
 	opt_out_anim = CreateConVar("fh_opt_out_anim", 0, { FCVAR_ARCHIVE,FCVAR_CLIENTDLL,FCVAR_USERINFO }, "Do you wannna opt out of Animatronics?", 0, 1),
 	
@@ -379,7 +384,7 @@ pill_RequiresNavmesh("pill_wgfreddy2")
 
 pill_SetDamageAttack( {"pill_springtrap", "pill_plushtrap", "pill_clown"} )
 
-pill_makeSecondary( {"pill_sfreddy2", "pill_wgfreddy2", "pill_toychica"} )
+pill_makeSecondary( {"pill_sfreddy2", "pill_wgfreddy2", "pill_toychica", "pill_endo02"} )
 
 function save_dontPrefer(net)
 	net = net or false

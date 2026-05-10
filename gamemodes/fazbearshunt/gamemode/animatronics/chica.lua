@@ -116,9 +116,9 @@ pills.register("pill_wchica2",{
 				local spawnPos = playerPos + ply:GetUp() * 10
 				local cupcake = ents.Create("cakemine")
 				
-				ent:PillSound('deploy')
-				
 				if not IsValid(cupcake) then return end
+				
+				ent:PillSound('deploy')
 
 				if math.random(1, 10) > 4 then playVoiceline('chica', 'plant', ply, 0.1) end
 				

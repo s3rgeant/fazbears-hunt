@@ -166,7 +166,7 @@ function SWEP:DealDamage()
 		if IsValid(ent) then
 			if ent:GetPillName() == "pill_endo02" then
 				if target._endoHoldingPlayer == ply then
-					endoRelease(target, true)
+					endo.releasePlayer(target, true)
 		
 					cooldown.Set(target, 'grab', 6)
 					cooldown.Send(ply, "grab")
@@ -349,7 +349,7 @@ if CLIENT then
 		render_max_dist = 9000,
 
 		outline_color = AXE_COLOR,
-		outline_width = 3,
+		outline_width = 2,
 		outline_min_dist = 1000,
 		outline_max_dist = 2200,
 
@@ -357,7 +357,6 @@ if CLIENT then
 		fill_min_dist = 1000,
 		fill_max_dist = 2000,
 
-		mode = OUTLINE_MODE_VISIBLE,
 		collect = getAxeHl
 	})
 	

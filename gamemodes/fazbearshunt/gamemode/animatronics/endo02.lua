@@ -12,31 +12,15 @@ if SERVER then
 end
 
 local endo_default_movement = {120, 485, 160, 250} -- обычное передвижение
-local wfreddy_stalk_movement = {120, 600, 75, 260} -- сталкер дохуя
+local endo_stalk_movement = {120, 600, 75, 260} -- сталкер дохуя
 
 local function endoRageChanges(ply, ent, target)
-	local wep = ply:GetActiveWeapon()
-	if IsValid(wep) and wep:GetClass() == "v_endo" then
-		--wep:AddAnimation("run", ACT_RUN_AIM)
-	end
-		
-	ent:SetSpeed(unpack(wfreddy_stalk_movement))
-	--ent:ReplaceAnimation("run", "srun")
-	--ent:ReplaceAnimation("walk", "ragewalk")
-	--ent:ReplaceAnimation("idle", "rageidle")
+	ent:SetSpeed(unpack(endo_stalk_movement))
 end
 
 local function norageChanges(ply, ent, target)
-	local wep = ply:GetActiveWeapon()
-	if IsValid(wep) and wep:GetClass() == "v_endo" then
-		--wep:AddAnimation("run", nil, "run")
-	end
-	
 	if IsValid(ent) then
 		ent:SetSpeed(unpack(endo_default_movement))
-		--ent:ReplaceAnimation("run", "run")
-		--ent:ReplaceAnimation("walk", "walk")
-		--ent:ReplaceAnimation("idle", "idle")
 	end
 end
 
@@ -74,8 +58,6 @@ pills.register("pill_endo02",{
 			land="land",
 			scare="scare",
 			stun="stun",
-			
-			stalk="stalk",
 		},
 		gestures={
 			melee="attack",
@@ -147,13 +129,8 @@ pills.register("pill_endo02",{
 	attack2={
 		mode="trigger",
 		func = function(ply,ent)
-			--if cooldown.Exists(ply, 'grab') then return end
-			--endo.grabNeareastPlayer(ply,ent)
-			
-			if !ply:OnGround() then return end
-			
-			endo.grabNeareastPlayer(ply, ent)
-			--startBlindRage(ply, ent, enrageChanges, norageChanges)
+			if cooldown.Exists(ply, 'grab') then return end
+			endo.grabNeareastPlayer(ply,ent)
 		end
 	},
 	
@@ -460,6 +437,8 @@ end
 local nullvector = Vector(0,0,0)
 local endo_kills = 0
 hook.Add( "PlayerDeath", "endo_myaso", function( victim, inflictor, attacker )
+	if not IsValid(attacker) or not attacker:IsPlayer() then return end
+	
 	local ent = attacker:GetPill()
 	if not IsValid(ent) or ent:GetPillName() ~= "pill_endo02" then return end
 	

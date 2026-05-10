@@ -67,6 +67,7 @@ if CLIENT then
 
 		local startPos = att.Pos + att.Ang:Forward() * 3
 		
+		local PixVis
 		if ( !PixVis ) then PixVis = util.GetPixelVisibleHandle() end
 
 		local visible = util.PixelVisible( startPos, 28, PixVis )

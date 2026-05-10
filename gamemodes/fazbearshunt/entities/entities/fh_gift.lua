@@ -271,7 +271,6 @@ local positiveEffects = {
 			end
 			
 			if not killermask.IsGiftingAllowed() then
-				print('NELZYA')
 				return false
 			end
 			

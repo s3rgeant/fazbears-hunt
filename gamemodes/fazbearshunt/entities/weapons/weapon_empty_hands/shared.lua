@@ -71,7 +71,7 @@ function SWEP:PrimaryAttack()
 		if IsValid(HitEnt.IsBeingDragged) and HitEnt.IsBeingDragged ~= ply then
 			local wep = HitEnt.IsBeingDragged:GetActiveWeapon()
 			
-			if wep:GetClass() == self:GetClass() then
+			if IsValid(wep) and wep:GetClass() == self:GetClass() then
 				if wep.StopDrag then wep:StopDrag() end
 			end
 		end
@@ -122,7 +122,8 @@ function SWEP:SetupDataTables( )
 end
 
 function SWEP:StopDrag()
-	if IsValid(self.Drag.Entity) then
+    local ply = self:GetOwner()
+	if self.Drag and IsValid(self.Drag.Entity) then
 		if !IsValid(self.Drag.Entity.IsBeingDragged) or self.Drag.Entity.IsBeingDragged == self:GetOwner() then
 			self.Drag.Entity.IsBeingDragged = nil
 		end
@@ -145,13 +146,30 @@ end
 function SWEP:DrawWorldModel()
 end
 
+hook.Add("OnPlayerPhysicsDrop", "emptyhands_prop_damage", function(ply, ent)
+	ent._ImpulseOwner = ply
+	
+	local timerName = "reset_impulse_owner" .. ent:EntIndex()
+	
+	if timer.Exists(timerName) then
+		timer.Remove(timerName)
+	end
+	
+	timer.Create(timerName, 2, 1, function()
+		if IsValid(ent) and ent._ImpulseOwner then
+			ent._ImpulseOwner = nil
+		end
+	end)
+end)
+
 hook.Add("EntityTakeDamage", "prevent_empty_hands_prop_damage", function(ent, dmg)
     local inflictor = dmg:GetInflictor()
 
-    if IsValid(inflictor) and inflictor.IsBeingDragged then
-        dmg:SetDamage(0)
-        dmg:ScaleDamage(0)
-        return true
+    if IsValid(inflictor) then
+		local dragger = inflictor.IsBeingDragged 
+		if IsValid(dragger) and ent ~= dragger then
+			dmg:SetAttacker(dragger)
+		end
     end
 end)
 

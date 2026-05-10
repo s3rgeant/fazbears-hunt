@@ -139,8 +139,8 @@ function terrorSetVolume(theme, name, volume, dur)
 
     local soundObj = loadedMusic[theme][name]
     if not soundObj then return end
-
-    if soundObj:IsPlaying() and comName ~= lastTheme .. lastTerror then
+	-- and (lastTheme and lastTerror and comName ~= lastTheme .. lastTerror)
+    if soundObj:IsPlaying() then
         soundObj:Stop()
     end
 

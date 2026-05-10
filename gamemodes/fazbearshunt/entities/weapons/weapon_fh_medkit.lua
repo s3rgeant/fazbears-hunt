@@ -186,7 +186,7 @@ if CLIENT then
 		if ent:IsInvisible() then return nil end
 		if ply:GetPos():Distance(ent:GetPos()) > wep.HealRange then return nil end
 		
-		local entry = NormalizeEntry(rule, {
+		local entry = OUTLINE.NormalizeEntry(rule, {
 			ent = ent,
 			outline_color = MEDKIT_COLOR
 		})

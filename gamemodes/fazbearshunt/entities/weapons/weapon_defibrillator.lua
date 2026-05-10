@@ -390,7 +390,7 @@ hook.Add( "PlayerSilentDeath", "Defibl_Revive", SetDefibAttributes)
 hook.Add( "DoPlayerDeath", "Defibl_Revive", SetDefibAttributes)
 
 hook.Add( "PlayerLoadout", "Defibl_Revive", function( ply )
-	if !BeingRevived[ply] then return end
+	if not BeingRevived[ply] then return end
 	
 	BeingRevived[ply] = nil
 	

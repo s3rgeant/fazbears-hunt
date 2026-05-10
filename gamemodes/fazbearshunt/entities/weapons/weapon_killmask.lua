@@ -141,6 +141,7 @@ function SWEP:SpringLock()
 			
 			ply:SetDSP(25)
 			ply:Freeze(true)
+			ply:GodDisable()
 			ply:SetNW2Bool("KillerObsessed", true)
 			ply:SetGFreddyImmune(true)
 			

@@ -229,11 +229,11 @@ pills.register("pill_springtrap",{
 			crouch_walk="crouch",
 			
 			egypt="egypt",
-			stun="stun",
 		},
 		gestures={
 			swing="preattack",
 			attack="attack",
+			stun="stun",
 		},
 		speedCap={
 			run=500,
@@ -372,10 +372,8 @@ pills.register("pill_springtrap",{
 				if table.Count(spectators) > 0 then
 					ply:SendLua( "LocalPlayer():ChatPrint( language.GetPhrase('fazhunt.springtrap.plushunable') )" )
 					
-					net.Start("fh_net_killer_change")
-					net.WriteString("summon")
-					net.WriteFloat(plushtrap_summon_cd)
-					net.Send(ply)
+					cooldown.Set(ply, "summon", plushtrap_summon_cd)
+					cooldown.Send(ply, "summon")
 			
 					for _,v in ipairs( spectators ) do
 						net.Start("dead_pt_request_start")
@@ -430,13 +428,6 @@ pills.register("pill_springtrap",{
 			plushtrap:SetOwner(ply)
 			plushtrap:Spawn()
 			plushtrap:Activate()
-	
-			--[[
-			net.Start("fh_net_killer_change")
-			net.WriteString("plushtrap")
-			net.WriteFloat(60)
-			net.Send(ply)
-			]]--
 			
 			net.Start("ApplyKillerCompanion")
 			net.WriteString("plushtrap")
@@ -749,10 +740,8 @@ function plushtrap_request_complete(springtrap, ply)
 	
 	timer.Simple(1, function()
 		if timer.Exists("pt_kill_timer" .. springtrap:EntIndex()) then
-			net.Start("fh_net_killer_change")
-			net.WriteString("lifetime")
-			net.WriteFloat( timer.TimeLeft("pt_kill_timer" .. springtrap:EntIndex()) )
-			net.Send(ply)
+			cooldown.Set(ply, "lifetime", timer.TimeLeft("pt_kill_timer" .. springtrap:EntIndex()))
+			cooldown.Send(ply, "lifetime")
 		end
 	end)
 	
@@ -766,10 +755,8 @@ function plushtrap_request_complete(springtrap, ply)
 	request_plushtrap = ply
 	
 	if !pt_found then -- на случай, если навмешей нет, и пш не заспавнился, мы создаём таймеры, которые не создались.
-		net.Start("fh_net_killer_change")
-		net.WriteString("summon")
-		net.WriteFloat(plushtrap_summon_cd)
-		net.Send(springtrap)
+		cooldown.Set(ply, "summon", plushtrap_summon_cd)
+		cooldown.Send(ply, "summon")
 		
 		timer.Adjust('fh_pt_summon', plushtrap_summon_cd, nil, nil)
 			
