@@ -59,7 +59,7 @@ function highlight.ByDistance(ply, ent)
 		end
 		
 		net.Start("ToggleHighlightSound") -- включаем чуваку звук что он дофига крутой со спермой под губой
-		net.WriteBool(!table.IsEmpty(totalPlayers))
+		net.WriteBool(not table.IsEmpty(totalPlayers))
 		net.Send(ply)
 		
 		hook.Run("FH_HighlightByDistance", ply, ent, totalPlayers)

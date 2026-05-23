@@ -18,6 +18,9 @@ SWEP.ViewModel = "models/torres/ffps/salvage/vm/scrapbabyv19.mdl"
 SWEP.m_WeaponDeploySpeed = 0.7
 SWEP.LandHold = 0.2
 
+SWEP.LoopSoundBaby = nil
+SWEP.LoopSoundClaw = nil
+
 function SWEP:SetupDataTables()
     self:NetworkVar("Bool", 0, "Charging")
     self:NetworkVar("Bool", 1, "ClawFlying")
@@ -54,9 +57,9 @@ function SWEP:SecondaryAttack()
 
     if SERVER then
 		--if !ply:Crouching() then
-			--ent:PillGesture('swing', 2, 1, 0.1, 0.3)
+			ent:PillGesture('aim', 2, 1, 0.1, 0.3)
 		--end
-        ply:EmitSound("fnaf3/pre-hit.mp3")
+        ply:EmitSound("animatronics/scrapbaby/baby_hook_ready.mp3", 90)
     end
 
     if IsFirstTimePredicted() then
@@ -67,12 +70,14 @@ function SWEP:SecondaryAttack()
 end
 
 function SWEP:ThrowHook()
-    local ply = self:GetOwner()
+	local ply = self:GetOwner()
+	
+	ply:EmitSound("animatronics/scrapbaby/baby_hook_throw.mp3", 90)
 	
 	self:SetCharging(false)
 	self:SetClawFlying(true)
 	
-    self:HandleAnimation("shoot", 2)
+	self:HandleAnimation("shoot", 2)
 	ply:GetViewModel():SetBodygroup(0, 1)
 	
 	if CLIENT then return end
@@ -86,6 +91,20 @@ function SWEP:ThrowHook()
 	claw:SetOwner(ply)
 	claw:Spawn()
 	claw:Activate()
+	
+	if SERVER then
+		if self.LoopSoundBaby then
+			self.LoopSoundBaby:Stop()
+			self.LoopSoundBaby = nil
+		end
+		if not self.LoopSoundBaby then
+			local rf = RecipientFilter()
+			rf:AddAllPlayers()
+			
+			self.LoopSoundBaby = CreateSound(claw, ")animatronics/scrapbaby/hook_loop.wav", rf)
+		end
+		self.LoopSoundBaby:Play()
+	end
 	
 	self:SetClaw(claw)
 	
@@ -107,6 +126,8 @@ if CLIENT then
 				local ent = ent
 				local ent2 = owner:GetPill()
 				
+				if not IsValid(ent2) then return end
+				
 				local ropeEnt = ents.CreateClientRope( ent, 0, ent2, 1, rope )
 			end
 		end
@@ -127,22 +148,52 @@ function SWEP:ClawHit(target)
 		target:SetNWEntity("_ScrapBabyHooker", ply)
 		validTarget = true
 		
+		smoothLookAt(target, ply)
+		
 		if IsValid(claw) then
+			if target:IsAnimatronic() then
+				claw:EmitSound("animatronics/scrapbaby/baby_hook_teammate.mp3")
+			else
+				claw:EmitSound("animatronics/scrapbaby/baby_hook_success.mp3")
+			end
 			claw:SetSucker(target)
+			claw:SetPos(target:GetPos() + target:OBBCenter())
 			claw:SetParent(target)
 		end
+	end
+	
+	if not target:IsPlayer() then
+		if IsValid(claw) then
+			claw:EmitSound("animatronics/scrapbaby/baby_hook_enviroment.mp3")
+		end
+	end
+	
+	if target:GetClass() == "prop_door_rotating" then
+		breakBustDoor(ply, target, 15)
+		return true
+	end
+	
+	if SERVER and self.LoopSoundBaby then
+		self.LoopSoundBaby:ChangePitch(77, 0.1)
+		self.LoopSoundBaby:ChangeVolume(0, 0.1)
 	end
 	
 	timer.Simple(0.1, function()
 		self:SetClawWait(false)
 		self:SetClawFlyingHome(true)
+	
+		if SERVER and self.LoopSoundBaby then
+			self.LoopSoundBaby:ChangePitch(90, .5)
+			self.LoopSoundBaby:ChangeVolume(1, .1)
+		end
 		
 		if IsValid(claw) then
 			self:HandleAnimation("pull", 4)
 			claw:SetGoHome(true)
 			
 			if not validTarget then
-				claw:SetSolid(SOLID_NONE)
+				--self:SetCollisionGroup(COLLISION_GROUP_VEHICLE_CLIP)
+				claw:SetNotSolid(true)
 			end
 			return
 		end
@@ -161,6 +212,11 @@ function SWEP:ClawBack()
 	self:SetClawFlyingHome(false)
 	
 	self:SetClaw(NULL)
+	
+	if SERVER and self.LoopSoundBaby then
+		self.LoopSoundBaby:Stop()
+		self.LoopSoundBaby = nil
+	end
 	
     local ply = self:GetOwner()
 	if IsValid(ply) and IsValid(ply:GetViewModel()) then
@@ -202,9 +258,9 @@ hook.Add( "Move", "scrapbaby_move", function( ply, mv )
 		
 		if IsValid(wep) and wep:GetClass() == "v_scrapbaby" and wep:GetClawFlyingHome() then
 			local targetPos = mv:GetOrigin()
-			targetPos.z = 0
+			--targetPos.z = 0
 			local sukaPos = suka:GetPos()
-			sukaPos.z = 0
+			--sukaPos.z = 0
 			
 			local direction = targetPos - (sukaPos - Vector(0,0,16))
 			direction:Normalize()

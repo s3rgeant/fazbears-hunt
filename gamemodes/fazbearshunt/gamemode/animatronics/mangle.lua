@@ -606,30 +606,42 @@ hook.Add("FinishMove", "mangle_hook_ready", function( ply, mv )
 				return 
 			end
 		
-			if tr.Entity and tr.Entity:IsPlayer() and tr.Entity:IsSurvivor() then
+			if tr.Entity then
 				local victim = tr.Entity
 				
-				victim:TakeDamage(hooktype == "ceiling" and 100 or 75, ply)
-
-				local edata = EffectData()
-				edata:SetOrigin(victim:EyePos())
-				edata:SetEntity(victim)
-				util.Effect("BloodImpact", edata, true, true)
-				
-				victim:EmitSound("physics/body/body_medium_break3.wav")
-				victim:EmitSound("player/headshot1.wav")
-				
-				local wep = ply:GetActiveWeapon()
-				if IsValid(wep) and wep:GetClass() == "v_mangle" then
-					wep:HandleAnimation("bite", 0.6)
-					
-					local ent = pills.getMappedEnt(ply)
-					if IsValid(ent) then
-						ent:PillGesture('melee', 2, 1, 0.1, 0.7)
-					end
+				if !IsValid(victim) then 
+					ply:LagCompensation(false)
+					return 
 				end
 				
-				mangle_tierUp(ply)
+				SuppressHostEvents( NULL )
+				victim:TakeDamage(hooktype == "ceiling" and 100 or 75, ply)
+				SuppressHostEvents( ply )
+
+				if victim:IsPlayer() and victim:IsSurvivor() then
+					local edata = EffectData()
+					edata:SetOrigin(victim:EyePos())
+					edata:SetEntity(victim)
+					util.Effect("BloodImpact", edata, true, true)
+					
+					victim:EmitSound("physics/body/body_medium_break3.wav")
+					victim:EmitSound("player/headshot1.wav")
+					
+					local wep = ply:GetActiveWeapon()
+					if IsValid(wep) and wep:GetClass() == "v_mangle" then
+						wep:HandleAnimation("bite", 0.6)
+						
+						local ent = pills.getMappedEnt(ply)
+						if IsValid(ent) then
+							ent:PillGesture('melee', 2, 1, 0.1, 0.7)
+						end
+					end
+					
+					mangle_tierUp(ply)
+				else
+					ply:LagCompensation(false)
+					return
+				end
 				
 				ply:SetNWBool("_MangleHookReady", false)
 				ply:SetNWString("_MangleLastHookType", "")
@@ -681,7 +693,6 @@ local frametime_add = 1
 local fov_plus = 0
 
 hook.Add( "CalcView", "mangle_caclview", function( ply, pos, angles, fov )
-
 	local ent = pills.getMappedEnt(ply)
 	
 	if IsValid(ent) and ent.formTable.name == "pill_mangle" and IsValid(ply:GetViewEntity()) and ply:GetViewEntity() == ply then	

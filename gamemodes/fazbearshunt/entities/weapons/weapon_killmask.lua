@@ -132,7 +132,7 @@ function SWEP:SpringLock()
 			util.Effect("BloodImpact", edata, true, true)
 			
 			local rf = RecipientFilter()
-			rf:AddAllPlayers()
+			rf:AddPAS(ply:EyePos())
 			rf:RemovePlayer(ply)
 			
 			self:EmitSound("weapons/springlock.mp3", 65, 100, 0.2, CHAN_AUTO, 0, 1, rf)

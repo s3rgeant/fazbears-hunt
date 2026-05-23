@@ -137,10 +137,12 @@ function terrorSetVolume(theme, name, volume, dur)
         loadedMusic[lastTheme][lastTerror]:ChangeVolume(0, dur)
     end
 
+	if not loadedMusic[theme] then return end
+
     local soundObj = loadedMusic[theme][name]
     if not soundObj then return end
-	-- and (lastTheme and lastTerror and comName ~= lastTheme .. lastTerror)
-    if soundObj:IsPlaying() then
+	
+    if soundObj:IsPlaying() and (lastTheme and lastTerror and comName ~= lastTheme .. lastTerror) then
         soundObj:Stop()
     end
 
@@ -196,7 +198,6 @@ local function sameMovement(ply,killer)
 		else return false end
 	end
 	
-	--
 	--[[ if isMoving(ply) then
 		if isMoving(killer) then
 			return true
@@ -235,8 +236,8 @@ function terror_radius.getLayer(theme, layer)
 	return nil
 end
 
-local function getLayer(theme, layer)
-	return terror_radius.getLayer(theme, layer)
+local function getLayer(...)
+	return terror_radius.getLayer(...)
 end
 
 local stealthDelay = 2 -- чтобы террор быстро не пропадал если аниматроник резко застелсил
@@ -247,154 +248,159 @@ function terror_radius.imChasing()
 	return imChasing or false
 end
 
-if !timer.Exists("tr_update") then
-    timer.Create("tr_update", 0.5, 0, function()
-        local myself = LocalPlayer()
+timer.Create("tr_update", 0.5, 0, function()
+	local myself = LocalPlayer()
 
-        if !IsValid(myself) then return end
+	if !IsValid(myself) then return end
 
-        local closestGuyPos, closestTheme, layer = nil, nil, nil
-        local foundNoOne = true
-		imChasing = false
+	local closestGuyPos, closestTheme, layer = nil, nil, nil
+	local foundNoOne = true
+	imChasing = false
 
-        hook.Run("FH_TerrorRadiusUpdate", currentKillers)
-        if fh_terror_enabled:GetBool() and !table.IsEmpty(currentKillers) and (myself:Alive() or !myself:Alive() and fh_terror_spectators:GetBool()) then
-			local shouldProccess = hook.Run("FH_HandleTerrorRadius", currentKillers)
+	hook.Run("FH_TerrorRadiusUpdate", currentKillers)
+	if fh_terror_enabled:GetBool() and !table.IsEmpty(currentKillers) and (myself:Alive() or !myself:Alive() and fh_terror_spectators:GetBool()) then
+		local shouldProccess = hook.Run("FH_HandleTerrorRadius", currentKillers)
+	
+		local observertarget = myself:GetObserverTarget()
 		
-			local observertarget = myself:GetObserverTarget()
-			
-			if IsValid(observertarget) and observertarget:IsPlayer() then
-				myself = observertarget
-			end
-			
-			if shouldProccess ~= false then
-				if currentKillers[myself] then
-					for _, ply in player.Iterator() do
-						if !ply:Alive() or (!everyoneKillers[myself] and ply:Team() == myself:Team()) then continue end
-						if ply:IsDormant() then continue end
+		if IsValid(observertarget) and observertarget:IsPlayer() then
+			myself = observertarget
+		end
+		
+		if shouldProccess ~= false then
+			if currentKillers[myself] then
+				for _, ply in player.Iterator() do
+					if !ply:Alive() or (!everyoneKillers[myself] and ply:Team() == myself:Team()) then continue end
+					if ply:IsDormant() then continue end
 
-						local distance = myself:GetPos():Distance(ply:GetPos())
+					local distance = myself:GetPos():Distance(ply:GetPos())
 
-						local theme = currentKillers[myself]
-						
-						if distance < tr_Close then
-							checkChase(ply, myself)
+					local theme = currentKillers[myself]
+					
+					if distance < tr_Close then
+						checkChase(ply, myself)
 
-                            local shouldProccessMy = hook.Run("FH_HandleMineTerrorRadius", ply, theme)
+						local shouldProccessMy = hook.Run("FH_HandleMineTerrorRadius", ply, theme)
 
-                            if shouldProccessMy == false then continue end
+						if shouldProccessMy == false then continue end
 
-							if isChasing[ply] == myself then
-								layer = "chase"
-								imChasing = true
-								if getLayer(theme, "chase_low") then
-									if ply:Health() <= ply:GetMaxHealth() / 2 then
-										layer = "chase_low"
-									end
+						if isChasing[ply] == myself then
+							layer = "chase"
+							imChasing = true
+							if getLayer(theme, "chase_low") then
+								if ply:Health() <= ply:GetMaxHealth() / 2 then
+									layer = "chase_low"
 								end
-								closestTheme = currentKillers[myself]
-								break
 							end
+							closestTheme = currentKillers[myself]
+							break
 						end
 					end
 				end
-				for killer, theme in pairs(currentKillers) do
-					if !theme or !IsValid(killer) then continue end 
+			end
+			for killer, theme in pairs(currentKillers) do
+				if !theme or !IsValid(killer) then continue end 
 
-			        local shouldProccessKiller = hook.Run("FH_HandleKillerTerrorRadius", killer, theme)
+				local shouldProccessKiller = hook.Run("FH_HandleKillerTerrorRadius", killer, theme)
 
-                    if shouldProccessKiller == false then continue end
+				if shouldProccessKiller == false then continue end
 
-					if myself:IsSurvivor() and currentKillers[myself] then break end
+				if myself:IsSurvivor() and currentKillers[myself] then break end
 
-					if killer == myself or !killer:Alive() or (!everyoneKillers[killer] and killer:Team() == myself:Team()) then continue end
+				if killer == myself or !killer:Alive() or (!everyoneKillers[killer] and killer:Team() == myself:Team()) then continue end
 
-					local distance = myself:GetPos():Distance(killer:GetPos())
+				local distance = myself:GetPos():Distance(killer:GetPos())
 
-					if closestGuyPos and distance > closestGuyPos then continue end
-					
-					if distance > tr_Far then continue end
-					
-					--if IsValid(killer:GetPill()) and killer:GetPill():GetMaterial() == "models/null" then continue end
+				if closestGuyPos and distance > closestGuyPos then continue end
+				
+				if distance > tr_Far then continue end
+				
+				--if IsValid(killer:GetPill()) and killer:GetPill():GetMaterial() == "models/null" then continue end
 
-					if stealthKillers[killer] then
-						if isRunning(killer) or isChasing[myself] == killer then
-							stealthLastActive[killer] = CurTime()
-						elseif stealthLastActive[killer] and (CurTime() - stealthLastActive[killer]) < stealthDelay then
-						else
-							continue
-						end
-					elseif stealthKillers2[killer] then
-						if isMoving(killer) or isChasing[myself] == killer then
-							stealthLastActive[killer] = CurTime()
-						elseif stealthLastActive[killer] and (CurTime() - stealthLastActive[killer]) < stealthDelay then
-						else
-							continue
-						end
-					end
-
-					foundNoOne = false
-					
-					if distance < tr_Far and distance > tr_Approach then
-						layer = "first_layer"
-					elseif distance < tr_Approach and distance > tr_Close then
-						layer = getLayer(theme, "second_layer") or getLayer(theme, "first_layer")
-					elseif distance < tr_Close then
-						layer = getLayer(theme, "third_layer") or getLayer(theme, "second_layer") or getLayer(theme, "first_layer")
-					end
-					
-					checkChase(myself, killer)
-
-					if isChasing[myself] == killer then
-						layer = "chase"
-						if getLayer(theme, "chase_low") then
-							if myself:Health() <= myself:GetMaxHealth() / 2 then
-								layer = "chase_low"
-							end
-						end
-					end
-					
-					local forceLayer, forceNotFound = nil, nil
-			        forceLayer, forceNotFound = hook.Run("FH_HandleKillerTerrorLayers", killer, theme, layer)
-					
-					if forceLayer then
-						layer = forceLayer
-					end
-					
-					if forceNotFound then
-						layer = nil
-						foundNoOne = true
+				if stealthKillers[killer] then
+					if isRunning(killer) or isChasing[myself] == killer then
+						stealthLastActive[killer] = CurTime()
+					elseif stealthLastActive[killer] and (CurTime() - stealthLastActive[killer]) < stealthDelay then
+					else
 						continue
 					end
-
-					closestGuyPos = distance
-					closestTheme = theme
+				elseif stealthKillers2[killer] then
+					if isMoving(killer) or isChasing[myself] == killer then
+						stealthLastActive[killer] = CurTime()
+					elseif stealthLastActive[killer] and (CurTime() - stealthLastActive[killer]) < stealthDelay then
+					else
+						continue
+					end
 				end
+
+				foundNoOne = false
+				
+				if distance < tr_Far and distance > tr_Approach then
+					layer = getLayer(theme, "first_layer")
+				elseif distance < tr_Approach and distance > tr_Close then
+					layer = getLayer(theme, "second_layer") or getLayer(theme, "first_layer")
+				elseif distance < tr_Close then
+					layer = getLayer(theme, "third_layer") or getLayer(theme, "second_layer") or getLayer(theme, "first_layer")
+				end
+				
+				checkChase(myself, killer)
+
+				if isChasing[myself] == killer then
+					layer = "chase"
+					if getLayer(theme, "chase_low") then
+						if myself:Health() <= myself:GetMaxHealth() / 2 then
+							layer = "chase_low"
+						end
+					end
+				end
+				
+				local forceLayer, forceNotFound = nil, nil
+				forceLayer, forceNotFound = hook.Run("FH_HandleKillerTerrorLayers", killer, theme, layer)
+				
+				if forceLayer then
+					layer = forceLayer
+				end
+				
+				if forceNotFound then
+					layer = nil
+					foundNoOne = true
+					continue
+				end
+
+				closestGuyPos = distance
+				closestTheme = theme
 			end
-        end
-		
-		local closestTheme_handler, layer_handler = nil, nil
-		closestTheme_handler, layer_handler = hook.Run("FH_HandlePostTerrorRadius", closestTheme, layer)
-		
-		if closestTheme_handler and layer_handler then
-			closestTheme = closestTheme_handler
-			layer = layer_handler
-			
-			foundNoOne = false
 		end
+	end
+	
+	local closestTheme_handler, layer_handler = nil, nil
+	closestTheme_handler, layer_handler = hook.Run("FH_HandlePostTerrorRadius", closestTheme, layer)
+	
+	if closestTheme_handler and layer_handler then
+		closestTheme = closestTheme_handler
+		layer = layer_handler
+		
+		foundNoOne = false
+	end
 
-        if foundNoOne and !imChasing then
-			isChasing[myself] = nil
-            terrorStop(0.5)
-        end
+	if foundNoOne and !imChasing then
+		isChasing[myself] = nil
+		terrorStop(0.2)
+	end
 
-        if !closestTheme or !layer then return end
+	if (!closestTheme or !layer) and not imChasing then 
+		terrorStop(0.2)
+		return 
+	end
 
-        if closestTheme == lastTheme and layer == lastTerror then return end
-        
-        terrorSetVolume(closestTheme, layer, fh_terror_volume:GetFloat(), 0.5)
-    end)
-end
+	if closestTheme == lastTheme and layer == lastTerror then return end
+	
+	if layer == "chase" and fh_terror_enabled:GetBool() and fh_terror_volume:GetFloat() > 0 then
+		surface.PlaySound("chase_begin.mp3")
+	end
+	
+	terrorSetVolume(closestTheme, layer, fh_terror_volume:GetFloat(), 0)
+end)
 
 timer.Pause("tr_update")
 

@@ -25,9 +25,9 @@ if CLIENT then
 
 		local enabled = myself:GetNW2Bool("FH_Flashlight", false)
 		
-		local isFirstPerson = myself:ShouldDrawLocalPlayer() == false
+		--local isFirstPerson = myself:ShouldDrawLocalPlayer() == false
 
-		if enabled and isFirstPerson then
+		if enabled then
 			if not Flashlights[myself] then
 				local fl = ProjectedTexture()
 				fl:SetTexture("effects/flashlight001")
@@ -41,7 +41,7 @@ if CLIENT then
 
 			local fl = Flashlights[myself]
 			fl:SetPos(myself:EyePos())
-			fl:SetAngles(myself:EyeAngles())
+			fl:SetAngles(MainEyeAngles())
 			fl:Update()
 		else
 			if Flashlights[myself] then
@@ -54,6 +54,7 @@ if CLIENT then
 	local coneMat   = Material("effects/vol_light001")
 	local lampMat   = Material("sprites/light_ignorez")
 
+	local PixVis_ply = {}
 	hook.Add("PostPlayerDraw", "FH_ThirdPersonFlashlight_SoftCone", function(ply)
 		if ply == LocalPlayer() and not ply:ShouldDrawLocalPlayer() then return end
 		if not ply:GetNW2Bool("FH_Flashlight", false) then return end
@@ -68,16 +69,18 @@ if CLIENT then
 		local startPos = att.Pos + att.Ang:Forward() * 3
 		
 		local PixVis
-		if ( !PixVis ) then PixVis = util.GetPixelVisibleHandle() end
+		if not PixVis_ply[ply] then PixVis = util.GetPixelVisibleHandle() PixVis_ply[ply] = PixVis else
+			PixVis = PixVis_ply[ply]
+		end
 
-		local visible = util.PixelVisible( startPos, 28, PixVis )
+		local visible = util.PixelVisible( startPos, 6, PixVis )
 
 		render.SetMaterial(lampMat)
 		render.DrawSprite(
 			startPos,
 			20 * visible,
 			20 * visible,
-			Color(255,255,255, math.floor( visible * 100 ))
+			Color(255,255,255, math.floor( visible * 90 ))
 		)
 	end)
 	

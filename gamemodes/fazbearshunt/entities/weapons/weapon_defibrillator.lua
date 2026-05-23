@@ -375,7 +375,7 @@ function SWEP:OnDrop()
 end
 
 local function SetDefibAttributes(ply)
-	if ply:GetPill() then return end
+	if IsValid(ply:GetPill()) then return end
 	
 	ply.LastDeathTime = CurTime()
 	ply.CrouchedBeforeDeath = ply:Crouching()
@@ -394,7 +394,11 @@ hook.Add( "PlayerLoadout", "Defibl_Revive", function( ply )
 	
 	BeingRevived[ply] = nil
 	
-	inventory_backup.LoadBackup(ply)
+	timer.Simple(0, function()
+		if IsValid(ply) then
+			inventory_backup.LoadBackup(ply)
+		end
+	end)
 	return true
 end)
 

@@ -168,10 +168,25 @@ function GM:MouthMoveAnimation(ply)
 
 	if IsValid(pillEnt) then
 		local mp = 1
+		
+		local talkie = pillEnt:Get("talk")
+		
+		if talkie and talkie.jawbone then
+			local boneID = pillEnt:LookupBone(talkie.jawbone)
+			local scale = talkie.scale or 1
+			if talkie.reversed then mp = -1 end
+			
+            if boneID then
+                local angle = ply:IsSpeaking() and Angle(0, 0, -weight * (25 * scale) * mp) or Angle(0, 0, 0)
+                pillEnt:ManipulateBoneAngles(boneID, angle)
+				return
+            end
+		end
 
         for _, boneName in ipairs(jawBones) do
             local boneID = pillEnt:LookupBone(boneName)
 			if boneName == "Jaw_Bn" or boneName == "bip_lowerEndoJaw" then mp = -1 end
+			--print(boneName)
             if boneID then
                 local angle = ply:IsSpeaking() and Angle(0, 0, -weight * 25 * mp) or Angle(0, 0, 0)
                 pillEnt:ManipulateBoneAngles(boneID, angle)
@@ -288,18 +303,3 @@ hook.Add("PreDrawViewModel", "fix_flying_viewmodels", function(vm, ply, weapon)
 		end
 	end
 end)
-
---[[
-gameevent.Listen( "player_hurt" )
-hook.Add( "player_hurt", "___", function( data ) 
-	local health = data.health				-- Remaining health after injury
-	local priority = data.priority or 0 	-- Priority
-	local id = data.userid					-- Same as Player:UserID()
-	local attackerid = data.attacker		-- Same as Player:UserID() but it's the attacker id.
-	
-	local ply = Player(id)
-	local attacker = Player(attackerid)
-
-	print(ply, attacker)
-end )
-]]--

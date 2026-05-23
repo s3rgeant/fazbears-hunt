@@ -94,7 +94,7 @@ end
 hook.Add('PlayerDeathThink', 'fh_block_respawn', function(ply)
 	if isGameOn then
 		local obstarget = ply:GetObserverTarget()
-		if ply:GetObserverMode() != OBS_MODE_ROAMING and IsValid(obstarget) then
+		if ply:GetObserverMode() ~= OBS_MODE_ROAMING and IsValid(obstarget) then
 			ply:SetPos(obstarget:EyePos())
 		end
 		return false

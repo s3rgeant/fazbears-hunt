@@ -4,6 +4,30 @@ if SERVER then
 	util.PrecacheModel("models/torres/ffps/salvage/scrapbabyv19.mdl")
 end
 
+sound.Add({
+	name = 			"scrapbaby.rollers",
+	channel = 		CHAN_STATIC,
+	level = 		90,
+	volume = 		1.0,
+	sound = 			{
+							"animatronics/scrapbaby/baby_rollers1.mp3",
+							"animatronics/scrapbaby/baby_rollers2.mp3",
+							"animatronics/scrapbaby/baby_rollers3.mp3",
+						}
+})
+
+sound.Add({
+	name = 			"scrapbaby.foot.rollers",
+	channel = 		CHAN_STATIC,
+	level = 		90,
+	volume = 		1.0,
+	sound = 			{
+							"animatronics/scrapbaby/baby_rollers_walk1.mp3",
+							"animatronics/scrapbaby/baby_rollers_walk2.mp3",
+							"animatronics/scrapbaby/baby_rollers_walk3.mp3",
+						}
+})
+
 local BABY = GetPillTemplate()
 
 BABY.printName="Scrap Baby"
@@ -17,12 +41,13 @@ BABY.anims={
 		run="run",
 		jump="jump",
 		glide="glide",
-		--land="land",
+		land="land",
 		--scare="scare",
 		--stun="stun",
 	},
 	gestures={
 		--melee="melee",
+		aim="aim",
 	},
 }
 BABY.moveSpeed={

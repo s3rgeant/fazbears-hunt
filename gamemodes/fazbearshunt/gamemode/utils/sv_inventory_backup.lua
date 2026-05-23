@@ -6,8 +6,13 @@ local blockedReviveWeapons = {
 }
 
 function inventory_backup.SaveCurrentInventory(ply)
-	if IsValid( ply:GetActiveWeapon() ) then
-		ply.ReviveActiveWeapon = ply:GetActiveWeapon():GetClass()
+	ply.ReviveActiveWeapon = nil
+	local activeWeapon = ply:GetActiveWeapon()
+	if IsValid( activeWeapon ) and not activeWeapon.BackupBlocked then
+		local class = activeWeapon:GetClass()
+		if not blockedReviveWeapons[class] then
+			ply.ReviveActiveWeapon = class
+		end
 	end
 	
 	local weapons = ply:GetWeapons()
@@ -17,6 +22,7 @@ function inventory_backup.SaveCurrentInventory(ply)
 	for _, v in ipairs( weapons ) do
 		local class = v:GetClass()
 		if blockedReviveWeapons[class] then continue end
+		if v.BackupBlocked then continue end
 		
 		ply.ReviveWeapons[class] = true
 		count=count+1

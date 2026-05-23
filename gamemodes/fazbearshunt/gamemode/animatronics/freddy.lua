@@ -104,6 +104,9 @@ end
 FREDDY.startFunction=function(ply,ent)
 	chaseVoicelineChecker(ply, ent, "freddy")
 end
+FREDDY.restore=function(ply,ent)
+	ply._isStalkingActive = nil
+end
 FREDDY.moveMod=function(ply, ent, mv, cmd)
 	if SERVER and stalkers[ply] and ply:IsSprinting() then
 		if ply._breakPropAsAnimTime and ply._breakPropAsAnimTime > CurTime() then
@@ -431,6 +434,7 @@ function smoothLookAt(ply, target)
         local targetAngle = direction:Angle()
 
         local newAngle = LerpAngle(0.05, currentAngle, targetAngle)
+		newAngle.r = 0
 
         ply:SetEyeAngles(newAngle)
     end)

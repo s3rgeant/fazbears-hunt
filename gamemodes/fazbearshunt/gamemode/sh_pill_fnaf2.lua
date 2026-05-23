@@ -633,6 +633,23 @@ if SERVER then
 			end
 		end
 	end
+	
+	hook.Add("EntityTakeDamage", "fh_scale_force", function(target, dmginfo)
+		if target:IsPlayer() and target:Alive() and dmginfo:IsDamageType(DMG_BULLET) and target:IsAnimatronic() and target:Crouching() and target:OnGround() then
+			local currentVelocity = target:GetVelocity()
+			timer.Simple(0, function()
+				if not IsValid(target) or not target:Alive() then return end
+				
+				local newVelocity = target:GetVelocity()
+				
+				local pushForce = newVelocity - currentVelocity
+				
+				if pushForce:LengthSqr() > 0 then
+					target:SetVelocity(-pushForce + (pushForce * 0.1)) -- 0ю1 это сила отталкивания
+				end
+			end)
+		end
+	end)
 
 	hook.Add( "PlayerDeath", "fh_pill_fnaf2_death", fnaf2pill_death_handle)
 	hook.Add( "PlayerSilentDeath", "fh_pill_fnaf2_silentdeath", fnaf2pill_death_handle)
@@ -854,7 +871,6 @@ include( "animatronics/freddy.lua" )
 include( "animatronics/bonnie.lua" )
 include( "animatronics/chica.lua" )
 include( "animatronics/foxy.lua" )
-
 include( "animatronics/sfreddy.lua" )
 
 include( "animatronics/bear5.lua" )

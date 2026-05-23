@@ -126,6 +126,10 @@ local function chicaRestore(ply)
 			net.Start("ObsessorShitDown")
 			net.Send(target)
 			
+			if not IsValid(target) then
+				obsessors[target] = nil
+				return
+			end
 			obsessorTierUp(target, 0)
 			
 			obsessors[target] = nil
@@ -279,6 +283,10 @@ local function gainObsession(target, num, ply)
 end
 
 local function noMoreObsessor(ply)
+	if chicasHoldings[ply] then
+		releaseTarget(ply)
+	end
+
 	if !obsessors[ply] then return end
 	
 	local toychica = obsessors[ply].tchica
@@ -657,6 +665,13 @@ hook.Add("PlayerPush", "toychica_pushing", function(ply, target)
 	end
 end)
 
+function releaseTarget(target, cd)
+	if not chicasHoldings[target] then return end
+	local ply = chicasHoldings[target]
+	
+	releasePlayer(ply, cd)
+end
+
 function releasePlayer(ply, cd)
 	local target = chicaHolders[ply]
 	local ent = ply:GetPill()
@@ -675,8 +690,10 @@ function releasePlayer(ply, cd)
 			wep:HandleAnimation("interrupt", 0.5)
 		end
 	
-		cooldown.Set(ply, 'hold', cd or 4)
-		cooldown.Send(ply, "hold")
+		if not cd or cd > 0 then
+			cooldown.Set(ply, 'hold', cd or 4)
+			cooldown.Send(ply, "hold")
+		end
 	
 		ply:SetNWBool("tchica_holding", false)
 		ply:SetNWEntity("tchica_hold_target", NULL)

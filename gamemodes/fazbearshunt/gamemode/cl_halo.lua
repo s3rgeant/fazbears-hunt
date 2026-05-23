@@ -4,7 +4,7 @@ local visionUnsuccessSound = "vision_unsuccess.wav"
 
 local affectedPlayers = {}
 local affectedPlayers_force = {}
-local animatronics = {}
+animatronics = {}
 local teammates = {}
 
 include("halo_module.lua")
@@ -52,9 +52,9 @@ hook.Add("PillRestore", "fh_restorepill", function(ply, ent)
 end)
 
 hook.Add( "NotifyShouldTransmit", "fh_animatronic_transmit", function( entity, started )
-	if entity:IsPlayer() then
+	if started and entity:IsPlayer() then
 		local ply = entity
-		if !animatronics[ply] and ply:GetPill() then
+		if !animatronics[ply] and IsValid(ply:GetPill()) then
 			animatronics[ply] = true
 		end
 	end
@@ -110,15 +110,15 @@ net.Receive("fh_addaffected_springtrap", function()
 	
 	local starttime = CurTime()
 	
-    hook.Add("RenderScreenspaceEffects", "fh_springtrap_fx", function()
-        local lp = LocalPlayer()
-
-        local t = CurTime() - starttime
-        local frac = 1 - math.Clamp((t / 90), 0, 1)
-
-        DrawToyTown(2, ScrH()/2)
+	hook.Add("RenderScreenspaceEffects", "fh_springtrap_fx", function()
+		local lp = LocalPlayer()
+	
+		local t = CurTime() - starttime
+		local frac = 1 - math.Clamp((t / 90), 0, 1)
+	
+		DrawToyTown(2, ScrH()/2)
 		DrawBloom( 0.65, 1 * frac, 9, 9, 1, 1, 1, 1, 1 )
-    end)
+	end)
 	
 	timer.Simple(90, function()
 		hook.Remove("RenderScreenspaceEffects", "fh_springtrap_fx")
@@ -431,50 +431,11 @@ OUTLINE.RegisterRule("cupcakes", {
     collect = getCupcakes
 })
 
-local TEAMMATE_COLOR = Color(0, 255, 0)
-local enemyColor = Color(255, 155, 0)
-local outlineMaterial = Material("models/debug/debugwhite")
-
-local teammatesColors = {}
-
-hook.Add("HUDPaint", "fh_draw_affected", function()
-    cam.Start3D()
-        for v, color in pairs(affectedPlayers) do
-            if v ~= LocalPlayer() and v:IsValid() and v:Health() > 0 and !v:IsInvisible() then
-				local pos = v:GetPos()
-				if pos:ToScreen().visible then
-					v:DrawModel()
-				end
-            end
-        end
-    cam.End3D()
-
-	local affectedPlayersReal = {}
-	
-	for v, color in pairs(affectedPlayers) do
-		if v ~= LocalPlayer() and v:IsValid() and v:Health() > 0 and !v:IsInvisible() then
-			affectedPlayersReal[v] = color
-		end
-	end
-	draw_orbs(affectedPlayersReal)
-	
-    local ply = LocalPlayer()
-    if not IsValid(ply) then return end
-	
-    local haloTeammates = GetConVar("fh_halo_teammates")
-    if haloTeammates and not haloTeammates:GetBool() and ply:IsAnimatronic() then return end
-	
-	if table.IsEmpty(animatronics) then return end
-	
-    if ply:IsAnimatronic() or ply:GetNWBool("AnimVisibilityFH") then
-		draw_orbs(animatronics, nil, GetGlobal2Float("FarZ", 8000))
-	end
-end)
-
 net.Receive("fh_hl_animatronics", function()
 	surface.PlaySound("human_gift_vision.wav")
 end)
 
+local TEAMMATE_COLOR = Color(0, 255, 0)
 local function ResolveTeammateColor(lp, ent, storedColor)
     if IsColor(storedColor) then
         return storedColor
@@ -532,7 +493,7 @@ local function getTeammates(lp, rule)
 			mask = MASK_VISIBLE_AND_NPCS,
 		})
 		
-		if not tr.Hit and distance < forcetmdistance*forcetmdistance then continue end
+		if not ent:IsInvisible() and not tr.Hit and distance < forcetmdistance*forcetmdistance then continue end
 		
         if not pos:ToScreen().visible then
             continue
@@ -559,17 +520,57 @@ OUTLINE.RegisterRule("animatronics", {
     render_max_dist = 9000,
 
     outline_color = TEAMMATE_COLOR,
-    outline_width = 3,
-    outline_min_dist = 1000,
-    outline_max_dist = 2200,
+    outline_width = 2,
+    outline_min_dist = 600,
+    outline_max_dist = 1600,
     
     fill_color = TEAMMATE_COLOR,
-    fill_min_dist = 1500,
-    fill_max_dist = 2600,
+    fill_min_dist = 1000,
+    fill_max_dist = 1800,
 
     mode = OUTLINE_MODE_BOTH,
     collect = getTeammates
 })
+
+hook.Add("HUDPaint", "fh_draw_affected", function()
+    cam.Start3D()
+        for v, color in pairs(affectedPlayers) do
+            if v ~= LocalPlayer() and v:IsValid() and v:Health() > 0 and !v:IsInvisible() then
+				local pos = v:GetPos()
+				if pos:ToScreen().visible then
+					v:DrawModel()
+				end
+            end
+        end
+    cam.End3D()
+
+	local affectedPlayersReal = {}
+	
+	for v, color in pairs(affectedPlayers) do
+		if v ~= LocalPlayer() and v:IsValid() and v:Health() > 0 and !v:IsInvisible() then
+			affectedPlayersReal[v] = color
+		end
+	end
+	draw_orbs(affectedPlayersReal)
+	
+    local ply = LocalPlayer()
+    if not IsValid(ply) then return end
+	
+    local haloTeammates = GetConVar("fh_halo_teammates")
+    if haloTeammates and not haloTeammates:GetBool() and ply:IsAnimatronic() then return end
+	
+	if table.IsEmpty(animatronics) then return end
+	
+	local anims = {}
+	for anim, color in pairs(animatronics) do
+		if IsValid(anim) and anim:IsPlayer() and anim:Team() ~= TEAM_PILLS then continue end
+		anims[anim] = IsColor(color) and color or true
+	end
+	
+    if ply:IsAnimatronic() or ply:GetNWBool("AnimVisibilityFH") then
+		draw_orbs(anims, nil, GetGlobal2Float("FarZ", 8000))
+	end
+end)
 
 hook.Add("HUDPaint", "fh_cupcake_count_draw", function()
 	local ent = pills.getMappedEnt(LocalPlayer())
@@ -611,6 +612,7 @@ local function RegisterIcon(x, y)
     drawnIcons[#drawnIcons + 1] = { x = x, y = y }
 end
 
+local nicknameColor = Color(0,255,0,255)
 function draw_orbs(tbl, material, distance)
     local material = material or target_orb
 
@@ -643,7 +645,7 @@ function draw_orbs(tbl, material, distance)
                 
                 local ourColor = IsColor(color) and color:Copy() or Color(255,0,0,255)
 				
-				local ent = target:GetPill()
+				local ent = target:IsPlayer() and target:GetPill() or NULL
 				
                 if IsValid(ent) and killers.GetFullName(ent:GetPillName()) and ply:IsAnimatronic() then
 					local owner = ent:GetPillUser()
@@ -705,7 +707,7 @@ function draw_orbs(tbl, material, distance)
 
                     if nickname then
                         draw.SimpleText(nickname, "CreditsText",
-                            drawX, drawY + 32, IsColor(color) and color or Color(255,255,255,alpha),
+                            drawX, drawY + 32, nicknameColor,
                             TEXT_ALIGN_CENTER, TEXT_ALIGN_CENTER
                         )
                     end
@@ -761,31 +763,15 @@ net.Receive("fh_start_yoursmine_view", function()
 	
 	myself:SetFOV(0, 0)
 	
-	local ent = pills.getMappedEnt(myself)
+    local ent = net.ReadEntity()
 	
-	animatronics[myself] = true
-	
-	--[[
-    hook.Add("CalcView", "fh_yoursmine_view", function(viewer, origin, angles, fov)
-        if viewer ~= LocalPlayer() then return end
-        if not IsValid(viewer._yoursmine_target) then return end
-
-		local eyeangles = LocalPlayer():EyeAngles()
-
-		local view = {}
-		view.origin = viewer._yoursmine_target:EyePos()
-		view.angles = eyeangles
-		view.fov = fov
-		return view
-    end)
-	]]--
+	animatronics[ent] = TEAMMATE_COLOR
 	
     hook.Add("RenderScreenspaceEffects", "fh_yoursmine_fx", function()
-        local lp = LocalPlayer()
-        if not IsValid(lp._yoursmine_target) then return end
+        if not IsValid(myself._yoursmine_target) then return end
 
-        local t = CurTime() - lp._yoursmine_start_time
-        local frac = 1 - math.Clamp((t / lp._yoursmine_total_dur), 0, 1)
+        local t = CurTime() - myself._yoursmine_start_time
+        local frac = 1 - math.Clamp((t / myself._yoursmine_total_dur), 0, 1)
 
         DrawMotionBlur(0.1, 0.8 * frac, 0.01)
         DrawToyTown(2, ScrH()/2)
@@ -793,32 +779,30 @@ net.Receive("fh_start_yoursmine_view", function()
     end)
 
 	hook.Add("PrePlayerDraw", "fh_yoursmine_ply", function(ply)
-		if not IsValid(LocalPlayer()._yoursmine_target) then return end
-		if ply == LocalPlayer()._yoursmine_target then
+		if not IsValid(myself._yoursmine_target) then return end
+		if ply == myself._yoursmine_target then
 			return true
 		end
 	end)
 	
-	LocalPlayer():ScreenFade( SCREENFADE.IN, Color( 0, 0, 0, 180 ), 2, 0 )
+	myself:ScreenFade( SCREENFADE.IN, Color( 0, 0, 0, 180 ), 2, 0 )
 end)
 
 net.Receive("fh_stop_yoursmine_view", function()
+	local myself = LocalPlayer()
     hook.Remove("CalcView", "fh_yoursmine_view")
     hook.Remove("PrePlayerDraw", "fh_yoursmine_ply")
     hook.Remove("RenderScreenspaceEffects", "fh_yoursmine_fx")
-    LocalPlayer()._yoursmine_target = nil
-    LocalPlayer()._yoursmine_start_time = nil
-    LocalPlayer()._yoursmine_initial_phase_duration = nil
-    LocalPlayer()._yoursmine_rotation_duration = nil
-    LocalPlayer()._yoursmine_total_dur = nil
+    myself._yoursmine_target = nil
+    myself._yoursmine_start_time = nil
+    myself._yoursmine_initial_phase_duration = nil
+    myself._yoursmine_rotation_duration = nil
+    myself._yoursmine_total_dur = nil
 	
-	LocalPlayer():DrawViewModel( true, 0 )
+	myself:DrawViewModel( true, 0 )
 	
-	LocalPlayer():ScreenFade( SCREENFADE.IN, Color( 0, 0, 0, 180 ), 2, 0 )
+    local ent = net.ReadEntity()
+	animatronics[ent] = nil
 	
-	local ent = pills.getMappedEnt(LocalPlayer())
-	
-	if IsValid(ent) and table.HasValue(animatronics, ent) then
-		table.RemoveByValue(animatronics, ent)
-	end
+	myself:ScreenFade( SCREENFADE.IN, Color( 0, 0, 0, 180 ), 2, 0 )
 end)

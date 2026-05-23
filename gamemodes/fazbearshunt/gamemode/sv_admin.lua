@@ -4,6 +4,8 @@ util.AddNetworkString("AdminAction")
 util.AddNetworkString("fh_net_scarysound")
 util.AddNetworkString("fh_change_notprefered")
 
+admin = admin or {}
+
 function GiveAnimatronic(ply, killer, silent, onplace, secretly)
 	if killer == nil or killer == "" then return end
 	
@@ -232,12 +234,16 @@ end
 
 local actions = {}
 
-local function addAction(name, func)
+function admin.addAction(name, func)
 	if !actions[name] then
 		if isfunction(func) then
 			actions[name] = func
 		end
 	end
+end
+
+local function addAction(...)
+	admin.addAction(...)
 end
 
 -- игра не успевает подсасывать SpawnGifts из init.lua, так как грузится первее него

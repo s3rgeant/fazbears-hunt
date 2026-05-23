@@ -5,21 +5,20 @@ local soundCooldown = 10
 
 local function fh_default_check_scarysound()
     myself = myself or LocalPlayer()
-	if !pills then return end
 	
-    if !IsValid(myself) or pills.getMappedEnt(myself) ~= nil then return end
+    if !IsValid(myself) or IsValid(pills.getMappedEnt(myself)) then return end
 
     local eyePos = myself:EyePos()
     local eyeAngles = myself:EyeAngles()
     local forward = eyeAngles:Forward()
 
-    local viewRadius = 1250
+    local viewRadius = 250
 	
 	if !myself:Alive() or myself:Team() == TEAM_SPECTATOR then return end
 
     for _, ply in player.Iterator() do
-        if ply ~= myself and IsValid(ply) and ply:Alive() and ply:GetMoveType() ~= MOVETYPE_NOCLIP then
-            if pills and pills.getMappedEnt and pills.getMappedEnt(ply) ~= nil then
+        if ply ~= myself and ply:Alive() and ply:GetMoveType() ~= MOVETYPE_NOCLIP then
+            if IsValid(pills.getMappedEnt(ply)) then
 				local ent = pills.getMappedEnt(ply)
 				
 				if IsValid(ent) then

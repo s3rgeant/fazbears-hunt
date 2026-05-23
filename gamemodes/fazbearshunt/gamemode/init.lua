@@ -825,12 +825,50 @@ hook.Add("EntityTakeDamage", "fh_anti_animatronic_death", function(target, dmgin
 			end
 		end
 	end
+
+	local attacker = dmginfo:GetAttacker()
+	
+	if IsValid(attacker) and (attacker:IsPlayer() and attacker:IsAnimatronic() or not attacker:IsPlayer()) then
+		local ent = target
+		local phys = ent:GetPhysicsObject()
+		if ent.PropHealth and IsValid(phys) and phys:IsMotionEnabled() then
+			ent.PropHealth = ent.PropHealth - dmginfo:GetDamage()
+			if ent.PropHealth <= 0 then
+            local effectdata = EffectData()
+				effectdata:SetOrigin(ent:LocalToWorld(ent:OBBCenter()))
+				effectdata:SetMagnitude(2)
+				effectdata:SetScale(1)
+				effectdata:SetRadius(2)
+				util.Effect("Sparks", effectdata, true, true)
+			
+				ent:Fire("Break")
+			end
+		end
+	end
 end)
+
+hook.Add("PlayerDroppedWeapon", "fh_drop_weapon", function(owner, wep)
+	if owner:IsPlayer() then
+		wep:SetVar("cantpickup", true)
+		
+		timer.Simple(0.5, function()
+			if IsValid(wep) then
+				wep:SetVar("cantpickup", false)
+			end
+		end)
+	end
+end)
+
+hook.Add( "PlayerCanPickupWeapon", "fh_pickup_weapon", function( ply, weapon )
+    if weapon:GetVar("cantpickup") then
+		return false
+	end
+end )
 
 hook.Add("OnEntityCreated", "fh_any_prop_isbreakable", function(ent)
 	timer.Simple(0, function()
 		if not IsValid(ent) then return end
-		if string.StartsWith(ent:GetClass(), "prop_physics") then
+		if string.StartsWith(ent:GetClass(), "prop_physics") or ent:GetClass():find("func_physbox") then
 			if not IsValid(ent) then return end
 			if not ent:GetPhysicsObject():IsValid() then return end
 			
@@ -849,28 +887,6 @@ hook.Add("OnEntityCreated", "fh_any_prop_isbreakable", function(ent)
 			end
 		end
 	end)
-end)
-
-hook.Add("EntityTakeDamage", "fh_anims_only_breakable_props", function(ent, dmginfo)
-	local attacker = dmginfo:GetAttacker()
-	
-	if IsValid(attacker) and (attacker:IsPlayer() and attacker:IsAnimatronic() or !attacker:IsPlayer()) then
-		local phys = ent:GetPhysicsObject()
-		if ent.PropHealth and IsValid(phys) and phys:IsMotionEnabled() then
-			ent.PropHealth = ent.PropHealth - dmginfo:GetDamage()
-			if ent.PropHealth <= 0 then
-            local effectdata = EffectData()
-				effectdata:SetOrigin(ent:LocalToWorld(ent:OBBCenter()))
-				effectdata:SetMagnitude(2)
-				effectdata:SetScale(1)
-				effectdata:SetRadius(2)
-				util.Effect("Sparks", effectdata, true, true)
-			
-				ent:Fire("Break")
-			end
-		end
-	
-	end
 end)
 
 hook.Add("EntityTakeDamage", "fh_no_grenade_teamkill", function(ent, dmginfo)
@@ -964,16 +980,6 @@ hook.Add("PostPlayerDeath", "fh_deaths_post", function(victim)
 		net.Send(victim)
 	end
 end)
-
-function fh_get_plytable_nicknames(tbl)
-	tbl = tlb or {}
-	local ret_tbl = {}
-	for ply, _ in pairs(tbl) do
-		table.insert(ret_tbl, ply:Nick())
-	end
-	
-	return ret_tbl
-end
 
 local animatronics_win_count = 0
 local survivors_win_count = 0

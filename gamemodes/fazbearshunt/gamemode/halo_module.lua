@@ -14,6 +14,7 @@ H.Rules = H.Rules or {}
 
 OUTLINE_MODE_BOTH = 0
 OUTLINE_MODE_VISIBLE = 1
+OUTLINE_MODE_CHEAP = 2
 
 local function SmoothStep01(x)
     x = math.Clamp(x, 0, 1)
@@ -239,6 +240,13 @@ local function Outline_RenderQueue()
             local data = O.List[i]
             local ents = data[Q_ENTS]
             local mode = data[Q_MODE] or OUTLINE_MODE_BOTH
+			
+			if mode == OUTLINE_MODE_CHEAP then 
+				cam.End3D() 
+    render.SuppressEngineLighting(false)
+    render.SetStencilEnable(false)
+				return 
+			end
 
             render.SetStencilReferenceValue(reference)
 
@@ -344,10 +352,11 @@ local function DrawFillEntries(lp, entries)
         for i = 1, #entries do
             local item = entries[i]
             local ent = item.ent
+			local mode = item.mode
 
             if not IsValid(ent) then continue end
 
-            local fill = GetFillAmountForDistance(item.rule, lp, ent)
+            local fill = (mode == OUTLINE_MODE_CHEAP) and 1 or GetFillAmountForDistance(item.rule, lp, ent)
             if fill <= 0 then continue end
 
             local clr = item.fill_color or color_white

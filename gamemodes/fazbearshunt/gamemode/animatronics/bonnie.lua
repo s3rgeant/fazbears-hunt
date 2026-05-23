@@ -218,6 +218,7 @@ function YoursMine_Start(ply, target)
 	bonnieSaveStats[ply]["prev_run"] = ply:GetRunSpeed()
 	bonnieSaveStats[ply]["prev_walk"] = ply:GetWalkSpeed()
 	bonnieSaveStats[ply]["prev_duck"] = ply:GetDuckSpeed()
+	bonnieSaveStats[ply]["prev_crouched"] = ply:GetCrouchedWalkSpeed()
 	bonnieSaveStats[ply]["prev_jump"] = ply:GetJumpPower()
 	bonnieSaveStats[ply]["wasCrouching"] = ply:Crouching()
 	
@@ -249,6 +250,13 @@ function YoursMine_Start(ply, target)
 	net.Broadcast()
 	
 	timer.Simple(1, function()
+		if not IsValid(target) then
+			YoursMine_ForceStop(ply, nil, ent, 5)
+			ply:Freeze(false)
+			ent.anim = nil
+			return
+		end
+	
 		hook.Run("FH_YoursMineSpectating", ply, ent, target)
 		
 		if IsValid(ply) and IsValid(target) then
@@ -269,6 +277,7 @@ function YoursMine_Start(ply, target)
 			ply:SetRunSpeed( target:GetRunSpeed() )
 			ply:SetWalkSpeed( target:GetWalkSpeed() )
 			ply:SetDuckSpeed( target:GetDuckSpeed() )
+			ply:SetCrouchedWalkSpeed( target:GetCrouchedWalkSpeed() )
 			ply:SetJumpPower( target:GetJumpPower() )
 			
 			ply:NoPlayerCollide(0.2)
@@ -282,6 +291,7 @@ function YoursMine_Start(ply, target)
 			
 			net.Start("fh_start_yoursmine_view")
 			net.WriteEntity(target)
+			net.WriteEntity(ent)
 			net.Send(ply)
 			
 			ply:SetPos(target:GetPos())
@@ -317,7 +327,7 @@ function YoursMine_Start(ply, target)
 	end)
 end
 
-function YoursMine_ForceStop(ply, target, ent)
+function YoursMine_ForceStop(ply, target, ent, cd)
 	if !bonnieSaveStats[ply] then return end
 
 	target = target or ply.fh_target_player
@@ -365,6 +375,7 @@ function YoursMine_ForceStop(ply, target, ent)
 	
 	if IsValid(ply) then
 		net.Start("fh_stop_yoursmine_view")
+		net.WriteEntity(ent)
 		net.Send(ply)
 		
 		if IsValid(ent) then
@@ -377,13 +388,14 @@ function YoursMine_ForceStop(ply, target, ent)
 			ply:SetRunSpeed( bonnieSaveStats[ply]["prev_run"] )
 			ply:SetWalkSpeed( bonnieSaveStats[ply]["prev_walk"] )
 			ply:SetDuckSpeed( bonnieSaveStats[ply]["prev_duck"] )
+			ply:SetCrouchedWalkSpeed( bonnieSaveStats[ply]["prev_crouched"] )
 			ply:SetJumpPower( bonnieSaveStats[ply]["prev_jump"] )
 			
 			ply:SetPos(ent:GetPos())
 			ply:SetAngles(ent:GetAngles())
 			ply:SetEyeAngles(ent:GetAngles())
 			
-			ent:AttachPlayer()
+			ent:AttachPlayer(ply)
 		end
 		
 		ply:NoPlayerCollide(0.2)
@@ -408,7 +420,7 @@ function YoursMine_ForceStop(ply, target, ent)
 			wep.Controlling = false
 		end
 		
-		cooldown.Set(ply, "yoursmine", 55)
+		cooldown.Set(ply, "yoursmine", cd or 55)
 		cooldown.Send(ply, "yoursmine")
 		
 		ply.fh_target_player = nil

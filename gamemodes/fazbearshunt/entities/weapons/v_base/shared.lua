@@ -14,6 +14,7 @@ SWEP.WorldModel		= ""
 SWEP.UseHands = false
 SWEP.DrawAmmo = false
 SWEP.m_WeaponDeploySpeed = 0.7
+SWEP.BackupBlocked = true
 
 SWEP.Spawnable		= false
 SWEP.AdminOnly		= false

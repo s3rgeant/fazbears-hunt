@@ -126,8 +126,7 @@ end
 function getMappedEnt(ply)
 	if not IsValid(ply) then return NULL end
 	local ent = ply:GetNWEntity("fh_pill_ent", false)
-	if CLIENT and ent and not ent.formTable then return NULL end
-	if CLIENT and ent and not ent.GetPillName then return NULL end
+	if CLIENT and ent and (not ent.formTable or not ent.GetPillName) then return NULL end
     return ent
 end
 
@@ -135,7 +134,9 @@ local PLAYER = FindMetaTable("Player")
 
 if PLAYER then
 	function PLAYER:GetPill()
-		return self:GetNWEntity("fh_pill_ent", false)
+		local ent = self:GetNWEntity("fh_pill_ent", false)
+		if CLIENT and ent and (not ent.formTable or not ent.GetPillName) then return NULL end
+		return ent
 	end
 	
 	function PLAYER:GoPillThirdperson(dur)
@@ -267,6 +268,7 @@ if SERVER then
 		e = ents.Create("pill_costume")
 		e:SetPillForm(name)
 		e:SetPillUser(ply)
+		e:SetOwner(ply)
 		e.option = option
 		e:Spawn()
 		e:Activate()
@@ -402,7 +404,7 @@ function GM:UpdateAnimation( ply, velocity, maxseqgroundspeed )
 	
 	local rate = 1
 	
-	if !IsValid(ent) then
+	if not IsValid(ent) then
 		local len = velocity:Length()
 		local movement = 1.0
 

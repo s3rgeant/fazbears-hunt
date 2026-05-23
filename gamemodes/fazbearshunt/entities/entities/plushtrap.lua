@@ -16,7 +16,7 @@ function ENT:Initialize()
 	self.Active = false
 	
 	self:SetCollisionBounds( Vector(-12,-12,0), Vector(12,12,32) )
-	self:SetCollisionGroup(COLLISION_GROUP_PASSABLE_DOOR)
+	self:SetCollisionGroup(COLLISION_GROUP_PUSHAWAY)
     
 	if SERVER then
 		self:SetHealth(2000)
@@ -52,6 +52,8 @@ function ENT:Initialize()
 	self.usedLayers = {}
 	self.Target = nil
 	
+	self:SetCustomCollisionCheck( true )
+	
 	if CLIENT then
 		if istable(animatronics) then
 			animatronics[self] = true
@@ -59,6 +61,11 @@ function ENT:Initialize()
 	end
 
     self.CrouchSpeed = 200
+end
+	
+	
+function ENT:ShouldNotCollide(ent)
+	return ent:IsPlayer()
 end
 	
 function ENT:UpdateTransmitState() 

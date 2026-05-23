@@ -39,7 +39,7 @@ function SWEP:SetupAnimations()
 end
 
 function SWEP:PrimaryAttack()
-    local ply = self.Owner
+    local ply = self:GetOwner()
     local ent = pills.getMappedEnt(ply)
     if not IsValid(ent) then return end
     if self:GetIsCharging() or ply.tasered then return end
@@ -62,7 +62,7 @@ function SWEP:PrimaryAttack()
 end
 
 function SWEP:DealDamage()
-    local ply = self.Owner
+    local ply = self:GetOwner()
     local ent = pills.getMappedEnt(ply)
     if not IsValid(ent) then return end
 	

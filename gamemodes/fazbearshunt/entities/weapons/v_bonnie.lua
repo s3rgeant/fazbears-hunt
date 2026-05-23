@@ -66,36 +66,36 @@ function SWEP:YoursMineTimer(dur)
 end
 
 function SWEP:SecondaryAttack()
-    local ply = self:GetOwner()
-    if not IsValid(ply) then return end
+	local ply = self:GetOwner()
+	if not IsValid(ply) then return end
 	
 	if CLIENT then return end
 	
 	if cooldown.Exists(ply, "yoursmine") then return end
 	
 	if ply:IsFrozen() or !ply:OnGround() then return end
-
-    local shootPos = ply:GetShootPos()
-    local ang = ply:EyeAngles()
-
-    local dist = 10000
-
-    local tr = util.TraceHull({
-        start  = shootPos,
-        endpos = shootPos + ang:Forward() * dist,
-        mins   = Vector(-5, -5, -5),
-        maxs   = Vector(5, 5, 5),
-        filter = ply,
+	
+	local shootPos = ply:GetShootPos()
+	local ang = ply:EyeAngles()
+	
+	local dist = 10000
+	
+	local tr = util.TraceHull({
+		start  = shootPos,
+		endpos = shootPos + ang:Forward() * dist,
+		mins   = Vector(-5, -5, -5),
+		maxs   = Vector(5, 5, 5),
+		filter = ply,
 		mask = MASK_BLOCKLOS_AND_NPCS,
-    })
+	})
 	
 	self.Picking = true
-
-    local ent = tr.Entity
+	
+	local ent = tr.Entity
 	self.HullTarget = ent
-    if IsValid(ent) and ent:IsPlayer() and ent:IsSurvivor() and !ent:IsInvisible() and !PlayerInOutworld(ent) then
-        if ent ~= self.LastTarget then
-            self.LastTarget = ent
+	if IsValid(ent) and ent:IsPlayer() and ent:IsSurvivor() and !ent:IsInvisible() and !PlayerInOutworld(ent) then
+		if ent ~= self.LastTarget then
+			self.LastTarget = ent
 			self:SetLastTarget(ent)
 			self.RandomTarget = nil
 			
@@ -105,7 +105,7 @@ function SWEP:SecondaryAttack()
 			rf:AddPlayer(ply)
 			
 			if self.ControlSound then
-                self.ControlSound:Stop()
+				self.ControlSound:Stop()
 				self.ControlSound = nil
 			end
 			if !self.ControlSound then
@@ -128,16 +128,16 @@ function SWEP:SecondaryAttack()
 				self.GlobalControlSound = CreateSound(ply, ")bonnie_control_others.wav", rf)
 			end
 			self.GlobalControlSound:Play()
-
-            local now = CurTime()
-            self:SetNextPrimaryFire(now + 2)
-            self:SetLastAttack(now)
+	
+			local now = CurTime()
+			self:SetNextPrimaryFire(now + 2)
+			self:SetLastAttack(now)
 		
 			self.PickingRandom = false
 			
 			self:YoursMineTimer(2)
-        end
-    end
+		end
+	end
 	
 	if !self.LastTarget and !self.PickingRandom then
 		local now = CurTime()
@@ -153,7 +153,7 @@ function SWEP:SecondaryAttack()
 		rf:AddPlayer(ply)
 		
 		if self.ControlSound then
-            self.ControlSound:Stop()
+			self.ControlSound:Stop()
 			self.ControlSound = nil
 		end
 		if !self.ControlSound then
@@ -169,7 +169,7 @@ function SWEP:SecondaryAttack()
 		rf:RemovePlayer(ply)
 		
 		if self.GlobalControlSound then
-            self.GlobalControlSound:Stop()
+			self.GlobalControlSound:Stop()
 			self.GlobalControlSound = nil
 		end
 		if !self.GlobalControlSound then

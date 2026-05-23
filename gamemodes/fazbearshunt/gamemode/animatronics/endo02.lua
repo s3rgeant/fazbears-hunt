@@ -92,6 +92,11 @@ pills.register("pill_endo02",{
 		xPose="aim_yaw",
 		yPose="aim_pitch"
 	},
+	talk = {
+		jawbone="bip_lowerEndoJaw",
+		reversed=false,
+		scale=1.5,
+	},
 	
 	muteSteps = true,
 
@@ -193,6 +198,8 @@ function endo.grabNeareastPlayer(ply, ent)
 
         playersHoldingRightClick[ply] = target
 		ply._endoHoldingPlayer = target
+		ply:StopZooming()
+		ply:SetCanZoom(false)
 
         timer.Create("UpdateCameraAndPosition" .. ply:EntIndex(), 0.01, 0, function()
 			if !IsValid(ply) or !ply:KeyDown(IN_ATTACK2) then
@@ -240,6 +247,13 @@ if SERVER then
 			ply:LagCompensation(false)
 		end
 	end)
+end
+
+function endo.releaseExactPlayer(target)
+	local grabber = target:GetNWEntity("MyEndoGrabber")
+	if IsValid(grabber) then
+		endo.releasePlayer(grabber, true)
+	end
 end
 
 function endo.releasePlayer(ply, noVoiceline)
@@ -298,6 +312,7 @@ function endo.releasePlayer(ply, noVoiceline)
 	
 		cooldown.Set(ply, 'grab', 3)
 		cooldown.Send(ply, "grab")
+		ply:SetCanZoom(true)
 	
 		target:RepeatRestoreCollision(0.5)
 		ply:RepeatRestoreCollision(0.5)
@@ -311,6 +326,17 @@ end
 function endo.isGrabbed(target)
 	return grabbedPlayers[target]
 end
+
+local function grabbies(ply)
+	if endo.isGrabbed(ply) then
+		endo.releaseExactPlayer(ply)
+	end
+end
+
+hook.Add("PlayerSpawn", "endo_release", grabbies)
+hook.Add("PlayerDisconnected", "endo_release", grabbies)
+hook.Add("PostPlayerDeath", "endo_release", grabbies)
+hook.Add("PillApply", "endo_release", grabbies)
 
 local endoAbilities = {}
 function endo.registerAbility(abilityName, killer, func, startFunc)

@@ -545,6 +545,10 @@ if SERVER then
 			if speaker:IsPlayer() and IsValid(speaker:GetPill()) and speaker:GetPill():GetPillName() == "pill_wgfreddy2" then
 				return false
 			end
+			
+			if outworld_victims[speaker] and listener ~= outworld_victims[speaker] then
+				return false
+			end
 		end
 	end)
 end
@@ -726,8 +730,6 @@ if CLIENT then
 
 		if not IsValid(outTarget) then return nil end
 
-		local maxDist = tonumber(rule.render_max_dist) or math.huge
-		local maxDistSqr = maxDist > 0 and (maxDist * maxDist) or math.huge
 		local pos = outTarget:GetPos()
 		if !pos:ToScreen().visible then return end
 
@@ -1022,7 +1024,7 @@ if CLIENT then
 				target:DrawModel()
 			cam.End3D()
 			
-			draw_orbs({ [target] = Color(255,255,0) } )
+			draw_orbs({ [target] = Color(255,255,0) }, wgf_target_orb )
 		end)
 	end)
 	
@@ -1116,7 +1118,7 @@ local function cancel_outworld_target(ply)
 	ply:CollisionRulesChanged()
 	ply:SetDSP(0)
 	ply:SetFOV(0, 0, game.GetWorld())
-		
+	
 	ply:SetPushImmune(false)
 	ply:SetPushBlocked(false)
 	
@@ -1159,6 +1161,11 @@ hook.Add("PlayerSpawn", "wgfreddy_spawn", function(ply)
 		cancel_outworld(ply)
 	end
 end)
+hook.Add("PlayerCanPickupWeapon", "wgfreddy_pickup", function(ply)
+	if wgfreddy_targets[ply] or outworld_victims[ply] then
+		return false
+	end
+end)
 
 local sfreddy_noclip_movement = {500, 600, 500, 250}
 local function cancel_outworld_wgfreddy(ply)
@@ -1197,30 +1204,58 @@ local function stopPrevent_outworld(wgfreddy, target)
 		if ply ~= target and ply ~= wgfreddy then
 			RecursiveSetPreventTransmit(ply, target, true)
 			RecursiveSetPreventTransmit(ply, wgfreddy, true)
-		end
-		--if ply ~= wgfreddy and ply ~= target then RecursiveSetPreventTransmit(target, ply, true) end
-		--if ply ~= wgfreddy and ply ~= target then RecursiveSetPreventTransmit(wgfreddy, ply, true) end
-		
-		--[[ 
-			мы пока не можем отключать игроков из трансмита так как нужна логика для работы со спектаторами
 			
-			кратко говоря у спеков не будет видно золотого и жертву
-		--]]
+			if ply:Alive() and ply:Team() ~= TEAM_SPECTATOR then
+				RecursiveSetPreventTransmit(target, ply, true) 
+				RecursiveSetPreventTransmit(wgfreddy, ply, true)
+			end
+		end
 	end
 end
 
 local function startTransmit_outworld(wgfreddy, target)
 	for _, ply in player.Iterator() do
 		if IsValid(target) then
-			--RecursiveSetPreventTransmit(ply, target, false)
 			RecursiveSetPreventTransmit(ply, target, false)
 		end
 		if IsValid(wgfreddy) then
-			--RecursiveSetPreventTransmit(ply, wgfreddy, false)
 			RecursiveSetPreventTransmit(ply, wgfreddy, false)
+		end
+		if ply ~= target and ply ~= wgfreddy then
+			RecursiveSetPreventTransmit(target, ply, false) 
+			RecursiveSetPreventTransmit(wgfreddy, ply, false)
 		end
 	end
 end
+
+hook.Add( "WeaponEquip", "gfreddy_weaponequip", function( weapon, ply )
+	timer.Simple(0, function()
+		if not table.IsEmpty(outworld_victims) then
+			for victim, gfreddy in pairs(outworld_victims) do
+				RecursiveSetPreventTransmit(ply, victim, true) 
+				RecursiveSetPreventTransmit(ply, gfreddy, true)
+			end
+		end
+	end)
+end )
+
+hook.Add("PostPlayerDeath", "gfreddy_transmit", function(ply)
+	if not table.IsEmpty(outworld_victims) then
+		for victim, gfreddy in pairs(outworld_victims) do
+			RecursiveSetPreventTransmit(victim, ply, false) 
+			RecursiveSetPreventTransmit(gfreddy, ply, false)
+		end
+	end
+end)
+
+hook.Add("PlayerSpawn", "gfreddy_transmit", function(ply)
+	if not table.IsEmpty(outworld_victims) then
+		for victim, gfreddy in pairs(outworld_victims) do
+			RecursiveSetPreventTransmit(victim, ply, true) 
+			RecursiveSetPreventTransmit(gfreddy, ply, true)
+		end
+	end
+end)
 
 function start_outworld(ply, ent, target)
 	local placedPlushies = fh_spawnPlushies(target)
@@ -1250,6 +1285,9 @@ function start_outworld(ply, ent, target)
 	
 	ply:SetNW2Bool("_OUTWORLD_gfreddy", true)
 	target:SetNW2Bool("_OUTWORLD_target", true)
+	
+	inventory_backup.SaveCurrentInventory(target)
+	target:StripWeapons()
 	
 	ply:SetPushImmune(true)
 	target:SetPushImmune(true)
@@ -1426,6 +1464,10 @@ function cancel_outworld(ply)
 		outworld_victims[victim] = nil
 		first_damage_received[victim] = nil
 		victim:SetNW2Bool("_OUTWORLD_target", false)
+	
+		victim:SetSuppressPickupNotices(true)
+		inventory_backup.LoadBackup(victim)
+		victim:SetSuppressPickupNotices(false)
 	end
 	if wgfreddy then
 		wgfreddy_targets[wgfreddy] = nil
@@ -1463,29 +1505,29 @@ end)
 local DamageTimers = {}
 
 function StartDelayedDamage(ply)
-    if not IsValid(ply) or not ply:IsPlayer() then return end
-
-    local steamID = ply:SteamID()
+	if not IsValid(ply) or not ply:IsPlayer() then return end
 	
-    ply._damagePausedUntil = CurTime() + 0
-    
-    if DamageTimers[steamID] then return end
-
-    timer.Simple(10, function()
-        if not IsValid(ply) or !outworld_victims[ply] then return end
-
-        local timerName = "DamagePlayer_" .. steamID
-        DamageTimers[steamID] = timerName
-
-        timer.Create(timerName, 2, 0, function()
-            if not IsValid(ply) or !outworld_victims[ply] then
-                StopDelayedDamage(ply)
-                return
-            end
-
-            if ply._damagePausedUntil and CurTime() < ply._damagePausedUntil then
-                return
-            end
+	local steamID = ply:SteamID()
+	
+	ply._damagePausedUntil = CurTime() + 0
+	
+	if DamageTimers[steamID] then return end
+	
+	timer.Simple(10, function()
+		if not IsValid(ply) or !outworld_victims[ply] then return end
+	
+		local timerName = "DamagePlayer_" .. steamID
+		DamageTimers[steamID] = timerName
+	
+		timer.Create(timerName, 2, 0, function()
+			if not IsValid(ply) or !outworld_victims[ply] then
+				StopDelayedDamage(ply)
+				return
+			end
+	
+			if ply._damagePausedUntil and CurTime() < ply._damagePausedUntil then
+				return
+			end
 			
 			local playerIsHealthy = ply:Health() > 100 
 				or ply:Armor() > 10 
@@ -1493,33 +1535,33 @@ function StartDelayedDamage(ply)
 				or (ply._LastGFPlushie and ply._LastGFPlushie < CurTime() - 60)
 				
 			--print(ply._LastGFPlushie, CurTime(), CurTime() - 60)
-
-            local dmg = DamageInfo()
-            dmg:SetDamage(playerIsHealthy and 2 or 1)
-            dmg:SetAttacker(game.GetWorld())
-            dmg:SetDamageType(DMG_GENERIC)
-            ply:TakeDamageInfo(dmg)
-        end)
-    end)
+	
+			local dmg = DamageInfo()
+			dmg:SetDamage(playerIsHealthy and 2 or 1)
+			dmg:SetAttacker(game.GetWorld())
+			dmg:SetDamageType(DMG_GENERIC)
+			ply:TakeDamageInfo(dmg)
+		end)
+	end)
 end
 
 function PauseDamage(ply, duration)
-    if not IsValid(ply) or not ply:IsPlayer() then return end
-    ply._damagePausedUntil = CurTime() + duration
+	if not IsValid(ply) or not ply:IsPlayer() then return end
+	ply._damagePausedUntil = CurTime() + duration
 end
 
 function StopDelayedDamage(ply)
-    if not IsValid(ply) or not ply:IsPlayer() then return end
+	if not IsValid(ply) or not ply:IsPlayer() then return end
 
-    local steamID = ply:SteamID()
-    local timerName = DamageTimers[steamID]
+	local steamID = ply:SteamID()
+	local timerName = DamageTimers[steamID]
 
-    if timerName then
-        timer.Remove(timerName)
-        DamageTimers[steamID] = nil
-    end
+	if timerName then
+		timer.Remove(timerName)
+		DamageTimers[steamID] = nil
+	end
 
-    ply._damagePausedUntil = CurTime() + 999999 -- самый тупой и ебланский фикс одной хуйни
+	ply._damagePausedUntil = CurTime() + 999999 -- самый тупой и ебланский фикс одной хуйни
 end
 
 concommand.Add( "dev_start_outworld", function( ply, cmd, args )

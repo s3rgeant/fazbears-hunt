@@ -10,17 +10,22 @@ ENT.AdminOnly = false
 
 ENT.HopTime = 0.4
 
+ENT.Mins = Vector(-10, -10, -5)
+ENT.Maxs = Vector(10, 10, 15)
+
 function ENT:Initialize()
 	if ( CLIENT ) then return end
 
 	self:SetModel( "models/torres/ffps/salvage/sbaby_claw.mdl" )
 	self:PhysicsInit( SOLID_VPHYSICS )
 	self:SetMoveType( MOVETYPE_VPHYSICS )
-	self:SetSolid( SOLID_VPHYSICS )
+	self:SetSolid( SOLID_BBOX )
 	self:SetCollisionGroup(COLLISION_GROUP_DEBRIS)
 	self:SetModelScale(3, .000001)
-	--self:SetCollisionGroup(COLLISION_GROUP_IN_VEHICLE)
 	self:SetTrigger(true)
+	--self:UseTriggerBounds(true, 0)
+	
+	self:SetCollisionBounds(self.Mins, self.Maxs)
 	
 	local phys = self:GetPhysicsObject()
 	if phys:IsValid() then
@@ -30,6 +35,13 @@ end
 
 function ENT:Touch(ent)
 	if ent:IsPlayer() then
+		local owner = self:GetOwner()
+		if IsValid(owner) and ent == owner then
+			return
+		end
+	
+		self:ProccessHit(ent)
+		
 		self:SetTrigger(false)
 	
 		local phys = self:GetPhysicsObject()
@@ -39,8 +51,6 @@ function ENT:Touch(ent)
 			phys:EnableDrag( true )
 			phys:SetAngleDragCoefficient( 5000 )
 		end
-		
-		self:ProccessHit(ent)
 	end
 end
 
@@ -66,7 +76,9 @@ function ENT:Think()
 		if IsValid(ply) then
 			if ply:EyePos():Distance(self:GetPos()) < 100 then
 				if self:GetSucker():IsValid() then
-					self:GetSucker():SetNWEntity("_ScrapBabyHooker", NULL)
+					local sucker = self:GetSucker()
+					sucker:SetNWEntity("_ScrapBabyHooker", NULL)
+					timer.Remove("SmoothLookAt_" .. sucker:EntIndex())
 				end
 				self:Remove()
 				return
@@ -98,15 +110,14 @@ end
 function ENT:ProccessHit(target)
 	local ply = self:GetOwner()
 	
-	if !IsValid(ply) then return end
+	if not IsValid(ply) then return end
 	
 	local wep = ply:GetActiveWeapon()
 	
-	if IsValid(wep) then
-		if wep.ClawHit then -- проверяю наличие одной функции и похуй
-			wep:ClawHit(target)
-		end
-	end
+	if not IsValid(wep) then return false end
+	if not wep.ClawHit then return false end -- проверяю наличие одной функции и похуй
+		
+	return wep:ClawHit(target)
 end
 
 function ENT:OnRemove()
@@ -124,13 +135,20 @@ function ENT:OnRemove()
 end
 
 function ENT:PhysicsCollide( data, physobj )
-	if ( CLIENT ) then return end
+	if CLIENT then return end
 	
 	if self:GetGoHome() then 
 		return 
 	end
 	
 	local ply = data.HitEntity
+	local owner = self:GetOwner()
+	
+	if IsValid(owner) and ply == owner then
+		return
+	end
+	
+	local stopProcess = self:ProccessHit(ply)
 	
 	local phys = self:GetPhysicsObject()
 	if IsValid(phys) then
@@ -139,8 +157,6 @@ function ENT:PhysicsCollide( data, physobj )
 		phys:EnableDrag( true )
 		phys:SetAngleDragCoefficient( 5000 )
 	end
-	
-	self:ProccessHit(ply)
 end
 
 if SERVER then return end

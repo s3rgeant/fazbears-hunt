@@ -3,7 +3,7 @@
 	"$basetexture" "models\djebrayass\CoolioArt\OldFreddy\suit2"
 	"$bumpmap" "models\djebrayass\CoolioArt\shared\bump2"
 	
-	$surfaceprop metal
+	$surfaceprop No_decal
 
  	"$phong" "1"
 	"$phongexponent" "7"

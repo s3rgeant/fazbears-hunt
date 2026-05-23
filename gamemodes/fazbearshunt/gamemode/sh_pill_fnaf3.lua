@@ -236,11 +236,13 @@ pills.register("pill_springtrap",{
 			stun="stun",
 		},
 		speedCap={
+			walk=210,
 			run=500,
 		},
 	},
 	moveSpeed={
 		walk=spring_default_movement[1],
+		maxwalk=60,
 		run=spring_default_movement[2],
 		ducked=spring_default_movement[3],
 	},

@@ -10,6 +10,7 @@ local function IsTrackedProp(ent)
     return class == "prop_physics"
         or class == "prop_physics_multiplayer"
         or class == "prop_ragdoll"
+        or class == "func_physbox"
 end
 
 local function IsOnPickupCooldown(ent)

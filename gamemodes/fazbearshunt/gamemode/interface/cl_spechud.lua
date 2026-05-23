@@ -164,7 +164,9 @@ hook.Add("CalcView", "fh_spec_calcview", function(ply, pos, ang, fov)
             local tr = util.TraceHull({
                 start = startpos,
                 endpos = startpos + offset - ang:Forward() * zoom,
-                filter = target,
+                filter = function(ent)
+					return not ent:IsPlayer() and not ent:GetClass() == "prop_ragdoll" and not ent:IsNPC()
+				end,
                 mins = Vector(-5, -5, -5),
                 maxs = Vector(5, 5, 5),
 				mask = MASK_SOLID,

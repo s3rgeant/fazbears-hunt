@@ -85,6 +85,10 @@ function meta:CreateRagdoll()
 	if self:IsOnFire() then ent:Ignite(math.Rand(6, 8), 0) end
 	
 	ent:SetCollisionGroup(COLLISION_GROUP_WEAPON)
+	ent.ShouldNotCollide = function(ent, ent2)
+		if ent:GetClass() == ent2:GetClass() then return true end
+	end
+	
 	ent:SetCustomCollisionCheck( true )
 
 	self:SpectateEntity(ent)

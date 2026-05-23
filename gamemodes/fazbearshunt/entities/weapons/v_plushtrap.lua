@@ -34,27 +34,27 @@ function SWEP:SetupAnimations()
 end
 
 function SWEP:PrimaryAttack()
-    local ply = self:GetOwner()
+	local ply = self:GetOwner()
 	local ent = pills.getMappedEnt(ply)
-	
+
 	if !IsValid(ent) then return end
-	
+
 	if ply:IsFrozen() then return end
-	
+
 	local name = (math.Round( self.NextArmHit ) == 1) and "attack1" or "attack2"
-	
+
 	if IsFirstTimePredicted() then
 		self:HandleAnimation(name, 0.5)
 		
 		self._ArmCounter = self._ArmCounter + 1
 		self.NextArmHit = util.SharedRandom( "PT_Arm", 1, 2, self._ArmCounter )
 	end
-	
+
 	self:DealDamage()
 end
 
 function SWEP:DealDamage()
-    local ply = self:GetOwner()
+	local ply = self:GetOwner()
 	local ent = pills.getMappedEnt(ply)
 	if !IsValid(ent) then return end
 	local now = CurTime()
@@ -75,14 +75,14 @@ function SWEP:DealDamage()
 	local angleStep = 5
 	
 	local trace
-
+	
 	local tr = util.TraceLine( {
 		start = ply:GetShootPos(),
 		endpos = ply:GetShootPos() + ply:GetAimVector() * 100,
 		filter = ply,
 		mask = MASK_SHOT_HULL
 	} )
-
+	
 	if ( !IsValid( tr.Entity ) ) then
 		tr = util.TraceHull( {
 			start = ply:GetShootPos(),
@@ -107,18 +107,18 @@ function SWEP:DealDamage()
 	end
 	
 	if target:IsPlayer() and target:IsSurvivor() then
-        local edata = EffectData()
-        edata:SetOrigin(tr.HitPos)
-        edata:SetEntity(target)
-        util.Effect("BloodImpact", edata, true, true)
+		local edata = EffectData()
+		edata:SetOrigin(tr.HitPos)
+		edata:SetEntity(target)
+		util.Effect("BloodImpact", edata, true, true)
 	end
 	
 	if CLIENT then return end
 	
-    local class = target:GetClass()
-    if class == "func_breakable" or class == "func_breakable_surf" then
-        target:Fire("Shatter", "0", 0)
-    end
+	local class = target:GetClass()
+	if class == "func_breakable" or class == "func_breakable_surf" then
+		target:Fire("Shatter", "0", 0)
+	end
 	
 	if target:GetMoveType() == MOVETYPE_VPHYSICS then
 		local owner = target:GetOwner()
@@ -154,10 +154,10 @@ function SWEP:DealDamage()
 	util.Effect("Impact_GMOD", effectData, true, true)
 	
 	ply:LagCompensation(false)
-
-    if target:IsPlayer() and !target:IsAnimatronic() or target:IsNPC() then
-        ply:EmitSound("fnaf3/plushtrap/plu_attack_hit.mp3")
-    end
+	
+	if target:IsPlayer() and !target:IsAnimatronic() or target:IsNPC() then
+		ply:EmitSound("fnaf3/plushtrap/plu_attack_hit.mp3")
+	end
 end
 
 function SWEP:AlwaysRunning( )

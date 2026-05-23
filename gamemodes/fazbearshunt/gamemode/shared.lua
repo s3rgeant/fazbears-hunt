@@ -7,7 +7,7 @@ GM.Author = "sergeant"
 GM.Email = "N/A"
 GM.Website = "N/A"
 
-local fh_version = "4.1.0"
+local fh_version = "4.1.2"
 
 function fh.GetVersion()
     return fh_version
@@ -521,23 +521,12 @@ hook.Add("ShouldCollide", "fh_collisions", function(ent1, ent2)
     local cg1, cg2 = ent1:GetCollisionGroup(), ent2:GetCollisionGroup()
     local class1, class2 = ent1:GetClass(), ent2:GetClass()
     local isPlayer1, isPlayer2 = ent1:IsPlayer(), ent2:IsPlayer()
+	
+    local snca = ent1.ShouldNotCollide
+    if snca and snca( ent1, ent2 ) then return ( false ) end
 
-	if class1 == "prop_ragdoll" and class2 == "prop_ragdoll" then
-		return false
-	end
-	
-	if class2 == "prop_ragdoll" and isPlayer1 then
-		return false
-	elseif class1 == "prop_ragdoll" and isPlayer2 then
-		return false
-	end
-	
-	--plushtronc
-	if class2 == "plushtrap" and isPlayer1 then
-		return false
-	elseif class1 == "plushtrap" and isPlayer2 then
-		return false
-	end
+    local sncb = ent2.ShouldNotCollide
+    if sncb and sncb( ent2, ent1 ) then return ( false ) end
 	
 	if CLIENT then
 		if isPlayer1 and ent1:GetNW2Entity("HeldEnt") == ent2 then
@@ -558,16 +547,8 @@ hook.Add("ShouldCollide", "fh_collisions", function(ent1, ent2)
         end
     end
 
-    -- Два игрока и один из них имеет PASSABLE_DOOR
-    if (cg1 == COLLISION_GROUP_PASSABLE_DOOR and isPlayer1 and isPlayer2)
-        or (cg2 == COLLISION_GROUP_PASSABLE_DOOR and isPlayer2 and isPlayer1) then
-        return false
-    end
-
-    -- Игроки с разными группами, один с COLLISION_GROUP_ALLY
-    if cg1 == COLLISION_GROUP_PASSABLE_DOOR and isPlayer2 and cg2 ~= cg1 then
-        return false
-    elseif cg2 == COLLISION_GROUP_PASSABLE_DOOR and isPlayer1 and cg1 ~= cg2 then
+    -- игрок плюштрап может проходить через игроков
+    if cg2 == COLLISION_GROUP_PASSABLE_DOOR and isPlayer1 and cg1 ~= cg2 then
         return false
     end
 end)
