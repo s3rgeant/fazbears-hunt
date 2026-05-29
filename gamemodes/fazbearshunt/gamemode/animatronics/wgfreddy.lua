@@ -1110,6 +1110,8 @@ local function cancel_outworld_target(ply)
 		net.WriteBool(true)
 		net.Send(ply)
 	end
+	
+	inventory_backup.SuppressNextSave(ply)
 
 	ply:SetJumpBoost(getScaledJumpBoost())
 	ply:SetRunSpeed(420)
@@ -1289,6 +1291,8 @@ function start_outworld(ply, ent, target)
 	inventory_backup.SaveCurrentInventory(target)
 	target:StripWeapons()
 	
+	inventory_backup.SuppressNextSave(target, true)
+	
 	ply:SetPushImmune(true)
 	target:SetPushImmune(true)
 	target:SetPushBlocked(true)
@@ -1465,9 +1469,11 @@ function cancel_outworld(ply)
 		first_damage_received[victim] = nil
 		victim:SetNW2Bool("_OUTWORLD_target", false)
 	
-		victim:SetSuppressPickupNotices(true)
-		inventory_backup.LoadBackup(victim)
-		victim:SetSuppressPickupNotices(false)
+		if victim:Alive() then
+			victim:SetSuppressPickupNotices(true)
+			inventory_backup.LoadBackup(victim)
+			victim:SetSuppressPickupNotices(false)
+		end
 	end
 	if wgfreddy then
 		wgfreddy_targets[wgfreddy] = nil
@@ -1534,10 +1540,16 @@ function StartDelayedDamage(ply)
 				or (isGameOn and fh.timer.Exists() and fh.timer.GetTimeLeft() < 180)
 				or (ply._LastGFPlushie and ply._LastGFPlushie < CurTime() - 60)
 				
+			local isMoving = ply:GetVelocity():Length() > 10
+			
+			timer.Adjust(timerName, isMoving and 2 or 1)
+			
+			local amountDmg = playerIsHealthy and 2 or 1
+				
 			--print(ply._LastGFPlushie, CurTime(), CurTime() - 60)
 	
 			local dmg = DamageInfo()
-			dmg:SetDamage(playerIsHealthy and 2 or 1)
+			dmg:SetDamage(amountDmg)
 			dmg:SetAttacker(game.GetWorld())
 			dmg:SetDamageType(DMG_GENERIC)
 			ply:TakeDamageInfo(dmg)
@@ -1563,58 +1575,6 @@ function StopDelayedDamage(ply)
 
 	ply._damagePausedUntil = CurTime() + 999999 -- самый тупой и ебланский фикс одной хуйни
 end
-
-concommand.Add( "dev_start_outworld", function( ply, cmd, args )
-	if CLIENT or !ply:IsSuperAdmin() then return end
-
-	local nick1 = tostring(args[1])
-	local nick2 = tostring(args[2])
-	
-	local gf = nil
-	local target = nil
-	
-	for _, ply in player.Iterator() do
-		local nickname = ply:Nick():lower()
-	
-		if !IsValid(gf) and nickname:match( nick1:lower() ) then
-			gf = ply
-			
-			if IsValid(target) then
-				break
-			else
-				continue
-			end
-		end
-		
-		if !IsValid(target) and nickname:match( nick2:lower() ) then
-			target = ply
-			
-			if IsValid(gf) then
-				break
-			else
-				continue
-			end
-		end
-	end
-	
-	if IsValid(ply) and !IsValid(target) then
-		target = ply
-	end
-	
-	if IsValid(gf) and IsValid(target) then
-		local ent = pills.getMappedEnt(gf)
-		
-		if IsValid(ent) then
-			start_outworld(gf, ent, target)
-			return
-		else
-			print("dev_start_outworld - has failed! Check if first player is Golden Freddy.")
-			return
-		end
-	end
-	
-	print("dev_start_outworld - has failed! Maybe the nicknames were wrong.")
-end )
 
 if SERVER then
 	net.Receive("cl_target_wgfreddy_scared", function( len, ply )
@@ -1718,3 +1678,55 @@ if SERVER then
 		end
 	end)
 end
+
+concommand.Add( "dev_start_outworld", function( ply, cmd, args )
+	if CLIENT or !ply:IsSuperAdmin() then return end
+
+	local nick1 = tostring(args[1])
+	local nick2 = tostring(args[2])
+	
+	local gf = nil
+	local target = nil
+	
+	for _, ply in player.Iterator() do
+		local nickname = ply:Nick():lower()
+	
+		if !IsValid(gf) and nickname:match( nick1:lower() ) then
+			gf = ply
+			
+			if IsValid(target) then
+				break
+			else
+				continue
+			end
+		end
+		
+		if !IsValid(target) and nickname:match( nick2:lower() ) then
+			target = ply
+			
+			if IsValid(gf) then
+				break
+			else
+				continue
+			end
+		end
+	end
+	
+	if IsValid(ply) and !IsValid(target) then
+		target = ply
+	end
+	
+	if IsValid(gf) and IsValid(target) then
+		local ent = pills.getMappedEnt(gf)
+		
+		if IsValid(ent) then
+			start_outworld(gf, ent, target)
+			return
+		else
+			print("dev_start_outworld - has failed! Check if first player is Golden Freddy.")
+			return
+		end
+	end
+	
+	print("dev_start_outworld - has failed! Maybe the nicknames were wrong.")
+end )

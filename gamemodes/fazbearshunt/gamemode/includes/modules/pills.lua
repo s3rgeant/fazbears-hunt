@@ -496,7 +496,7 @@ if SERVER then
 			ply._wereJumpingPill = nil
 			ply._jumpPosPill = nil
 			
-			if ent.formTable.noFallDamage or ent.formTable.type == "phys" then return true end
+			if ent.formTable.noFallDamage then return true end
 		end
 	end)
 
@@ -624,7 +624,7 @@ hook.Add("PlayerFootstep", "pk_pill_step", function(ply, pos, foot, snd, vol, fi
     local ent = getMappedEnt(ply)
 
     if IsValid(ent) then
-        if ent.formTable.type == "phys" or ent.formTable.muteSteps or ent.animFreeze then
+        if ent.formTable.muteSteps or ent.animFreeze then
             return true
         else
             return ent:PillSound("step", pos)

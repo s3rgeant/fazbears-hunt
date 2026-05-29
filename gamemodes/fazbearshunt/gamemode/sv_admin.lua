@@ -94,7 +94,7 @@ function KillPlayer(ply)
 end
 
 function StartRound()
-	if !isGameOn then
+	if not isGameOn then
 		registerNewRound()
         print("An Admin force-started the round. Player count: " .. player.GetCount())
 	end

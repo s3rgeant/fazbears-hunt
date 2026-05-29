@@ -28,7 +28,7 @@ fh.RegisterRoundType("bonnie_tag", 2, function()
 		tostring( fh.GetRoundCount() ), 
 		fh_tag_end
 	)
-end, 10, 8, 20)
+end, 2, 8, 20)
 
 fh.SetRoundTypeBlocked(2, true)
 
@@ -39,11 +39,11 @@ hook.Add("fh_startgame", "tag_prevent_default_startgame", function(roundType)
 end)
 
 hook.Add( "PlayerShouldTakeDamage", "fh_tagkill", function( ply, attacker )
-	if ply:IsSurvivor() and fh.GetRoundType() == 2 and !attacker:IsPlayer() then
+	if fh.GetRoundType() == 2 and ply:IsSurvivor() and not attacker:IsPlayer() then
 		return false 
 	end
 	
-	if ply:IsSurvivor() and fh.GetRoundType() == 2 and attacker:IsPlayer() and attacker:IsAnimatronic() then
+	if fh.GetRoundType() == 2 and ply:IsSurvivor() and attacker:IsPlayer() and attacker:IsAnimatronic() then
 		attacker:SetHealth(100)
 		
 		for k,v in pairs( ents.FindInSphere( attacker:GetPos(), 350 ) ) do

@@ -29,7 +29,11 @@ hook.Add( "EntityTakeDamage", "fh_bear_kill", function( ply, dmginfo )
 		if not attacker:IsPlayer() then return end
 		if not attacker:IsAnimatronic() then return end
 		
-		local pillName = attacker:GetPill():GetPillName()
+		local ent = attacker:GetPill()
+		
+		if not IsValid(ent) then return end
+		
+		local pillName = ent:GetPillName()
 		
 		if fh.GetRoundType() == 3 and (pillName:find("bear5") or pillName:find("fox4")) then
 			if ply:GetNW2Bool("KillerObsessed") then

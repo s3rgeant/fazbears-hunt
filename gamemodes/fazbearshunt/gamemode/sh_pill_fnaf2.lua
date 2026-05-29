@@ -345,10 +345,8 @@ function performJumpscare(ply, ent, target, killDelay, voiceCharacter, jumpscare
 	if not IsValid(target) then return false end
 	
 	if target:IsPlayer() and target:HasGodMode() then return false end
-	
-	if target:Health() <= 0 then return end
-	
-	if target:IsJumpscared() then return end
+	if target:Health() <= 0 then return false end
+	if target:IsJumpscared() then return false end
 	
 	if hook.Run("FH_PlayerShouldJumpscare", ply, ent, target) == false then return false end
 
@@ -551,7 +549,7 @@ function breakBustDoor(ply, door, dur)
 	if not IsValid(physDoor) then return end
 
 	physDoor:SetModel(mdl)
-	physDoor:SetPos(pos)
+	physDoor:SetPos(pos + (door:GetForward() * 5))
 	physDoor:SetAngles(ang)
 	physDoor:SetSkin(skin)
 	physDoor:Spawn()

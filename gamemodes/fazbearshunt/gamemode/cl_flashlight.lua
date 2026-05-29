@@ -1,10 +1,6 @@
 local flashMode = "off"
 local Flash = nil
 
-hook.Add( "PreDrawTranslucentRenderables", "FixEyePos", function()
-	EyePos()
-end )
-
 local function CreateFlashlight(params)
 	local lt = ProjectedTexture()
 	lt:SetTexture(params.mat)
@@ -23,7 +19,7 @@ local function UpdateFlashPos()
 	local ply = LocalPlayer()
 	if not IsValid(ply) then return end
 	
-	local pos = EyePos()
+	local pos = MainEyePos()
 	local ang = RenderAngles()
 	
 	pos = pos + ang:Forward() * 2

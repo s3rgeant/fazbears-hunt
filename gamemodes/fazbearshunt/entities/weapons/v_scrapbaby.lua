@@ -56,9 +56,17 @@ function SWEP:SecondaryAttack()
     if self:GetCharging() or ply.tasered then return end
 
     if SERVER then
-		--if !ply:Crouching() then
-			ent:PillGesture('aim', 2, 1, 0.1, 0.3)
-		--end
+		ent:PillGesture('aim', 2, 1, 0.1, 0.3)
+		
+		timer.Simple(0.5, function()
+			if not ply:KeyDown(IN_ATTACK2) then return end
+			if not IsValid(ent) then return end
+			if self:GetClawWait() or self:GetClawFlying()  or self:GetClawFlyingHome() then return end
+			
+			ent:PillGesture('aimL', 3, 1, 0, 0, nil, true)
+			
+			ent:PillStopGesture("aim")
+		end)
         ply:EmitSound("animatronics/scrapbaby/baby_hook_ready.mp3", 90)
     end
 
@@ -71,8 +79,14 @@ end
 
 function SWEP:ThrowHook()
 	local ply = self:GetOwner()
+    local ent = pills.getMappedEnt(ply)
 	
 	ply:EmitSound("animatronics/scrapbaby/baby_hook_throw.mp3", 90)
+	
+	if SERVER and IsValid(ent) then
+		ent:PillStopGesture("aim")
+		ent:PillStopGesture("aimL")
+	end
 	
 	self:SetCharging(false)
 	self:SetClawFlying(true)
@@ -118,6 +132,7 @@ end
 
 if CLIENT then
 	local rope = {slack = 100, material = "cable/cable"}
+	--local rope = {slack = 100, material = "unioncity/cable/chandchain"}
 	hook.Add("OnEntityCreated", "scrapbaby_hookspawn", function(ent)
 		if ent:GetClass() == "baby_claw" then
 			local owner = ent:GetOwner()
@@ -183,7 +198,7 @@ function SWEP:ClawHit(target)
 		self:SetClawFlyingHome(true)
 	
 		if SERVER and self.LoopSoundBaby then
-			self.LoopSoundBaby:ChangePitch(90, .5)
+			self.LoopSoundBaby:ChangePitch(100, 1.5)
 			self.LoopSoundBaby:ChangeVolume(1, .1)
 		end
 		
@@ -226,10 +241,17 @@ end
 
 function SWEP:Think()
 	local curtime = CurTime()
+	local ply = self:GetOwner()
 	
-	if self:GetCharging() and not self:GetOwner():KeyDown(IN_ATTACK2) then
+	if self:GetCharging() and not ply:KeyDown(IN_ATTACK2) then
 		self:SetCharging(false)
         self:ClawBack()
+		local ent = pills.getMappedEnt(ply)
+		
+		if SERVER and IsValid(ent) then
+			ent:PillStopGesture("aim")
+			ent:PillStopGesture("aimL")
+		end
         return
     end
 

@@ -160,7 +160,7 @@ function ENT:Initialize()
 						if IsValid(self) then
 							local f = self.formTable.sounds[k .. "_func"]
 							if not f then return end
-							local play, time = f(self:GetPillUser(), self)
+							local play, time = f(ply, self)
 	
 							if play then
 								self:PillSound(k)
@@ -181,7 +181,7 @@ function ENT:Initialize()
 		
 		local bloodType = self.formTable.bloodType or BLOOD_COLOR_RED
 		
-		self:GetPillUser():SetBloodColor( bloodType )
+		ply:SetBloodColor( bloodType )
 	
 		if self.formTable.health then
 			ply:SetHealth(self.formTable.health)
@@ -706,7 +706,7 @@ if SERVER then
 	function ENT:PillAnimTick(name)
 	end
 	
-	function ENT:PillGesture(name, priority, rate, blendin, out, start)
+	function ENT:PillGesture(name, priority, rate, blendin, out, start, loop)
 		local ply = self:GetPillUser()
 		if not IsValid(ply) then return end
 		local anims = self.formTable.anims.gestures or {}
@@ -727,6 +727,9 @@ if SERVER then
 		else
 			self:SetLayerSequence(id, seq)
 		end
+		
+		local dur = self:GetLayerDuration( id )
+		
 		self:SetLayerPriority(id, priority or 1)
 		self:SetLayerPlaybackRate(id, (rate or 1))
 		self:SetLayerCycle(id, start or 0)
@@ -734,8 +737,8 @@ if SERVER then
 		self:SetLayerWeight(id, 1)
 		self:SetLayerBlendIn(id, blendin or 0.1)
 		self:SetLayerBlendOut(id, out or 0.1)
-		
-		return self:GetLayerDuration( id )
+		self:SetLayerLooping(id, loop or false)
+		return dur
 	end
 	
 	-- для совместимости с сторонними пилл паками

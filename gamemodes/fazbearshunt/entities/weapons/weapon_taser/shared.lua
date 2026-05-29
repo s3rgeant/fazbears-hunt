@@ -276,5 +276,6 @@ end )
 hook.Add( "DoPlayerDeath", "fh_taser_drop", function( ply, attacker )
 	if ply:HasWeapon("weapon_taser") then
 		ply:DropWeapon(ply:GetWeapon("weapon_taser"))
+		ply:SetActiveWeapon(nil)
 	end
 end )

@@ -230,7 +230,7 @@ local function giveKillerShared(ply, killer, force)
 	
 	local killers_ = killers.getAll()
 	
-	local killerData
+	local killerData = {}
 	local killerName
 	
 	for k, v in pairs(killers_) do
@@ -266,8 +266,10 @@ local function giveKillerShared(ply, killer, force)
 	
 	if !killerData then
 		print(ply:Nick() .. " is " .. killerName.." now.")
-	else
+	elseif killerData.name then
 		print(ply:Nick() .. " is " .. killerData.name.." now.")
+	else
+		print(ply:Nick() .. " is " .. killer.." now.")
 	end
 	
 	killerData.ogName = killerName
@@ -722,7 +724,7 @@ hook.Add("PlayerDisconnected", "fh_playerleft", function(ply)
 end)
 
 hook.Add( "PlayerNoClip", "fh_noclip", function( ply, desiredNoClipState )
-	if ply:IsAdmin() and ply:Team() != 2701 or ply:IsSuperAdmin() then
+	if ply:IsAdmin() and ply:Team() ~= 2701 or ply:IsSuperAdmin() then
 		return true
 	end
 end )
@@ -751,24 +753,22 @@ hook.Add("PlayerSpawn", "fh_spawn", function( ply, transiton )
 	player_manager.SetPlayerClass( ply, "player_sandbox" )
 	ply:SetShouldServerRagdoll(true)
 
-	if !IsValid(ply:GetPill()) then
+	if not IsValid(ply:GetPill()) then
 		ply:SetMaterial("")
 		ply:DrawShadow(true)
 	end
 	
 	ply:SendLua( 'if !system.HasFocus() then system.FlashWindow() end' )
 	
-	if !isGameOn then
+	if not isGameOn then
 		ply:SetTeam(TEAM_SURVIVOR)
 	end
 	timer.Simple(0, function()
 		ply:NoPlayerCollide(0.25)
 	end)
-	net.Start('DeadHUDDisable')
-	net.Send(ply)
 	
-	net.Start('nv_off')
-	net.Send(ply)
+	net.Start('DeadHUDDisable') net.Send(ply)
+	net.Start('nv_off') net.Send(ply)
 end)
 
 if PLAYER then

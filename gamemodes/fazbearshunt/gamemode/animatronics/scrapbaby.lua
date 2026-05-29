@@ -48,6 +48,7 @@ BABY.anims={
 	gestures={
 		--melee="melee",
 		aim="aim",
+		aimL="aim-loop",
 	},
 }
 BABY.moveSpeed={

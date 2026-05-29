@@ -542,7 +542,7 @@ hook.Add("PlayerUse", "AccurateBlockedDoorUse", function(ply, ent)
 	puppet:PillAnim("doorbreak", true)
 	ply._cantBreakDoors = true
 
-    timer.Simple(1.1, function()
+    timer.Simple(1, function()
         if IsValid(ent) then
             ent:Fire("Open", "", 0)
 			doors[ent] = true

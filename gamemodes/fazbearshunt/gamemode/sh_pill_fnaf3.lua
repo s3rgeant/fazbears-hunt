@@ -39,13 +39,14 @@ hook.Add( "PostCleanupMap", "fh_pill_fnaf3_reset", function( name )
 end)
 
 local function chaseVoicelineChecker(ply, ent, name)
-	timer.Create("CheckConditions"..ply:EntIndex(), 2, 0, function()
-		if !IsValid(ent) then
-			if timer.Exists( "CheckConditions"..ply:EntIndex()) then
-				timer.Remove("CheckConditions"..ply:EntIndex())
+	local index = ply:EntIndex()
+	timer.Create("CheckConditions"..index, 2, 0, function()
+		if not IsValid(ent) then
+			if timer.Exists( "CheckConditions"..index) then
+				timer.Remove("CheckConditions"..index)
 			end
-			if timer.Exists( "ChaseCheck"..ply:EntIndex()) then
-				timer.Remove("ChaseCheck"..ply:EntIndex())
+			if timer.Exists( "ChaseCheck"..index) then
+				timer.Remove("ChaseCheck"..index)
 			end
 			return
 		end
@@ -489,6 +490,7 @@ pills.register("pill_springtrap",{
 
 function kill_plushtrap(ply)
 	if IsValid(ply) then
+		inventory_backup.SuppressNextSave(ply, true)
 		ply:Kill()
 		ply:SetTeam(TEAM_SPECTATOR)
 		ply:SendLua( "LocalPlayer():ChatPrint( language.GetPhrase('fazhunt.springtrap.plushtime') )" )

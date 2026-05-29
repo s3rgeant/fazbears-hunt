@@ -59,7 +59,6 @@ pills.clone("bear5_main", "pill_wfreddy2", {
 			crouch_walk="crouchmove",
 			walk="walk",
 			run="bear5_run",
-			cloak="special",
 			scare="scare",
 			jump="jump",
 			glide="air",

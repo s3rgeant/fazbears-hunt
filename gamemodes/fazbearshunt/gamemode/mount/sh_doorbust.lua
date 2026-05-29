@@ -236,14 +236,44 @@ if SERVER then
 		[ "func_door_rotating" ] = true
 	}
 
-	hook.Add( "OnEntityCreated", "doorbust", function( ent )
-		if TrackedEnts[ ent:GetClass() ] then
-			timer.Simple(0, function()
+	hook.Add("OnEntityCreated", "doorbust", function(ent)
+		if TrackedEnts[ent:GetClass()] then
+			timer.Simple(0.1, function()
 				if not IsValid(ent) then return end
-				ent:SetNWAngle("_DoorAngleOrigin", ent:GetAngles())
+				
+				if ent:GetClass() == "func_door_rotating" then
+					local pivot = ent:GetNetworkOrigin()
+					local center = ent:GetPos() + ent:OBBCenter()
+
+					local hingeToCenter = (center - pivot)
+					hingeToCenter.z = 0
+					hingeToCenter:Normalize()
+
+					local forward = Vector(
+						hingeToCenter.y,
+						-hingeToCenter.x,
+						0
+					)
+
+					ent:SetNWVector("_DoorForward", forward)
+
+					local ang = forward:Angle()
+					ang.p = 0
+					ang.r = 0
+
+					ent:SetNWAngle("_DoorAngleOrigin", ang)
+					return
+				end
+				
+				ent:SetNWAngle("_DoorAngleOrigin", ent:GetInternalVariable("m_angRotationClosed") or ent:GetAngles())
 			end)
 		end
-	end )
+	end)
+	
+	local DoorClasses = {
+		["func_door"] = true,
+		["func_door_rotating"] = true
+	}
 end
 
 if CLIENT then
@@ -279,8 +309,9 @@ if CLIENT then
 			end
 			local elapsed = currentTime - data.StartTime
             local fraction = math.Clamp(elapsed / data.Duration, 0, 1)
+			local angs = LerpAngle(fraction, data.StartAng, data.TargetAng)
 			
-			door:SetRenderAngles(LerpAngle(fraction, data.StartAng, data.TargetAng))
+			door:SetRenderAngles(angs)
 		end
 	end)
 	
@@ -296,40 +327,50 @@ if CLIENT then
 			print(state)
 			if state ~= 1 then return end
 		end--]]
-        
-        local isLocked = ent:GetInternalVariable("m_bLocked")
-        if isLocked then return end
-        
-        if not localBustedDoors[ent] then
-            local baseAng = ent:GetNWAngle("_DoorAngleOrigin", ent:GetAngles())
+		
+		local isLocked = ent:GetInternalVariable("m_bLocked")
+		if isLocked then return end
+		
+		if not localBustedDoors[ent] then
+			local baseAng = ent:GetNWAngle("_DoorAngleOrigin", ent:GetAngles())
 			local currentAng = ent:GetAngles()
             
-            local doorForward = ent:GetForward()
-			if cl == "func_door_rotating" then doorForward = ent:GetRight() end
+            local doorForward = ent:GetNWVector("_DoorForward", ent:GetForward())
             local dot = fwd:Dot(doorForward)
+			if cl == "func_door_rotating" then 
+				currentAng.y = currentAng.y + (doorForward.y*90)
+			end
             
             local yawOffset = (dot < 0) and 90 or -90
             local targetAng = Angle(baseAng.p, baseAng.y + yawOffset, baseAng.r)
 			
-			local angleDiff = math.abs(math.AngleDifference(targetAng.y, currentAng.y))
+			local checkie = currentAng.y
+			if cl == "func_door_rotating" then 
+				local ogAngles = ent:GetAngles()
+				ogAngles.y = ogAngles.y + yawOffset
+				targetAng = ogAngles
+				checkie = 0
+			end
+			
+			local angleDiff = math.abs(math.AngleDifference(targetAng.y, checkie))
             local duration = angleDiff / BUST_SPEED
 			
-            util.ScreenShake(hitpos, 2, 2, 1, 100)
-
-            sound.Play("Wood_Furniture.Break", hitpos, 100, math.random(95, 105), 1)
-            sound.Play("Plastic_Box.Break", hitpos, 100, math.random(95, 105), 1)
-
-            localBustedDoors[ent] = {
-                StartTime = UnPredictedCurTime(),
-                EndTime = UnPredictedCurTime() + 0.5,
+			util.ScreenShake(hitpos, 2, 2, 1, 100)
+	
+			sound.Play("Wood_Furniture.Break", hitpos, 100, math.random(95, 105), 1)
+			sound.Play("Plastic_Box.Break", hitpos, 100, math.random(95, 105), 1)
+	
+			localBustedDoors[ent] = {
+				StartTime = UnPredictedCurTime(),
+				EndTime = UnPredictedCurTime() + 0.5,
 				Duration = duration,
-                StartAng = ent:GetAngles(),
-                TargetAng = targetAng
-            }
-        end
-    end
-
-    local tr_t = {}
+				StartAng = ent:GetAngles(),
+				TargetAng = targetAng
+			}
+		end
+	end
+	
+	local tr_t = {}
 	local fakies = {
 		["prop_door_rotating"] = true,
 		["func_door_rotating"] = true,

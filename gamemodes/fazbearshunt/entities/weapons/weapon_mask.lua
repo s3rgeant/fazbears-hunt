@@ -168,7 +168,7 @@ function SWEP:Invisivility(ply)
 				colormod_target = 0
 			end
 
-			if IsValid(self) then
+			if IsValid(self) and ply == self:GetOwner() then
 				if SERVER then
 					self:SendWeaponAnim(ACT_VM_HOLSTER)
 				end
@@ -223,6 +223,7 @@ hook.Add("fh_createragdoll", "bonnie_mask_onragdoll", function(ply, rag)
 	if ply.invisible and ply:HasWeapon("weapon_mask") then
 		local wep = ply:GetWeapon("weapon_mask")
 		ply:DropWeapon(wep)
+		ply:SetActiveWeapon(nil)
 		wep:SetBlockSwap(false)
 		
 		inventory_backup.RemoveItem(ply, "weapon_mask")

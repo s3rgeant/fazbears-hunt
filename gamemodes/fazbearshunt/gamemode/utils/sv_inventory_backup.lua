@@ -6,6 +6,12 @@ local blockedReviveWeapons = {
 }
 
 function inventory_backup.SaveCurrentInventory(ply)
+	if ply._SupressInventoryBackupSave then
+		print("[FH] Suppressed Inventory Save")
+		ply._SupressInventoryBackupSave=nil
+		return
+	end
+
 	ply.ReviveActiveWeapon = nil
 	local activeWeapon = ply:GetActiveWeapon()
 	if IsValid( activeWeapon ) and not activeWeapon.BackupBlocked then
@@ -51,7 +57,19 @@ function inventory_backup.RemoveItem(ply, item)
 	end
 end
 
+function inventory_backup.SuppressNextSave(ply, supresss)
+	ply._SupressInventoryBackupSave = (supresss == true) or nil
+end
+
+function inventory_backup.SuppressNextLoad(ply, supresss)
+	ply._SupressInventoryBackupLoad = (supresss == true) or nil
+end
+
 function inventory_backup.LoadBackup(ply)
+	if ply._SupressInventoryBackupLoad then
+		ply._SupressInventoryBackupLoad=nil
+		return
+	end
 	print("[FH] Trying to load inventory for " .. ply:Nick())
 	if ply.ReviveWeapons ~= nil then
 		local count=0

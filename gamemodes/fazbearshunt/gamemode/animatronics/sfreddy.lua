@@ -75,8 +75,7 @@ pills.register("pill_sfreddy2",{
 		weapon="v_freddy",
 		skin=IsHalloween() and 4 or 2,
 		func=function(wep)
-			wep.walk_string = "slowwalk"
-			wep.walk_act = ACT_WALK_STEALTH
+			wep:AddAnimation("walk", nil, "slowwalk")
 		end
 	},
 	
