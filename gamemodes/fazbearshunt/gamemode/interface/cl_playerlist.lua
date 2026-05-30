@@ -21,8 +21,6 @@ local left_tab_mat = Material("vgui/playerlist/tabs/left_t.png")
 
 local faded_black = Color(0, 0, 0, 200)
 
-local boosters = boosters or {}
-
 surface.CreateFont("bySergeantFont", { font = "Share Tech Mono Regular", 
 		size = 18, 
 		extended = true, 
@@ -801,47 +799,40 @@ hook.Add("player_disconnect", "fh_playerlist_update_disconnect", function()
     end
 end)
 
-local function apply_boosters()
-	for _, v in ipairs(boosters) do
-		playerlist.SetPlayerIcon(v, "boosty")
+local boosters = boosters or {}
+
+local file = "https://raw.githubusercontent.com/s3rgeant/fazbearshunt_docs/refs/heads/main/public/verified_players.json"
+
+local function apply_raw_boosters(body, len, headers, code)
+	local tbl = util.JSONToTable(body)
+	
+	if not tbl then return end
+	
+	for _, v in ipairs(tbl) do
+		if v.steam_id then
+			playerlist.SetPlayerIcon(v.steam_id, "boosty")
+		end
 	end
 end
 
 local function get_boosters()
-    http.Fetch( "https://raw.githubusercontent.com/s3rgeant/fazbearshunt_docs/refs/heads/main/boosty",
-		-- onSuccess function
-		function( body, length, headers, code )
-			for line in string.gmatch(body, "[^\n]+") do
-				local num = string.match(line, "^%d+")
-				if num then
-					table.insert(boosters, num)
-				end
-			end
-			apply_boosters()
+    http.Fetch( file,
+		function( body, length, headers, code ) -- onSuccess function
+			apply_raw_boosters(body, length, headers, code)
 		end,
-		-- onFailure function
-		function( message )
+		function( message ) -- onFailure function
 			print("[FH] Failed AGAIN to fetch boosty data base :(")
 		end
 	)
 end
 
 hook.Add( "InitPostEntity", "fh_get_boosters", function()
-    http.Fetch( "https://raw.githubusercontent.com/s3rgeant/fazbearshunt_docs/refs/heads/main/boosty",
-		
-		-- onSuccess function
-		function( body, length, headers, code )
-			for line in string.gmatch(body, "[^\n]+") do
-				local num = string.match(line, "^%d+")
-				if num then
-					table.insert(boosters, num)
-				end
-			end
-			apply_boosters()
+    http.Fetch( file,
+		function( body, length, headers, code ) -- onSuccess function
+			apply_raw_boosters(body, length, headers, code)
 		end,
 	
-		-- onFailure function
-		function( message )
+		function( message ) -- onFailure function
 			print("[FH] Failed to fetch boosty data base! Will try again in 10 seconds.")
 			
 			timer.Simple(10, function()

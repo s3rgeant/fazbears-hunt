@@ -517,15 +517,9 @@ hook.Add("KeyPress", "fh_plushie_use_check", function(ply, key)
 				
 				PauseDamage(ply, 10)
 				
-				for k,v in pairs( wgfreddy_targets ) do
-					if ply == v then
-						net.Start("fh_ui_sound_play")
-						net.WriteString("fnaf2/gfreddy/plushie_taken_alert.wav")
-						net.Send(k)
-						
-						break
-					end
-				end
+				net.Start("fh_ui_sound_play")
+				net.WriteString("fnaf2/gfreddy/plushie_taken_alert.wav")
+				net.Send(outworld_victims[ply])
 			end
 
 			break
