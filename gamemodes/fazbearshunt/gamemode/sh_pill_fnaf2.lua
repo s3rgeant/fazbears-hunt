@@ -867,3 +867,6 @@ local files, folders = file.Find(path .. "*", "LUA")
 for _, file_name in ipairs(files) do
 	include(path .. file_name)
 end
+
+include("animatronics/special/bear5.lua")
+include("animatronics/special/wgfreddy.lua")

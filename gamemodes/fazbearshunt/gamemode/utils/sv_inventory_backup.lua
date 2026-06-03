@@ -7,7 +7,7 @@ local blockedReviveWeapons = {
 
 function inventory_backup.SaveCurrentInventory(ply)
 	if ply._SupressInventoryBackupSave then
-		print("[FH] Suppressed Inventory Save")
+		--print("[FH] Suppressed Inventory Save")
 		ply._SupressInventoryBackupSave=nil
 		return
 	end
@@ -46,7 +46,7 @@ function inventory_backup.SaveCurrentInventory(ply)
 		ply.RevivalPreviousAmmo[secondary] = newSecondary
 	end
 	
-	print("[FH] Saved inventory for " .. ply:Nick() .. ". He has " .. count .. " weapons")
+	--print("[FH] Saved inventory for " .. ply:Nick() .. ". He has " .. count .. " weapons")
 end
 
 function inventory_backup.RemoveItem(ply, item)
@@ -70,14 +70,14 @@ function inventory_backup.LoadBackup(ply)
 		ply._SupressInventoryBackupLoad=nil
 		return
 	end
-	print("[FH] Trying to load inventory for " .. ply:Nick())
+	--print("[FH] Trying to load inventory for " .. ply:Nick())
 	if ply.ReviveWeapons ~= nil then
 		local count=0
 		for wep, _ in pairs( ply.ReviveWeapons ) do
 			ply:Give(wep)
 			count=count+1
 		end
-		print("[FH] Loaded inventory for " .. ply:Nick() .. ". He has " .. count .. " weapons", ply:Alive())
+		--print("[FH] Loaded inventory for " .. ply:Nick() .. ". He has " .. count .. " weapons", ply:Alive())
 	end
 	
 	if ply.ReviveActiveWeapon ~= nil then

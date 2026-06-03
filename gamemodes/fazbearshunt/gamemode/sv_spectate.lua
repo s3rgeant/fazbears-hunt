@@ -102,11 +102,13 @@ hook.Add('PlayerDeathThink', 'fh_block_respawn', function(ply)
 end)
 
 hook.Add('fh_createragdoll', 'fh_spectate_ragdoll', function(player, ragdoll)
-	for _, v in ipairs(team.GetPlayers(TEAM_SPECTATOR)) do
-		if v:GetObserverTarget() == player and v:GetObserverMode() ~= OBS_MODE_ROAMING then
-			if ragdoll then
-				v:SpectateEntity(ragdoll)
-				v:Spectate(OBS_MODE_CHASE)
+	if IsValid(ragdoll) then
+		if player:GetObserverCount() > 0 then
+			for _, v in ipairs(player:GetObservers()) do
+				if v:GetObserverTarget() == player and v:GetObserverMode() ~= OBS_MODE_ROAMING then
+					v:SpectateEntity(ragdoll)
+					v:Spectate(OBS_MODE_CHASE)
+				end
 			end
 		end
 	end
@@ -124,7 +126,12 @@ hook.Add( "KeyPress", "KEY_PRESS_SPECTATOR", function( ply, key )
 				ply:Spectate(OBS_MODE_ROAMING)
 			end
 			
-			UpdatePlayerObserver(ply, ply:GetObserverTarget())
+			local obsTarget = ply:GetObserverTarget()
+			if ply:GetObserverMode() ~= OBS_MODE_ROAMING and IsValid(obsTarget) and obsTarget:IsPlayer() and not obsTarget:Alive() and IsValid(obsTarget.DeathRagdoll) then
+				ply:SpectateEntity(obsTarget.DeathRagdoll)
+			end
+			
+			UpdatePlayerObserver(ply, obsTarget)
 		elseif ( key == IN_ATTACK ) then
 			cyclePlayers(ply, 1)
 		elseif ( key == IN_ATTACK2 ) then

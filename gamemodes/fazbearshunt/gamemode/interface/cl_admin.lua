@@ -30,6 +30,8 @@ local function AddNetActionButton(parent, x, y, w, h, text, action, onClick)
 end
 
 local function AddCheckbox(parent, x, y, text, convar, action, invert)
+	if not convar then return end
+
     local checkbox = vgui.Create("DCheckBoxLabel", parent)
 	if x and y then checkbox:SetPos(x, y) end
     checkbox:SetText(text)
