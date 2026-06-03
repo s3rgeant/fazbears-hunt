@@ -106,6 +106,27 @@ pills.register("pill_endo02",{
 		chaseVoicelineChecker(ply, ent, "endo")
 	end,
 	
+	--[[die=function(ply, ent)
+		ragdoll = ents.Create("prop_ragdoll")
+		
+		ragdoll:SetPos(ply:GetPos())
+		ragdoll:SetAngles(ply:GetAngles())
+		ragdoll:SetModel(ent:GetModel())
+		ragdoll:Spawn()
+	
+		for i = 0, ragdoll:GetPhysicsObjectCount() - 1 do
+			local bone = ragdoll:GetPhysicsObjectNum(i)
+			
+			if bone and bone:IsValid() then
+				local bonepos, boneang = ent:GetBonePosition(ragdoll:TranslatePhysBoneToBone(i))
+				
+				bone:SetPos(bonepos)
+				bone:SetAngles(boneang)
+				bone:SetVelocity(ent:GetVelocity())
+			end
+		end
+	end,--]]
+	
 	killCondition=function(ply,ent)
 		local target = FindNearestPlayer(ply:EyePos(), 125, ply, 36)
 		

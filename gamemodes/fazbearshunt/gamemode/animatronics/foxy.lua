@@ -736,7 +736,7 @@ end)
 
 if CLIENT then
 	hook.Add("ShouldCollide", "foyx_collide", function(ent1, ent2)
-		if ent1:IsPlayer() and !ent2:IsPlayer() or !ent1:IsPlayer() and ent2:IsPlayer() then
+		if ent1:IsPlayer() and not ent2:IsPlayer() or not ent1:IsPlayer() and ent2:IsPlayer() then
 			if ent1:GetNWBool("isBlightRushing") and ent2:GetClass() == "prop_door_rotating"  then
 				return false
 			elseif ent2:GetNWBool("isBlightRushing") and ent1:GetClass() == "prop_door_rotating"  then

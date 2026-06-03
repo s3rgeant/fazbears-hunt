@@ -5,16 +5,16 @@ include( "shared.lua" )
 pcall(require,"pills")
 
 local function recursive_include(path)
-    local files, folders = file.Find(path .. "*", "LUA")
-
-    for _, file_name in ipairs(files) do
+	local files, folders = file.Find(path .. "*", "LUA")
+	
+	for _, file_name in ipairs(files) do
 		if file_name == "cl_init.lua" then continue end
-        local full_path = path .. file_name
+		local full_path = path .. file_name
 		
-        if file_name:StartWith("sh_") or file_name:StartWith("cl_") then
-            include(full_path)
-        end
-    end
+		if file_name:StartWith("sh_") or file_name:StartWith("cl_") then
+			include(full_path)
+		end
+	end
 end
 
 recursive_include("fazbearshunt/gamemode/utils/")

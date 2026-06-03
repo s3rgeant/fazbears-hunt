@@ -861,16 +861,9 @@ if CLIENT then
 	end)
 end
 
-include( "animatronics/wgfreddy.lua" )
-include( "animatronics/mangle.lua" )
-include( "animatronics/toychica.lua" )
-
-include( "animatronics/freddy.lua" )
-include( "animatronics/bonnie.lua" )
-include( "animatronics/chica.lua" )
-include( "animatronics/foxy.lua" )
-include( "animatronics/sfreddy.lua" )
-
-include( "animatronics/bear5.lua" )
-
-include( "animatronics/endo02.lua" )
+local path = "fazbearshunt/gamemode/animatronics/"
+local files, folders = file.Find(path .. "*", "LUA")
+	
+for _, file_name in ipairs(files) do
+	include(path .. file_name)
+end

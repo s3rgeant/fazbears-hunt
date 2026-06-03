@@ -7,24 +7,24 @@ include( "shared.lua" )
 pcall(require,"pills")
 
 local function recursive_include(path)
-    local files, folders = file.Find(path .. "*", "LUA")
-
-    for _, file_name in ipairs(files) do
-        local full_path = path .. file_name
-
+	local files, folders = file.Find(path .. "*", "LUA")
+	
+	for _, file_name in ipairs(files) do
+		local full_path = path .. file_name
+	
 		if !file_name:EndsWith(".lua") then continue end
-
-        if file_name:StartWith("sv_") then
-            include(full_path)
-
-        elseif file_name:StartWith("sh_") then
-            AddCSLuaFile(full_path)
-            include(full_path)
-
-        elseif file_name:StartWith("cl_") then
-            AddCSLuaFile(full_path)
-        end
-    end
+	
+		if file_name:StartWith("sv_") then
+			include(full_path)
+	
+		elseif file_name:StartWith("sh_") then
+			AddCSLuaFile(full_path)
+			include(full_path)
+	
+		elseif file_name:StartWith("cl_") then
+			AddCSLuaFile(full_path)
+		end
+	end
 end
 AddCSLuaFile("halo_module.lua")
 

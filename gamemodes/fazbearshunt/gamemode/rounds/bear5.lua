@@ -123,18 +123,22 @@ hook.Add("FH_LastManStanding", "bear5", function()
 				break
 			end
 			if IsValid(ply) then
-				ply:Give("weapon_killmask", true)
-				ply:SelectWeapon("weapon_killmask")
-		
-				local wep = ply:GetActiveWeapon()
-				
-				if IsValid(wep) then
-					ply:SetHealth(100)
-					ply:Freeze(true)
-					ply:GodEnable()
-					ply:SetGFreddyImmune(true)
-					if wep.PrimaryAttack then
-						wep:PrimaryAttack(wep)
+				if not ply:HasWeapon("weapon_killer_axe") then 
+					if not ply:HasWeapon("weapon_killmask") then
+						ply:Give("weapon_killmask", true)
+					end
+					ply:SelectWeapon("weapon_killmask")
+			
+					local wep = ply:GetActiveWeapon()
+					
+					if IsValid(wep) then
+						ply:SetHealth(100)
+						ply:Freeze(true)
+						ply:GodEnable()
+						ply:SetGFreddyImmune(true)
+						if wep.PrimaryAttack then
+							wep:PrimaryAttack(wep)
+						end
 					end
 				end
 				

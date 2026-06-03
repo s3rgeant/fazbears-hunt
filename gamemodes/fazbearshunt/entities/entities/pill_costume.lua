@@ -802,7 +802,6 @@ end
 	
 function ENT:HandleAnimEvent( event, eventTime, cycle, type, options )
 	if self.formTable.animEvent then
-	
 		-- gentoi bullshit compatibility :pray:
 		local eventName = util.GetAnimEventNameByID( event )
 		if eventName:len() <= 0 then eventName = "Step" end

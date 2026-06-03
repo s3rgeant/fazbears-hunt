@@ -105,6 +105,7 @@ if SERVER then
     end)
 
     function BustRotatingDoor(ply, door, fx)
+        ply:SetName("Buster" .. ply:EntIndex())
         local state = door:GetInternalVariable("m_eDoorState")
         if state == 2 then return end
 		
@@ -202,7 +203,6 @@ if SERVER then
     end
 
     function BustEffects(ply, ent, fx)
-        ply:SetName("Buster" .. ply:EntIndex())
         ply:AnimRestartGesture(4, ACT_HL2MP_GESTURE_RANGE_ATTACK_FIST, true)
 
         if fx then

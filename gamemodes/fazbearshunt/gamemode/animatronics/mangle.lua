@@ -155,9 +155,11 @@ pills.register("pill_mangle",{
 				if ply:GetNWBool("_MangleHookReady") then
 					return
 				end
+				
+				if ply:Crouching() then return end
 			
 				if IsFirstTimePredicted() then
-					if (not ply:OnGround() or ply:Crouching()) then return end
+					if not ply:OnGround() or ply:Crouching() then return end
 					--if eyeAng.p > 0 then return end
 				end
 				
@@ -175,9 +177,7 @@ pills.register("pill_mangle",{
 		local groundPly = ply:GetGroundEntity()
 		
 		if IsValid(groundPly) and groundPly:IsPlayer() and groundPly:IsSurvivor() then
-			local victim = ply:GetGroundEntity()
-			victim:TakeDamage(100, ply)
-
+			local victim = groundPly
 			local edata = EffectData()
 			edata:SetOrigin(victim:EyePos())
 			edata:SetEntity(victim)
@@ -185,6 +185,8 @@ pills.register("pill_mangle",{
 			
 			victim:EmitSound("physics/body/body_medium_break3.wav")
 			victim:EmitSound("player/headshot1.wav")
+			
+			victim:TakeDamage(100, ply)
 			
 			mangle_tierUp(ply)
 		end
@@ -496,12 +498,12 @@ hook.Add("FinishMove", "mangle_hook_ready", function( ply, mv )
 		--print(tr.HitNormal.z)
 		
 		if !tr.HitSky and tr.Hit and tr.Entity == game.GetWorld() and tr.HitNormal.z <= 0.29 then
-			local ent = pills.getMappedEnt(ply)
 			if SERVER or CLIENT then
+				local ent = pills.getMappedEnt(ply)
 				local pos
 				--print(tr.HitNormal.z)
-				-- ЗАЦЕП НА СТЕНУ
-				if tr.HitNormal.z >= -0.2 then
+				
+				if tr.HitNormal.z >= -0.2 then -- ЗАЦЕП НА СТЕНУ
 				
 					local vectoradd = Vector(0,0,0)
 				
@@ -613,10 +615,6 @@ hook.Add("FinishMove", "mangle_hook_ready", function( ply, mv )
 					ply:LagCompensation(false)
 					return 
 				end
-				
-				SuppressHostEvents( NULL )
-				victim:TakeDamage(hooktype == "ceiling" and 100 or 75, ply)
-				SuppressHostEvents( ply )
 
 				if victim:IsPlayer() and victim:IsSurvivor() then
 					local edata = EffectData()
@@ -640,8 +638,16 @@ hook.Add("FinishMove", "mangle_hook_ready", function( ply, mv )
 					mangle_tierUp(ply)
 				else
 					ply:LagCompensation(false)
+					
+					SuppressHostEvents( NULL )
+					victim:TakeDamage(hooktype == "ceiling" and 100 or 75, ply)
+					SuppressHostEvents( ply )
 					return
 				end
+				
+				SuppressHostEvents( NULL )
+				victim:TakeDamage(hooktype == "ceiling" and 100 or 75, ply)
+				SuppressHostEvents( ply )
 				
 				ply:SetNWBool("_MangleHookReady", false)
 				ply:SetNWString("_MangleLastHookType", "")
