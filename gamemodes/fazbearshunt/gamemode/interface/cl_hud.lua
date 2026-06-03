@@ -721,6 +721,8 @@ hook.Add("OnContextMenuOpen", "fh_contextmenu", function()
 		local button = contextmenu_options:AddCVar( "Halloween Color Correction", "fh_halloween_cc", "1", "0" )
 	end
 	
+	hook.Run("FHContextMenuOpen", contextmenu_options)
+	
 	local panel = vgui.Create( "DPanel", contextmenu_options )
 	panel:SetSize( 55, 25 )
 	panel:SetBackgroundColor( Color( 255, 255, 255 ) )
@@ -735,6 +737,8 @@ hook.Add("OnContextMenuOpen", "fh_contextmenu", function()
 	
 	local button = contextmenu_options:AddCVar( language.GetPhrase("fazhunt.context.halo_teammates"), "fh_halo_teammates", "1", "0" )
 	local button = contextmenu_options:AddCVar( language.GetPhrase("fazhunt.context.thirperson"), "fh_thirdperson", "1", "0" )
+	
+	hook.Run("FHContextMenuAnimatronicsOpen", contextmenu_options)
 	
 	local myself = LocalPlayer()
 	
