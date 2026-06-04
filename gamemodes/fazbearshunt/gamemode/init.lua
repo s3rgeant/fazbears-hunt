@@ -1323,17 +1323,19 @@ hook.Add("fh_startgame", "FH_UpdateLastKillers", function(roundType, anims)
     SaveLastKillers()
 end)
 
-function fh.GetEarnedKillers(players)
-	if not istable(players) then return {} end
+function fh.GetEarnedKillers(killers)
+	if not istable(killers) then return {} end
 	
+	local players = {}
 	local data = {}
 	local opt_out_people = {}
 	
-	for _, ply in ipairs(players) do
+	for _, ply in ipairs(killers) do
 		if IsValid(ply) then
 			if ply:GetInfoNum("fh_opt_out_anim", 0) == 1 then
 				table.insert(opt_out_people, ply)
-				table.RemoveByValue(players, ply)
+			else
+				table.insert(players, ply)
 			end
 		end
 	end
