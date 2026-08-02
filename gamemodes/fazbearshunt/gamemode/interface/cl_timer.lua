@@ -1,12 +1,13 @@
 -- не смотря на название файла "cl_timer" тут также будет большинство интерфейса
 
-resource.AddFile("resource/fonts/ShareTechMonoRegular_0.ttf")
+resource.AddFile("resource/fonts/sharetechmonoregular_0.ttf")
 
 local timerBg = Material("vgui/timer/timer_bg.png")
 local timerGlow = Material("vgui/timer/time_glow.png")
 
 local fh_draw_timer = CreateClientConVar('fh_draw_timer', 1, true, false, 'Draw Timer?', 0, 1)
 
+local timerStart = 0
 local timerEnd = 0
 local timerSetupEnd = 0
 
@@ -25,9 +26,9 @@ local roundtimer_y_target = 52
 	
 local fh_timer_width = 360
 
-surface.CreateFont("timerFontUpper", { font = "Share Tech Mono Regular", size = 32, extended = true, weight = fh_timer_width, antialias = true, bold = true })
-surface.CreateFont("timerFontBelow", { font = "Share Tech Mono Regular", size = 48, extended = true, weight = fh_timer_width, antialias = true, bold = false })
-surface.CreateFont("timerFontSmall", { font = "Share Tech Mono Regular", size = 24, extended = true, weight = fh_timer_width, antialias = true, bold = true })
+surface.CreateFont("timerFontUpper", { font = "Share Tech Mono", size = 32, extended = true, weight = fh_timer_width, antialias = true, bold = true })
+surface.CreateFont("timerFontBelow", { font = "Share Tech Mono", size = 48, extended = true, weight = fh_timer_width, antialias = true, bold = false })
+surface.CreateFont("timerFontSmall", { font = "Share Tech Mono", size = 24, extended = true, weight = fh_timer_width, antialias = true, bold = true })
 
 local function DrawTimer()
     if not GetConVar("cl_drawhud"):GetBool() or not fh_draw_timer:GetBool() then return end
@@ -35,7 +36,7 @@ local function DrawTimer()
     local timeStartupLeft = math.max(0, timerSetupEnd - CurTime())
 	local timeLeft = timerEnd - CurTime()
 	if timeStartupLeft > 0 then
-		timeLeft = math.max(0, timerEnd - timerSetupEnd)
+		timeLeft = math.ceil(math.max(0, timerEnd - timerSetupEnd))
 	else
 		timeLeft = math.max(0, timeLeft)
 	end
@@ -52,7 +53,17 @@ local function DrawTimer()
 
     draw.RoundedBox(0, x, y, fh_timer_width, redline_w, Color(0, 0, 0, 250))
 
-    draw.RoundedBox(0, x, y, fh_timer_width * (timeLeft / timerTotal), redline_w, Color(136, 0, 0, 255))
+	local progress
+
+	if timeStartupLeft > 0 then
+		progress = 1
+	elseif timerSetupEnd > 0 then
+		progress = math.Clamp(timeLeft / (timerEnd - timerStart - (timerSetupEnd - timerStart)), 0, 1)
+	else
+		progress = math.Clamp(timeLeft / (timerEnd - timerStart), 0, 1)
+	end
+
+	draw.RoundedBox(0, x, y, fh_timer_width * progress, redline_w, Color(136, 0, 0, 255))
 	
 	local timertext = timerTitle .. (timerMode ~= "paused" and "" or " (PAUSED)")
 
@@ -80,8 +91,8 @@ end)
 
 -- #### ТАЙМЕР!!!
 net.Receive("fh_start_lobby_timer", function()
-    local timerDuration = net.ReadFloat()
-	local soundtoplay = net.ReadString()
+    timerStart = net.ReadFloat()
+    timerEnd = net.ReadFloat()
     
     timerTitle = language.GetPhrase("fazhunt.generic.startup")
     timerMode = "lobby"
@@ -90,15 +101,12 @@ net.Receive("fh_start_lobby_timer", function()
 	roundtimer_y_target = 58
 	roundtimer_alpha = 255
 	
-    timerEnd = CurTime() + timerDuration
-	timerTotal = timerDuration
     hook.Add("HUDPaint", "DrawGameTimer", DrawTimer)
-	
-    surface.PlaySound(soundtoplay)
 end)
 
 net.Receive("fh_timer_cutback", function()
-    local timerDuration = net.ReadFloat()
+    timerStart = net.ReadFloat()
+    timerEnd = net.ReadFloat()
 	local soundtoplay = net.ReadString()
     
     timerMode = "game"
@@ -107,8 +115,7 @@ net.Receive("fh_timer_cutback", function()
 	roundtimer_y_target = 58
 	roundtimer_alpha = 255
 	
-    timerEnd = CurTime() + timerDuration
-    timerSetupEnd = CurTime()
+    timerSetupEnd = timerStart
     hook.Add("HUDPaint", "DrawGameTimer", DrawTimer)
 	
     surface.PlaySound(soundtoplay)
@@ -116,16 +123,15 @@ end)
 
 // "ambient/alarms/warningbell1.wav"
 net.Receive("fh_start_game_timer", function()
-    local timerDuration = net.ReadFloat()
+    timerStart = net.ReadFloat()
+    timerEnd = net.ReadFloat()
     local startupDuration = net.ReadFloat()
+	
 	local soundtoplay = net.ReadString()
 	
     timerTitle = language.GetPhrase("fazhunt.generic.round") .. ' ' .. net.ReadString()
-	
-	timerTotal = timerDuration
     
-    timerEnd = CurTime() + timerDuration + startupDuration
-    timerSetupEnd = CurTime() + startupDuration
+    timerSetupEnd = timerStart + startupDuration
 	
 	timer.Create('fh_timer_round_start', startupDuration, 1, function()
 		timerMode = "game"
@@ -169,6 +175,7 @@ net.Receive("ResetTimer", function()
 	
 	toggleScarySound(false)
 	
+	timerStart = 0
 	timerSetupEnd = 0
 	timerEnd = 0
     

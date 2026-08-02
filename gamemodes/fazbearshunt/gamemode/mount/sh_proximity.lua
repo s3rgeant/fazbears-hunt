@@ -169,7 +169,7 @@ else
 			and !bothInSameBlockedTeam
 	end
 	
-	if !timer.Exists("FH_UpdateVoiceChat") then
+	if not timer.Exists("FH_UpdateVoiceChat") then
 		timer.Create("FH_UpdateVoiceChat", 0.25, 0, function()
 			local listener = LocalPlayer()
 

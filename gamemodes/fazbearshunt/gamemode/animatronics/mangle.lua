@@ -88,7 +88,7 @@ pills.register("pill_mangle",{
 	sounds={
 		jump="jump.mp3",
 		land="land.mp3",
-		melee="fnaf2/xscream2.wav",
+		melee=")fnaf2/xscream2.wav",
 	},
 	type="ply",
     camera = {
@@ -131,6 +131,8 @@ pills.register("pill_mangle",{
 	attack={
 		mode="trigger",
 		func=function(ply,ent)
+			if cooldown.Exists(ply, "kill") then return end
+			
 			if IsValid(ply:GetEntityInUse()) then return end
 			
 			if ply:GetNWBool("_MangleHooked") or ply:GetNWBool("_MangleHookReady") then return end
@@ -140,7 +142,7 @@ pills.register("pill_mangle",{
 			local jumpscare = performJumpscare(ply, ent, target, 1.6, "mangle", 70, "v_mangle")
 			
 			if !IsValid(target) or !jumpscare then 
-				AnimatronicBreakProp(ply, ent)
+				if not AnimatronicBreakProp(ply, ent) then cooldown.SetSend(ply, "kill", 0.9) end
 				return 
 			end
 		end
@@ -193,12 +195,8 @@ pills.register("pill_mangle",{
 		
 		local longerStun = ply:GetNWString("_MangleHookReady") and ply:GetNWString("_MangleLastHookType") == ""
 		
-		if ply:WaterLevel() < 2 then
-			if ply._wereJumpingPill or !ply._wereJumpingPill and ply:GetVelocity().z < -270 then
-				if !ply._jumpPosPill or ply._jumpPosPill and ply:GetPos():Distance(ply._jumpPosPill) > 150 then
-					ent:PillAnim(!longerStun and "land" or "land_hard",true)
-				end
-			end
+		if IsGoodLandConditions(ply, ent) then
+			ent:PillAnim(!longerStun and "land" or "land_hard",true)
 		end
 	end,
 	
@@ -457,12 +455,16 @@ hook.Add("FinishMove", "mangle_hook_ready", function( ply, mv )
 		
 		if IsFirstTimePredicted() then
 			START_VELOCITY[ply] = mv:GetVelocity() + (initVelVector * velocityPower) +
-			addVelocity
+				addVelocity
 		end
-
-		mv:SetVelocity(
-			START_VELOCITY[ply]
-		)
+		
+		if START_VELOCITY[ply] then
+			mv:SetVelocity(
+				START_VELOCITY[ply]
+			)
+		else
+			MsgC( Color( 255, 0, 0 ), "[FH Mangle] If you see this, something went wrong." )
+		end
 
 		ply:SetNWBool("_MangleHooked", false)
 		
@@ -497,7 +499,7 @@ hook.Add("FinishMove", "mangle_hook_ready", function( ply, mv )
 		
 		--print(tr.HitNormal.z)
 		
-		if !tr.HitSky and tr.Hit and tr.Entity == game.GetWorld() and tr.HitNormal.z <= 0.29 then
+		if !tr.HitSky and !tr.HitNoDraw and tr.Hit and tr.Entity == game.GetWorld() and tr.HitNormal.z <= 0.29 then
 			if SERVER or CLIENT then
 				local ent = pills.getMappedEnt(ply)
 				local pos

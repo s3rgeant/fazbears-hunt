@@ -1,6 +1,5 @@
 
 -- запоминание за кого играл игронк
-
 local playedkillers = {}
 
 if file.Exists("fh_playedkillers.txt", "DATA") then
@@ -45,17 +44,54 @@ local side_window = Material("vgui/selector/side_window.png")
 local select_button = Material("vgui/selector/select_button.png")
 
 local animatronics 		= {}
-local selector 			= false
+local selector_panel	= false
 local model_viewer 		= false
 local description_panel = false
+local desc_scroll 		= false
 local selectorTitle 	= false
 local grid 				= false
 
 local curSelected = ""
-
 local animTooltipText = ""
+
 surface.CreateFont("animNameFont", { font = "Share Tech Mono Regular", size = 32, extended = true, antialias = true, shadow = true })
 surface.CreateFont("animDescriptionFont", { font = "Share Tech Mono Regular", size = 22, extended = true, antialias = true, shadow = true })
+
+selector = selector or {}
+
+local descriptionPanels = {}
+
+function selector.AddDescriptionPanel(name, panel_data)
+	if !descriptionPanels[name] then descriptionPanels[name] = {} end
+	
+	table.insert(descriptionPanels[name], panel_data)
+end
+
+function selector.ClearDescriptionPanels(name)
+	descriptionPanels[name] = nil
+end
+
+local createdPanels = {}
+local function createDescriptionPanels(name, descScroll)
+	if descriptionPanels[name] then
+		for _, panelInfo in ipairs(descriptionPanels[name]) do
+			if not istable(panelInfo) then continue end
+
+			local newPanel = vgui.Create(panelInfo.class, descScroll)
+			local panelText = nil
+			if panelInfo.setup and isfunction(panelInfo.setup) then
+				panelInfo.setup(newPanel, desc_scroll)
+			end
+			newPanel:Dock( TOP )
+			newPanel:DockMargin( 5, 5, 5, 5 )
+			descScroll:AddItem(newPanel)
+			
+			table.insert(createdPanels, newPanel)
+		end
+	end
+end
+
+hook.Run("FH_SelectorInit")
 
 function draw_killer_selector()
     if not istable(animatronics) then return end
@@ -64,30 +100,30 @@ function draw_killer_selector()
         fh_admin_panel:Remove()
     end
 
-    selector = vgui.Create("DFrame")
-    selector:SetTitle("")
-    selector:SetDraggable(false)
-    selector:ShowCloseButton(false)
-    selector:SetSize(600, 527)
-    selector:Center()
-	selector.Paint=function(self, w, h)
+    selector_panel = vgui.Create("DFrame")
+    selector_panel:SetTitle("")
+    selector_panel:SetDraggable(false)
+    selector_panel:ShowCloseButton(false)
+    selector_panel:SetSize(600, 527)
+    selector_panel:Center()
+	selector_panel.Paint=function(self, w, h)
 		surface.SetDrawColor(255, 255, 255, 255)
 		surface.SetMaterial(selector_window)
 		surface.DrawTexturedRect(0, 0, w, h)
 	end
-	selector.Think=function(delta)
+	selector_panel.Think=function(delta)
         gui.EnableScreenClicker(true)
 	end
 	gui.EnableScreenClicker(true)
 	
-    selector.OnClose = function()
+    selector_panel.OnClose = function()
         gui.EnableScreenClicker(false)
     end
 
 	-- скролл хуйня
-    local scroll = vgui.Create("DScrollPanel", selector)
+    local scroll = vgui.Create("DScrollPanel", selector_panel)
     scroll:SetPos(25, 9)
-    scroll:SetSize(549, 509)
+    scroll:SetSize(549, 513)
 	
 	local sbar = scroll:GetVBar()
 	
@@ -150,8 +186,20 @@ function draw_killer_selector()
 				curSelected = animName
 			end
 			
-			descriptionLabel:SetText(animTooltipText)
-			animNameLabel:SetText(language.SafeGetPhrase(fullname):upper())
+			for _, panel in ipairs(createdPanels) do -- TODO: мейби сделать кеширование?
+				panel:Remove()
+			end
+			
+			if not descriptionPanels[animName] then
+				descriptionLabel:SetText(animTooltipText)
+				animNameLabel:SetText(language.SafeGetPhrase(fullname):upper())
+				
+			else
+				descriptionLabel:SetText("")
+				animNameLabel:SetText("")
+				
+				createDescriptionPanels(animName, desc_scroll)
+			end
 			
 			for k, v in pairs(entiretyOfPills) do
 				if v.name == animName and v.model then
@@ -291,7 +339,7 @@ function draw_killer_selector()
 	model_viewer:SetSize(355, 500)
 	model_viewer:Center()
 	
-	model_viewer:SetX(selector:GetX() + selector:GetWide() + 5)
+	model_viewer:SetX(selector_panel:GetX() + selector_panel:GetWide() + 5)
 	
 	model_viewer.Paint=function(self, w, h)
 		surface.SetDrawColor(255, 255, 255, 255)
@@ -299,9 +347,15 @@ function draw_killer_selector()
 		surface.DrawTexturedRect(0, 0, w, h)
 	end
 	
+		local myself = LocalPlayer()
+		
 	modelpanel = vgui.Create( "DModelPanel", model_viewer )
 	modelpanel:SetSize(300,400)
-	modelpanel:SetModel( LocalPlayer():GetModel() )
+	if IsValid(myself) then
+		modelpanel:SetModel( LocalPlayer():GetModel() )
+	else
+		modelpanel:SetModel( "models/props_farm/scenes/bananana_peel.mdl" )
+	end
     modelpanel:Dock(TOP)
 	
 	modelpanel:SetAmbientLight(Color(155, 80, 80))
@@ -369,7 +423,7 @@ function draw_killer_selector()
 	description_panel:ShowCloseButton(false)
 	description_panel:SetSize(355, 500)
 	description_panel:Center()
-	description_panel:SetX(selector:GetX() - description_panel:GetWide() - 5)
+	description_panel:SetX(selector_panel:GetX() - description_panel:GetWide() - 5)
 	
 	description_panel.Paint = function(self, w, h)
 		surface.SetDrawColor(255, 255, 255, 255)
@@ -377,7 +431,7 @@ function draw_killer_selector()
 		surface.DrawTexturedRect(0, 0, w, h)
 	end
 
-	local desc_scroll = vgui.Create("DScrollPanel", description_panel)
+	desc_scroll = vgui.Create("DScrollPanel", description_panel)
 	desc_scroll:SetPos(15, 15)
 	desc_scroll:SetSize(description_panel:GetWide() - 20, description_panel:GetTall() - 40)
 
@@ -416,13 +470,14 @@ function draw_killer_selector()
 	animNameLabel:SetContentAlignment(8)
 	animNameLabel:SetText("")
 	
+	-- Плашка сверху "Выберите аниматроника"
 	selectorTitle = vgui.Create("DFrame")
 	selectorTitle:SetTitle("")
 	selectorTitle:SetDraggable(false)
 	selectorTitle:ShowCloseButton(false)
 	selectorTitle:SetSize(357, 42)
 	selectorTitle:Center()
-	selectorTitle:SetY(selector:GetY() - selectorTitle:GetTall() - 5)
+	selectorTitle:SetY(selector_panel:GetY() - selectorTitle:GetTall() - 5)
 	
 	selectorTitle.Paint=function(self, w, h)
 		surface.SetDrawColor(255, 255, 255, 255)
@@ -439,8 +494,8 @@ function draw_killer_selector()
 end
 
 local function closeSelector()
-	if IsValid(selector) then 
-		selector:Close()
+	if IsValid(selector_panel) then 
+		selector_panel:Close()
 		model_viewer:Close()
 		description_panel:Close()
 		selectorTitle:Close()
@@ -463,7 +518,7 @@ net.Receive("fh_update_killer_selector", function()
         return
     end
 
-    if IsValid(selector) and IsValid(grid) then
+    if IsValid(selector_panel) and IsValid(grid) then
         for _, v in pairs(grid:GetItems()) do
             if v.name == killer then
 				v.Stolen = true

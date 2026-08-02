@@ -32,8 +32,8 @@ SWEP.Skin = 4
 SWEP.HitDelay = 0.4
 
 SWEP.HitSize = {
-	Min = Vector( -24, -24, -16 ),
-	Max = Vector( 24, 24, 16 )
+	Min = Vector( -20, -20, -16 ),
+	Max = Vector( 20, 20, 16 )
 }
 
 function SWEP:SetupDataTables()
@@ -81,6 +81,7 @@ local PushSound_pills = {
 	"physics/metal/metal_sheet_impact_hard8.wav",
 }
 
+local TASERED_SKIP = 0.8
 function SWEP:DealDamage()
 	local ply = self:GetOwner()
 
@@ -142,9 +143,9 @@ function SWEP:DealDamage()
 	
 	self:SendWeaponAnim(ACT_VM_SWINGHIT)
 		
-	local targetIsAnimatronic = (target:IsPlayer() and target:IsAnimatronic())
+	local targetIsAnimatronic = (target:IsPlayer() and pills.hasMappedEnt(target))
 	local targetIsSurv = (target:IsPlayer() and target:IsSurvivor())
-	local ent = pills.getMappedEnt(target)
+	local ent = target:GetPillCostume()
 	local animsCount = team.NumPlayers( TEAM_PILLS )
 		
 	if targetIsAnimatronic and IsValid(ent) and ent.cloaked then 
@@ -153,15 +154,44 @@ function SWEP:DealDamage()
 	end
 		
 	-- мы увеличиваем урон по аниматроникам если их больше одного
-	local damage = targetIsAnimatronic and math.random(550, 600) + math.max(1, animsCount-1)*15 or math.random(20,30)
+	local damage = targetIsAnimatronic and math.random(550, 600) + (math.max(1, animsCount-1)*15) or math.random(20,30)
 		
 	if targetIsAnimatronic then
-		target:EmitSound(PushSound_pills[math.random(#PushSound_pills)])
+		target:EmitSound(PushSound_pills[math.random(#PushSound_pills)], nil, 90)
 		
-		local fx = EffectData()
-		fx:SetOrigin(tr.HitPos)
-		fx:SetStart(tr.HitPos)
-		util.Effect("cball_explode", fx, true, true)
+		if IsFirstTimePredicted() then
+			ply:LagCompensation(false)
+			
+			local fx = EffectData()
+			fx:SetOrigin(tr.HitPos)
+			fx:SetStart(tr.HitPos)
+			fx:SetNormal(tr.HitNormal)
+			fx:SetEntity(target)
+			fx:SetScale(0.2)
+			fx:SetMagnitude(4)
+			util.Effect("ElectricSpark", fx, true, true)
+		
+			--RPGShotDown (свечение)
+			--ElectricSpark
+			--blood_impact_synth_01_arc_parents
+			
+			ply:LagCompensation(true)
+		end
+		
+		if target.tasered then
+			local stunTimer = "TaserStun" .. target:EntIndex()
+			
+			if timer.Exists(stunTimer) then
+				local timeLeft = timer.TimeLeft(stunTimer)
+				
+				timer.Adjust(stunTimer, timeLeft - TASERED_SKIP)
+			end
+			
+			if IsValid(ent) and ent.anim == "stun" then
+				local cycle = ent:GetCycle()
+				ent:SetCycle(math.min(1, cycle + (TASERED_SKIP/5)))
+			end
+		end
 		
 		if IsValid(ent) then
 			if ent:GetPillName() == "pill_endo02" then

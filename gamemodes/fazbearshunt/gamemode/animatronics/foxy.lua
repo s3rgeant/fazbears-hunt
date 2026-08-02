@@ -69,12 +69,11 @@ pills.register("pill_wfoxy2",{
 		ducked=70,
 	},
 	sounds={
-		gs="fnaf2/xscream2.wav",
 		jump="jump.mp3",
 		regular_land="land.mp3",
 		land="land.mp3",
 		taunt="foxy_laugh.wav",
-		melee="fnaf2/xscream2.wav",
+		melee=")fnaf2/xscream2.wav",
 	},
 	type="ply",
     camera = {
@@ -121,6 +120,8 @@ pills.register("pill_wfoxy2",{
 	attack={
 		mode="trigger",
 		func=function(ply,ent)
+			if cooldown.Exists(ply, "kill") then return end
+			
 			if IsValid(ply:GetEntityInUse()) then return end
 			
 			if ply:GetNWBool("isBlightRushing") or ply:GetNWBool("isBlightBouncing") or ply:GetNWBool("blightRushing") then return end
@@ -130,7 +131,7 @@ pills.register("pill_wfoxy2",{
 			local jumpscare = performJumpscare(ply, ent, target, 1.6, "foxy", 75, "v_foxy")
 			
 			if !IsValid(target) or !jumpscare then 
-				AnimatronicBreakProp(ply, ent)
+				if not AnimatronicBreakProp(ply, ent) then cooldown.SetSend(ply, "kill", 0.9) end
 				return 
 			end
 		end
@@ -161,12 +162,8 @@ pills.register("pill_wfoxy2",{
 	land=function(ply,ent, iw)
 		if ply:GetNWBool("isBlightRushing") or ply:GetNWBool("isBlightBouncing") or ply:GetNWBool("blightRushing") then return end
 		
-		if ply:WaterLevel() < 2 then
-			if (ply._wereJumpingPill or !ply._wereJumpingPill and ply:GetVelocity().z < -270) and !ply.isBlightRushing then
-				if !ply._jumpPosPill or ply._jumpPosPill and ply:GetPos():Distance(ply._jumpPosPill) > 150 then
-					ent:PillAnim("land",true)
-				end
-			end
+		if not ply.isBlightRushing and IsGoodLandConditions(ply, ent) then
+			ent:PillAnim("land",true)
 		end
 		
 		landTripCheck(ply, ent, "foxy")
@@ -334,8 +331,8 @@ function foxyRush(ply, ent)
 	if CLIENT then
 		RemoveRMBHint()
 		
-		net.Start("fh_foxycharge_sync")
-		net.SendToServer()
+		--net.Start("fh_foxycharge_sync")
+		--net.SendToServer()
 	end
 
 	if SERVER then

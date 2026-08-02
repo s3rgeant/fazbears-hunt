@@ -109,7 +109,11 @@ function updateSpawnList(tab)
 	return spws
 end
 
-local ignoredCollisionGroups = {COLLISION_GROUP_DEBRIS_TRIGGER, COLLISION_GROUP_PASSABLE_DOOR, COLLISION_GROUP_WEAPON}
+local ignoredCollisionGroups = {
+	[COLLISION_GROUP_DEBRIS_TRIGGER] = true, 
+	[COLLISION_GROUP_PASSABLE_DOOR] = true, 
+	[COLLISION_GROUP_WEAPON] = true,
+}
 
 local function IsPlayerStuck(ply)
     if !IsValid(ply) then return false end
@@ -118,20 +122,13 @@ local function IsPlayerStuck(ply)
         endpos = ply:GetPos(),
         mins = ply:OBBMins(),
         maxs = ply:OBBMaxs(),
-		filter = function(ent)
-			return ent ~= ply and !table.HasValue(ignoredCollisionGroups, ent:GetCollisionGroup()) and 
-			
-				(ent:IsPlayer() and ent:GetCollisionGroup() ~= COLLISION_GROUP_NONE 
-				and ply:GetCollisionGroup() ~= COLLISION_GROUP_PASSABLE_DOOR) and
-			
-				(ent:IsPlayer() and ent:GetCollisionGroup() ~= COLLISION_GROUP_PLAYER_MOVEMENT)
-				
-		end,
-		mask = MASK_PLAYERSOLID
+		filter = ply,
+		collisiongroup = COLLISION_GROUP_PLAYER,
+		mask = MASK_SOLID
     })
     return tr.Hit
 end
-	
+
 local function QuickIsStuck(ent)
 	if not IsValid(ent) then return false end
 
@@ -252,6 +249,7 @@ function PLAYER:NoPlayerCollide(duration)
 	ply_oldCollisions[self] = self:GetCollisionGroup()
 	
 	self:SetCollisionGroup(COLLISION_GROUP_PASSABLE_DOOR)
+	self:CollisionRulesChanged()
 	
 	timer.Create(timerName, duration, 0, function()
 		if !IsValid(self) or !self:Alive() or self:GetCollisionGroup() ~= COLLISION_GROUP_PASSABLE_DOOR then
@@ -264,6 +262,7 @@ function PLAYER:NoPlayerCollide(duration)
 		
 		if IsValid(self) and !QuickIsStuck(self) then
 			self:SetCollisionGroup(ply_oldCollisions[self])
+			self:CollisionRulesChanged()
 			timer.Remove(timerName)
 		end
 	end)

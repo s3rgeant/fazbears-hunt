@@ -61,6 +61,16 @@ function ENT:Initialize()
 	
 	if CLIENT then
 		ply:SetRenderBounds(-Vector(hull.x / 2, hull.y / 2, 0), Vector(hull.x / 2, hull.y / 2, hull.z + 25))
+		
+		local speed = self.formTable.moveSpeed or {}
+		ply:SetWalkSpeed(speed.walk or 200)
+		ply:SetSlowWalkSpeed(speed.walk or 200)
+		ply:SetRunSpeed(speed.run or speed.walk or 500)
+		
+		--local normal = self:GetUp()
+		--local position = normal:Dot( self:GetPos() )
+		--self:SetRenderClipPlaneEnabled( true )
+		--self:SetRenderClipPlane( normal, position )
 	end
 	
 	self:ResetAngle()
@@ -105,7 +115,7 @@ function ENT:Initialize()
 			if self.formTable.viewmodel.func then
 				local wep = ply:GetActiveWeapon()
 				if IsValid(wep) then
-					self.formTable.viewmodel.func(wep)
+					self.formTable.viewmodel.func(wep, ply, self)
 				end
 			end
 		else
@@ -117,6 +127,7 @@ function ENT:Initialize()
 		else
 			ply:SetCollisionGroup(5)
 		end
+		self:CollisionRulesChanged()
 	
 		if ply:FlashlightIsOn() then
 			ply:Flashlight(false)
@@ -143,7 +154,7 @@ function ENT:Initialize()
 		end
 		
 		if !speed.maxwalk then
-			speed.maxwalk = speed.walk or 200
+			speed.maxwalk = 40
 		end
 	
 		ply:SetJumpPower(self.formTable.jumpPower or 200)
@@ -327,6 +338,14 @@ function ENT:Initialize()
 		if self.formTable.startFunction then
 			self.formTable.startFunction(ply, self)
 		end
+		
+		if self.formTable.initialize then
+			self.formTable.initialize(ply, self)
+		end
+	else
+		if self.formTable.initialize_client then
+			self.formTable.initialize_client(ply, self)
+		end
 	end
 	
 	pills.mapEnt(ply, self)
@@ -349,12 +368,6 @@ function ENT:OnRemove()
 		end
 	end
 	
-	if self.formTable.onRemovePost then
-		if SERVER or CLIENT and ply == LocalPlayer() then
-			self.formTable.onRemovePost(self, self.formTable, ply)
-		end
-	end
-	
 	if SERVER then
 		self:PillLoopStopAll()
 	end
@@ -371,7 +384,8 @@ function ENT:Think()
 	local ply = self:GetPillUser()
 	if not IsValid(self) or not IsValid(ply) then 
 		self:NextThink(CurTime() + fh_pill_update_rate:GetFloat())
-		return 
+		
+		return true
 	end
 	
 	local vel = ply:GetVelocity():Length()
@@ -450,8 +464,12 @@ function ENT:Think()
 		
 		local speedCap = self.formTable.anims.speedCap
 		if speedCap then
-			if speedCap.run and anim == anims["run"] and vel > speedCap.run then
-				self:SetPlaybackRate(math.Clamp(vel / speedCap.run, -4, 12))
+			if speedCap.run and anim == anims["run"] then
+				if vel > speedCap.run then
+					self:SetPlaybackRate(math.Clamp(vel / speedCap.run, -4, 12))
+				else
+					self:SetPlaybackRate(1)
+				end
 			elseif speedCap.walk and anim == anims["walk"] then
 				self:SetPlaybackRate(math.Clamp(vel / speedCap.walk, -4, 12))
 			elseif speedCap.ducked and anim == anims["crouch_walk"] and vel > speedCap.ducked then
@@ -493,9 +511,20 @@ function ENT:Think()
 				moveY = math.Clamp(moveY, -1, 1)
 	
 				local ratio = math.Clamp(velocity:Length2D() / maxSpeed, 0, 1)
+				
+				local targetX = moveX * ratio
+				local targetY = moveY * ratio
+				
+				if not ply:OnGround() then
+					local prevX = self:GetPoseParameter("move_x")
+					local prevY = self:GetPoseParameter("move_y")
+					
+					targetX = Lerp(FrameTime() * 8, prevX, targetX)
+					targetY = Lerp(FrameTime() * 8, prevY, targetY)
+				end
 	
-				self:SetPoseParameter("move_x", moveX * ratio)
-				self:SetPoseParameter("move_y", moveY * ratio)
+				self:SetPoseParameter("move_x", targetX)
+				self:SetPoseParameter("move_y", targetY)
 			else
 				self:SetPoseParameter("move_x", 0)
 				self:SetPoseParameter("move_y", 0)
@@ -529,15 +558,19 @@ function ENT:Think()
 	self:SetPoseParameter("move_yaw", ply:GetPoseParameter("move_yaw"))
 	
 	if self.formTable.aim and CLIENT then
+		local eyeAngles = ply:EyeAngles()
+		
+		if vrmod and vrmod.IsPlayerInVR(ply) then eyeAngles = vrmod.GetHMDAng( ply ) end
+		
 		if self.formTable.aim.xPose then
-			local yaw = math.AngleDifference(ply:EyeAngles().y, self:GetAngles().y)
+			local yaw = math.AngleDifference(eyeAngles.y, self:GetAngles().y)
 			
 			if self.formTable.aim.xInvert then yaw = -yaw end
 			
 			self:SetPoseParameter(self.formTable.aim.xPose, yaw)
 		end
 		if self.formTable.aim.yPose then
-			local pitch = math.AngleDifference(ply:EyeAngles().p, self:GetAngles().p)
+			local pitch = math.AngleDifference(eyeAngles.p, self:GetAngles().p)
 			if self.formTable.aim.yInvert then pitch = -pitch end
 			self:SetPoseParameter(self.formTable.aim.yPose, pitch)
 		end
@@ -678,17 +711,19 @@ if SERVER then
 			ply:SetSequence(ply:LookupSequence(anim))
 			
 			self:ResetSequence(self:LookupSequence(anim))
-			self:SetCycle(0)
+			self:SetCycle(self.forceCycle or 0)
+			self.forceCycle = nil
 			self.animCycle = 0
 		end
 		self.animStart = nil
 	end
 	
-	function ENT:PillAnim(name, freeze)
+	function ENT:PillAnim(name, freeze, cycle)
 		self.anim = name
 		self.animStart = true
 		self.animFreeze = freeze
 		self.animLoop = false
+		self.forceCycle = cycle
 		
 		if freeze then
 			local ply = self:GetPillUser()
@@ -701,6 +736,8 @@ if SERVER then
 			end
 			self:SetFrozen(true)
 		end
+		
+		self:SetNextAnimThink(0)
 	end
 	
 	function ENT:PillAnimTick(name)
@@ -1012,6 +1049,14 @@ function ENT:Draw()
 		return
 	end
 	
+	local myself = LocalPlayer()
+	
+	if ply == myself and vrmod and vrmod.IsPlayerInVR( myself ) then
+		self.IsDrawn = false
+		self:DrawShadow(false)
+		return
+	end
+	
 	--self:FrameAdvance()
 	ply:RemoveAllDecals()
 	
@@ -1032,13 +1077,13 @@ function ENT:Draw()
 		return
 	end
 	
-	if ply == LocalPlayer():GetObserverTarget() 
-	and LocalPlayer():GetViewEntity() == LocalPlayer()
-	and LocalPlayer():GetObserverMode() == OBS_MODE_IN_EYE then
+	if ply == myself:GetObserverTarget() 
+	and myself:GetViewEntity() == myself
+	and myself:GetObserverMode() == OBS_MODE_IN_EYE then
 		return
 	end
 	
-	if ply == LocalPlayer() 
+	if ply == myself
 	and ply:GetViewEntity() == ply
 	and !pills.convars.cl_thirdperson:GetBool() then
 		self.IsDrawn = false
@@ -1055,7 +1100,7 @@ function ENT:Draw()
 	self:DrawModel()
 	self.IsDrawn = true
 	
-	if ply == LocalPlayer() and not invisible then
+	if ply == myself and not invisible then
 		self:DrawShadow(true)
 	end
 end
@@ -1067,7 +1112,7 @@ end
 hook.Add("PrePlayerDraw", "fh_pill_costume_mirrors", function(ply)
     if ply ~= LocalPlayer() then return end
 
-    local ent = pills.getMappedEnt(ply)
+    local ent = ply:GetPillCostume()
     if not IsValid(ent) then return end
     if ent.IsDrawn or ent:GetNoDraw() or ent:GetMaterial() == "models/null" then return end
 
@@ -1118,6 +1163,8 @@ hook.Add("PrePlayerDraw", "fh_pill_costume_mirrors", function(ply)
     if IsValid(cm) then
 		cm:SetParent(ent)
         cm:SetModel(ent:GetModel())
+		
+		if vrmod and vrmod.IsPlayerInVR( ply ) then return end
 		cm:DrawModel()
     end
 end)

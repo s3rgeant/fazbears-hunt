@@ -14,7 +14,6 @@ if SERVER then
 	util.AddNetworkString("fh_plushalert_inrange")
 	util.AddNetworkString("fh_plushalert_outrange")
 	
-	util.PrecacheModel("models/tettris/FNaF/SD/springtrap_clown.mdl")
 	util.PrecacheModel("models/UFMP/FNAF3/Springtrap.mdl")
 	util.PrecacheModel("models/tetTris/FNaF/HW/Plushtrap.mdl")
 end
@@ -37,147 +36,6 @@ hook.Add( "PostCleanupMap", "fh_pill_fnaf3_reset", function( name )
 	
 	spring_enraged = false
 end)
-
-local function chaseVoicelineChecker(ply, ent, name)
-	local index = ply:EntIndex()
-	timer.Create("CheckConditions"..index, 2, 0, function()
-		if not IsValid(ent) then
-			if timer.Exists( "CheckConditions"..index) then
-				timer.Remove("CheckConditions"..index)
-			end
-			if timer.Exists( "ChaseCheck"..index) then
-				timer.Remove("ChaseCheck"..index)
-			end
-			return
-		end
-		
-		chaseCheck(ply, name)
-	end)
-end
-
--- CLOWN
-
-pills.register("pill_clown",{
-	printName="Clown",
-	modelScale="1.2",
-	model="models/tettris/FNaF/SD/springtrap_clown.mdl",
-	anims={
-		default={
-			idle="idle",
-			walk="walk",
-			run="run",
-			jump="jump",
-			glide="glide",
-			dance="dance",
-			crouch="crouch",
-			crouch_walk="crouchmove",
-			stun="stun",
-		},
-		gestures={
-			hit="hit",
-			land="land",
-		},
-	},
-	moveSpeed={
-		walk=110,
-		run=420,
-		ducked=70,
-	},
-    jumpPower=250,
-	
-	sounds={
-		jump="jump.mp3",
-		land="land.mp3",
-		loop_dance="kloun_ebanat.wav",
-		melee=pills.helpers.makeList("fnaf2/xscream2.wav",2),
-	},
-	type="ply",
-    camera = {
-        offset = Vector(0, 0, 90),
-		dist = 150
-    },
-	hull=Vector(32,32,86),
-	duckBy=60,
-	
-	viewmodel={
-		weapon="v_clown"
-	},
-	bloodType=BLOOD_COLOR_MECH,
-	
-	animEvent=function(ply,ent,event)
-		if event == "CLOWN_HIDE_HAMMER" then
-			if ent:LookupBone( "Hammer_Bn" ) then
-				ent:ManipulateBoneScale(ent:LookupBone( "Hammer_Bn" ), Vector(0,0,0) )
-			end
-		elseif event == "CLOWN_SHOW_HAMMER" then
-			if ent:LookupBone( "Hammer_Bn" ) then
-				ent:ManipulateBoneScale(ent:LookupBone( "Hammer_Bn" ), Vector(1,1,1) )
-			end
-		end
-	end,
-	
-	startFunction=function(ply,ent)
-		--ply:SetJumpBoostMultiplier( math.min( getScaledJumpBoost() + 0.1, 1) )
-		-- дабы он баннихопил быстрее игроков в любом случае
-		
-		chaseVoicelineChecker(ply, ent, "clown")
-	end,
-	
-	restore=function(ply,ent)
-		ply:SetJumpBoostMultiplier( getScaledJumpBoost() )
-	end,
-	
-	muteSteps = true,
-	health=10000,
-	movePoseMode="xy",
-	aim = {
-		xPose="aim_yaw",
-		yPose="aim_pitch"
-	},
-
-	noFallDamage=true,
-
-	taunt=function(ply,ent,act)
-		if !ent.NextAct or ent.NextAct and CurTime() > ent.NextAct then
-			if act == ACT_GMOD_TAUNT_DANCE and ent.anim ~= "dance" then
-				if !ply:OnGround() then return end
-
-				ent:PillLoopSound('dance', 0.6)
-				ent:PillAnim("dance", true)
-				ent.ignoreFreeze = true
-				
-				ent.NextAct = CurTime() + 4.5
-				ply:GoPillThirdperson(4.5)
-			end
-		end
-	end,
-	
-	animStopped=function(ply,ent, name)
-		if name == 'dance' then
-			ent:PillLoopStop('dance')
-		end
-	end,
-
-	reload=function(ply,ent)
-		highlight.ByDistance(ply, ent)
-	end,
-	
-	land=function(ply,ent)
-		ent.anim = nil
-		if ply.lobbyFreeze != nil and ply.lobbyFreeze then return end
-		if ply:WaterLevel() < 1 and ply:GetVelocity().z < -100 then
-			ent:PillGesture('land', 1, 2, 0.15, 0.3, 0.06)
-			ent:PillLoopStop('dance')
-		end
-	end,
-	jump=function(ply,ent)
-		ent:PillSound("jump",false)
-	end
-})
-
-
-
-
 
 	-- SPRINGTRAP
 	
@@ -475,12 +333,8 @@ pills.register("pill_springtrap",{
 	land=function(ply,ent)
 		if ply.tasered then return end
 		
-		if ply:WaterLevel() < 2 then
-			if ply._wereJumpingPill or !ply._wereJumpingPill and ply:GetVelocity().z < -270 then
-				if !ply._jumpPosPill or ply._jumpPosPill and ply:GetPos():Distance(ply._jumpPosPill) > 150 then
-					ent:PillAnim("land",true)
-				end
-			end
+		if IsGoodLandConditions(ply, ent) then
+			ent:PillAnim("land",true)
 		end
 	end,
 	jump=function(ply,ent)
@@ -585,12 +439,12 @@ pills.register("pill_plushtrap",{
 			crouch="crouchidle",
 			crouch_walk="crouch",
 			summon="summon",
-			land="land",
 			jump="jump",
 			glide="glide",
 			stun="stun",
 		},
 		gestures={
+			land="land",
 			bite1="bite1",
 			bite2="bite2",
 		},

@@ -1,0 +1,17 @@
+"UnLitGeneric"
+{
+$basetexture "models/Jaspag/fh/MrCupcake/white"
+$bumpmap "models/Jaspag/fh/MrCupcake/flat"
+$surfaceprop metal
+$phong "1"
+$phongexponent "0"
+$phongboost "1"
+$phongfresnelranges "[0.05 0.05 1]"
+$phongalbedotint "1"
+$halflambert "1"
+$nodecal "1"
+$model "1"
+$diffuseexp "1.5"
+$normalmapalphaenvmapmask   "1"
+$nocull 1
+}

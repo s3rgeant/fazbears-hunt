@@ -12,14 +12,16 @@ if ( SERVER ) then
 			return
 		end
 		
-		local mdl = net.ReadString()
+		local mdlName = net.ReadString()
 		local clr = net.ReadVector()
 		
 		waitboys[ply] = CurTime()
 		
 		if isstring(mdl) and mdl:len() > 0 then
 			if !ply:IsAnimatronic() then
-				ply:SetModel(mdl)
+				local modelPath = player_manager.TranslatePlayerModel(mdlName)
+			
+				ply:SetModel(modelPath)
 				ply:SetPlayerColor(clr)
 			end
 		end
@@ -87,10 +89,10 @@ list.Set( "DesktopWindows", "PlayerEditor", {
 
 		ApplyButton.DoClick = function()
 			local model = LocalPlayer():GetInfo( "cl_playermodel" )
-			local modelname = player_manager.TranslatePlayerModel( model )
+			--local modelname = player_manager.TranslatePlayerModel( model )
 			
 			net.Start("FH_ApplyPlayermodel")
-			net.WriteString(modelname)
+			net.WriteString(model)
 			net.WriteVector( Vector( GetConVarString( "cl_playercolor" ) ) )
 			net.SendToServer()
 		end

@@ -51,6 +51,21 @@ if SERVER then
 			net.Send(ply)
 		end
 	end
+	function cooldown.SetSend(ply, name, duration)
+		if not IsValid(ply) then return end
+
+		our_cooldowns[ply] = our_cooldowns[ply] or {}
+		our_cooldowns[ply][name] = CurTime() + duration
+		
+		local cd = cooldown.Get(ply, name)
+		
+		if cd > 0 then
+			net.Start("fh_cooldown_receive")
+			net.WriteString(name)
+			net.WriteFloat(cd)
+			net.Send(ply)
+		end
+	end
 end
 
 if CLIENT then

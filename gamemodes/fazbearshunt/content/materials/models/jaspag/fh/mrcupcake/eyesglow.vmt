@@ -1,0 +1,25 @@
+"VertexLitGeneric"
+{
+$basetexture "models/Jaspag/fh/MrCupcake/cupcake"
+$bumpmap "models/Jaspag/fh/MrCupcake/cupcakebump"
+$phongexponenttexture "models/Jaspag/fh/MrCupcake/cupcakeexponent"
+$surfaceprop metal
+$phong "1"
+$phongexponent "50"
+$phongboost "100"
+$phongfresnelranges "[0.05 0.05 1]"
+$phongalbedotint "1"
+$halflambert "1"
+$nodecal "1"
+$model "1"
+$diffuseexp "1.5"
+$normalmapalphaenvmapmask   "1"
+$nocull 1
+$emissiveBlendEnabled "1"
+$emissiveBlendTexture     "dev/null"
+$emissiveBlendBaseTexture	"models/Jaspag/HW2/MrCupcake/eyesglow"
+$emissiveBlendFlowTexture  "dev/null"
+$emissiveBlendTint "[1 1 1]"
+$emissiveBlendStrength "0.3"
+$emissiveBlendScrollVector "[0 0]"
+}

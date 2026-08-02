@@ -71,16 +71,16 @@ function SWEP:DealDamage()
 	local ply = self:GetOwner()
 	local ent = pills.getMappedEnt(ply)
 	if not IsValid(ent) then return end
+	local shootpos = ply:GetShootPos()
 	
 	local name = (math.Round( self.NextArmHit ) == 1) and "attack1" or "attack2"
+	local now = CurTime()
 	
 	if IsFirstTimePredicted() then
 		self:HandleAnimation(name, 0.6)
-		
-		local now = CurTime()
 	
-		self:SetNextPrimaryFire(now + 1.5)
 		self:SetLastAttack(now)
+		self:SetNextPrimaryFire(now + 1.5)
 		
 		self._ArmCounter = self._ArmCounter + 1
 		self.NextArmHit = util.SharedRandom( "ST_Arm", 1, 2, self._ArmCounter )
@@ -106,16 +106,16 @@ function SWEP:DealDamage()
 	ply:LagCompensation(true)
 	
 	local tr = util.TraceLine({
-		start = ply:GetShootPos(),
-		endpos = ply:GetShootPos() + ply:GetAimVector() * 110,
+		start = shootpos,
+		endpos = shootpos + ply:GetAimVector() * 110,
 		filter = ply,
 		mask = MASK_SHOT_HULL
 	})
 	
 	if not IsValid(tr.Entity) then
 		tr = util.TraceHull({
-			start = ply:GetShootPos(),
-			endpos = ply:GetShootPos() + ply:GetAimVector() * 110,
+			start = shootpos,
+			endpos = shootpos + ply:GetAimVector() * 110,
 			filter = ply,
 			mins = self.HitSize.Min,
 			maxs = self.HitSize.Max,
@@ -171,7 +171,7 @@ function SWEP:DealDamage()
 	
 	local effectData = EffectData()
 	effectData:SetOrigin(tr.HitPos)
-	effectData:SetStart(ply:GetShootPos())
+	effectData:SetStart(shootpos)
 	effectData:SetEntity(tr.Entity or ply)
 	effectData:SetNormal(tr.HitNormal)
 	effectData:SetSurfaceProp(tr.SurfaceProps or 0)
@@ -199,13 +199,24 @@ function SWEP:DealDamage()
 	
 	if target:IsPlayer() and !target:IsAnimatronic() or target:IsNPC() then
 		ply:EmitSound("fnaf3/hit.mp3")
+		
+		if target:GetNW2Bool("KillerObsessed") then
+			net.Abort()
+			
+			self:SetNextPrimaryFire(now + 1)
+	
+			net.Start("fh_cooldown_receive")
+			net.WriteString("attack")
+			net.WriteFloat(1)
+			net.Send(ply)
+		end
 	end
 end
 
 function SWEP:Think()
 	local curtime = CurTime()
 	
-	if self.IsCharging and not self.Owner:KeyDown(IN_ATTACK) then
+	if self.IsCharging and not self:GetOwner():KeyDown(IN_ATTACK) then
         self.IsCharging = false
         self:SetNextMeleeAttack(0)
         self:DealDamage()

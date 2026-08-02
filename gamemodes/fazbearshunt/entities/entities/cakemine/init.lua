@@ -126,7 +126,7 @@ function ENT:OnTakeDamage(dmginfo)
 	local attacker = dmginfo:GetAttacker()
 	local owner = self:GetOwner()
 	
-	if !attacker:IsSurvivor() and IsValid(v) and attacker ~= owner then return end
+	if !attacker:IsSurvivor() and attacker ~= owner then return 0 end
 
     self:TakePhysicsDamage(dmginfo)
 	

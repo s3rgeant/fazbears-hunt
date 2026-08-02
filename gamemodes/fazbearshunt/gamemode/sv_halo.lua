@@ -97,12 +97,13 @@ local function highlight_remove_Timer(maboy, ply, duration)
 	end)
 end
 
+local default_red = Color(255, 0, 0)
 function highlight.Add(maboy, players, duration, color)
 	assert(IsValid(maboy), "Can't highlight players for invalid maboy")
 	assert(players, "Players is nil")
 
 	duration = duration or conVars.halo_time:GetFloat() or 5
-	color = color or Color(255, 0, 0)
+	color = color or default_red
 
 	local sendTbl = {}
 
@@ -122,7 +123,10 @@ function highlight.Add(maboy, players, duration, color)
 
 	if #sendTbl > 0 then
 		net.Start("AddAffectedPlayers")
-		net.WriteTable(sendTbl)
+		net.WriteUInt(#sendTbl, 8)
+		for _, ply in ipairs(sendTbl) do
+			net.WriteEntity(ply)
+		end
 		net.WriteFloat(duration)
 		net.WriteColor(color)
 		net.Send(maboy)

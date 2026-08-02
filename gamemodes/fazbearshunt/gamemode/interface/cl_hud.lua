@@ -40,9 +40,9 @@ local tokens_bg_outline_mat = Material( "vgui/animatronics_hud/abilities/tokens_
 local abil_bg_mat = Material( "vgui/animatronics_hud/abilities/bg.png", "smooth" )
 local abil_bg_outline_mat = Material( "vgui/animatronics_hud/abilities/bg_outline.png", "smooth" )
 
-surface.CreateFont("fh_hud_ability_title", { font = "Share Tech Mono Regular", size = 28 * uiScale, extended = true, weight = 400, antialias = true, bold = true })
-surface.CreateFont("fh_hud_ability_button", { font = "Share Tech Mono Regular", size = 40 * uiScale, extended = true, weight = 400, antialias = true, bold = false })
-surface.CreateFont("fh_hud_ability_time", { font = "Share Tech Mono Regular", size = 16 * uiScale, extended = true, weight = 400, antialias = true, bold = false })
+surface.CreateFont("fh_hud_ability_title", { font = "Share Tech Mono", size = 28 * uiScale, extended = true, weight = 400, antialias = true, bold = true })
+surface.CreateFont("fh_hud_ability_button", { font = "Share Tech Mono", size = 40 * uiScale, extended = true, weight = 400, antialias = true, bold = false })
+surface.CreateFont("fh_hud_ability_time", { font = "Share Tech Mono", size = 16 * uiScale, extended = true, weight = 400, antialias = true, bold = false })
 
 local button_ability_mat = Material( "vgui/animatronics_hud/abilities/button_ability.png", "smooth" )
 local mouse_ability_mat = Material( "vgui/animatronics_hud/abilities/mouse_ability.png", "smooth" )
@@ -51,6 +51,18 @@ hook.Add("HUDShouldDraw", "pk_pill_hideHud", function(name)
 	local myself = LocalPlayer()
 	if IsValid(myself) and (IsValid(myself:GetPill()) or currentKiller:len() > 0) and (name == "CHudHealth" or name == "CHudBattery") then 	return false end
 end)
+
+local function DrawMaterial_RealSize(mat, clr, x, y, scaleW, scaleH)
+	scaleW = scaleW or 1
+	scaleH = scaleH or 1
+	local REAL_w, REAL_h = (mat:GetInt("$realwidth") or 100) * uiScale, (mat:GetInt("$realheight") or 100) * uiScale
+
+	surface.SetMaterial(mat)
+	surface.SetDrawColor(clr.r, clr.g, clr.b, clr.a or 255)
+	surface.DrawTexturedRect(x, y, REAL_w * scaleW, REAL_h * scaleH)
+	
+	return REAL_w, REAL_h
+end
 
 function DrawKillerInterface()
 	if currentKiller == "" or not currentKiller or not GetConVar("cl_drawhud"):GetBool() then return end
@@ -65,18 +77,9 @@ function DrawKillerInterface()
 
 	local circleX = 32 * uiScale
 	local circleY = screenH - avatar_y - (16 * uiScale)
-
-	local circle_width, circle_height = (circle_mat:GetInt("$realwidth") or 100) * uiScale, (circle_mat:GetInt("$realheight") or 100) * uiScale
-
-	surface.SetMaterial(circle_mat)
-	surface.SetDrawColor(hud_color)
-	surface.DrawTexturedRect(circleX, circleY, circle_width, circle_height)
-
-	local circle_outline_mat_width, circle_outline_mat_height = (circle_outline_mat:GetInt("$realwidth") or 100) * uiScale, (circle_outline_mat:GetInt("$realheight") or 100) * uiScale
-
-	surface.SetMaterial(circle_outline_mat)
-	surface.SetDrawColor(hud_color)
-	surface.DrawTexturedRect(circleX, screenH - avatar_y - (16 * uiScale), circle_outline_mat_width, circle_outline_mat_height)
+	
+	local circle_width, circle_height = DrawMaterial_RealSize(circle_mat, hud_color, circleX, circleY)
+	local circle_outline_mat_width, circle_outline_mat_height = DrawMaterial_RealSize(circle_outline_mat, hud_color, circleX, screenH - avatar_y - (16 * uiScale))
 
 	if killerIcon then
 		local mat_width, mat_height = (killerIcon:GetInt("$realwidth") or 100) * uiScale, (killerIcon:GetInt("$realheight") or 100) * uiScale
@@ -147,17 +150,8 @@ function DrawKillerInterface()
 				clr = clr()
 			end
 
-			local abil_bg_width, abil_bg_height = (abil_bg_mat:GetInt("$realwidth") or 100) * uiScale, (abil_bg_mat:GetInt("$realheight") or 100) * uiScale
-
-			surface.SetMaterial(abil_bg_mat)
-			surface.SetDrawColor(hud_color)
-			surface.DrawTexturedRect(abilityX, abilityY, abil_bg_width, abil_bg_height)
-
-			local abil_bg_outline_width, abil_bg_outline_height = (abil_bg_outline_mat:GetInt("$realwidth") or 100) * uiScale, (abil_bg_outline_mat:GetInt("$realheight") or 100) * uiScale
-
-			surface.SetMaterial(abil_bg_outline_mat)
-			surface.SetDrawColor(hud_color)
-			surface.DrawTexturedRect(abilityX, abilityY, abil_bg_outline_width, abil_bg_outline_height)
+			local abil_bg_width, abil_bg_height = DrawMaterial_RealSize(abil_bg_mat, hud_color, abilityX, abilityY)
+			local abil_bg_outline_width, abil_bg_outline_height = DrawMaterial_RealSize(abil_bg_outline_mat, hud_color, abilityX, abilityY)
 
 			local button_ability_width, button_ability_height = (button_ability_mat:GetInt("$realwidth") or 100) * uiScale, (button_ability_mat:GetInt("$realheight") or 100) * uiScale
 			local mouse_ability_width, mouse_ability_height = (mouse_ability_mat:GetInt("$realwidth") or 100) * uiScale, (mouse_ability_mat:GetInt("$realheight") or 100) * uiScale
@@ -685,13 +679,14 @@ net.Receive("fh_net_thinkfast", function()
 	surface.PlaySound('thinkfast.wav')
 	
 	timer.Simple(1.2, function() 
-		LocalPlayer():ScreenFade( SCREENFADE.IN, Color( 255, 255, 255, 255 ), 2, 2 )
-		LocalPlayer():SetDSP(35, false)
+		local myself = LocalPlayer()
+		myself:ScreenFade( SCREENFADE.IN, Color( 255, 255, 255, 255 ), 2, 2 )
+		myself:SetDSP(35, false)
 		
 		hook.Remove("HUDPaint", "fh_thinkfast")
 		
 		timer.Simple(1.5, function()
-			LocalPlayer():SetDSP(35, true)
+			myself:SetDSP(35, true)
 		end)
 	end)
 end)

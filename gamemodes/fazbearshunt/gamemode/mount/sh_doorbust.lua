@@ -44,10 +44,12 @@ if SERVER then
         end
         if GetConVar("bust_windows"):GetBool() and (string.find(surf, "glass") or string.find(surf, "default")) then
             if ent:GetClass() == "func_breakable_surf" then
+				SuppressHostEvents( NULL )
                 ent:Fire("Shatter", "0.5 0.5 " .. ent:BoundingRadius())
                 BustEffects(ply, ent, false)
 				return true
             elseif !ent:IsPlayer() and ent:Health() > 0 and ent:Health() <= ent:GetMaxHealth() then
+				SuppressHostEvents( NULL )
                 ent:TakeDamage(10, ply, ent)
                 ent:EmitSound("Glass.Strain")
                 BustEffects(ply, ent, false)
@@ -129,7 +131,9 @@ if SERVER then
 		PushPlayersFromDoor(door, ply)
 		
 		timer.Simple(0.1, function()
-			door:SetKeyValue("opendir", oldDir)
+			if IsValid(door) then
+				door:SetKeyValue("opendir", oldDir)
+			end
 		end)
 
 		timer.Simple(0.3, function()
@@ -139,7 +143,7 @@ if SERVER then
 			end
 		end)
 		
-		bustedDoors[door] = CurTime() + 0.1
+		bustedDoors[door] = CurTime() + engine.TickInterval()
 
         if not fx then return end
         BustEffects(ply, door, true)
@@ -157,7 +161,7 @@ if SERVER then
 		door:Fire("Lock", "", 0)
         PushPlayersFromDoor(door, ply)
 		
-		bustedDoors[door] = CurTime() + 0.1
+		bustedDoors[door] = CurTime() + engine.TickInterval()
     end
 
     function BustFuncDoor(ply, door, fx)
@@ -196,7 +200,7 @@ if SERVER then
 			end
 		end)
 		
-		bustedDoors[door] = CurTime() + 0.1
+		bustedDoors[door] = CurTime() + engine.TickInterval()
 
         if not fx then return end
         BustEffects(ply, door, true)

@@ -61,8 +61,10 @@ end)
 
 hook.Add( "SetupPlayerVisibility", "fh_axe_visibility", function( ply, viewent )
 	for _, sex in player.Iterator() do
-		if sex ~= ply and (sex:GetNW2Bool("KillerObsessed") or ply:GetNW2Bool("KillerObsessed"))then
-			AddOriginToPVS(sex:GetPos())
+		if sex ~= ply and (sex:GetNW2Bool("KillerObsessed") or ply:GetNW2Bool("KillerObsessed")) then
+			if viewent:IsValid() and not viewent:TestPVS(sex) then
+				AddOriginToPVS(sex:GetPos())
+			end
 		end
 	end
 end)
@@ -70,7 +72,7 @@ end)
 hook.Add( "PlayerSpawn", "fh_axe_anim_spawn", function( ply )
 	if ply:GetNW2Bool("KillerObsessed") then
 		ply:SetNW2Bool("KillerObsessed", false)
-		ply:SetDSP(0)
+		ply:SetDSP(1)
 	end
 	if ply:GetNW2Bool("KillerMaskEquiped") then
 		ply:SetNW2Bool("KillerMaskEquiped", false)
@@ -84,7 +86,7 @@ end)
 hook.Add("PillApply", "fh_axe_joinpill", function(ply, name)
 	if ply:GetNW2Bool("KillerObsessed") then
 		ply:SetNW2Bool("KillerObsessed", false)
-		ply:SetDSP(0)
+		ply:SetDSP(1)
 	end
 	if ply:GetNW2Bool("KillerMaskEquiped") then
 		ply:SetNW2Bool("KillerMaskEquiped", false)
@@ -108,7 +110,7 @@ local survKillHealth = 12
 hook.Add( "PlayerDeath", "fh_axe_anim_death", function( ply, inflictor, attacker )
 	if ply:GetNW2Bool("KillerObsessed") then
 		ply:SetNW2Bool("KillerObsessed", false)
-		ply:SetDSP(0)
+		ply:SetDSP(1)
 	end
 	if ply:GetNW2Bool("KillerMaskEquiped") then
 		ply:SetNW2Bool("KillerMaskEquiped", false)

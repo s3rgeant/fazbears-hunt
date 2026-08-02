@@ -33,6 +33,8 @@ PLAYER.UseVMHands			= true		-- Uses viewmodel hands
 --
 function PLAYER:SetupDataTables()
 
+	self.Player:NetworkVar( "Entity", 0, "PillCostume" )
+	self.Player:NetworkVar( "Entity", 1, "ActualPillCostume" )
 	BaseClass.SetupDataTables( self )
 
 end
@@ -71,20 +73,21 @@ end
 
 
 function PLAYER:SetModel()
-	local cl_playermodel = self.Player:GetInfo( "cl_playermodel" )
+	local ply = self.Player
+	local cl_playermodel = ply:GetInfo( "cl_playermodel" )
 	local modelname = player_manager.TranslatePlayerModel( cl_playermodel )
 	util.PrecacheModel( modelname )
-	self.Player:SetModel( modelname )
+	ply:SetModel( modelname )
 
-	local skin = self.Player:GetInfoNum( "cl_playerskin", 0 )
-	self.Player:SetSkin( skin )
+	local skin = ply:GetInfoNum( "cl_playerskin", 0 )
+	ply:SetSkin( skin )
 
-	local bodygroups = self.Player:GetInfo( "cl_playerbodygroups" )
+	local bodygroups = ply:GetInfo( "cl_playerbodygroups" )
 	if ( bodygroups == nil ) then bodygroups = "" end
 
 	local groups = string.Explode( " ", bodygroups )
-	for k = 0, self.Player:GetNumBodyGroups() - 1 do
-		self.Player:SetBodygroup( k, tonumber( groups[ k + 1 ] ) or 0 )
+	for k = 0, ply:GetNumBodyGroups() - 1 do
+		ply:SetBodygroup( k, tonumber( groups[ k + 1 ] ) or 0 )
 	end
 
 end

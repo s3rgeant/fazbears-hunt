@@ -1,11 +1,31 @@
 AddCSLuaFile()
 
-endo = endo or {}
-
-local playersHoldingRightClick = {}
-local grabbedPlayers = {}
 resource.AddFile("sound/grab_player.wav")
 resource.AddFile("sound/throw_player.wav")
+
+endo = endo or {}
+
+local endoAbilities = {}
+function endo.registerAbility(abilityName, killer, func, startFunc)
+    assert(abilityName, "[endo] Ability name is required")
+    assert(killer, "[endo] Killer name is required")
+    assert(func, "[endo] Ability function is required")
+	
+	endoAbilities[abilityName] = {
+		killer = killer,
+		func = func,
+		startFunc = startFunc,
+	}
+end
+
+local function endoApplyAbility(ply, ent, ability)
+	if !endoAbilities[ability] then return end -- Не существует способности
+
+	local data = ent.formTable
+	if !data then return end
+	
+	--
+end
 
 if SERVER then
 	util.PrecacheModel("models/mountroid/thudner/hw withered pack/endo02.mdl")
@@ -16,15 +36,17 @@ local endo_stalk_movement = {120, 600, 75, 260} -- сталкер дохуя
 
 local function endoRageChanges(ply, ent, target)
 	ent:SetSpeed(unpack(endo_stalk_movement))
+	ent:ReplaceAnimation("run", "ragerun")
 end
 
 local function norageChanges(ply, ent, target)
 	if IsValid(ent) then
 		ent:SetSpeed(unpack(endo_default_movement))
+		ent:ReplaceAnimation("run", "run")
 	end
 end
 
-pills.register("pill_endo02",{
+pills.register("pill_endo02", {
 	printName="Endo02",
 	model="models/mountroid/thudner/hw withered pack/endo02.mdl",
 	type="ply",
@@ -32,15 +54,13 @@ pills.register("pill_endo02",{
 		
 	options=function() return {
 		["default"] = {
-			bodyGroups = { ["Ears"] = 1 },
 			skin = 1,
 		},
 		["halloween"] = {
-			bodyGroups = { ["Ears"] = 1, ["Eyes"] = 4 },
+			bodyGroups = { ["Eyes"] = 4 },
 			skin = 1,
 		},
 		["christmas"] = {
-			bodyGroups = { ["Ears"] = 1 },
 			skin = 1,
 		},
 	} end,
@@ -75,7 +95,7 @@ pills.register("pill_endo02",{
 	sounds={
 		jump="jump.mp3",
 		land="land.mp3",
-		melee="fnaf2/xscream2.wav",
+		melee=")fnaf2/xscream2.wav",
 	},
     camera = {
         offset = Vector(0, 0, 96),
@@ -139,6 +159,8 @@ pills.register("pill_endo02",{
 	attack={
 		mode="trigger",
 		func=function(ply,ent)
+			if cooldown.Exists(ply, "kill") then return end
+			
 			if IsValid(ply:GetEntityInUse()) then return end
 			
 			local target = FindNearestPlayer(ply:EyePos(), 125, ply, 36)
@@ -146,7 +168,7 @@ pills.register("pill_endo02",{
 			local jumpscare = performJumpscare(ply, ent, target, 1.6, "endo", 52, "v_endo")
 			
 			if !IsValid(target) or !jumpscare then 
-				AnimatronicBreakProp(ply, ent)
+				if not AnimatronicBreakProp(ply, ent) then cooldown.SetSend(ply, "kill", 0.9) end
 				return 
 			end
 		end
@@ -161,12 +183,8 @@ pills.register("pill_endo02",{
 	},
 	
 	land=function(ply,ent)
-		if ply:WaterLevel() < 2 then
-			if ply._wereJumpingPill or !ply._wereJumpingPill and ply:GetVelocity().z < -270 then
-				if !ply._jumpPosPill or ply._jumpPosPill and ply:GetPos():Distance(ply._jumpPosPill) > 150 then
-					ent:PillAnim("land",true)
-				end
-			end
+		if IsGoodLandConditions(ply, ent) then
+			ent:PillAnim("land",true)
 		end
 		
 		landTripCheck(ply, ent, "endo")
@@ -183,6 +201,9 @@ pills.register("pill_endo02",{
 		ent:PillSound("jump",false)
 	end
 })
+
+local playersHoldingRightClick = {}
+local grabbedPlayers = {}
 
 local grabbed_stat = {}
 
@@ -203,7 +224,7 @@ function endo.grabNeareastPlayer(ply, ent)
 		
 		ply:EmitSound("grab_player.wav")
 		
-		if ent.formTable.name == "pill_endo02" then
+		if ent:GetPillName() == "pill_endo02" then
 			if math.random(1,10) > 2 then
 				playVoiceline("endo", 'grab', ply, 0.2)
 			end
@@ -318,7 +339,7 @@ function endo.releasePlayer(ply, noVoiceline)
 		local direction = (ply:EyeAngles():Forward() * 50):GetNormalized()
 		target:SetVelocity(direction * 800)
 	
-		ply:SetCollisionGroup(COLLISION_GROUP_PASSABLE_DOOR)
+		ply:NoPlayerCollide(1)
 		target:SetCollisionGroup(COLLISION_GROUP_PASSABLE_DOOR)
 		
 		hook.Run("fh_endo_release", ply, target)
@@ -336,7 +357,6 @@ function endo.releasePlayer(ply, noVoiceline)
 		ply:SetCanZoom(true)
 	
 		target:RepeatRestoreCollision(0.5)
-		ply:RepeatRestoreCollision(0.5)
 	end
 	
 	playersHoldingRightClick[ply] = nil
@@ -358,19 +378,6 @@ hook.Add("PlayerSpawn", "endo_release", grabbies)
 hook.Add("PlayerDisconnected", "endo_release", grabbies)
 hook.Add("PostPlayerDeath", "endo_release", grabbies)
 hook.Add("PillApply", "endo_release", grabbies)
-
-local endoAbilities = {}
-function endo.registerAbility(abilityName, killer, func, startFunc)
-    assert(abilityName, "[endo] Ability name is required")
-    assert(killer, "[endo] Killer name is required")
-    assert(func, "[endo] Ability function is required")
-	
-	endoAbilities[abilityName] = {
-		killer = killer,
-		func = func,
-		startFunc = startFunc,
-	}
-end
 	
 hook.Add("PlayerNoClip", "endo_targets_noclip_handle", function(ply, desiredState)
 	if grabbedPlayers[ply] then
@@ -384,9 +391,7 @@ end)
 
 --[[
 	OLD Endo Pickup Stuff :)))
-]]--
---[[
-]]--
+	
 hook.Add("OnPlayerPhysicsDrop", "fh_endo_prop_drop", function(ply, ent, thrown)
 	local puppet = pills.getMappedEnt(ply)
 	if !IsValid(puppet) then return end
@@ -479,7 +484,7 @@ if CLIENT then
 		end
 	end)
 end
---[[ ]]--
+]]--
 
 local nullvector = Vector(0,0,0)
 local endo_kills = 0

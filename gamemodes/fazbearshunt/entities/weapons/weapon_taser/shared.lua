@@ -13,6 +13,10 @@ game.AddAmmoType( {
 } )
 
 SWEP.PrintName = "#weapon_taser"
+if CLIENT then
+	SWEP.WepSelectIcon = surface.GetTextureID( "weapons/taser" )
+end
+SWEP.DrawWeaponInfoBox = false
 
 SWEP.Spawnable = true
 SWEP.Slot = 1
@@ -33,9 +37,6 @@ SWEP.ViewModel	= "models/fh/weapons/c_taser.mdl"
 SWEP.ViewModelFOV = 70
 SWEP.WorldModel = "models/realistic_police/taser/w_taser.mdl"
 
-SWEP.MinHitbox = Vector(-20,-20,-12)
-SWEP.MaxHitbox = Vector(20,20,12)
-
 function SWEP:Initialize()
     self:SetHoldType("pistol")
 	self.Weapon:SetClip1( 100 )
@@ -49,17 +50,13 @@ if SERVER then
     util.AddNetworkString("StunEffect_Shake")
 end
 
-local has_tasered_vl = {"pill_wfreddy2", "pill_wbonnie2", "pill_wchica2", 
-	"pill_wfoxy2", "pill_endo02", "pill_clown", "pill_plushtrap",
-	"pill_mangle", "pill_toychica", "bear5_main"}
-
+local mins = Vector(-10,-10,-10)
+local maxs = Vector(10,10,10)
 function SWEP:PrimaryAttack()
-
     local owner = self:GetOwner()
     if !IsValid(owner) then return end
 	
-	local wait = 60
-	local max_anims = 10 -- на всякий случай чтобы не перегрузить сервер, в любом случае аниматроников обычно немного
+	if self:Clip1() < 100 then return end
 	
 	self:SendWeaponAnim( ACT_VM_PRIMARYATTACK )
 	
@@ -77,36 +74,37 @@ function SWEP:PrimaryAttack()
 		end
 	})
 	
-	if SERVER then
-		for anim, _ in pairs(animatronics) do
-			local distance, nearest, linedist = util.DistanceToLine( shootPos, tr.HitPos, anim:GetPos() + anim:OBBCenter() )
-			
-			if distance > 100 then continue end
-			
-			local trah = util.TraceLine({
-				start = nearest,
-				endpos = anim:GetPos() + anim:OBBCenter(),
-				filter = function(ent)
-					return ent ~= owner and !ent:IsPlayer()
-				end
-			})
-			
-			if trah.Hit then continue end
-			
-			if anim:Alive() and !anim.tasered and !anim.lobbyFreeze then
-			
-				wait = 90
-				
-				TaseAnimatronic(anim)
-				
-				max_anims = max_anims - 1
-				
-				if max_anims == 0 then break end
+	if not IsValid(tr.Entity) then
+		tr = util.TraceHull({
+			start = shootPos,
+			endpos = endPos,
+			mins = mins,
+			maxs = maxs,
+			mask = MASK_SHOT_HULL,
+			filter = function(ent)
+				return ent ~= owner and (ent:IsPlayer() and ent:Team() ~= owner:Team())
 			end
-		end
+		})
 	end
 	
-	debugoverlay.Box(tr.HitPos, self.MinHitbox, self.MaxHitbox, 3, Color(255, 0, 0, 200))
+	local target = tr.Entity
+	
+	local wait = 25
+	if SERVER then
+		if target:IsPlayer() and target:IsAnimatronic() then
+			if target:Alive() and not target.tasered and not target.lobbyFreeze then
+				wait = 65
+				TaseAnimatronic(target)
+				stats.Add(owner, "tasered", 1)
+			end
+		end
+		
+		timer.Create("taser" .. owner:EntIndex(), wait / 100, 100, function()
+			if IsValid(self) and self:Clip1() < 100 then
+				self:SetClip1( self:Clip1() + 1 )
+			end
+		end)
+	end
 
     self:EmitSound('weapons/tasergun/shoot.mp3')
     local hitPos = tr.HitPos or endPos
@@ -117,11 +115,7 @@ function SWEP:PrimaryAttack()
 	util.Effect("cball_explode", fx)
 
 	owner:LagCompensation(false)
-	self.Weapon:SetClip1( 0 )
-	
-	if SERVER and wait == 90 then
-		stats.Add(owner, "tasered", 1)
-	end
+	self:SetClip1( 0 )
 	
 	owner:SetAnimation(PLAYER_ATTACK1)
 	
@@ -140,11 +134,6 @@ function SWEP:PrimaryAttack()
 	end
 	
 	self:SetNextPrimaryFire(CurTime() + wait)
-	timer.Create("taser" .. owner:EntIndex(), wait / 100, 100, function()
-		if IsValid(self) then
-			self.Weapon:SetClip1( self.Weapon:Clip1() + 1 )
-		end
-	end)
 end
 
 function SWEP:SecondaryAttack()
@@ -179,11 +168,11 @@ net.Receive("StunEffect_Shake", function()
 end)
 
 function TaseAnimatronic(ent)
-	if hook.Run("FH_HandleTaserHit", ent) == false then return end
-
 	local puppet = pills.getMappedEnt(ent)
 	
 	if !IsValid(puppet) then return end
+	
+	if hook.Run("FH_HandleTaserHit", ent, puppet) == false then return end
 	
 	local formtbl = puppet.formTable
 	local movespeed = formtbl.moveSpeed
@@ -195,11 +184,14 @@ function TaseAnimatronic(ent)
 		ent:DropToFloor()
 		
 		if IsValid(puppet) then
+			local stunTimer = "TaserStun" .. ent:EntIndex()
 			if formtbl.name == "pill_springtrap" then
+				puppet:PillGesture('stun', 3, 1, 0, 0.3)
+				
 				ent:SetWalkSpeed(60)
 				ent:SetRunSpeed(60)
 				ent:SetSlowWalkSpeed(60)
-				timer.Simple(5, function()
+				timer.Create(stunTimer, 5, 1, function()
 					if IsValid(ent) then
 						if IsValid(puppet) then
 							ent:SetRunSpeed(movespeed.run)
@@ -211,12 +203,13 @@ function TaseAnimatronic(ent)
 				end)
 			else
 				ent:Freeze(true)
-				timer.Simple(5, function()
+				timer.Create(stunTimer, 5, 1, function()
 					if IsValid(ent) then
 						ent:Freeze(false) 
 						ent.tasered = false
 					end
 				end)
+				playVoiceline(killers.GetName(formtbl.name), 'tasered', ent, 0.05)
 				
 				if ent.jumpscaring then
 					local poorguy = ent.jumpscaring
@@ -227,30 +220,21 @@ function TaseAnimatronic(ent)
 					ent.jumpscaring = nil
 				end
 				
+				if formtbl == "pill_endo02" then
+					endoRelease(ent)
+				end
+				
+				puppet:PillAnim("stun", true)
 				puppet:SetUseForceAngles(false)
 				timer.Remove("FH_JumpscareKill_" .. ent:EntIndex())
 			end
+			puppet:EmitSound('weapons/tasergun/active_stun.mp3')
 		end
 	
 		net.Start("StunEffect_Shake")
 		net.Send(ent)
 	
 		ent:ScreenFade(SCREENFADE.IN, Color(255, 255, 255, 128), 2, 2)
-		
-		if IsValid(puppet) then
-			if formtbl.name == "pill_springtrap" then
-				puppet:PillGesture('stun', 3, 1, 0, 0.3)
-			else
-				puppet:PillAnim("stun", true)
-				if table.HasValue(has_tasered_vl, formtbl.name) then
-					playVoiceline(killers.getAll()[formtbl.name].name, 'tasered', ent, 0.05)
-				end
-			end
-			if formtbl == "pill_endo02" then
-				endoRelease(ent)
-			end
-			puppet:EmitSound('weapons/tasergun/active_stun.mp3')
-		end
 	end
 	
 	if !IsValid(puppet) then
@@ -262,9 +246,9 @@ function TaseAnimatronic(ent)
 	fx:SetStart(ent:GetPos())
 	fx:SetMagnitude(10)
 	fx:SetEntity(puppet)
-	util.Effect("teslaHitBoxes", fx)
+	util.Effect("teslaHitBoxes", fx, true, true)
 	
-	hook.Run("SuccessTaserHit", ent, formtbl.name)
+	hook.Run("SuccessTaserHit", ent, puppet)
 end
 
 hook.Add( "PlayerShouldTakeDamage", "fh_tasered_cant_deal_damage", function( ply, attacker )

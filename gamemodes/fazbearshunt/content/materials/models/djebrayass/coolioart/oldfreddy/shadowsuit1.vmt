@@ -11,7 +11,11 @@
 	"$phongtint"	"[216 95 255]"
 	"$phongfresnelranges"	"[0.05 0.5 1]"
 	"$phongalbedotint" "1"
+	
+	"$rimlight" "1"
+	"$rimlightexponent" "50"
+	"$rimlightboost" ".02"	
 
-$halflambert 0
-$diffuseexp 1.5
+	$halflambert 0
+	$diffuseexp 1.5
 }

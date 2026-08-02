@@ -1,0 +1,11 @@
+VertexLitGeneric
+{
+	$basetexture "models/weapons/vondaram/tablet/wszystko_diffuse"
+	$bumpmap "models/weapons/vondaram/tablet/wszystko_normal"
+	$surfaceprop Plastic
+
+	$phong 1
+	$phongexponenttexture "models/weapons/vondaram/tablet/wszystko_phongexp"
+	$phongfresnelranges "[0.2 0.6 1]"
+	$phongboost 1.66
+}

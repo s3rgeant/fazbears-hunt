@@ -46,7 +46,7 @@ function SWEP:SetupAnimations()
 end
 
 function SWEP:PrimaryAttack()
-	local ply = self.Owner
+	local ply = self:GetOwner()
 	local ent = pills.getMappedEnt(ply)
 	
 	if !IsValid(ent) then return end
@@ -63,15 +63,17 @@ function SWEP:PrimaryAttack()
 	end
 	local now = CurTime()
 	
-	self:SetNextPrimaryFire(now + self.AttackDelay)
-	self:SetNextSecondaryFire(now + self.AttackDelay)
-	self:SetNextMeleeAttack( now + self.HitDelay )
+	if SERVER then
+		self:SetNextPrimaryFire(now + self.AttackDelay)
+		self:SetNextSecondaryFire(now + self.AttackDelay)
+		self:SetNextMeleeAttack( now + self.HitDelay )
 	
-	self:SetLastAttack(now)
+		self:SetLastAttack(now)
+	end
 end
 
 function SWEP:SecondaryAttack()
-	local ply = self.Owner
+	local ply = self:GetOwner()
 	local ent = pills.getMappedEnt(ply)
 	
 	if !IsValid(ent) then return end
@@ -83,17 +85,20 @@ function SWEP:SecondaryAttack()
 	end
 	local now = CurTime()
 	
-	self:SetNextPrimaryFire(now + self.CritAttackDelay)
-	self:SetNextSecondaryFire(now + self.CritAttackDelay)
-	self:SetNextMeleeAttack( now + self.CritHitDelay )
+	if SERVER then
+		self:SetNextPrimaryFire(now + self.CritAttackDelay)
+		self:SetNextSecondaryFire(now + self.CritAttackDelay)
+		self:SetNextMeleeAttack( now + self.CritHitDelay )
 	
-	self:SetLastAttack(now)
+		self:SetLastAttack(now)
+	end
 end
 
 function SWEP:DealDamage()
-    local ply = self.Owner
+	local ply = self:GetOwner()
     local ent = pills.getMappedEnt(ply)
     if not IsValid(ent) then return end
+	local shootpos = ply:GetShootPos()
 	
 	if SERVER then
 		ent:PillGesture('attack', 2, 1, 0.1, 0.3)
@@ -107,16 +112,16 @@ function SWEP:DealDamage()
     ply:LagCompensation(true)
 
     local tr = util.TraceLine({
-        start = ply:GetShootPos(),
-        endpos = ply:GetShootPos() + ply:GetAimVector() * 110,
+        start = shootpos,
+        endpos = shootpos + ply:GetAimVector() * 110,
         filter = ply,
         mask = MASK_SHOT_HULL
     })
 
     if not IsValid(tr.Entity) then
         tr = util.TraceHull({
-            start = ply:GetShootPos(),
-            endpos = ply:GetShootPos() + ply:GetAimVector() * 110,
+            start = shootpos,
+            endpos = shootpos + ply:GetAimVector() * 110,
             filter = ply,
             mins = self.HitSize.Min,
             maxs = self.HitSize.Max,
@@ -186,7 +191,7 @@ function SWEP:DealDamage()
 
     local effectData = EffectData()
     effectData:SetOrigin(tr.HitPos)
-    effectData:SetStart(ply:GetShootPos())
+    effectData:SetStart(shootpos)
     effectData:SetEntity(tr.Entity or ply)
     effectData:SetNormal(tr.HitNormal)
     effectData:SetSurfaceProp(tr.SurfaceProps or 0)

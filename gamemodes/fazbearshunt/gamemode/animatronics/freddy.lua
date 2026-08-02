@@ -85,6 +85,10 @@ FREDDY.anims={
 	},
 	gestures={
 		melee="melee",
+		
+		damaged1="damaged1",
+		damaged2="damaged2",
+		damaged3="damaged3",
 	},
 }
 FREDDY.moveSpeed={
@@ -107,6 +111,7 @@ end
 FREDDY.restore=function(ply,ent)
 	ply._isStalkingActive = nil
 end
+local upabit = Vector(0,0,10)
 FREDDY.moveMod=function(ply, ent, mv, cmd)
 	if SERVER and stalkers[ply] and ply:IsSprinting() then
 		if ply._breakPropAsAnimTime and ply._breakPropAsAnimTime > CurTime() then
@@ -115,16 +120,19 @@ FREDDY.moveMod=function(ply, ent, mv, cmd)
 		local cooldown = 0.8
 		
 		local mins = ply:OBBMins()
+		mins.z = 50
 		local maxs = ply:OBBMaxs()
+		maxs.z = 50
 	
 		local startpos = ply:GetPos()
 		local dir = ply:GetForward()
 		
 		local tr = util.TraceHull( {
-			start = startpos,
-			endpos = startpos + dir * 120,
+			start = startpos + upabit,
+			endpos = startpos + dir * 120, 
 			maxs = maxs,
 			mins = mins,
+			collisiongroup = ply:GetCollisionGroup(),
 			filter = ply
 		} )
 		
@@ -168,6 +176,7 @@ end
 FREDDY.attack={
 	mode="trigger",
 	func=function(ply,ent)
+		if cooldown.Exists(ply, "kill") then return end
 		if IsValid(ply:GetEntityInUse()) then return end
 		local target = FindNearestPlayer(ply:EyePos(), 125, ply, 36)
 		
@@ -179,7 +188,7 @@ FREDDY.attack={
 		local jumpscare = performJumpscare(ply, ent, target, 1.6, "freddy", 50, "v_freddy")
 		
 		if !IsValid(target) or !jumpscare then 
-			AnimatronicBreakProp(ply, ent)
+			if not AnimatronicBreakProp(ply, ent) then cooldown.SetSend(ply, "kill", 0.9) end
 			return 
 		end
 	end
@@ -201,18 +210,14 @@ FREDDY.reload=function(ply,ent)
 end
 
 FREDDY.land=function(ply,ent)
-	if ply:WaterLevel() < 2 then
-		if ply._wereJumpingPill or !ply._wereJumpingPill and ply:GetVelocity().z < -270 and ent.anim ~= 'stalk' then
-			if !ply._jumpPosPill or ply._jumpPosPill and ply:GetPos():Distance(ply._jumpPosPill) > 150 then
-				ent:PillAnim("land",true)
-			end
-		end
+	if ent.anim ~= 'stalk' and IsGoodLandConditions(ply, ent) then
+		ent:PillAnim("land",true)
 	end
 	landTripCheck(ply, ent, "freddy")
 end
 
 FREDDY.onRemove=function(ent,formtable, ply)
-	if CLIENT then return end
+	if CLIENT then wfreddy_stalker_door_halo_OFF() return end
 	
 	noMoreStalk(ply)
 
@@ -223,8 +228,6 @@ FREDDY.onRemove=function(ent,formtable, ply)
 	net.Start('fh_sound_stop')
 	net.WriteString('freddy_raged2_looped.wav')
 	net.Broadcast()
-	
-	ply:SendLua("wfreddy_stalker_door_halo_OFF()")
 end
 
 pills.register("pill_wfreddy2", FREDDY)
@@ -254,8 +257,6 @@ function startBlindRage(ply, ent, succFunc, endFunc)
 	smoothLookAt(ply, target)
 	ent:PillAnim("stalk", true)
 	ply:SetFOV(60, 8)
-
-	if math.random(1, 10) > 4 then playVoiceline('freddy', 'focus', ply, 0.1) end
 
 	net.Start('fh_adv_sound_play')
 	net.WriteString('freddy_stalking.wav')
@@ -597,10 +598,8 @@ hook.Add("FuncDoorBust", "fh_blindrage_doorbust", function(ply, door)
 end)
 
 if CLIENT then
-	local yeahBreak = false
 	local FREDDY_DOOR_COLOR = Color(255, 255, 255, 255)
 	local function halo_breakable_doors(ply, rule)
-		if not yeahBreak then return end
 		if not IsValid(ply) then return end
 
 		local ent = ply:GetUseEntity()
@@ -619,30 +618,28 @@ if CLIENT then
 
 		return entry and { entry } or nil
 	end
-
-	OUTLINE.RegisterRule("freddy_rage_door", {
-		priority = 157,
-		render_max_dist = 180,
-
-		outline_color = FREDDY_DOOR_COLOR,
-		outline_width = 2,
-		outline_min_dist = 0,
-		outline_max_dist = 0,
-
-		fill_color = FREDDY_DOOR_COLOR,
-		fill_min_dist = 0,
-		fill_max_dist = 0,
-
-		mode = OUTLINE_MODE_VISIBLE,
-		collect = halo_breakable_doors
-	})
 	
 	function wfreddy_stalker_door_halo_ON()
-		yeahBreak=true
+		OUTLINE.RegisterRule("freddy_rage_door", {
+			priority = 157,
+			render_max_dist = 180,
+
+			outline_color = FREDDY_DOOR_COLOR,
+			outline_width = 2,
+			outline_min_dist = 0,
+			outline_max_dist = 0,
+
+			fill_color = FREDDY_DOOR_COLOR,
+			fill_min_dist = 0,
+			fill_max_dist = 0,
+
+			mode = OUTLINE_MODE_VISIBLE,
+			collect = halo_breakable_doors
+		})
 	end
 	
 	function wfreddy_stalker_door_halo_OFF()
-		yeahBreak=false
+		OUTLINE.ClearRule("freddy_rage_door")
 	end
 
 	local target

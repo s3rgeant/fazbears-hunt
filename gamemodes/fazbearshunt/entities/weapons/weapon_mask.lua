@@ -26,7 +26,6 @@ SWEP.Secondary.Ammo = ""
 
 SWEP.HoldType = "slam"
 
-SWEP.CurrentFOV = 0
 SWEP.LerpFOV = 0
 
 if SERVER then
@@ -43,7 +42,9 @@ end
 function SWEP:SetupDataTables()
 
 	self:NetworkVar( "Float", 1, "NextIdle" )
-	self:NetworkVar( "Bool", false, "BlockSwap" )
+	self:NetworkVar( "Bool", "BlockSwap" )
+	self:NetworkVar( "Bool", "Active" )
+	self:NetworkVar( "Entity", "LastUser" )
 end
 
 
@@ -55,7 +56,6 @@ function SWEP:Holster()
 	end
 	
 	return true
-
 end
 
 function SWEP:PrimaryAttack()
@@ -70,8 +70,6 @@ function SWEP:PrimaryAttack()
 	
 	timer.Simple(0.9, function()
 		if IsValid(self) and self:GetOwner() then
-			self.CurrentFOV = 35
-			
 			self:Invisivility(self:GetOwner())
 		end
 	end)
@@ -133,19 +131,25 @@ function SWEP:Invisivility(ply)
 		colormod_target = 1
 	end
 	
+	self:SetActive(true)
+	
 	ply.invisible = true
-	ply:SetRenderMode(RENDERMODE_TRANSALPHA)
-	ply:SetCollisionGroup(COLLISION_GROUP_PASSABLE_DOOR)
-	ply:CollisionRulesChanged()
-	ply:SetColor(Color(255, 255, 255, 0))
-	ply:SetMaterial("models/null")
-	ply:DrawShadow(false)
+	if SERVER then
+		self:SetLastUser(ply)
+	
+		ply:SetRenderMode(RENDERMODE_TRANSALPHA)
+		ply:SetCollisionGroup(COLLISION_GROUP_PASSABLE_DOOR)
+		ply:CollisionRulesChanged()
+		ply:SetColor(Color(255, 255, 255, 0))
+		ply:SetMaterial("models/null")
+		ply:DrawShadow(false)
 
-	for _, wep in ipairs(ply:GetWeapons()) do
-		if IsValid(wep) then
-			wep:SetNoDraw(true)
-			wep:DrawShadow(false)
-			wep:SetRenderMode(RENDERMODE_NONE)
+		for _, wep in ipairs(ply:GetWeapons()) do
+			if IsValid(wep) then
+				wep:SetNoDraw(true)
+				wep:DrawShadow(false)
+				wep:SetRenderMode(RENDERMODE_NONE)
+			end
 		end
 	end
 
@@ -156,11 +160,26 @@ function SWEP:Invisivility(ply)
 			и выдаёт ошибку.
 		
 		]]--
+		if IsValid(self) then self:SetActive(false) end
 	
 		if IsValid(ply) then
-			ply:SetColor(Color(255, 255, 255, 255))
-			ply:SetMaterial("")
-			ply:DrawShadow(true)
+			if SERVER then
+				if not pills.hasMappedEnt(ply) then
+					ply:SetColor(Color(255, 255, 255, 255))
+					ply:SetMaterial("")
+					ply:DrawShadow(true)
+				end
+
+				for _, wep in ipairs(ply:GetWeapons()) do
+					if IsValid(wep) then
+						wep:SetNoDraw(false)
+						wep:DrawShadow(true)
+						wep:SetRenderMode(RENDERMODE_NORMAL)
+					end
+				end
+				
+				ply:RepeatRestoreCollision(0.5)
+			end
 			
 			ply.invisible = false
 			if CLIENT then
@@ -168,46 +187,25 @@ function SWEP:Invisivility(ply)
 				colormod_target = 0
 			end
 
-			if IsValid(self) and ply == self:GetOwner() then
+			if IsValid(ply) and IsValid(self) and ply == self:GetLastUser() then
 				if SERVER then
 					self:SendWeaponAnim(ACT_VM_HOLSTER)
-				end
-				self.CurrentFOV = 0
-			end
-			
-			timer.Simple(1.1, function()
-				if SERVER and IsValid(ply) then
-					ply:StripWeapon( "weapon_mask" )
-				end
-			end)
-
-			for _, wep in ipairs(ply:GetWeapons()) do
-				if IsValid(wep) then
-					wep:SetNoDraw(false)
-					wep:DrawShadow(true)
-					wep:SetRenderMode(RENDERMODE_NORMAL)
 				end
 			end
 			
 			if SERVER then
-				timer.Create("fh_gift_collision_reset" .. ply:EntIndex(), 0.5, 0, function()
-					if IsValid(ply) and !ply:IsStuck() then
-						ply:SetCollisionGroup(COLLISION_GROUP_PLAYER)
-						ply:CollisionRulesChanged()
-					end
-			
-					if !IsValid(ply) or !ply:IsStuck() then
-						timer.Remove("fh_gift_collision_reset" .. ply:EntIndex())
+				timer.Simple(1.1, function()
+					if IsValid(ply) and IsValid(self) and ply == self:GetLastUser() then
+						ply:StripWeapon( "weapon_mask" )
 					end
 				end)
 			end
-			
 		end
 	end)
 end
 
 function SWEP:Think()
-	self.LerpFOV = Lerp(FrameTime() * 5, self.LerpFOV, self.CurrentFOV)
+	self.LerpFOV = Lerp(FrameTime() * 5, self.LerpFOV, self:GetActive() and 35 or 0)
 	
     if self:GetNextIdle() > 0 and CurTime() >= self:GetNextIdle() then
         self:SendWeaponAnim(ACT_VM_IDLE)
@@ -224,7 +222,12 @@ hook.Add("fh_createragdoll", "bonnie_mask_onragdoll", function(ply, rag)
 		local wep = ply:GetWeapon("weapon_mask")
 		ply:DropWeapon(wep)
 		ply:SetActiveWeapon(nil)
+		ply:SetColor(Color(255, 255, 255, 255))
+		ply:SetMaterial("")
+		ply:DrawShadow(true)
 		wep:SetBlockSwap(false)
+		wep:SetActive(false)
+		wep:SetLastUser(NULL)
 		
 		inventory_backup.RemoveItem(ply, "weapon_mask")
 		

@@ -224,7 +224,6 @@ local lastUpdate = 0
 
 local CurTime = CurTime
 local IsValid = IsValid
-local GetHumans = player.GetHumans
 local MOVETYPE_WALK = MOVETYPE_WALK
 local floor = math.floor
 

@@ -165,6 +165,10 @@ local function fh_gfreddy_check_scarysound()
 
 	local eyePos = myself:EyePos()
 	local eyeAngles = myself:EyeAngles()
+	if vrmod and vrmod.IsPlayerInVR(myself) then 
+		eyePos = vrmod.GetHMDPos( myself ) 
+		eyeAngles = vrmod.GetHMDAng( myself ) 
+	end
 	local forward = eyeAngles:Forward()
 
 	local targetPos = targetPlayer:GetPos()

@@ -13,6 +13,8 @@ function fh.GetVersion()
     return fh_version
 end
 
+DEVELOPER_MODE = true
+
 --DeriveGamemode("sandbox")
 
 TEAM_SURVIVOR = 2700
@@ -57,10 +59,10 @@ conVars = {
 	fh_silent_highlight = CreateConVar( "fh_silent_highlight", 0, { FCVAR_ARCHIVE, FCVAR_REPLICATED}, "Makes highlights fully mute, and removes its overlay." ),
 	fh_respawn_dead_animatronics = CreateConVar( "fh_respawn_dead_animatronics", 1, { FCVAR_ARCHIVE, FCVAR_REPLICATED}, "Respawn animatronic if it died?" ),
 	
-	fh_bear5_killermask_last = CreateConVar( "fh_bear5_killermask_last", 0, {FCVAR_ARCHIVE, FCVAR_REPLICATED}, 
-	"Give Killer's Mask to last survivor during Bear5 round?." ),
-	fh_fast_roundrestart = CreateConVar( "fh_fast_roundrestart", "0", { FCVAR_ARCHIVE, FCVAR_REPLICATED }, 
-	"Make round restarts be faster?" ),
+	fh_bear5_killermask_last = CreateConVar( "fh_bear5_killermask_last", 0, {FCVAR_ARCHIVE, FCVAR_REPLICATED}, "Give Killer's Mask to last survivor during Bear5 round?." ),
+	fh_fast_roundrestart = CreateConVar( "fh_fast_roundrestart", "0", { FCVAR_ARCHIVE, FCVAR_REPLICATED }, "Make round restarts be faster?" ),
+	
+	fh_banana_ragdollize = CreateConVar( "fh_banana_ragdollize", "0", { FCVAR_ARCHIVE, FCVAR_REPLICATED }, "Should animatronics go ragdoll when slipping on bananas while sprinting?" ),
 
 	opt_out_anim = CreateConVar("fh_opt_out_anim", 0, { FCVAR_ARCHIVE,FCVAR_CLIENTDLL,FCVAR_USERINFO }, "Do you wannna opt out of Animatronics?", 0, 1),
 	
@@ -556,12 +558,22 @@ end)
 local meta = FindMetaTable("Player")
 
 if meta then
-	function meta:IsSurvivor()
-		return self:Alive() and self:Team() == TEAM_SURVIVOR and !IsValid(self:GetPill())
-	end
-	
-	function meta:IsAnimatronic()
-		return self:Team() == 2701 or IsValid(pills.getMappedEnt(self))
+	if SERVER then
+		function meta:IsSurvivor()
+			return self:Alive() and self:Team() == TEAM_SURVIVOR and not pills.hasMappedEnt(self)
+		end
+		
+		function meta:IsAnimatronic()
+			return self:Team() == 2701 or pills.hasMappedEnt(self) ~= nil
+		end
+	else
+		function meta:IsSurvivor()
+			return self:Alive() and self:Team() == TEAM_SURVIVOR and not IsValid(pills.getMappedEnt(self))
+		end
+		
+		function meta:IsAnimatronic()
+			return self:Team() == 2701 or IsValid(pills.getMappedEnt(self))
+		end
 	end
 end
 

@@ -169,9 +169,9 @@ pills.clone("bear5_main", "pill_wfreddy2", {
 net.Receive("fox_request", function(len, ply)
 	if !IsValid(bearRequester) then
 		if !IsValid(foxPlayerReq) then
-			ply:SendLua( "LocalPlayer():ChatPrint( language.GetPhrase('fazhunt.springtrap.plusherror') )" )
+			ply:SendLua( "LocalPlayer():ChatPrint( language.GetPhrase('fazhunt.bear5.foxerror') )" )
 		else
-			ply:SendLua( "LocalPlayer():ChatPrint( language.GetPhrase('fazhunt.springtrap.plushchoosed') )" )
+			ply:SendLua( "LocalPlayer():ChatPrint( language.GetPhrase('fazhunt.bear5.foxchoosed') )" )
 		end
 		return
 	end
@@ -182,11 +182,13 @@ net.Receive("fox_request", function(len, ply)
 end)
 
 net.Receive("fox_request_complete", function(len, ply)
-	local ply = net.ReadPlayer()
+	if not bearRequester == ply then return end
 	
-	if IsValid(ply) and !IsValid(foxPlayerReq) then
-		giveKiller(ply, "fox4", true)
-		foxPlayerReq = ply
+	local foxPly = net.ReadPlayer()
+	
+	if IsValid(foxPly) and !IsValid(foxPlayerReq) then
+		giveKiller(foxPly, "fox4", true)
+		foxPlayerReq = foxPly
 	end
 	
 	bearRequester = nil
@@ -264,6 +266,7 @@ pills.register("bear5_clone",{
 	
 	startFunction=function(ply,ent)
 		ply:SetCollisionGroup(COLLISION_GROUP_PASSABLE_DOOR)
+		ply:CollisionRulesChanged()
 	end,
 	
 	restore=function(ply,ent, formtable)
@@ -299,6 +302,7 @@ pills.register("fox4",{
 	anims={
 		default={
 			idle="idle",
+			scare="scare",
 		},
 	},
 	sounds={
@@ -389,7 +393,7 @@ hook.Add( "EntityTakeDamage", "fox4_screamer", function( target, dmginfo )
 		local attacker = dmginfo:GetAttacker()
 		local damage = dmginfo:GetDamage()
 		
-        if IsValid(attacker) and attacker:IsPlayer() and IsValid(attacker:GetPill()) and (attacker:GetPill():GetPillName():match("fox4") == "fox4")  then
+        if IsValid(attacker) and attacker:IsPlayer() and IsValid(attacker:GetPillCostume()) and (attacker:GetPillCostume():GetPillName():match("fox4") == "fox4")  then
 			if target:Health() > 1 and !target:GetNW2Bool("KillerObsessed") then
 				target:SetArmor(0)
 				dmginfo:SetDamage(target:Health() - 1)

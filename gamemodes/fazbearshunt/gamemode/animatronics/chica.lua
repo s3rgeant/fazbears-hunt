@@ -47,11 +47,9 @@ pills.register("pill_wchica2",{
 		ducked=80,
 	},
 	sounds={
-		gs="fnaf2/stareshort.wav",
-		loop_stare="fnaf2/with_s2_loop2.wav",
 		jump="jump.mp3",
 		land="land.mp3",
-		melee="fnaf2/xscream2.wav",
+		melee=")fnaf2/xscream2.wav",
 		deploy="chica_deploycake.wav",
 	},
 	type="ply",
@@ -91,6 +89,8 @@ pills.register("pill_wchica2",{
 	attack={
 		mode="trigger",
 		func=function(ply,ent)
+			if cooldown.Exists(ply, "kill") then return end
+			
 			if IsValid(ply:GetEntityInUse()) then return end
 			
 			local target = FindNearestPlayer(ply:EyePos(), 125, ply, 36)
@@ -98,7 +98,7 @@ pills.register("pill_wchica2",{
 			local jumpscare = performJumpscare(ply, ent, target, 1.6, "chica", 50)
 			
 			if !IsValid(target) or !jumpscare then 
-				AnimatronicBreakProp(ply, ent)
+				if not AnimatronicBreakProp(ply, ent) then cooldown.SetSend(ply, "kill", 0.9) end
 				return 
 			end
 		end
@@ -141,12 +141,8 @@ pills.register("pill_wchica2",{
 	},
 	
 	land=function(ply,ent)
-		if !ent.cloaked and ply:WaterLevel() < 2 then
-			if ply._wereJumpingPill or !ply._wereJumpingPill and ply:GetVelocity().z < -270 then
-				if !ply._jumpPosPill or ply._jumpPosPill and ply:GetPos():Distance(ply._jumpPosPill) > 150 then
-					ent:PillAnim("land",true)
-				end
-			end
+		if IsGoodLandConditions(ply, ent) then
+			ent:PillAnim("land",true)
 		end
 		
 		landTripCheck(ply, ent, "chica")

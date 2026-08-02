@@ -22,6 +22,8 @@ recursive_include("fazbearshunt/gamemode/")
 recursive_include("fazbearshunt/gamemode/interface/")
 recursive_include("fazbearshunt/gamemode/mount/")
 recursive_include("fazbearshunt/gamemode/events/")
+recursive_include("fazbearshunt/gamemode/support/")
+recursive_include("fazbearshunt/gamemode/rounds/")
 
 function getTeam(team)
 	local teamname = language.GetPhrase("fazhunt.survivors_team")
@@ -155,12 +157,16 @@ net.Receive("fh_set_calcview_entity", function(len)
 end)
 
 net.Receive("fh_animatronic_left_chatmessage", function()
+	local myself = LocalPlayer()
+	if not IsValid(myself) then return end
+	
 	local imya = net.ReadString()
 
-	LocalPlayer():ChatPrint(string.format(language.GetPhrase('fazhunt.chat.animleave'), imya ))
+	myself:ChatPrint(string.format(language.GetPhrase('fazhunt.chat.animleave'), imya ))
 end)
 
 local jawBones = { "bip_jaw", "Jaw", "Jaw_Bn", "Jaw_jnt", "JawInner", "bip_lowerEndoJaw" }
+local jawAngle = Angle(0,0,0)
 function GM:MouthMoveAnimation(ply)
     local weight = ply:IsSpeaking() and math.Clamp(ply:VoiceVolume() * 2, 0, 2) or 0
 
@@ -177,7 +183,8 @@ function GM:MouthMoveAnimation(ply)
 			if talkie.reversed then mp = -1 end
 			
             if boneID then
-                local angle = ply:IsSpeaking() and Angle(0, 0, -weight * (25 * scale) * mp) or Angle(0, 0, 0)
+				jawAngle.r = -weight * (25 * scale) * mp
+                local angle = ply:IsSpeaking() and jawAngle or angle_zero
                 pillEnt:ManipulateBoneAngles(boneID, angle)
 				return
             end
@@ -186,9 +193,9 @@ function GM:MouthMoveAnimation(ply)
         for _, boneName in ipairs(jawBones) do
             local boneID = pillEnt:LookupBone(boneName)
 			if boneName == "Jaw_Bn" or boneName == "bip_lowerEndoJaw" then mp = -1 end
-			--print(boneName)
             if boneID then
-                local angle = ply:IsSpeaking() and Angle(0, 0, -weight * 25 * mp) or Angle(0, 0, 0)
+				jawAngle.r = -weight * 25 * mp
+                local angle = ply:IsSpeaking() and jawAngle or angle_zero
                 pillEnt:ManipulateBoneAngles(boneID, angle)
             end
         end

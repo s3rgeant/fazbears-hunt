@@ -1,0 +1,7 @@
+UnlitGeneric
+{
+	$basetexture "models/weapons/vondaram/tablet/ekran_diffuse"
+	$surfaceprop Glass
+	$no_draw
+	$translucent 1
+}

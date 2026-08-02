@@ -449,7 +449,7 @@ pills.register("pill_toychica",{
 	sounds={
 		--jump="jump.mp3",
 		--land="land.mp3",
-		melee="fnaf2/xscream2.wav",
+		melee=")fnaf2/xscream2.wav",
 	},
 	type="ply",
     camera = {
@@ -825,8 +825,8 @@ hook.Add( "FH_HandlePlayerGrab", "tchica_endo_grab", function(ply, target)
 end )
 
 hook.Add( "PlayerSpawn", "tchica_spawn", function(ply)
-	ply:SetNWBool("tchica_victim", false)
-	ply:SetNWBool("tchica_holding", false)
+	if ply:GetNWBool("tchica_victim") then ply:SetNWBool("tchica_victim", false) end
+	if ply:GetNWBool("tchica_holding") then ply:SetNWBool("tchica_holding", false) end
 	ply:SetNWEntity("tchica_hold_target", NULL)
 end )
 

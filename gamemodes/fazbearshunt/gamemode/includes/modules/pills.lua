@@ -108,16 +108,40 @@ function getRandomForm()
     return k
 end
 
+local pillPlys = {}
+local f_pillPlys = {}
+
+function hasMappedEnt(ply)
+	return f_pillPlys[ply]
+end
+
+function getPlayers()
+	return pillPlys
+end
+
 -- Player to Pill Entity Mapping
 function mapEnt(ply, ent)
     ply:SetNWEntity("fh_pill_ent", ent)
+	ply:SetPillCostume(ent)
+	ply:SetActualPillCostume(ent)
+	
+	if not f_pillPlys[ply] then
+		pillPlys[#pillPlys+1] = ply
+		f_pillPlys[ply] = true
+	end
 end
 
-function unmapEnt(ply, ent)
+function unmapEnt(ply, ent, stillOwns)
 	if CLIENT then return end
 	if !IsValid(ply) then return end
     if ply:GetNWEntity("fh_pill_ent") == ent then
-		ply:SetNWEntity("fh_pill_ent", NULL)
+		ply:SetNWEntity("fh_pill_ent")
+		ply:SetPillCostume()
+		
+		if not stillOwns then ply:SetActualPillCostume() end
+		
+		table.RemoveByValue(pillPlys, ply)
+		f_pillPlys[ply] = nil
     elseif IsValid( ply:GetNWEntity("fh_pill_ent") ) then
         return ply:GetNWEntity("fh_pill_ent").formTable.type, ply:GetNWEntity("fh_pill_ent").formTable.name
     end
@@ -211,7 +235,7 @@ if SERVER then
 		
 		name = name:lower()
 		
-        t = forms[name]
+        local t = forms[name]
 
         if not t then
             print("Player '" .. ply:Name() .. "' attempted to use nonexistent pill '" .. name .. "'.")
@@ -336,6 +360,9 @@ function restore(ply, breakout)
             ply:SetRenderMode(RENDERMODE_NORMAL)
 			ply:SetModelScale(1)
 
+			ply:SetMaterial("")
+			ply:DrawShadow(true)
+			
             if ply:Alive() then
 				-- Just respawn the player to reset most stuff.
 				local angs = ply:EyeAngles()
@@ -347,8 +374,6 @@ function restore(ply, breakout)
 				ply:StripAmmo()
 				ply:Spawn()
 				ply:SetEyeAngles(angs)
-				ply:SetMaterial("")
-				ply:DrawShadow(true)
 				ply:SetPos(pos)
 				ply:SetVelocity(vel)
 				ply:SetHealth(hp)
@@ -400,11 +425,9 @@ hook.Add("CalcMainActivity", "pk_pill_calc_activity", function(ply, vel)
 end)
 
 function GM:UpdateAnimation( ply, velocity, maxseqgroundspeed )
-	local ent = getMappedEnt(ply)
-	
 	local rate = 1
 	
-	if not IsValid(ent) then
+	if not IsValid(ply:GetPillCostume()) then
 		local len = velocity:Length()
 		local movement = 1.0
 
@@ -473,7 +496,7 @@ if SERVER then
     end)
 
     hook.Add("PlayerDeathThink", "pk_pill_nospawn", function(ply)
-        if getMappedEnt(ply) then return false end
+        if hasMappedEnt(ply) then return false end
     end)
 	
 	hook.Add("HandlePlayerJumping", "pk_pill_canjump", function(ply)
@@ -528,7 +551,7 @@ if SERVER then
 	end)
 
     hook.Add("DoPlayerDeath", "pk_pill_death", function(ply)
-        if IsValid(getMappedEnt(ply)) then
+        if hasMappedEnt(ply) then
             if SERVER then
 				ply:SuppressRagdollSpawn()
                 getMappedEnt(ply):PillDie()
@@ -537,7 +560,7 @@ if SERVER then
     end)
 
     hook.Add("PlayerSilentDeath", "pk_pill_death", function(ply)
-        if IsValid(getMappedEnt(ply)) then
+        if hasMappedEnt(ply) then
             if SERVER then
 				ply:SuppressRagdollSpawn()
                 getMappedEnt(ply):PillDie()
@@ -575,14 +598,14 @@ if SERVER then
 	end )
     --For compatibility with player resizer and God knows what else
 	hook.Add("SetPlayerSpeed", "pk_pill_speed_enforcer", function(ply,walk,run)
-		if IsValid(getMappedEnt(ply)) then
+		if hasMappedEnt(ply) then
 			return false
 		end
 	end)
 
     hook.Add( "PlayerShouldTaunt", "fh_allow_taunt", function( ply, act )
         local ent = getMappedEnt(ply)
-		if IsValid(getMappedEnt(ply)) then
+		if IsValid(ent) then
             if ent.formTable.taunt and !ply:IsFlagSet(FL_FROZEN) and !ent:GetFrozen() then
                 ent.formTable.taunt(ply, ent, act)
             end
@@ -592,6 +615,20 @@ if SERVER then
 else -- CLIENT HOOKS
 	-- чтобы скачанные базы пилл паков не конфликтовали
     hook.Remove("HUDPaint", "pk_pill_hud")
+	
+	local function noSelection(name)
+		if name == "CHudWeaponSelection" then return false end
+	end
+	hook.Add("PillApply", "no_selection", function(ply)
+		local myself = LocalPlayer()
+		
+		if ply == myself then hook.Add("HUDShouldDraw", "pk_pill_noselection", noSelection) end
+	end)
+	hook.Add("PillRestore", "no_selection", function(ply)
+		local myself = LocalPlayer()
+		
+		if ply == myself then hook.Remove("HUDShouldDraw", "pk_pill_noselection") end
+	end)
 end
 
 -- Shared hooks

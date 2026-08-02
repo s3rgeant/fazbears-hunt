@@ -8,7 +8,11 @@
 	"$translucent"		"1"
 
 	"$phong" "1"
-	"$phongboost"	"1.986979"
+	"$phongboost"	"1.5"
+
+	"$rimlight" "1"
+	"$rimlightexponent" "2"
+	"$rimlightboost" "25"
 
 	"$phongfresnelranges"	"[0.87 0.9 1]"
 }

@@ -44,7 +44,7 @@ local function DrawDeadHUD()
 end
 
 surface.CreateFont("requestFont", { 
-	font = "Share Tech Mono Regular", 
+	font = "Share Tech Mono", 
 	size = 30, 
 	extended = true, 
 	weight = 400, 
@@ -129,6 +129,14 @@ hook.Add( "PlayerButtonDown", "fh_pt_request_buttondown", function( ply, but )
 end )
 
 // базу сделал Zhapka
+
+net.Receive("NotifySpectators", function()
+	local players = net.ReadTable()
+	local ply = net.ReadEntity()
+	local player = IsValid(ply) and ply:Nick() or "UNKNOWN USER"
+	
+	chat:AddText(Color( 255, 0, 0 ), player, Color( 180, 20, 20 ), ' ', language.GetPhrase("fuppr.highlight_specs"), ': ', Color( 170, 55, 50 ), table.concat(players, ", "))
+end)
 
 local real_zoom = 1
 local zoom = 1

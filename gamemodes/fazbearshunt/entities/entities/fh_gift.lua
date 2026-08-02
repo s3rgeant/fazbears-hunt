@@ -120,8 +120,6 @@ gifts = gifts or {}
 
 local effectDesc = ''
 local format_num = -1
-	
-local anim_visibility_users = {}
 
 -- Позитивные эффекты
 local positiveEffects = {
@@ -175,27 +173,6 @@ local positiveEffects = {
 			return !ply:HasWeapon("weapon_physcannon") and #ents.FindByClass("prop_physics") > 100
         end
     },
-    ["animatronics_visibility"] = {
-        name = "animatronics_visibility",
-		desc = "fazhunt.gifts.animatronics_visibility",
-        func = function(ply)
-            net.Start("fh_hl_animatronics")
-            net.Send(ply)
-			
-			anim_visibility_users[ply] = true
-			ply:SetNWBool("AnimVisibilityFH", true)
-			
-			timer.Simple(35, function()
-				anim_visibility_users[ply] = nil
-				if IsValid(ply) then
-					ply:SetNWBool("AnimVisibilityFH", false)
-				end
-			end)
-        end,
-		req = function(ply)
-			return !anim_visibility_users[ply]
-		end
-    },
     ["defibrilator"] = {
         name = "defibrilator",
 		desc = "fazhunt.gifts.defibrillator",
@@ -240,21 +217,6 @@ local positiveEffects = {
 			return !ply:HasWeapon("weapon_adrenaline")
         end
     },
-    ["fanta"] = {
-        name = "fanta",
-		desc = "fazhunt.gifts.fanta",
-        func = function(ply)
-            ply:Give("weapon_fanta")
-        end,
-        req = function(ply)
-			if fh.GetActiveUsedKiller("pill_wfoxy2") or fh.GetActiveUsedKiller("pill_sfreddy2") or fh.GetActiveUsedKiller("pill_mangle") then
-				if !ply:HasWeapon("weapon_fanta") then
-					return true
-				end
-			end
-			return false
-        end
-    },
     ["killer_mask"] = {
         name = "killer_mask",
 		desc = "fazhunt.gifts.killer_mask",
@@ -291,7 +253,44 @@ local positiveEffects = {
 			end
 			return false
         end
-    }
+    },
+	["crucifix"] = {
+        name = "crucifix",
+		desc = "fazhunt.gifts.crucifix",
+        func = function(ply)
+            ply:Give("weapon_crucifix")
+        end,
+        req = function(ply)
+			return not ply:HasWeapon("weapon_crucifix")
+        end
+    },
+	["oldshotgun"] = {
+        name = "oldshotgun",
+		desc = "fazhunt.gifts.oldshotgun",
+        func = function(ply)
+            ply:Give("weapon_oldshotgun")
+			
+			local buckshotAmmo = ply:GetAmmoCount(7)
+			if buckshotAmmo < 12 then
+				ply:GiveAmmo(12 - buckshotAmmo, "buckshot", true)
+			end
+			
+			ply:GiveAmmo(4 * team.NumPlayers(TEAM_PILLS), "buckshot", true)
+        end,
+        req = function(ply)
+			return not ply:HasWeapon("weapon_oldshotgun")
+        end
+    },
+	["tablet"] = {
+        name = "tablet",
+		desc = "fazhunt.gifts.tablet",
+        func = function(ply)
+            ply:Give("weapon_tablet")
+        end,
+        req = function(ply)
+			return not ply:HasWeapon("weapon_tablet")
+        end
+    },
 }
 
 -- Негативные эффекты
@@ -346,9 +345,12 @@ local negativeEffects = {
     ["animatronics_alert"] = {
 		desc = "fazhunt.gifts.animatronics_alert",
         func = function(ply)
+			local sendies = team.GetPlayers( TEAM_PILLS )
+			table.insert(sendies, ply)
+		
             net.Start("fh_hl_badkid")
             net.WriteEntity(ply)
-            net.Broadcast()
+            net.Send(ply)
 			
 			for _, player in player.Iterator() do
 				if player:Team() == TEAM_PILLS then
@@ -495,7 +497,10 @@ local negativeEffects = {
 					end
 				end
 			end)
-        end
+        end,
+		req = function(ply)
+			return navmesh.IsLoaded()
+		end,
     },
 }
 
@@ -505,15 +510,16 @@ if SERVER then
 			desc = desc or "",
 			num = num or -1,
 			func = func,
-			req = req or nil
+			req = req or nil,
 		}
 	end
 	
-	function gifts.AddNegativeEffect(name, desc, num, func)
+	function gifts.AddNegativeEffect(name, desc, num, func, req)
 		negativeEffects[name] = {
 			desc = desc or "",
 			num = num or -1,
-			func = func
+			func = func,
+			req = req or nil,
 		}
 	end
 	
@@ -531,19 +537,10 @@ function ENT:ApplyEffect(player)
 	local effects = {}
 	
 	for name, effect in pairs(positiveEffects) do
-		if effect.req and effect.req(player) then
+		if effect.req and effect.req(player, self, isOwner) then
 			effects[name] = effect
 		elseif !effect.req then
 			effects[name] = effect
-		end
-	end
-	
-	if !isOwner then
-		local negativeForce = math.random(1,2) == 2
-		if negativeForce then
-			for name, effect in pairs(negativeEffects) do
-				effects[name] = effect
-			end
 		end
 	end
 	
@@ -553,7 +550,7 @@ function ENT:ApplyEffect(player)
 	end
 	
 	local effect = table.Random(effects)
-	effect.func(player)
+	effect.func(player, self, isOwner)
 	
 	local isPositive = false
 	for name, posEffect in pairs(effects) do
@@ -563,12 +560,10 @@ function ENT:ApplyEffect(player)
 		end
 	end
 	
-	if isPositive then
-		if !effect.silent then
+	if !effect.silent then
+		if isPositive then
 			self:EmitSound("orch_hit_csharp_short.wav")
-		end
-	else
-		if !effect.silent then
+		else
 			self:EmitSound("ahuitebe.mp3")
 		end
 	end

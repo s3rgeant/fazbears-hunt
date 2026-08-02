@@ -521,6 +521,7 @@ local function OpenAdminPanel()
     AddCheckbox(expPanel, 10, step(20), language.GetPhrase("fazhunt.adminpanel.dangerous_cupcakes"), GetConVar("fh_cupcake_blast"), "fh_cupcake_blast")
     AddCheckbox(expPanel, 10, step(20), language.GetPhrase("fazhunt.adminpanel.bear5_killermask_last"), conVars.fh_bear5_killermask_last, "fh_bear5_killermask_last")
     AddCheckbox(expPanel, 10, step(20), language.GetPhrase("fazhunt.adminpanel.fast_roundrestart"), conVars.fh_fast_roundrestart, "fh_fast_roundrestart")
+    AddCheckbox(expPanel, 10, step(20), language.GetPhrase("fazhunt.adminpanel.banana_ragdollize"), conVars.fh_banana_ragdollize, "fh_banana_ragdollize")
 	
 	local DermaList = vgui.Create( "DScrollPanel", expPanel )
 	DermaList:SetPos( 10, justget(15) )
@@ -673,9 +674,9 @@ local function OpenAdminPanel()
 						crouchTxt:SetText("Crouched Speed: ???")
 					end
 				else
-					walkTxt:SetText("Walk Speed: ???")
-					runTxt:SetText("Run Speed: ???")
-					crouchTxt:SetText("Crouched Speed: ???")
+					walkTxt:SetText("ERROR! No Data presents.")
+					runTxt:SetText("")
+					crouchTxt:SetText("")
 				end
 				
 				for _, pnl in pairs(animSetList:GetCanvas():GetChildren()) do
@@ -802,7 +803,7 @@ local clrs = {
 
 -- UnSelected
 local clrs_d = {
-	[0] = Color(255,0,0,100), -- Unreferred
+	[0] = Color(255,0,0,100), -- Unpreferred
 	[1] = Color(0,255,0,100), -- Preferred
 	[2] = Color(229,220,0,200), -- Preferred Secondary
 }

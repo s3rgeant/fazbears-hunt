@@ -33,6 +33,7 @@ recursive_include("fazbearshunt/gamemode/")
 recursive_include("fazbearshunt/gamemode/interface/")
 recursive_include("fazbearshunt/gamemode/mount/")
 recursive_include("fazbearshunt/gamemode/events/")
+recursive_include("fazbearshunt/gamemode/support/")
 
 util.AddNetworkString("KillerPicked")
 util.AddNetworkString("ApplyKillerCompanion")
@@ -43,8 +44,6 @@ util.AddNetworkString("nv_off")
 util.AddNetworkString("fh_initpostentity")
 
 util.AddNetworkString("fh_net_display")
-
-util.AddNetworkString("fh_update_list")
 
 util.AddNetworkString("fh_start_lobby_timer")
 util.AddNetworkString("fh_start_game_timer")
@@ -63,8 +62,6 @@ util.AddNetworkString("fh_selected_killer")
 util.AddNetworkString("fh_update_killer_selector")
 
 util.AddNetworkString("fh_share_notprefered")
-
-util.AddNetworkString("fh_selector_nomore")
 
 util.AddNetworkString("fh_animatronic_left_chatmessage")
 
@@ -187,7 +184,7 @@ end
 hook.Add("Think", "fh_disallow_killers_choose", function()
 	if forceAnimSelectTime > 0 and CurTime() >= forceAnimSelectTime and isGameOn then
 		for ply, _ in pairs(animatronics) do
-			if IsValid(ply) and not IsValid(ply:GetPill()) then
+			if IsValid(ply) and not IsValid(ply:GetPillCostume()) then
 				giveRandomKiller(ply, true)
 			end
 		end
@@ -227,7 +224,6 @@ hook.Add("ShouldPlayerPush", "fh_push_management", function(pusher, victim)
 end)
 
 local function giveKillerShared(ply, killer, force)
-	
 	local killers_ = killers.getAll()
 	
 	local killerData = {}
@@ -256,9 +252,6 @@ local function giveKillerShared(ply, killer, force)
 	usedKillers[killerName] = ply
 
 	pills.apply(ply:Nick(), killerName, "user")
-	
-	animatronics[ply] = true
-	survivors[ply] = nil
 	
 	if timer.Exists("UnfreezeAnims") then
 		ply.lobbyFreeze = true
@@ -753,9 +746,9 @@ hook.Add("PlayerSpawn", "fh_spawn", function( ply, transiton )
 	player_manager.SetPlayerClass( ply, "player_sandbox" )
 	ply:SetShouldServerRagdoll(true)
 
-	if not IsValid(ply:GetPill()) then
-		ply:SetMaterial("")
-		ply:DrawShadow(true)
+	if not IsValid(ply:GetPillCostume()) then
+		--ply:SetMaterial("")
+		--ply:DrawShadow(true)
 	end
 	
 	ply:SendLua( 'if !system.HasFocus() then system.FlashWindow() end' )
@@ -945,7 +938,12 @@ local function fh_death_hook(victim)
 		if timer.Exists("RandomGifts") then
 			local timertime = timer.TimeLeft("RandomGifts")
 			if timertime >= 5 then
-				timer.Adjust("RandomGifts", math.max(timertime - 5, 1))
+				local adjustTime = timertime - 11
+				if adjustTime < 0 then
+					sub_timer = adjustTime * -1
+					adjustTime = 0
+				end
+				timer.Adjust("RandomGifts", adjustTime)
 			end
 		end
 		
@@ -1048,7 +1046,7 @@ hook.Add( "CreateEntityRagdoll", "fh_ragdoll_bullshit", function( ply, rag )
 end )
 
 hook.Add( "CanPlayerSuicide", "fh_suicide", function( ply )
-	if ply:IsAnimatronic() or ply.jumpscared then
+	if ply:IsAnimatronic() or ply:IsJumpscared() then
 		return false
 	end
 	if fh.timer.Exists() and fh.timer.GetTimeLeft() > fh.GetGameDuration() then
@@ -1109,22 +1107,22 @@ function GM:GetFallDamage( ply, speed )
 end
 
 net.Receive("fh_selected_killer", function(len, ply)
-	local killer = net.ReadString()
-	
-	if !usedKillers[killer] then
-		giveKiller(ply, killer, nil, true)
-		
-		for v, _ in pairs(animatronics) do
-			net.Start("fh_update_killer_selector")
-			net.WritePlayer(ply)
-			net.WriteString(killer)
-			net.Send(v)
+	if forceAnimSelectTime > 0 and CurTime() < forceAnimSelectTime and isGameOn then
+		if animatronics[ply] and not pills.hasMappedEnt(ply) then
+			local killer = net.ReadString()
+			
+			if !usedKillers[killer] then
+				giveKiller(ply, killer, nil, true)
+				
+				for v, _ in pairs(animatronics) do
+					net.Start("fh_update_killer_selector")
+					net.WritePlayer(ply)
+					net.WriteString(killer)
+					net.Send(v)
+				end
+			end
 		end
 	end
-end)
-
-net.Receive("fh_selector_nomore", function(len, ply)
-	giveRandomKiller(ply)
 end)
 
 function giveRandomKiller(ply, update)
@@ -1169,49 +1167,43 @@ net.Receive("fh_initpostentity", function(len, ply)
 	net.Send(ply)
 end)
 
-local tm = nil
-hook.Add("Tick", "fh_tick", function()
-	for _, ply in player.Iterator() do
-		tm = ply:Team()
-		if tm == TEAM_SURVIVOR and ply:Alive() then
-			if ply:WaterLevel() == 3 then
-				if ply:IsOnFire() then
-					ply:Extinguish()
-				end
-		
-				if ply.drowning then
-					if ply.drowning < CurTime() then
-					local dmginfo = DamageInfo()
-					dmginfo:SetDamage(5)
-					dmginfo:SetDamageType(DMG_DROWN)
-					dmginfo:SetAttacker(game.GetWorld())
-					dmginfo:SetInflictor(game.GetWorld())
-					dmginfo:SetDamageForce(Vector(0,0,1))
-		
-					ply:TakeDamageInfo(dmginfo)
-		
-					ply.drowning = CurTime() + 1
-					end
-				else
-					ply.drowning = CurTime() + 8
-				end
-			else
-				ply.drowning = nil
-			end
-		
-		elseif tm == TEAM_SPEC then
-			if ply.propspec then
-				PROPSPEC.Recharge(ply)
-		
-				if IsValid(ply:GetObserverTarget()) then
-					ply:SetPos(ply:GetObserverTarget():GetPos())
-				end
-			end
-		
-			if ply:Alive() then
-				self:SpectatorThink(ply)
-			end
+hook.Add("OnEntityWaterLevelChanged", "fh_drowning", function(ent, oldLevel, newLevel)
+	if not ent:IsPlayer() then return end
+	if ent:Team() ~= TEAM_SURVIVOR then return end
+	if not ent:Alive() then return end
+
+	local timerName = "fh_drown_" .. ent:EntIndex()
+
+	if newLevel == 3 then
+		if ent:IsOnFire() then
+			ent:Extinguish()
 		end
+
+		timer.Remove(timerName)
+
+		timer.Create(timerName, 8, 1, function()
+			if not IsValid(ent) or not ent:Alive() or ent:WaterLevel() ~= 3 then
+				return
+			end
+
+			timer.Create(timerName, 1, 0, function()
+				if not IsValid(ent) or not ent:Alive() or ent:WaterLevel() ~= 3 then
+					timer.Remove(timerName)
+					return
+				end
+
+				local dmginfo = DamageInfo()
+				dmginfo:SetDamage(5)
+				dmginfo:SetDamageType(DMG_DROWN)
+				dmginfo:SetAttacker(game.GetWorld())
+				dmginfo:SetInflictor(game.GetWorld())
+				dmginfo:SetDamageForce(vector_up)
+
+				ent:TakeDamageInfo(dmginfo)
+			end)
+		end)
+	else
+		timer.Remove(timerName)
 	end
 end)
 
@@ -1383,155 +1375,14 @@ function fh.GetEarnedKillers(killers)
 	return result
 end
 
-local round_music = {
-	[0] = "music/first_minute.wav"
-}
+recursive_include("fazbearshunt/gamemode/rounds/")
 
-if IsChristmas() then
-	round_music[0] = "music/christmas_timer.wav"
-end
-
-function fh.AddRoundMusic(num, music)
-	if !round_music[num] then
-		round_music[num] = music
-	end
-end
-
-function fh.GetRoundMusic(num)
-	if round_music[num] then
-		return round_music[num]
-	end
-	return round_music[0]
-end
-
-fh.RoundTypes = fh.RoundTypes or {}
-fh.RoundTypeNameToID = fh.RoundTypeNameToID or {}
-fh.RoundTypeIDToName = fh.RoundTypeIDToName or {}
-fh.RoundTypeIDCounter = 0
-
-function fh.RegisterRoundType(name, id, func, weight, minPlayers, maxPlayers)
-    assert(name, "Round type name is required")
-    assert(func, "Round type function is required")
-
-    if isstring(id) then
-        id = tonumber(util.CRC(id)) % 100000
-    elseif not isnumber(id) then
-        fh.RoundTypeIDCounter = fh.RoundTypeIDCounter + 1
-        id = fh.RoundTypeIDCounter
-    end
-	
-	if fh.RoundTypes[id] then 
-		print("[FH] Failed to register new round type with ID: " .. id .. ". Such ID is already in use!")
-		return nil
-	end
-
-    fh.RoundTypes[id] = {
-        name = name,
-        id = id,
-        func = func,
-        weight = weight or 1,
-        minPlayers = minPlayers,
-        maxPlayers = maxPlayers
-    }
-
-    fh.RoundTypeNameToID[name] = id
-    fh.RoundTypeIDToName[id] = name
-	
-	return id, name
-end
-
-function fh.SetRoundTypeBlocked(id, block)
-	if !fh.RoundTypes[id] then return end
-	if !isbool(block) then return end
-	
-	fh.RoundTypes[id].blocked = block
-end
-
-local forceAuto = {
-	"fh_force_roundtype 0",
-	"fh_force_roundtype 1",
-	"fh_force_roundtype 2",
-	"fh_force_roundtype 3",
-}
-
-concommand.Add( "fh_force_roundtype", function( ply, cmd, args )
-	if !ply:IsSuperAdmin() then return end
-	local round = tonumber(args[1]) or 0
-	registerNewRound(round)
-end,
-
-function( cmd, args )
-	return forceAuto
-	
-end)
-
-function fh.SelectRoundType(forcedID)
-    local selected
-    local playerCount = player.GetCount()
-
-    if forcedID then
-        selected = fh.RoundTypes[forcedID]
+if DEVELOPER_MODE then
+	concommand.Add("dev_selector", function(ply, _, args)
+		local availableKillers = table.GetKeys(killers.getAllPreferables(true))
 		
-		if selected.blocked then
-			print("Forcing a round type that is blocked!")
-		end
-    else
-        local pool = {}
-        for id, data in pairs(fh.RoundTypes) do
-			if data.blocked then continue end
-		
-            local minOK = not data.minPlayers or playerCount >= data.minPlayers
-            local maxOK = not data.maxPlayers or playerCount <= data.maxPlayers
-
-            if minOK and maxOK then
-                local entries = math.max(1, data.weight or 1)
-                for _ = 1, entries do
-                    table.insert(pool, data)
-                end
-            end
-        end
-
-        if #pool == 0 then
-            ErrorNoHalt("[fh] what have you done? Seems like there is no round types that support this ( "..playerCount.." ) player count.\n")
-            return
-        end
-
-        selected = pool[math.random(#pool)]
-    end
-
-    if selected then
-        fh.SetRoundType(selected.id)
-        selected.func()
-		return selected.id
-    else
-        ErrorNoHalt("[fh] Couldn't select round type!\n")
-		return -1
-    end
+		net.Start("fh_let_killers_choose")
+		net.WriteTable(availableKillers)
+		net.Send(ply)
+	end)
 end
-
-function fh.GetRoundTypes()
-    local types = {}
-    for id, _ in pairs(fh.RoundTypes) do
-        table.insert(types, id)
-    end
-    return types
-end
-
-function fh.GetRoundTypeByName(name)
-    return fh.RoundTypeNameToID[name]
-end
-
-function fh.GetRoundTypeNameByNumber(id)
-    return fh.RoundTypeIDToName[id]
-end
-
-fh.RegisterRoundType("regular", 0, function()
-	assignKillers()
-	RandomTaser()
-	freezeAnimatronics()
-end, 100)
-
-include( "rounds/springtrap.lua" )
-include( "rounds/bonnie_tag.lua" )
-include( "rounds/bear5.lua" )
-include( "rounds/custom_round.lua" )

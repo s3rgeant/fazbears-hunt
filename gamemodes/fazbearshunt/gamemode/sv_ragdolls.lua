@@ -87,6 +87,7 @@ function meta:CreateRagdoll()
 	ent:SetCollisionGroup(COLLISION_GROUP_WEAPON)
 	ent.ShouldNotCollide = function(ent, ent2)
 		if ent:GetClass() == ent2:GetClass() then return true end
+		if ent2:IsPlayer() then return true end
 	end
 	
 	ent:SetCustomCollisionCheck( true )

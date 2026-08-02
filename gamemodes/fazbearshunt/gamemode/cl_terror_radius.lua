@@ -33,43 +33,92 @@ local fh_terror_enabled = CreateClientConVar("fh_terror_enabled", "1", true, fal
 local fh_terror_volume = CreateClientConVar("fh_terror_volume", "0.7", true, false, "Terror radius volume.", 0, 1)
 local fh_terror_spectators = CreateClientConVar("fh_terror_spectators", "0", true, false, "Should you hear terror radius while spectating?", 0, 1)
 
+local layerCrossfadeDuration = 0.75
+local volumeChangeDuration = 0.15
+local musicReloadDelay = 1.0
+
+local firstToSecondBlendDistance = 420
+local secondToThirdBlendDistance = 360
+local distanceDirectionThreshold = 12
+local distanceBlendResponseDuration = 0.18
+
+state.activeTerrorLayerWeights = state.activeTerrorLayerWeights or {}
+state.lastTerrorDistance = nil
+state.lastTerrorTheme = nil
+state.activeDistanceBlendZone = nil
+
+local activeTerrorLayerWeights = state.activeTerrorLayerWeights
+
+table.Empty(activeTerrorLayerWeights)
+
+state.musicTimelineStartedAt = state.musicTimelineStartedAt or CurTime()
+state.musicLoadGeneration = (state.musicLoadGeneration or 0) + 1
+state.musicInitializedGeneration = nil
+
+local musicTimelineStartedAt = state.musicTimelineStartedAt
+local musicLoadGeneration = state.musicLoadGeneration
+
+hook.Remove("Think", "tr_update_music_channels")
+cvars.RemoveChangeCallback("fh_terror_volume", "FH.TerrorRadius.Volume")
+
+local function isValidAudioChannel(audioChannel)
+    return audioChannel and audioChannel.IsValid and audioChannel:IsValid()
+end
+
+local function stopLoadedMusicEntry(musicEntry)
+    if istable(musicEntry) then
+        local audioChannel = musicEntry.channel
+
+        if isValidAudioChannel(audioChannel) then
+            audioChannel:Stop()
+        end
+
+        return
+    end
+
+    if musicEntry and musicEntry.Stop then
+        pcall(musicEntry.Stop, musicEntry)
+    end
+end
+
 local function loadThemes()
-    availableThemes = {}
-    local files, directories = file.Find("sound/music/chase/*", "GAME")
-    
+    table.Empty(availableThemes)
+
+    local ignoredFiles, directories = file.Find("sound/music/chase/*", "GAME")
+
     local requiredFiles = {
-        ["first_layer"] = "far.wav",
-        ["second_layer"] = "approaching.wav",
-        ["third_layer"] = "near.wav",
-        ["chase"] = "chase.wav"
+        first_layer = "far.wav",
+        second_layer = "approaching.wav",
+        third_layer = "near.wav",
+        chase = "chase.wav"
     }
 
-    local additionary = {
-        ["chase_low"] = "chase_lowhp.wav",
-        ["far_rage"] = "far_rage.wav",
-        ["approaching_rage"] = "approaching_rage.wav",
-        ["near_rage"] = "near_rage.wav",
-        ["chase_rage"] = "chase_rage.wav",
+    local additionalFiles = {
+        chase_low = "chase_lowhp.wav",
+        far_rage = "far_rage.wav",
+        approaching_rage = "approaching_rage.wav",
+        near_rage = "near_rage.wav",
+        chase_rage = "chase_rage.wav"
     }
 
-    for _, dir in ipairs(directories) do
-        local found = {}
+    for _, directoryName in ipairs(directories) do
+        local foundLayers = {}
 
-        for key, reqFile in pairs(requiredFiles) do
-            if file.Exists("sound/music/chase/" .. dir .. "/" .. reqFile, "GAME") then
-                found[key] = reqFile
+        for layerName, fileName in pairs(requiredFiles) do
+            if file.Exists("sound/music/chase/" .. directoryName .. "/" .. fileName, "GAME") then
+                foundLayers[layerName] = fileName
             end
         end
 
-        for key, reqFile in pairs(additionary) do
-            if file.Exists("sound/music/chase/" .. dir .. "/" .. reqFile, "GAME") then
-                found[key] = reqFile
+        for layerName, fileName in pairs(additionalFiles) do
+            if file.Exists("sound/music/chase/" .. directoryName .. "/" .. fileName, "GAME") then
+                foundLayers[layerName] = fileName
             end
         end
-        
-        if table.IsEmpty(found) then continue end
 
-        availableThemes[dir] = found
+        if table.IsEmpty(foundLayers) then continue end
+
+        availableThemes[directoryName] = foundLayers
     end
 
     if table.IsEmpty(availableThemes) then
@@ -77,92 +126,319 @@ local function loadThemes()
     end
 end
 
-if table.IsEmpty(loadedMusic) then
-    loadThemes()
+local function getInterpolatedMusicVolume(musicEntry, currentTime)
+    local fadeStartTime = tonumber(musicEntry.fadeStartTime) or currentTime
+    local fadeEndTime = tonumber(musicEntry.fadeEndTime) or fadeStartTime
+    local fadeStartVolume = tonumber(musicEntry.fadeStartVolume) or 0
+    local fadeTargetVolume = tonumber(musicEntry.fadeTargetVolume) or 0
+
+    if fadeEndTime <= fadeStartTime or currentTime >= fadeEndTime then
+        return fadeTargetVolume
+    end
+
+    if currentTime <= fadeStartTime then
+        return fadeStartVolume
+    end
+
+    local fraction = math.Clamp((currentTime - fadeStartTime) / (fadeEndTime - fadeStartTime), 0, 1)
+    fraction = fraction * fraction * (3 - 2 * fraction)
+
+    return Lerp(fraction, fadeStartVolume, fadeTargetVolume)
 end
 
-hook.Add( "InitPostEntity", "tr_create_music", function()
-    if !table.IsEmpty(availableThemes) then
-        for dir,layers in pairs(availableThemes) do 
-            for layer,filepath in pairs(layers) do 
-                if loadedMusic[dir] and loadedMusic[dir][layer] then
-                    loadedMusic[dir][layer]:Stop()
-                end
-				
-				if not loadedMusic[dir] then loadedMusic[dir] = {} end
-            
-                loadedMusic[dir][layer] = CreateSound(game.GetWorld(), "#music/chase/" .. dir .. "/" .. filepath)
-                loadedMusic[dir][layer]:SetSoundLevel(0)
-            end
+local function setMusicEntryTargetVolume(musicEntry, targetVolume, duration)
+    targetVolume = math.Clamp(tonumber(targetVolume) or 0, 0, 1)
+    duration = math.max(0, tonumber(duration) or 0)
+
+    local currentTime = CurTime()
+    local currentVolume = getInterpolatedMusicVolume(musicEntry, currentTime)
+    local oldTargetVolume = tonumber(musicEntry.fadeTargetVolume) or 0
+
+    if math.abs(oldTargetVolume - targetVolume) <= 0.0001 then return end
+
+    musicEntry.currentVolume = currentVolume
+    musicEntry.fadeStartVolume = currentVolume
+    musicEntry.fadeTargetVolume = targetVolume
+    musicEntry.fadeStartTime = currentTime
+    musicEntry.fadeEndTime = currentTime + duration
+
+    if duration <= 0 then
+        musicEntry.currentVolume = targetVolume
+
+        if isValidAudioChannel(musicEntry.channel) then
+            musicEntry.channel:SetVolume(targetVolume)
         end
     end
-end )
+end
 
-lastTheme = lastTheme or nil
-lastTerror = lastTerror or nil
+local function synchronizeMusicChannel(audioChannel)
+    if not isValidAudioChannel(audioChannel) then return end
 
-local function terrorStop(dur)
-    if lastTheme and lastTerror and loadedMusic[lastTheme][lastTerror] then
-        loadedMusic[lastTheme][lastTerror]:ChangeVolume(0, dur)
+    local trackLength = math.max(0, tonumber(audioChannel:GetLength()) or 0)
+    if trackLength <= 0.01 then return end
 
-        local theme = lastTheme
-        local rember = lastTerror
+    local elapsedTime = math.max(0, CurTime() - musicTimelineStartedAt)
+    local playbackTime = elapsedTime % trackLength
 
-        timer.Create("StopTRMusic_" .. theme..rember, dur + 0.05, 1, function()
-            if loadedMusic[theme][rember] then
-                loadedMusic[theme][rember]:Stop()
+    pcall(audioChannel.SetTime, audioChannel, playbackTime, true)
+end
+
+local function startMusicEntryLoading(themeName, layerName, musicEntry)
+    if not musicEntry or musicEntry.loading then return end
+    if musicEntry.retryAt and musicEntry.retryAt > CurTime() then return end
+
+    musicEntry.loading = true
+    musicEntry.ready = false
+    musicEntry.loadToken = (musicEntry.loadToken or 0) + 1
+
+    local loadToken = musicEntry.loadToken
+    local filePath = "sound/music/chase/" .. themeName .. "/" .. musicEntry.fileName
+
+    sound.PlayFile(filePath, "noblock noplay", function(audioChannel, errorId, errorName)
+        if state.musicLoadGeneration ~= musicLoadGeneration then
+            if isValidAudioChannel(audioChannel) then
+                audioChannel:Stop()
             end
-        end)
 
-        lastTheme = nil
-        lastTerror = nil
+            return
+        end
+
+        local themeMusic = loadedMusic[themeName]
+        local currentEntry = themeMusic and themeMusic[layerName]
+
+        if currentEntry ~= musicEntry or musicEntry.loadToken ~= loadToken then
+            if isValidAudioChannel(audioChannel) then
+                audioChannel:Stop()
+            end
+
+            return
+        end
+
+        musicEntry.loading = false
+
+        if not isValidAudioChannel(audioChannel) then
+            musicEntry.channel = nil
+            musicEntry.ready = false
+            musicEntry.retryAt = CurTime() + musicReloadDelay
+
+            print("[FH TerrorRadius] Failed loading:", filePath, errorId, errorName)
+            return
+        end
+
+        musicEntry.channel = audioChannel
+        musicEntry.ready = true
+        musicEntry.retryAt = 0
+        musicEntry.currentVolume = 0
+
+        audioChannel:SetVolume(0)
+        audioChannel:EnableLooping(true)
+        synchronizeMusicChannel(audioChannel)
+        audioChannel:Play()
+    end)
+end
+
+local function ensureThemeMusicLoaded(themeName)
+    local themeLayers = availableThemes[themeName]
+    if not themeLayers then return false end
+
+    loadedMusic[themeName] = loadedMusic[themeName] or {}
+
+    local themeMusic = loadedMusic[themeName]
+
+    for layerName, fileName in pairs(themeLayers) do
+        local musicEntry = themeMusic[layerName]
+
+        if not istable(musicEntry) or musicEntry.fileName ~= fileName then
+            stopLoadedMusicEntry(musicEntry)
+
+            musicEntry = {
+                fileName = fileName,
+                channel = nil,
+                loading = false,
+                ready = false,
+                retryAt = 0,
+                loadToken = 0,
+                currentVolume = 0,
+                fadeStartVolume = 0,
+                fadeTargetVolume = 0,
+                fadeStartTime = CurTime(),
+                fadeEndTime = CurTime()
+            }
+
+            themeMusic[layerName] = musicEntry
+        end
+
+        if not isValidAudioChannel(musicEntry.channel) then
+            musicEntry.channel = nil
+            musicEntry.ready = false
+            startMusicEntryLoading(themeName, layerName, musicEntry)
+        end
+    end
+
+    return true
+end
+
+local function resetDistanceBlendState()
+    state.lastTerrorDistance = nil
+    state.lastTerrorTheme = nil
+    state.activeDistanceBlendZone = nil
+end
+
+local function initializeTerrorMusic()
+    if state.musicInitializedGeneration == musicLoadGeneration then return end
+
+    state.musicInitializedGeneration = musicLoadGeneration
+
+    for _, themeMusic in pairs(loadedMusic) do
+        for _, musicEntry in pairs(themeMusic) do
+            stopLoadedMusicEntry(musicEntry)
+        end
+    end
+
+    table.Empty(loadedMusic)
+    table.Empty(activeTerrorLayerWeights)
+
+    lastTheme = nil
+    lastTerror = nil
+
+    resetDistanceBlendState()
+end
+
+local function copyActiveLayerWeights(layerWeights)
+    table.Empty(activeTerrorLayerWeights)
+
+    for layerName, layerWeight in pairs(layerWeights or {}) do
+        layerWeight = math.Clamp(tonumber(layerWeight) or 0, 0, 1)
+
+        if layerWeight > 0 then
+            activeTerrorLayerWeights[layerName] = layerWeight
+        end
     end
 end
 
-cvars.AddChangeCallback("fh_terror_volume", function(convar_name, value_old, value_new)
-	if lastTheme and lastTerror then
-		terrorSetVolume(lastTheme, lastTerror, tonumber(value_new) or 0)
-	end
+local function changeAllTerrorVolumes(activeTheme, layerWeights, activeVolume, duration)
+    activeVolume = math.Clamp(tonumber(activeVolume) or 0, 0, 1)
+    duration = math.max(0, tonumber(duration) or 0)
+
+    if activeTheme then
+        ensureThemeMusicLoaded(activeTheme)
+    end
+
+    for themeName, themeMusic in pairs(loadedMusic) do
+        for layerName, musicEntry in pairs(themeMusic) do
+            local targetVolume = 0
+
+            if themeName == activeTheme then
+                targetVolume = activeVolume * math.Clamp(tonumber(layerWeights and layerWeights[layerName]) or 0, 0, 1)
+            end
+
+            setMusicEntryTargetVolume(musicEntry, targetVolume, duration)
+        end
+    end
+end
+
+local function applyTerrorLayerWeights(themeName, layerWeights, volume, duration, primaryLayer)
+    if not themeName or not primaryLayer then return false end
+
+    local themeLayers = availableThemes[themeName]
+    if not themeLayers or not themeLayers[primaryLayer] then return false end
+
+    ensureThemeMusicLoaded(themeName)
+    copyActiveLayerWeights(layerWeights)
+
+    volume = math.Clamp(tonumber(volume) or 0, 0, 1)
+    duration = math.max(0, tonumber(duration) or layerCrossfadeDuration)
+
+    changeAllTerrorVolumes(themeName, activeTerrorLayerWeights, volume, duration)
+
+    lastTheme = themeName
+    lastTerror = primaryLayer
+
+    return true
+end
+
+local function terrorStop(duration)
+    table.Empty(activeTerrorLayerWeights)
+    changeAllTerrorVolumes(nil, activeTerrorLayerWeights, 0, duration)
+
+    lastTheme = nil
+    lastTerror = nil
+
+    resetDistanceBlendState()
+end
+
+function terrorSetVolume(themeName, layerName, volume, duration)
+    if not themeName or not layerName then
+        print("[FH TerrorRadius] Failed:", themeName, layerName)
+        return false
+    end
+
+    return applyTerrorLayerWeights(themeName, {
+        [layerName] = 1
+    }, volume, duration, layerName)
+end
+
+local function terrorSetLayerBlend(themeName, sourceLayer, targetLayer, targetFraction, volume, duration, primaryLayer)
+    if not sourceLayer or not targetLayer then return false end
+
+    if sourceLayer == targetLayer then
+        return terrorSetVolume(themeName, primaryLayer or targetLayer, volume, duration)
+    end
+
+    local themeLayers = availableThemes[themeName]
+    if not themeLayers or not themeLayers[sourceLayer] or not themeLayers[targetLayer] then
+        return false
+    end
+
+    targetFraction = math.Clamp(tonumber(targetFraction) or 0, 0, 1)
+
+    return applyTerrorLayerWeights(themeName, {
+        [sourceLayer] = 1 - targetFraction,
+        [targetLayer] = targetFraction
+    }, volume, duration, primaryLayer or targetLayer)
+end
+
+loadThemes()
+initializeTerrorMusic()
+
+hook.Add("InitPostEntity", "tr_create_music", initializeTerrorMusic)
+
+timer.Simple(0, initializeTerrorMusic)
+
+cvars.AddChangeCallback("fh_terror_volume", function(convarName, oldValue, newValue)
+    if not lastTheme or not lastTerror then return end
+
+    changeAllTerrorVolumes(lastTheme, activeTerrorLayerWeights, tonumber(newValue) or 0, volumeChangeDuration)
+end, "FH.TerrorRadius.Volume")
+
+hook.Add("Think", "tr_update_music_channels", function()
+    local currentTime = CurTime()
+
+    for themeName, themeMusic in pairs(loadedMusic) do
+        for layerName, musicEntry in pairs(themeMusic) do
+            local audioChannel = musicEntry.channel
+
+            if not isValidAudioChannel(audioChannel) then
+                musicEntry.channel = nil
+                musicEntry.ready = false
+
+                if not musicEntry.loading then
+                    startMusicEntryLoading(themeName, layerName, musicEntry)
+                end
+
+                continue
+            end
+
+            local currentVolume = getInterpolatedMusicVolume(musicEntry, currentTime)
+
+            musicEntry.currentVolume = currentVolume
+            audioChannel:SetVolume(currentVolume)
+        end
+    end
 end)
 
-function terrorSetVolume(theme, name, volume, dur)
-    dur = dur or 0
-	local comName = theme .. name
-
-    if timer.Exists("StopTRMusic_" .. comName) then
-        timer.Remove("STopTRMusic_" .. comName)
-    end
-
-    if lastTheme and lastTerror and comName ~= lastTheme..lastTerror and loadedMusic[lastTheme][lastTerror] then
-        loadedMusic[lastTheme][lastTerror]:ChangeVolume(0, dur)
-    end
-
-	if not loadedMusic[theme] then return end
-
-    local soundObj = loadedMusic[theme][name]
-    if not soundObj then return end
-	
-    if soundObj:IsPlaying() and (lastTheme and lastTerror and comName ~= lastTheme .. lastTerror) then
-        soundObj:Stop()
-    end
-
-    if !soundObj:IsPlaying() then
-        soundObj:PlayEx(0, 100)
-    end
-    
-    soundObj:ChangeVolume(volume, dur)
-
-    if volume <= 0 then
-        timer.Create("StopTRMusic_" .. theme..name, dur + 0.05, 1, function()
-            if loadedMusic[theme][name] then 
-                loadedMusic[theme][name]:Stop()
-            end
-        end)
-    else
-		lastTheme = theme
-        lastTerror = name
-    end
-end
+lastTheme = nil
+lastTerror = nil
 
 local function isKillerLookingAt(ply, killer)
     local directionToPlayer = (ply:GetPos() - killer:GetPos()):GetNormalized()
@@ -208,7 +484,8 @@ local function sameMovement(ply,killer)
 end
 function checkChase(ply, killer)
     local distance = ply:GetPos():Distance(killer:GetPos())
-    local playerVisible = !ply:GetNoDraw() and ply:GetMaterial() ~= "models/null" and !IsValid(ply:GetPill()) or IsValid(ply:GetPill()) and ply:GetPill():GetMaterial() ~= "models/null" and !ply:GetPill():GetNoDraw()
+	local pill = pills.getMappedEnt(ply)
+    local playerVisible = !ply:GetNoDraw() and ply:GetMaterial() ~= "models/null" and !IsValid(pill) or IsValid(pill) and pill:GetMaterial() ~= "models/null" and !pill:GetNoDraw()
 	
     local conditions = sameMovement(ply,killer) and playerVisible
 	
@@ -240,6 +517,62 @@ local function getLayer(...)
 	return terror_radius.getLayer(...)
 end
 
+-- Переходы МЕЖДУ лейерами
+
+local function getDistanceBlendZone(themeName, distance)
+    if distance > tr_Approach and distance < tr_Approach + firstToSecondBlendDistance then
+        local sourceLayer = getLayer(themeName, "first_layer")
+        local targetLayer = getLayer(themeName, "second_layer")
+
+        return "first_to_second", sourceLayer, targetLayer, tr_Approach + firstToSecondBlendDistance, tr_Approach
+    end
+
+    if distance > tr_Close and distance < tr_Close + secondToThirdBlendDistance then
+        local sourceLayer = getLayer(themeName, "second_layer") or getLayer(themeName, "first_layer")
+        local targetLayer = getLayer(themeName, "third_layer")
+
+        return "second_to_third", sourceLayer, targetLayer, tr_Close + secondToThirdBlendDistance, tr_Close
+    end
+
+    return nil
+end
+
+local function applyApproachDistanceBlend(themeName, selectedLayer, distance, volume)
+    local previousTheme = state.lastTerrorTheme
+    local previousDistance = tonumber(state.lastTerrorDistance)
+    local sameTheme = previousTheme == themeName and previousDistance ~= nil
+
+    local movingCloser = sameTheme and distance < previousDistance - distanceDirectionThreshold
+    local movingAway = sameTheme and distance > previousDistance + distanceDirectionThreshold
+
+    if not sameTheme or movingAway then
+        state.activeDistanceBlendZone = nil
+    end
+
+    local zoneName, sourceLayer, targetLayer, outerDistance, innerDistance = getDistanceBlendZone(themeName, distance)
+    local activeZone = state.activeDistanceBlendZone
+    local canUseZone = zoneName and sourceLayer and targetLayer and sourceLayer ~= targetLayer
+    local shouldBlend = canUseZone and not movingAway and (activeZone == zoneName or movingCloser)
+
+    state.lastTerrorTheme = themeName
+    state.lastTerrorDistance = distance
+
+    if not shouldBlend then
+        if not zoneName then
+            state.activeDistanceBlendZone = nil
+        end
+
+        return false
+    end
+
+    state.activeDistanceBlendZone = zoneName
+
+    local blendDistance = math.max(1, outerDistance - innerDistance)
+    local targetFraction = math.Clamp((outerDistance - distance) / blendDistance, 0, 1)
+
+    return terrorSetLayerBlend(themeName, sourceLayer, targetLayer, targetFraction, volume, distanceBlendResponseDuration, selectedLayer)
+end
+
 local stealthDelay = 2 -- чтобы террор быстро не пропадал если аниматроник резко застелсил
 local stealthLastActive = {}
 local imChasing = false
@@ -254,6 +587,7 @@ timer.Create("tr_update", 0.5, 0, function()
 	if !IsValid(myself) then return end
 
 	local closestGuyPos, closestTheme, layer = nil, nil, nil
+	local closestLayerAllowsDistanceBlend = true
 	local foundNoOne = true
 	imChasing = false
 
@@ -284,9 +618,10 @@ timer.Create("tr_update", 0.5, 0, function()
 
 						if shouldProccessMy == false then continue end
 
-						if isChasing[ply] == myself then
+						if isChasing[ply] == myself and getLayer(theme, "chase") then
 							layer = "chase"
 							imChasing = true
+							closestLayerAllowsDistanceBlend = false
 							if getLayer(theme, "chase_low") then
 								if ply:Health() <= ply:GetMaxHealth() / 2 then
 									layer = "chase_low"
@@ -310,6 +645,7 @@ timer.Create("tr_update", 0.5, 0, function()
 				if killer == myself or !killer:Alive() or (!everyoneKillers[killer] and killer:Team() == myself:Team()) then continue end
 
 				local distance = myself:GetPos():Distance(killer:GetPos())
+				local candidateAllowsDistanceBlend = true
 
 				if closestGuyPos and distance > closestGuyPos then continue end
 				
@@ -347,10 +683,10 @@ timer.Create("tr_update", 0.5, 0, function()
 
 				if isChasing[myself] == killer then
 					layer = "chase"
-					if getLayer(theme, "chase_low") then
-						if myself:Health() <= myself:GetMaxHealth() / 2 then
-							layer = "chase_low"
-						end
+					candidateAllowsDistanceBlend = false
+
+					if getLayer(theme, "chase_low") and myself:Health() <= myself:GetMaxHealth() / 2 then
+						layer = "chase_low"
 					end
 				end
 				
@@ -359,6 +695,7 @@ timer.Create("tr_update", 0.5, 0, function()
 				
 				if forceLayer then
 					layer = forceLayer
+					candidateAllowsDistanceBlend = false
 				end
 				
 				if forceNotFound then
@@ -369,6 +706,7 @@ timer.Create("tr_update", 0.5, 0, function()
 
 				closestGuyPos = distance
 				closestTheme = theme
+				closestLayerAllowsDistanceBlend = candidateAllowsDistanceBlend
 			end
 		end
 	end
@@ -379,7 +717,7 @@ timer.Create("tr_update", 0.5, 0, function()
 	if closestTheme_handler and layer_handler then
 		closestTheme = closestTheme_handler
 		layer = layer_handler
-		
+		closestLayerAllowsDistanceBlend = false
 		foundNoOne = false
 	end
 
@@ -393,13 +731,29 @@ timer.Create("tr_update", 0.5, 0, function()
 		return 
 	end
 
-	if closestTheme == lastTheme and layer == lastTerror then return end
-	
-	if layer == "chase" and fh_terror_enabled:GetBool() and fh_terror_volume:GetFloat() > 0 then
-		surface.PlaySound("chase_begin.mp3")
+	local terrorVolume = fh_terror_volume:GetFloat()
+	local isChaseLayer = imChasing or layer == "chase" or layer == "chase_low" or layer == "chase_rage"
+
+	if isChaseLayer then
+		resetDistanceBlendState()
+
+		if layer == "chase" and lastTerror ~= "chase" --[[and fh_terror_enabled:GetBool() and terrorVolume > 0--]] then
+			surface.PlaySound("chase_begin.mp3")
+		end
+
+		terrorSetVolume(closestTheme, layer, terrorVolume, layerCrossfadeDuration)
+		return
 	end
-	
-	terrorSetVolume(closestTheme, layer, fh_terror_volume:GetFloat(), 0)
+
+	if closestLayerAllowsDistanceBlend and closestGuyPos and applyApproachDistanceBlend(closestTheme, layer, closestGuyPos, terrorVolume) then
+		return
+	end
+
+	if not closestLayerAllowsDistanceBlend or not closestGuyPos then
+		resetDistanceBlendState()
+	end
+
+	terrorSetVolume(closestTheme, layer, terrorVolume, layerCrossfadeDuration)
 end)
 
 timer.Pause("tr_update")

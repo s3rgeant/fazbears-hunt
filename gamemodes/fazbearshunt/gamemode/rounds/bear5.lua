@@ -1,3 +1,4 @@
+AddCSLuaFile()
 
 fh.RegisterRoundType("bear5", 3, function()
 	local players = player.GetAll()
@@ -19,6 +20,8 @@ fh.RegisterRoundType("bear5", 3, function()
 end, 10, 6, 32)
 
 fh.AddRoundMusic(3, "music/bear_timer.wav")
+
+if CLIENT then return end
 
 hook.Add( "EntityTakeDamage", "fh_bear_kill", function( ply, dmginfo )
 	if not ply:IsPlayer() then return end
@@ -124,9 +127,10 @@ hook.Add("FH_LastManStanding", "bear5", function()
 			end
 			if IsValid(ply) then
 				if not ply:HasWeapon("weapon_killer_axe") then 
-					if not ply:HasWeapon("weapon_killmask") then
-						ply:Give("weapon_killmask", true)
-					end
+					ply:StripWeapons()
+					ply:StripAmmo()
+					
+					ply:Give("weapon_killmask", true)
 					ply:SelectWeapon("weapon_killmask")
 			
 					local wep = ply:GetActiveWeapon()

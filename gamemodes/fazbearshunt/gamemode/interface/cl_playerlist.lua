@@ -51,6 +51,10 @@ function playerlist.SetPlayerIcon(steamid, icon)
 	playerIcons[steamid] = icon
 end
 
+function playerlist.GetPlayerIcon(steamid)
+	return playerIcons[steamid]
+end
+
 function playerlist.ResetPlayerIcon(steamid)
 	playerIcons[steamid] = nil
 end
@@ -402,7 +406,7 @@ local function CreatePlayerPanel(scrollbar, ply)
 			
 			local icon = vgui.Create( "DImage", plyPanel )
 			icon:SetSize( size, size )
-			icon:SetPos( 36, (panel_height/2) - (size/2) )
+			icon:SetPos( 32, (panel_height/2) - (size/2) )
 			icon:SetImage(texture)
 			
 			name_x = name_x + size
@@ -671,7 +675,7 @@ local function CreateAnimatronicPanel(scrollbar, ply, killerData)
 			
 			local icon = vgui.Create( "DImage", plyPanel )
 			icon:SetSize( size, size )
-			icon:SetPos( 36, (panel_height/2) - (size/2) )
+			icon:SetPos( 40, (panel_height/2) - (size/2) )
 			icon:SetImage(texture)
 			
 			name_x = name_x + size

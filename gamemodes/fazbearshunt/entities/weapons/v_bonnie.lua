@@ -109,7 +109,7 @@ function SWEP:SecondaryAttack()
 				self.ControlSound = nil
 			end
 			if !self.ControlSound then
-				self.ControlSound = CreateSound(game.GetWorld(), "bonnie_control_targetted.wav", rf)
+				self.ControlSound = CreateSound(game.GetWorld(), "animatronics/bonnie/bonnie_control_targetted.wav", rf)
 				self.ControlSound:SetSoundLevel( 0 )
 			end
 			self.ControlSound:Play()
@@ -125,7 +125,7 @@ function SWEP:SecondaryAttack()
 				self.GlobalControlSound = nil
 			end
 			if !self.GlobalControlSound then
-				self.GlobalControlSound = CreateSound(ply, ")bonnie_control_others.wav", rf)
+				self.GlobalControlSound = CreateSound(ply, ")animatronics/bonnie/bonnie_control_others.wav", rf)
 			end
 			self.GlobalControlSound:Play()
 	
@@ -157,7 +157,7 @@ function SWEP:SecondaryAttack()
 			self.ControlSound = nil
 		end
 		if !self.ControlSound then
-			self.ControlSound = CreateSound(game.GetWorld(), "bonnie_control_randoms.wav", rf)
+			self.ControlSound = CreateSound(game.GetWorld(), "animatronics/bonnie/bonnie_control_randoms.wav", rf)
 			self.ControlSound:SetSoundLevel( 0 )
 		end
 		self.ControlSound:Play()
@@ -173,7 +173,7 @@ function SWEP:SecondaryAttack()
 			self.GlobalControlSound = nil
 		end
 		if !self.GlobalControlSound then
-			self.GlobalControlSound = CreateSound(ply, ")bonnie_control_others.wav", rf)
+			self.GlobalControlSound = CreateSound(ply, ")animatronics/bonnie/bonnie_control_others.wav", rf)
 		end
 		self.GlobalControlSound:Play()
 		
@@ -189,7 +189,7 @@ end
 function SWEP:Think()
 	if SERVER then
 		local ply = self:GetOwner()
-		if !self.Owner:KeyDown(IN_ATTACK2) and self.Picking or (ply:IsFrozen() or !ply:OnGround()) then
+		if !ply:KeyDown(IN_ATTACK2) and self.Picking or (ply:IsFrozen() or !ply:OnGround()) then
 			self.PickingRandom = false
 			self.Picking = false
 			self:SetNextPrimaryFire(CurTime() - 1)
@@ -200,7 +200,7 @@ function SWEP:Think()
 			
 			self.RandomTarget = nil
 			
-			timer.Remove("bonnie_swep_yoursmine_rmb_" .. self.Owner:EntIndex())
+			timer.Remove("bonnie_swep_yoursmine_rmb_" .. ply:EntIndex())
 			
 			if self.ControlSound and !self.Controlling then
                 self.ControlSound:Stop()
@@ -212,6 +212,13 @@ function SWEP:Think()
 		end
 		
 		if self.LastTarget and self.Picking and !IsValid(self.HullTarget) then
+			if not IsValid(self.LastTarget) then
+				self.LastTarget = nil
+				self:SetLastTarget(nil)
+			
+				ply:SendLua("surface.PlaySound('tools/ifm/ifm_denyundo.wav')")
+				return
+			end
 			local tr = util.TraceLine( {
 				start = ply:EyePos(),
 				endpos = self.LastTarget:EyePos(),
@@ -273,7 +280,7 @@ if CLIENT then
 	
     local crouchFactor = 0
     function SWEP:CalcViewModelView(ViewModel, OldEyePos, OldEyeAng, EyePos, EyeAng)
-        local ply = self.Owner
+        local ply = self:GetOwner()
         if not IsValid(ply) then return EyePos, EyeAng end
 		
         local target = (self:GetSequenceName(self:GetSequence()):match("crouch") == "crouch") and 1 or 0

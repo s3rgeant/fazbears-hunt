@@ -25,14 +25,12 @@ if SERVER then
 end
 
 function chaseVoicelineChecker(ply, ent, name)
-	timer.Create("CheckConditions"..ply:EntIndex(), 2, 0, function()
-		if !IsValid(ent) then
-			if timer.Exists( "CheckConditions"..ply:EntIndex()) then
-				timer.Remove("CheckConditions"..ply:EntIndex())
-			end
-			if timer.Exists( "ChaseCheck"..ply:EntIndex()) then
-				timer.Remove("ChaseCheck"..ply:EntIndex())
-			end
+	local index = ply:EntIndex()
+	local timername = "CheckConditions"..index
+	timer.Create(timername, 2, 0, function()
+		if not IsValid(ent) then
+			timer.Remove(timername)
+			timer.Remove(index)
 			return
 		end
 		
@@ -95,7 +93,7 @@ PILL.jumpPower = 250
 PILL.sounds={
 	jump="jump.mp3",
 	land="land.mp3",
-	melee="fnaf2/xscream2.wav",
+	melee=")fnaf2/xscream2.wav",
 }
 PILL.camera = {
 	offset = Vector(0, 0, 90),
@@ -117,6 +115,21 @@ end
 
 function GetPillTemplate()
 	return table.Copy(PILL)
+end
+
+function IsGoodLandConditions(ply, ent, waterlevel, velocity, posdistance)
+	if ply._skipLandAnim then
+		ply._skipLandAnim = nil
+		return false
+	end
+	if ply:WaterLevel() < (waterlevel or 2) then
+		if ply._wereJumpingPill or !ply._wereJumpingPill and ply:GetVelocity().z < (velocity and (math.abs(velocity)*-1) or -350) then
+			if !ply._jumpPosPill or ply._jumpPosPill and ply:GetPos():Distance(ply._jumpPosPill) > (posdistance or 150) then
+				return true
+			end
+		end
+	end
+	return false
 end
 
 -- GFREDDY HEAD
@@ -142,12 +155,8 @@ pills.register("pill_wgfreddyhead2",{
 		ducked=0,
 	},
 	sounds={
-	//	teleport="legitfreddy/laugh_giggle_girl_1d.wav",
-		gs={"fnaf2/wgfreddy_glitchsound.wav",
-		"fnaf2/wgfreddy_glitchsound2.wav"},
 		scream="fnaf2/bonniescream.wav",
-		melee=pills.helpers.makeList("fnaf2/xscream2.wav",2),
-		step=pills.helpers.makeList("fnaf2/none.wav",1)
+		melee=")fnaf2/xscream2.wav",
 	},
 	type="ply",
     camera = {
@@ -218,12 +227,11 @@ function playVoiceline(character, line, who, when)
 
 	if who:IsSpeaking() then return end
 
-	if ( timer.Exists( "fh_PlayVoiceLine" .. who:SteamID64()) or timer.Exists( "fh_DontVoiceLine" .. who:SteamID64() ) ) then return end
+	local ID64 = who:SteamID64()
+	if timer.Exists( "fh_PlayVoiceLine" .. ID64) or timer.Exists( "fh_DontVoiceLine" .. ID64 ) then return end
 	
-	timer.Create("fh_PlayVoiceLine" .. who:SteamID64(), when or 0, 1, function()
-		local ent = pills.getMappedEnt(who)
-		
-		if IsValid(ent) then
+	timer.Create("fh_PlayVoiceLine" .. ID64, when or 0, 1, function()
+		if pills.hasMappedEnt(who) then
 			local FH_OverrideVoiceline = hook.Run("FH_OverrideVoiceline", who, character, line)
 			if FH_OverrideVoiceline ~= nil and isstring(FH_OverrideVoiceline) then
 				line = FH_OverrideVoiceline
@@ -251,30 +259,21 @@ function playVoiceline(character, line, who, when)
 			local dsp = IsHalloween() and isHalloweenish[character] and 38 or 0
 			
 			who:EmitSound(character .. "." .. line, 75, 100, 1, CHAN_VOICE, 0, dsp, rf)
-			
-			--[[
-			net.Start("fh_play_voiceline")
-			net.WriteString(character)
-			net.WriteString(line)
-			net.WritePlayer(who)
-			net.Broadcast()
-			]]--
-			
-			timer.Create("fh_DontVoiceLine" .. who:SteamID64(), 5, 1, function() end)
+			timer.Create("fh_DontVoiceLine" .. ID64, 5, 1, function() end)
 		end
 	end)
 end
 
-function FindNearestPlayer(origin, radius, ignorePlayer, fov)
+function FindNearestPlayer(origin, radius, attacker, fov)
     local nearestPlayer = nil
     local nearestDistance = radius
 
     local useFov = fov and fov > 0
     local candidates
-    local eyePos = IsValid(ignorePlayer) and ignorePlayer:EyePos() or origin
+    local eyePos = IsValid(attacker) and attacker:EyePos() or origin
 
-    if useFov and IsValid(ignorePlayer) then
-        local dir = ignorePlayer:EyeAngles():Forward()
+    if useFov and IsValid(attacker) then
+        local dir = attacker:EyeAngles():Forward()
         candidates = ents.FindInCone(eyePos, dir, radius, math.cos(math.rad(fov)))
 		
     else
@@ -282,16 +281,17 @@ function FindNearestPlayer(origin, radius, ignorePlayer, fov)
     end
 
     for _, ply in ipairs(candidates) do
-        if ply ~= ignorePlayer and ((ply:IsPlayer() and ply:IsSurvivor()) or ply:IsNPC()) then
+        if ply ~= attacker and ((ply:IsPlayer() and ply:IsSurvivor()) or ply:IsNPC()) then
             local pos = ply:GetPos()
             local distance = origin:Distance(pos)
             if distance <= nearestDistance then
                 local trace = util.TraceLine({
                     start = eyePos,
                     endpos = ply:GetPos() + ply:OBBCenter(),
-                    filter = function(ent) return !ent:IsPlayer() and ent ~= ignorePlayer and ent ~= ply end
+                    filter = function(ent) return !ent:IsPlayer() and ent ~= attacker and ent ~= ply end
                 })
                 if not trace.Hit then
+					if hook.Run("FindNearestPlayerFilter", ply, attacker, origin, radius, fov) == false then continue end
                     nearestDistance = math.sqrt(distance)
                     nearestPlayer = ply
                 end
@@ -330,7 +330,7 @@ function fh_get_nearest_props(origin, radius)
     local props = {}
 
     for _, v in ipairs( ents.FindInSphere( origin, radius ) ) do
-        if v:GetClass() == 'prop_physics' or v:GetClass() == 'prop_dynamic' or v:GetClass() == 'func_breakable_surf' or v:GetClass() == 'func_breakable' then
+        if v:GetClass():match("physics") or v:GetClass() == 'prop_dynamic' or v:GetClass() == 'func_breakable_surf' or v:GetClass() == 'func_breakable' then
 			table.insert(props, v)
         end
     end
@@ -385,6 +385,7 @@ function performJumpscare(ply, ent, target, killDelay, voiceCharacter, jumpscare
 		end
 		if IsValid(target) then 
 			target:SetJumpscared(false)
+			target:SetCollisionGroup(5)
 			
 			if target:IsPlayer() then
 				target:Freeze(false)
@@ -500,6 +501,7 @@ function jumpscareEvent(ply, ent, target, dist)
 		target:NextThink(CurTime() + 99)
 	end
 
+	if not IsValid(ply) or not IsValid(target) then return end
 	local directionToTarget = (target:EyePos() - ply:EyePos()):Angle()
 	ply:SetEyeAngles(directionToTarget)
 	directionToTarget.p = 0
@@ -515,6 +517,8 @@ end
 function breakBustDoor(ply, door, dur)
 	local dur = dur or 90
 	if not IsValid(door) then return end
+	
+	if door.IsBreakBusted then return end
 
 	local mdl = door:GetModel()
 	if not mdl then return end
@@ -532,6 +536,9 @@ function breakBustDoor(ply, door, dur)
 	local oldColl = door:GetCollisionGroup()
 
 	door:SetCollisionGroup(COLLISION_GROUP_DEBRIS)
+	door:CollisionRulesChanged()
+	
+	door.IsBreakBusted = true
 	
 	timer.Simple(0, function()
 		if IsValid(door) then
@@ -549,7 +556,7 @@ function breakBustDoor(ply, door, dur)
 	if not IsValid(physDoor) then return end
 
 	physDoor:SetModel(mdl)
-	physDoor:SetPos(pos + (door:GetForward() * 5))
+	physDoor:SetPos(pos + (door:GetForward() * 16))
 	physDoor:SetAngles(ang)
 	physDoor:SetSkin(skin)
 	physDoor:Spawn()
@@ -597,6 +604,8 @@ function breakBustDoor(ply, door, dur)
 						child:SetNotSolid(false)
 					end
 					door:SetCollisionGroup(oldColl)
+					door:CollisionRulesChanged()
+					door.IsBreakBusted = nil
 					timer.Remove(timerName)
 				end
 			end)
@@ -610,6 +619,7 @@ function breakBustDoor(ply, door, dur)
 	end)
 
 	physDoor:SetCollisionGroup(COLLISION_GROUP_DEBRIS)
+	physDoor:CollisionRulesChanged()
 	
 	stats.Add(ply, "broke_doors", 1)
 
@@ -643,7 +653,7 @@ if SERVER then
 				local pushForce = newVelocity - currentVelocity
 				
 				if pushForce:LengthSqr() > 0 then
-					target:SetVelocity(-pushForce + (pushForce * 0.1)) -- 0ю1 это сила отталкивания
+					target:SetVelocity(-pushForce + (pushForce * 0.05)) -- 0ю1 это сила отталкивания
 				end
 			end)
 		end
@@ -689,8 +699,8 @@ end
 local size = 2
 local killMaxs = Vector(size,size,size)
 local killMins = Vector(-size,-size,-size)
-function AnimatronicBreakProp(ply, ent, cooldown)
-	local cooldown = cooldown or 1
+function AnimatronicBreakProp(ply, ent, cd)
+	local cd = cd or 0.9
 	if ply._breakPropAsAnimTime and ply._breakPropAsAnimTime > CurTime() then
 		return
 	end
@@ -768,7 +778,10 @@ function AnimatronicBreakProp(ply, ent, cooldown)
 			wep:HandleAnimation("attack", -1, true)
 		end
 		
-		ply._breakPropAsAnimTime = CurTime() + cooldown
+		cooldown.Set(ply, "kill", cd)
+		cooldown.Send(ply, "kill")
+		
+		ply._breakPropAsAnimTime = CurTime() + cd
 			
 		local effectData = EffectData()
 		effectData:SetOrigin(tr.HitPos)
@@ -796,9 +809,13 @@ function AnimatronicBreakProp(ply, ent, cooldown)
         end
 		
 		util.Effect("Impact_GMOD", effectData, true, true)
+		
+		hook.Run("fh_animatronic_post_break_prop", ply, ent, tr)
+		return true
 	end
 	
-	hook.Run("fh_animatronic_post_break_prop", ply, ent, tr)
+	local res = hook.Run("fh_animatronic_post_break_prop", ply, ent, tr) ~= nil
+	return res
 end
 
 hook.Add("FH_ChaseVoicelineHandler", "killer_mask_animvc", function(ply,ent,name)
@@ -870,3 +887,4 @@ end
 
 include("animatronics/special/bear5.lua")
 include("animatronics/special/wgfreddy.lua")
+include("animatronics/special/wgfreddy_cl.lua")

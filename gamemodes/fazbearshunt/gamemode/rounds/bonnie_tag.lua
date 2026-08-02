@@ -1,3 +1,5 @@
+AddCSLuaFile()
+
 local tagDuration = 240
 local tagSetup = 24
 
@@ -31,6 +33,8 @@ fh.RegisterRoundType("bonnie_tag", 2, function()
 end, 2, 8, 20)
 
 fh.SetRoundTypeBlocked(2, true)
+
+if CLIENT then return end
 
 hook.Add("fh_startgame", "tag_prevent_default_startgame", function(roundType)
 	if roundType == 2 then

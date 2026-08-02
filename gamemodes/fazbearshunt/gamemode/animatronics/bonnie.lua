@@ -79,7 +79,7 @@ pills.register("pill_wbonnie2",{
 	},
 	sounds={
 		scream="fnaf2/bonniescream.wav",
-		melee="fnaf2/xscream2.wav",
+		melee=")fnaf2/xscream2.wav",
 		jump="jump.mp3",
 		land="land.mp3",
 	},
@@ -132,6 +132,8 @@ pills.register("pill_wbonnie2",{
 	attack={
 		mode="trigger",
 		func=function(ply,ent)
+			if cooldown.Exists(ply, "kill") then return end
+			
 			if IsValid(ply:GetEntityInUse()) then return end
 			
 			local target = FindNearestPlayer(ply:EyePos(), 120, ply, 36)
@@ -139,7 +141,7 @@ pills.register("pill_wbonnie2",{
 			local success = performJumpscare(ply, ent, target, 1.6, "bonnie", 52, "v_bonnie")
 			
 			if !IsValid(target) or !success then 
-				AnimatronicBreakProp(ply, ent)
+				if not AnimatronicBreakProp(ply, ent) then cooldown.SetSend(ply, "kill", 0.9) end
 				return 
 			end
 			
@@ -176,12 +178,8 @@ pills.register("pill_wbonnie2",{
 	end,
 	
 	land=function(ply,ent)
-		if ply:WaterLevel() < 2 then
-			if ply._wereJumpingPill or !ply._wereJumpingPill and ply:GetVelocity().z < -270 and ent.anim ~= 'ability' then
-				if !ply._jumpPosPill or ply._jumpPosPill and ply:GetPos():Distance(ply._jumpPosPill) > 150 then
-					ent:PillAnim("land",true)
-				end
-			end
+		if ent.anim ~= 'ability' and IsGoodLandConditions(ply, ent) then
+			ent:PillAnim("land",true)
 		end
 		
 		landTripCheck(ply, ent, "bonnie")
@@ -204,7 +202,7 @@ function YoursMine_Start(ply, target)
 	
 	if not IsValid(target) then return end
 	
-	local ent = ply:GetPill()
+	local ent = ply:GetPillCostume()
 	
 	if !bonnieSaveStats[ply] then bonnieSaveStats[ply] = {} end
 	
@@ -227,6 +225,7 @@ function YoursMine_Start(ply, target)
 	hook.Run("FH_YoursMineStart", ply, ent, target)
 	
 	ply.fh_target_player = target
+	ply:SetNWBool("_yoursmine_user", true)
 	
 	bonnies_targets[target] = true
 	
@@ -246,7 +245,7 @@ function YoursMine_Start(ply, target)
 	
 	net.Start("fh_ent_sound_play")
 	net.WriteEntity(ent)
-	net.WriteString("bonnie_ability_others.wav")
+	net.WriteString(")animatronics/bonnie/bonnie_ability_others.wav")
 	net.Broadcast()
 	
 	timer.Simple(1, function()
@@ -259,10 +258,15 @@ function YoursMine_Start(ply, target)
 	
 		hook.Run("FH_YoursMineSpectating", ply, ent, target)
 		
-		if IsValid(ply) and IsValid(target) then
+		if IsValid(ply) and IsValid(target) and IsValid(ent) then
 			ply:Freeze(false)
-		
+			
 			ent:DetachPlayer()
+			
+			local ground = ply:GetGroundEntity()
+			if IsValid(ground) and ground:GetClass() == "func_tracktrain" then
+				ent:SetParent(ground)
+			end
 			
 			ply:SetModelScale( target:GetModelScale(), 0 )
 			ply:SetViewOffset( target:GetViewOffset() )
@@ -308,11 +312,11 @@ function YoursMine_Start(ply, target)
 	end)
 	
 	net.Start("fh_ui_sound_play")
-	net.WriteString('bonnie_ability_bonnie.wav')
+	net.WriteString('animatronics/bonnie/bonnie_ability_bonnie.wav')
 	net.Send(ply)
 	
 	net.Start("fh_play_sound")
-	net.WriteString('bonnie_ability_target.wav')
+	net.WriteString('animatronics/bonnie/bonnie_ability_target.wav')
 	net.Send(target)
 	
 	timer.Simple(8, function()
@@ -403,6 +407,8 @@ function YoursMine_ForceStop(ply, target, ent, cd)
 		ply:SetPushBlocked(false)
 		ply:SetAudible(true)
 		ply:SetOnlyAudibleByTeammates(false)
+		
+		ply:SetNWBool("_yoursmine_user", false)
 		
 		if bonnieSaveStats["wasCrouching"] then
 			ply:Crouch()
@@ -504,6 +510,12 @@ hook.Add("PlayerPostThink", "yoursmine_movement_copying", function(ply)
 end)
 
 if CLIENT then
+	hook.Add("FH_HandleKillerTerrorRadius", "bonnie_control", function(killer, theme)
+		if killer:GetNWBool("_yoursmine_user") then
+			return false
+		end
+	end)
+	
 	local YOURSMINE_COLOR = Color(0, 70, 255, 255)
 	local yoursmine_halors = {}
 	

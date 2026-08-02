@@ -3,6 +3,9 @@ AddCSLuaFile()
 
 SWEP.PrintName = "#weapon_killmask"
 SWEP.DrawWeaponInfoBox = false
+if CLIENT then
+	SWEP.WepSelectIcon = surface.GetTextureID( "weapons/killermask" )
+end
 
 SWEP.Slot = 1
 SWEP.SlotPos = 1
@@ -65,23 +68,25 @@ function SWEP:PrimaryAttack()
 	if fh.GetActiveUsedKiller("pill_plushtrap") then
 		animCount = math.max(animCount - 1, 1)
 	end
+	
+	local owner = self:GetOwner()
 
 	if animCount == 1 and fh.GetActiveUsedKiller("pill_springtrap") then
-		self:GetOwner():SendLua('LocalPlayer():ChatPrint(language.GetPhrase("weapon_killmask.nearby"))')
+		owner:SendLua('LocalPlayer():ChatPrint(language.GetPhrase("weapon_killmask.nearby"))')
 		return
 	elseif isGameOn and !roundActive then
-		self:GetOwner():SendLua('LocalPlayer():ChatPrint(language.GetPhrase("weapon_killmask.wait"))')
+		owner:SendLua('LocalPlayer():ChatPrint(language.GetPhrase("weapon_killmask.wait"))')
 		return
 	end
 	
 	self:SendWeaponAnim(ACT_VM_RELEASE)
 	
-	self:GetOwner():DoAnimationEvent( ACT_GMOD_GESTURE_ITEM_PLACE )
+	owner:DoAnimationEvent( ACT_GMOD_GESTURE_ITEM_PLACE )
 	
 	self:SetBlockSwap(true)
 	
 	timer.Simple(1.2, function()
-		if IsValid(self) and IsValid(self.Owner) then
+		if IsValid(self) and IsValid(owner) then
 			self:SpringLock()
 			self:CallOnClient("SpringLock")
 		end
@@ -200,7 +205,11 @@ end
 if SERVER then return end
 
 local model = ClientsideModel( "models/fh/items/w_springbonnie_mask.mdl" )
-model:SetNoDraw( true )
+model.RenderOverride = function(self, flags)
+	if not IsValid(self:GetParent()) then return end
+	if IsValid(self:GetParent()) and not self:GetParent():GetNW2Bool("KillerMaskEquiped") then self:SetParent() return end
+	self:DrawModel()
+end
 
 hook.Add("PostPlayerDraw", "fh_draw_killmask", function(ply)
 	if not IsValid(ply) or not ply:Alive() then return end
@@ -238,7 +247,7 @@ hook.Add("PostPlayerDraw", "fh_draw_killmask", function(ply)
 end)
 
 function SWEP:DrawWorldModel( flags )
-	local ply = self.Owner
+	local ply = self:GetOwner()
 	if !ply:GetNW2Bool("KillerMaskEquiped") then
 		self:DrawModel( flags )
 	end

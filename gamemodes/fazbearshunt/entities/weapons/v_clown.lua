@@ -30,7 +30,7 @@ function SWEP:SetupAnimations()
 end
 
 function SWEP:PrimaryAttack()
-	local ply = self.Owner
+	local ply = self:GetOwner()
 	local ent = pills.getMappedEnt(ply)
 	
 	if !IsValid(ent) or ply.tasered then return end

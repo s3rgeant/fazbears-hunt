@@ -32,7 +32,7 @@ function SWEP:PrimaryAttack()
 	local Tr = util.TraceLine{
 		start = Pos,
 		endpos = Pos + Aim * self.Range,
-		filter = player.GetAll(),
+		filter = ply,
 	}
 
 	local HitEnt = Tr.Entity
@@ -56,7 +56,7 @@ function SWEP:PrimaryAttack()
 		end
 
 		local Phys = HitEnt:GetPhysicsObject()
-		if not IsValid(Phys) then return end
+		if SERVER and not IsValid(Phys) then return end
 		
 		if ply:GetGroundEntity() == HitEnt then
 			return
@@ -83,18 +83,22 @@ function SWEP:PrimaryAttack()
 
 	local Phys = HitEnt:GetPhysicsObject()
 	if IsValid(Phys) then
-		local Pos2 = Pos + Aim * self.Range * self.Drag.Fraction
-		local OffPos = HitEnt:LocalToWorld(self.Drag.OffPos)
-		local Dif = Pos2 - OffPos
-
-		local mass = Phys:GetMass()
-		local forceMult = math.max(10, 500 - mass)
-
 		if ply:GetGroundEntity() == HitEnt then
 			hook.Run("OnPlayerPhysicsDrop", ply, self.Drag.Entity, false)
 			self.Drag = nil
 			return
 		end
+		
+		local Pos2 = Pos + Aim * self.Range * self.Drag.Fraction
+		local OffPos = HitEnt:LocalToWorld(self.Drag.OffPos)
+		local Dif = Pos2 - OffPos
+		
+
+		local mass = Phys:GetMass()
+		if HitEnt:IsRagdoll() then mass = 10 end
+		
+		local forceMult = math.max(10, 500 - mass)
+		
 
 		local Nom = (Dif:GetNormal() * math.min(1, Dif:Length() / 100) * forceMult - Phys:GetVelocity()) * mass
 		Phys:ApplyForceOffset(Nom, OffPos)
@@ -187,7 +191,7 @@ if CLIENT then
 		local Tr = util.TraceLine{
 			start = Pos,
 			endpos = Pos +Aim *self.Range,
-			filter = player.GetAll(),
+			filter = ply,
 		}
 
 		local HitEnt = Tr.Entity
@@ -222,10 +226,11 @@ if CLIENT then
 
 			local A = OffPos:ToScreen()
 			local B = Pos2:ToScreen()
-
-			surface.DrawRect( A.x -2, A.y -2, 4, 4, MainCol )
-			surface.DrawRect( B.x -2, B.y -2, 4, 4, MainCol )
-			surface.DrawLine( A.x, A.y, B.x, B.y, MainCol )
+			
+			surface.SetDrawColor(MainCol)
+			surface.DrawRect( A.x -2, A.y -2, 4, 4 )
+			surface.DrawRect( B.x -2, B.y -2, 4, 4 )
+			surface.DrawLine( A.x, A.y, B.x, B.y )
 		end
 	end
 end

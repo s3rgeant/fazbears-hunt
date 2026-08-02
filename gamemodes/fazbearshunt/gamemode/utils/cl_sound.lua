@@ -99,7 +99,7 @@ end)
 
 	-- дабы не было двойных шагов из-за того что мы установили игроку модельку аниматроника
 hook.Add("PlayerFireAnimationEvent", "fh_skip_anim_sounds", function(ply, pos, ang, event, str)
-	if IsValid(ply:GetPill()) then
+	if IsValid(ply:GetPillCostume()) then
 		return true
 	end
 end)

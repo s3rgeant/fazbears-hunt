@@ -9,6 +9,26 @@ local teammates = {}
 
 include("halo_module.lua")
 
+local function ClearReusableEntryList(entryList)
+    for entryIndex = #entryList, 1, -1 do
+        entryList[entryIndex] = nil
+    end
+end
+
+local function AcquireReusableEntry(
+    entryPool,
+    entryIndex
+)
+    local entry = entryPool[entryIndex]
+
+    if not entry then
+        entry = {}
+        entryPool[entryIndex] = entry
+    end
+
+    return entry
+end
+
 hook.Add("PillApply", "fh_joinpill", function(ply, ent)
 	timer.Simple(1, function()
 		if IsValid(ent) then
@@ -92,7 +112,15 @@ function removeAffected(ply, force)
 end
 
 net.Receive("AddAffectedPlayers", function()
-    players = net.ReadTable()
+	local numTargets = net.ReadUInt(8)
+	local players = {}
+	for i = 1, numTargets do
+		local target = net.ReadEntity()
+		if IsValid(target) and target:IsPlayer() then
+			table.insert(players, target)
+		end
+	end
+	
 	duration = net.ReadFloat()
 	color = net.ReadColor()
 	
@@ -253,95 +281,168 @@ net.Receive("ToggleHighlightSound", function()
     end
 end)
 
-local spectateColor = Color(155,0,255,255)
-local function collectSpects(lp, rule)
-	local lp_obsmode = lp:GetObserverMode()
-	local out = {}
-	
-	if IsValid(lp) and !lp:Alive() and lp_obsmode ~= OBS_MODE_NONE then
-		local spectateTargets = {}
-		for _, ply in player.Iterator() do
-			if !ply:Alive() then continue end
-		
-			local ent = ply:GetPill()
-			
-			--[[ 
-				ЗАМЕТОЧКА:
-						Игроков с SetNoDraw(true) нельзя просветить.
-			]]--
-			
-			if lp:GetObserverTarget() == ply and lp_obsmode == OBS_MODE_IN_EYE then continue end
-			
-			local entry
-			if !IsValid(ent) and ply:GetMaterial() == "models/null" then
-				entry = OUTLINE.NormalizeEntry(rule, {
-					ent = ply,
-					outline_color = SPECTATOR_COLOR,
-					fill_color = SPECTATOR_COLOR
-				})
-			elseif IsValid(ent) and ent:GetMaterial() == "models/null" then
-				entry = OUTLINE.NormalizeEntry(rule, {
-					ent = ent,
-					outline_color = SPECTATOR_COLOR,
-					fill_color = SPECTATOR_COLOR
-				})
-			end
-			if entry then
-				out[#out + 1] = entry
-			end
-		end
-	end
-	return (#out > 0) and out or nil
-end 
-
 local SPECTATOR_COLOR = Color(155, 0, 255, 255)
+
+local spectatorHighlightEntries = {}
+local spectatorHighlightEntryPool = {}
+
+local function collectSpects(localPlayer)
+	ClearReusableEntryList(
+	spectatorHighlightEntries
+	)
+	
+	if not IsValid(localPlayer) then
+		return nil
+	end
+	
+	local observerMode =
+		localPlayer:GetObserverMode()
+	
+	if localPlayer:Alive()
+		or observerMode == OBS_MODE_NONE
+	then
+		return nil
+	end
+	
+	local entryCount = 0
+	
+	for _, targetPlayer in player.Iterator() do
+		if not targetPlayer:Alive() then continue end
+	
+		if localPlayer:GetObserverTarget() == targetPlayer and observerMode == OBS_MODE_IN_EYE then continue end
+	
+		local highlightedEntity = targetPlayer:GetPill()
+	
+		if not IsValid(highlightedEntity) then
+			if targetPlayer:GetMaterial() ~= "models/null" then continue end
+	
+			highlightedEntity = targetPlayer
+		elseif highlightedEntity:GetMaterial() ~= "models/null" then continue end
+	
+		entryCount = entryCount + 1
+	
+		local highlightEntry =
+			AcquireReusableEntry(
+				spectatorHighlightEntryPool,
+				entryCount
+			)
+	
+		highlightEntry.ent = highlightedEntity
+		highlightEntry.outline_color = SPECTATOR_COLOR
+		highlightEntry.fill_color = SPECTATOR_COLOR
+	
+		spectatorHighlightEntries[ entryCount ] = highlightEntry
+	end
+	
+	if entryCount == 0 then
+		return nil
+	end
+	
+	return spectatorHighlightEntries
+end
+
 OUTLINE.RegisterRule("spectators", {
-    priority = 10,
-    render_max_dist = 3000,
-
-    outline_color = SPECTATOR_COLOR,
-    outline_width = 3,
-    outline_min_dist = 1000,
-    outline_max_dist = 2200,
-
-    fill_color = SPECTATOR_COLOR,
-    fill_min_dist = 1500,
-    fill_max_dist = 2600,
-
-    mode = OUTLINE_MODE_VISIBLE,
-    collect = collectSpects
+	priority = 10,
+	render_max_dist = 3000,
+	
+	outline_color = SPECTATOR_COLOR,
+	outline_width = 3,
+	outline_min_dist = 1000,
+	outline_max_dist = 2200,
+	
+	fill_color = SPECTATOR_COLOR,
+	fill_min_dist = 1500,
+	fill_max_dist = 2600,
+	
+	mode = OUTLINE_MODE_VISIBLE,
+	
+	quality = {
+		auto = {
+			builtin = true,
+			low_render_max_dist = 2400
+		},
+	
+		low = {
+			builtin = true,
+			render_max_dist = 2000
+		}
+	},
+	
+	collect = collectSpects
 })
 
-local function getAffected(lp, rule)
-    if not istable(affectedPlayers) then return nil end
+local ORB_FADE_DISTANCE = 200
 
-    local out = {}
-    local maxDist = tonumber(rule.render_max_dist) or math.huge
-    local maxDistSqr = maxDist > 0 and (maxDist * maxDist) or math.huge
+local AFFECTED_ORB_START_DISTANCE = 1650
+local AFFECTED_ORB_FULL_DISTANCE = AFFECTED_ORB_START_DISTANCE + ORB_FADE_DISTANCE
 
-    for ent, color in pairs(affectedPlayers) do
-        if not IsValid(ent) then continue end
-        if not ent:IsPlayer() then continue end
-        if ent == lp then continue end
-        if not ent:Alive() then continue end
-        if ent:Team() == TEAM_SPECTATOR then continue end
-        if ent:Health() <= 0 then continue end
-        if ent.IsInvisible and ent:IsInvisible() then continue end
-		local pos = ent:GetPos()
-		if !pos:ToScreen().visible then continue end
+local AFFECTED_ORB_FULL_DISTANCE_SQR = AFFECTED_ORB_FULL_DISTANCE * AFFECTED_ORB_FULL_DISTANCE
 
-        local entry = OUTLINE.NormalizeEntry(rule, {
-            ent = ent,
-            outline_color = color or color_white,
-            fill_color = color or color_white
-        })
+local affectedHighlightEntries = {}
+local affectedHighlightEntryPool = {}
 
-        if entry then
-            out[#out + 1] = entry
-        end
-    end
+local function ApplyAffectedOrbHighlightFilter(highlightEntry, qualityContext)
+	local localPlayer = qualityContext.local_player
+	local highlightedEntity = highlightEntry.ent
+	
+	if not IsValid(localPlayer) or not IsValid(highlightedEntity) then
+		return false
+	end
+	
+	local distanceSquared = localPlayer:GetPos():DistToSqr(highlightedEntity:GetPos())
+	
+	if distanceSquared >= AFFECTED_ORB_FULL_DISTANCE_SQR then
+		return false
+	end
+end
 
-    return (#out > 0) and out or nil
+local function getAffected(localPlayer)
+	if not istable(affectedPlayers) then return nil end
+	
+	ClearReusableEntryList(
+		affectedHighlightEntries
+	)
+	
+	local entryCount = 0
+	
+	for highlightedEntity, highlightColor in pairs(affectedPlayers) do
+		if not IsValid(highlightedEntity) then continue end
+		if not highlightedEntity:IsPlayer() then continue end
+		if highlightedEntity == localPlayer then continue end
+		if not highlightedEntity:Alive() then continue end
+	
+		if highlightedEntity:Team() == TEAM_SPECTATOR then continue end
+	
+		if highlightedEntity:Health() <= 0 then continue end
+	
+		if highlightedEntity:IsInvisible() then continue end
+	
+		if not highlightedEntity:GetPos():ToScreen().visible then continue end
+	
+		entryCount = entryCount + 1
+	
+		local highlightEntry =
+			AcquireReusableEntry(
+				affectedHighlightEntryPool,
+				entryCount
+			)
+	
+		local resolvedColor = highlightColor or color_white
+	
+		highlightEntry.ent = highlightedEntity
+		highlightEntry.outline_color = resolvedColor
+		highlightEntry.fill_color = resolvedColor
+	
+		affectedHighlightEntries[
+			entryCount
+		] = highlightEntry
+	end
+	
+	if entryCount == 0 then
+		return nil
+	end
+	
+	return affectedHighlightEntries
 end
 
 OUTLINE.RegisterRule("affected_players", {
@@ -358,8 +459,17 @@ OUTLINE.RegisterRule("affected_players", {
     fill_max_dist = 1800,
 
     mode = OUTLINE_MODE_BOTH,
+
+    quality = {
+        auto = true,
+        low = true,
+
+        always_apply = ApplyAffectedOrbHighlightFilter
+    },
+
     collect = getAffected
 })
+
 local function GetViewOrigin(ply)
     local viewEnt = ply:GetViewEntity()
 
@@ -375,43 +485,44 @@ local function GetViewOrigin(ply)
 end
 
 local CUPCAKE_COLOR   = Color(255, 155, 0, 255)
-local function getCupcakes(lp, rule)
-    local pillEnt = pills.getMappedEnt(lp)
-    if not IsValid(pillEnt) or not pillEnt.formTable then return nil end
-    if pillEnt.formTable.name ~= "pill_wchica2" then return nil end
+local cupcakeHighlightEntries = {}
+local cupcakeHighlightEntryPool = {}
 
-    local out = {}
-    local viewOrigin = GetViewOrigin(lp)
-    local maxDist = tonumber(rule.render_max_dist) or math.huge
-    local maxDistSqr = maxDist > 0 and (maxDist * maxDist) or math.huge
-
-    for _, ent in ipairs(ents.FindByClass("cakemine")) do
-        if not IsValid(ent) then continue end
-        if not ent.DrawModel then continue end
-
-        local mdl = ent:GetModel()
-        if not mdl or mdl == "" then continue end
-
-        if ent:GetPos():DistToSqr(viewOrigin) > maxDistSqr then
-            continue
-        end
-
-        if not ent:GetPos():ToScreen().visible then
-            continue
-        end
-
-        local entry = OUTLINE.NormalizeEntry(rule, {
-            ent = ent,
-            outline_color = CUPCAKE_COLOR,
-            fill_color = CUPCAKE_COLOR
-        })
-
-        if entry then
-            out[#out + 1] = entry
-        end
-    end
-
-    return (#out > 0) and out or nil
+local function getCupcakes(localPlayer)
+	local pillEntity =
+		pills.getMappedEnt(localPlayer)
+	
+	if not IsValid(pillEntity) or not pillEntity.formTable then return nil end
+	
+	if pillEntity.formTable.name ~= "pill_wchica2" then return nil end
+	
+	ClearReusableEntryList( cupcakeHighlightEntries )
+	
+	local entryCount = 0
+	
+	for _, cupcakeEntity in ipairs( ents.FindByClass("cakemine") ) do
+		if not cupcakeEntity:GetPos():ToScreen().visible then continue end
+	
+		entryCount = entryCount + 1
+	
+		local highlightEntry =
+			AcquireReusableEntry(
+				cupcakeHighlightEntryPool,
+				entryCount
+			)
+	
+		highlightEntry.ent = cupcakeEntity
+		highlightEntry.outline_color = CUPCAKE_COLOR
+		highlightEntry.fill_color = CUPCAKE_COLOR
+	
+		cupcakeHighlightEntries[entryCount] = highlightEntry
+	end
+	
+	if entryCount == 0 then
+		return nil
+	end
+	
+	return cupcakeHighlightEntries
 end
 
 OUTLINE.RegisterRule("cupcakes", {
@@ -422,12 +533,25 @@ OUTLINE.RegisterRule("cupcakes", {
     outline_width = 4,
     outline_min_dist = 500,
     outline_max_dist = 2000,
-    
+
     fill_color = CUPCAKE_COLOR,
     fill_min_dist = 400,
     fill_max_dist = 2000,
 
     mode = OUTLINE_MODE_BOTH,
+
+    quality = {
+        auto = {
+            builtin = true,
+            low_render_max_dist = 6000
+        },
+
+        low = {
+            builtin = true,
+            render_max_dist = 3500
+        }
+    },
+
     collect = getCupcakes
 })
 
@@ -435,16 +559,27 @@ net.Receive("fh_hl_animatronics", function()
 	surface.PlaySound("human_gift_vision.wav")
 end)
 
-local TEAMMATE_COLOR = Color(0, 255, 0)
-local function ResolveTeammateColor(lp, ent, storedColor)
+local TEAMMATE_COLOR = Color(0, 255, 0, 255)
+
+local function ResolveTeammateColor(
+    localPlayer,
+    highlightedEntity,
+    storedColor
+)
     if IsColor(storedColor) then
         return storedColor
     end
 
-    if !lp:IsAnimatronic() and killers and killers.getColor and ent.GetPillName then
-        local pillName = ent:GetPillName()
+    if not localPlayer:IsAnimatronic()
+        and killers
+        and killers.getColor
+        and highlightedEntity.GetPillName
+    then
+        local pillName = highlightedEntity:GetPillName()
+
         if pillName then
             local killerColor = killers.getColor(pillName)
+
             if IsColor(killerColor) then
                 return killerColor
             end
@@ -454,65 +589,121 @@ local function ResolveTeammateColor(lp, ent, storedColor)
     return TEAMMATE_COLOR
 end
 
-local forcetmdistance = 1100
-local function getTeammates(lp, rule)
-    local haloTeammates = GetConVar("fh_halo_teammates")
-    if haloTeammates and not haloTeammates:GetBool() and lp:IsAnimatronic() then return nil end
-    if not lp:IsAnimatronic() and not lp:GetNWBool("AnimVisibilityFH") then return nil end
-
-    if not istable(animatronics) or table.IsEmpty(animatronics) then return nil end
-
-    local out = {}
-    local viewOrigin = GetViewOrigin(lp)
-    local maxDist = tonumber(rule.render_max_dist) or math.huge
-    local maxDistSqr = maxDist > 0 and (maxDist * maxDist) or math.huge
-
-    for ent, storedColor in pairs(animatronics) do
-		if !IsValid(ent) then continue end
-		if ent:IsPlayer() then 
-			if ent:Team() ~= TEAM_PILLS then continue end
-			if ent == lp then continue end 
-			ent = ent:GetPill() 
-		end
-        if not IsValid(ent) then continue end
-        if not ent.DrawModel then continue end
-		
-		local pos = ent:GetPos() + ent:OBBCenter()
-		
-		local distance = pos:DistToSqr(viewOrigin)
-        if distance > maxDistSqr then
-            continue
-        end
-		
-		local tr = util.TraceLine( {
-			start = viewOrigin,
-			endpos = pos,
-			filter = function(ent)
-				return not ent:IsPlayer()
-			end,
-			mask = MASK_VISIBLE_AND_NPCS,
-		})
-		
-		if not ent:IsInvisible() and not tr.Hit and distance < forcetmdistance*forcetmdistance then continue end
-		
-        if not pos:ToScreen().visible then
-            continue
-        end
-
-        local resolvedColor = ResolveTeammateColor(lp, ent, storedColor)
-		
-        local entry = OUTLINE.NormalizeEntry(rule, {
-            ent = ent,
-            outline_color = resolvedColor,
-            fill_color = resolvedColor
-        })
-
-        if entry then
-            out[#out + 1] = entry
-        end
+local function GetPillOwner(highlightedEntity)
+    if not IsValid(highlightedEntity) then
+        return NULL
     end
 
-    return (#out > 0) and out or nil
+    if not highlightedEntity.GetPillUser then
+        return NULL
+    end
+
+    local pillOwner = highlightedEntity:GetPillUser()
+
+    if not IsValid(pillOwner) then
+        return NULL
+    end
+
+    return pillOwner
+end
+
+local function CanCollectTeammateHighlights(localPlayer)
+    local teammateHighlightConVar = GetConVar("fh_halo_teammates")
+
+    if teammateHighlightConVar and not teammateHighlightConVar:GetBool() and localPlayer:IsAnimatronic() then return false end
+
+    if not localPlayer:IsAnimatronic() then return false end
+
+    if not istable(animatronics) or table.IsEmpty(animatronics) then return false end
+
+    return true
+end
+
+local function ResolveHighlightedAnimatronic(localPlayer, animatronicReference)
+    if not IsValid(animatronicReference) then return NULL end
+
+    if not animatronicReference:IsPlayer() then
+        return animatronicReference
+    end
+
+    if animatronicReference:Team() ~= TEAM_PILLS then
+        return NULL
+    end
+
+    if animatronicReference == localPlayer then
+        return NULL
+    end
+
+    return animatronicReference:GetPill()
+end
+
+local TeammateHighlightCache = {
+    frameNumber = -1,
+    localPlayer = NULL,
+
+    regularEntries = {},
+    regularEntryPool = {},
+}
+
+local function RebuildTeammateHighlightCache( localPlayer )
+    local cache = TeammateHighlightCache
+
+    cache.frameNumber = FrameNumber()
+    cache.localPlayer = localPlayer
+
+    ClearReusableEntryList(cache.regularEntries)
+
+    if not CanCollectTeammateHighlights( localPlayer ) then return end
+
+    local regularEntryCount = 0
+
+    for animatronicReference, storedColor in pairs(animatronics) do
+        local highlightedEntity = ResolveHighlightedAnimatronic(localPlayer,animatronicReference)
+
+        if not IsValid(highlightedEntity) then continue end
+        if highlightedEntity:IsDormant() then continue end
+
+        local teammateColor = ResolveTeammateColor( localPlayer,highlightedEntity,storedColor)
+        
+		regularEntryCount = regularEntryCount + 1
+
+		local highlightEntry = AcquireReusableEntry(cache.regularEntryPool, regularEntryCount)
+
+        if highlightedEntity:IsInvisible() then
+			highlightEntry.outline_visible = true
+			highlightEntry.outline_visible_width = 2
+		else
+			highlightEntry.outline_visible = false
+			highlightEntry.outline_visible_width = 0
+		end
+
+		highlightEntry.ent = highlightedEntity
+		highlightEntry.outline_color = teammateColor
+		highlightEntry.fill_color = teammateColor
+
+		cache.regularEntries[regularEntryCount] = highlightEntry
+    end
+end
+
+local function EnsureTeammateHighlightCache(localPlayer)
+    local cache = TeammateHighlightCache
+    local currentFrameNumber = FrameNumber()
+
+    if cache.frameNumber == currentFrameNumber and cache.localPlayer == localPlayer then return end
+
+    RebuildTeammateHighlightCache(localPlayer)
+end
+
+local function GetTeammatesForHighlight(localPlayer)
+	EnsureTeammateHighlightCache(localPlayer)
+
+	local highlightEntries = TeammateHighlightCache.regularEntries
+
+	if #highlightEntries == 0 then
+		return nil
+	end
+
+	return highlightEntries
 end
 
 OUTLINE.RegisterRule("animatronics", {
@@ -520,30 +711,31 @@ OUTLINE.RegisterRule("animatronics", {
     render_max_dist = 9000,
 
     outline_color = TEAMMATE_COLOR,
-    outline_width = 2,
-    outline_min_dist = 600,
-    outline_max_dist = 1600,
-    
-    fill_color = TEAMMATE_COLOR,
-    fill_min_dist = 1000,
-    fill_max_dist = 1800,
+    outline_visible = false,
+    outline_occluded = true,
+    outline_occluded_width = 2,
+    outline_occluded_min_dist = 0,
+    outline_occluded_max_dist = 1600,
+    outline_visible_min_dist = 0,
+    outline_visible_max_dist = 1600,
 
-    mode = OUTLINE_MODE_BOTH,
-    collect = getTeammates
+    fill_color = TEAMMATE_COLOR,
+    fill_visible = true,
+    fill_occluded = true,
+    fill_visible_min_dist = 1000,
+    fill_visible_max_dist = 2000,
+    fill_occluded_min_dist = 1000,
+    fill_occluded_max_dist = 2000,
+
+    quality = {
+        auto = true,
+        low = true
+    },
+
+    collect = GetTeammatesForHighlight
 })
 
 hook.Add("HUDPaint", "fh_draw_affected", function()
-    cam.Start3D()
-        for v, color in pairs(affectedPlayers) do
-            if v ~= LocalPlayer() and v:IsValid() and v:Health() > 0 and !v:IsInvisible() then
-				local pos = v:GetPos()
-				if pos:ToScreen().visible then
-					v:DrawModel()
-				end
-            end
-        end
-    cam.End3D()
-
 	local affectedPlayersReal = {}
 	
 	for v, color in pairs(affectedPlayers) do
@@ -551,7 +743,11 @@ hook.Add("HUDPaint", "fh_draw_affected", function()
 			affectedPlayersReal[v] = color
 		end
 	end
-	draw_orbs(affectedPlayersReal)
+	draw_orbs(
+		affectedPlayersReal,
+		nil,
+		AFFECTED_ORB_START_DISTANCE
+	)
 	
     local ply = LocalPlayer()
     if not IsValid(ply) then return end
@@ -567,7 +763,7 @@ hook.Add("HUDPaint", "fh_draw_affected", function()
 		anims[anim] = IsColor(color) and color or true
 	end
 	
-    if ply:IsAnimatronic() or ply:GetNWBool("AnimVisibilityFH") then
+    if ply:IsAnimatronic() then
 		draw_orbs(anims, nil, GetGlobal2Float("FarZ", 8000))
 	end
 end)
@@ -638,7 +834,12 @@ function draw_orbs(tbl, material, distance)
             local dist = ply:GetPos():Distance(target:GetPos())
             
             if dist > maxDistance then
-                local alpha = math.Clamp((dist - maxDistance) / 200, 0, 1) * 255
+                local alpha = math.Clamp(
+                    (dist - maxDistance)
+                    / ORB_FADE_DISTANCE,
+                    0,
+                    1
+                ) * 255
                 
                 local clampedX = math.Clamp(screenPos.x, textureSize, screenW - textureSize)
                 local clampedY = math.Clamp(screenPos.y, textureSize, screenH - textureSize)
@@ -694,16 +895,18 @@ function draw_orbs(tbl, material, distance)
                     if pillMaterial then
                         ourColor = color_white
                     end
-
-					if IsValid(owner) and owner:VoiceVolume() > 0 then
-						local aa = owner:VoiceVolume() * 255
-						surface.SetDrawColor(aa, aa, aa, 255)
-						surface.SetMaterial(speaker)
-						surface.DrawTexturedRect(drawX - textureSize, drawY - textureSize*2, textureSize*2, textureSize*2)
-					end
                     surface.SetDrawColor(ourColor.r, ourColor.g, ourColor.b, alpha)
                     surface.SetMaterial(pillMaterial or material)
                     surface.DrawTexturedRect(drawX - textureSize, drawY - textureSize, textureSize*2, textureSize*2)
+
+					if IsValid(owner) and owner:VoiceVolume() > 0.1 then
+						local volume = owner:VoiceVolume()
+						local aa = volume * 255
+						local size = textureSize*2 * (volume + 1) 
+						surface.SetDrawColor(aa, aa, aa, 255)
+						surface.SetMaterial(speaker)
+						surface.DrawTexturedRect(drawX - size*0.5, drawY - size, size, size)
+					end
 
                     if nickname then
                         draw.SimpleText(nickname, "CreditsText",

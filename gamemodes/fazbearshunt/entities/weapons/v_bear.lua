@@ -199,6 +199,21 @@ function SWEP:DealDamage()
 	end
 
     ply:LagCompensation(false)
+	
+	if target:IsPlayer() then
+		ply:EmitSound("fnaf3/hit.mp3")
+		
+		if target:GetNW2Bool("KillerObsessed") then
+			net.Abort()
+			
+			self:SetNextPrimaryFire(now + 1)
+	
+			net.Start("fh_cooldown_receive")
+			net.WriteString("attack")
+			net.WriteFloat(1)
+			net.Send(ply)
+		end
+	end
 			
 	timer.Simple(0, function()
 		if IsValid(target) and target:IsPlayer() and (!target:Alive() or target:IsAnimatronic()) then

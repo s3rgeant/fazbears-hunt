@@ -93,6 +93,24 @@ end
 function SWEP:ViewModelDrawn( vm )
 end
 
+function SWEP:PreDrawViewModel( vm )
+	local myself = LocalPlayer()
+	if vrmod and vrmod.IsPlayerInVR(myself) then
+		return true
+	end
+end
+--[[
+if vrmod then
+	hook.Add("VRMod_PreRender", "fh_viewmodels", function()
+		local ply = LocalPlayer()
+		
+		if IsValid(ply:GetPillCostume()) then
+			
+		end
+	end)
+end
+--]]
+
 function SWEP:OnRestore()
 end
 

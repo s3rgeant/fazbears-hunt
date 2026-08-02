@@ -9,7 +9,7 @@ shadow_freddyability = CreateConVar( "fh_sfreddy_noclip", "1", { FCVAR_NOTIFY, F
 --[[
 	КД на убийство когда вышел из ноуклипа; 	когда вошёл в ноуклип;		когда вышел из него
 ]]
-local sfreddy_cooldowns = {1.5, 7, 7.5}
+local sfreddy_cooldowns = {1.5, 6.7, 7.5}
 
 -- ХОДЬБА, БЕГ, ВПРИСЯДИ, СИЛА ПРЫЖКА
 local sfreddy_default_movement = {100, 100, 65, 250} -- обычное передвижение
@@ -44,6 +44,8 @@ pills.register("pill_sfreddy2",{
 			glide="sglide",
 			scare="sscare",
 			stun="sstun",
+			
+			noclip="noclip",
 		},
 		gestures={
 			melee="melee",
@@ -61,7 +63,7 @@ pills.register("pill_sfreddy2",{
 	sounds={
 		jump="sfreddylunge.mp3",
 		land_snd="sfreddyland.mp3",
-		melee=pills.helpers.makeList("fnaf2/sxscream.wav",2),
+		melee=")fnaf2/sxscream.wav",
 	},
 	type="ply",
     camera = {
@@ -131,7 +133,7 @@ pills.register("pill_sfreddy2",{
 			end
 			
 			if !IsValid(target) or !jumpscare then 
-				AnimatronicBreakProp(ply, ent)
+				if not AnimatronicBreakProp(ply, ent) then cooldown.SetSend(ply, "kill", 0.9) end
 				return 
 			end
 		end
@@ -205,12 +207,17 @@ pills.register("pill_sfreddy2",{
 						cooldown.Send(ply, "submerge")
 					end
 					
-					ent:SetSpeed( unpack(sfreddy_default_movement) )
+					local ed = EffectData()
+						ed:SetOrigin( ent:GetPos() )
+						ed:SetEntity( ent )
+					util.Effect( "propspawn", ed, true, true )
 					
-					timer.Create("Cloacking"..ply:EntIndex(), 0.2, 1, function()
+					ent:SetSpeed( unpack(sfreddy_default_movement) )
+					ent:PillAnim("uncloak")
+					
+					timer.Create("Cloacking"..ply:EntIndex(), 0.1, 1, function()
 						if !IsValid(ent) then return end
 						
-						ent:PillAnim("uncloak")
 						ent:SetMaterial()
 						ent:DrawShadow(true)
 					end)
@@ -244,7 +251,7 @@ pills.register("pill_sfreddy2",{
 					hook.Run("FH_SFreddySubmergeIn", ply, ent)
 					ent:ToggleCloak()
 					
-					timer.Create("Cloacking"..ply:EntIndex(), 0.55, 1, function()
+					timer.Create("Cloacking"..ply:EntIndex(), 0.67, 1, function()
 						if !IsValid(ent) then return end
 						ply:DrawViewModel(false)
 					
@@ -294,6 +301,16 @@ pills.register("pill_sfreddy2",{
 		ent:PillSound("jump",false)
 	end
 })
+
+if CLIENT then
+	hook.Add("FH_HandleKillerTerrorLayers", "sfreddy_handle", function(killer, theme, layer)
+		if theme == "sfreddy" then
+			if killer:GetMoveType() == MOVETYPE_NOCLIP then
+				return "first_layer"
+			end
+		end
+	end)
+end
 
 --[[
 local currentSpeed = 150
