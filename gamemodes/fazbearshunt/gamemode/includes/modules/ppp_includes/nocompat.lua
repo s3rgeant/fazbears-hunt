@@ -40,14 +40,17 @@ hook.Add("CalcView", "momo_calcview", function(ply, pos, ang, fov, nearZ, farZ)
 			return view
 		else
 			if ply:GetMoveType() == MOVETYPE_NOCLIP then return end
-			local startpos = ply:GetPos() + ply:OBBCenter()
+			local maxs = ply:OBBMaxs()
+			maxs.x = 0
+			maxs.y = 0
+			local startpos = ply:GetPos() + maxs
 			local offset = ply:EyePos()
 			local tr = util.TraceHull({
 				start = startpos,
 				endpos = offset,
 				filter = ent.camTraceFilter,
-				mins = Vector(-5, -5, -5),
-				maxs = Vector(5, 5, 5),
+				mins = Vector(-4, -4, -5),
+				maxs = Vector(4, 4, 5),
 				mask = MASK_VISIBLE
 			})
 			

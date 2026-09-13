@@ -1,5 +1,7 @@
 --CONVAR gmod_language
 
+if DEVELOPER_MODE then return end
+
 local allowed_langs = {"ru", "en", "hu"}
 
 local localized_voicelines_path = ""

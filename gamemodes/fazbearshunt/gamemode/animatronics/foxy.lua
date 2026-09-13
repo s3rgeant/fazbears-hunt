@@ -2,6 +2,7 @@ AddCSLuaFile()
 
 local MAX_RUSH_TOKENS = 5
 local CHARGING = {}
+local BOUNCING = {}
 local FIRST_TICK_CHARGE = {}
 
 --foxy
@@ -57,6 +58,11 @@ pills.register("pill_wfoxy2",{
 			chargestun="chargestun",
 			swing="preattack",
 			melee="melee",
+			
+			jammerstun="jammerstun",
+			damaged1="damaged1",
+			damaged2="damaged2",
+			damaged3="damaged3",
 		},
 		speedCap={
 			walk=150,
@@ -140,7 +146,6 @@ pills.register("pill_wfoxy2",{
 	attack2_sh_nolc={
 		mode="trigger",
 		func = function(ply,ent)
-			CHARGING[ply] = true	
 			foxyRush(ply, ent)
 		end
 	},
@@ -295,6 +300,8 @@ function foxyRush(ply, ent)
 
 	if not ply:OnGround() or ply:Crouching() then return end
 
+	BOUNCING[ply] = nil
+	CHARGING[ply] = true	
 	ply:SetNWBool("isBlightBouncing", false)
 	
 	local dsp = IsHalloween() and 38 or 0
@@ -450,7 +457,6 @@ function EndRush(ply)
 	end
 end
 
-local BOUNCING = {}
 hook.Add("Move", "foxy_charge_prediction", function(ply, mv)
 	if ply:GetNWBool("isBlightRushing") and CHARGING[ply] then
 		if !ply:OnGround() then return end
@@ -472,7 +478,6 @@ hook.Add("Move", "foxy_charge_prediction", function(ply, mv)
 		if not BOUNCING[ply] then
 			mv:SetVelocity(vel)
 		end
-		BOUNCING[ply] = nil
 
 		local wep = ply:GetViewModel(0)
 		if IsValid(wep) and not wep.IsCharging then

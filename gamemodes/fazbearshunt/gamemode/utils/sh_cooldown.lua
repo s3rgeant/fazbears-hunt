@@ -32,13 +32,16 @@ function cooldown.Exists(ply, name)
 	return true
 end
 
-if SERVER then
-	function cooldown.Set(ply, name, duration)
-		if not IsValid(ply) then return end
+function cooldown.Set(ply, name, duration)
+	if not IsValid(ply) then return end
 
-		our_cooldowns[ply] = our_cooldowns[ply] or {}
-		our_cooldowns[ply][name] = CurTime() + duration
-	end
+	our_cooldowns[ply] = our_cooldowns[ply] or {}
+	our_cooldowns[ply][name] = CurTime() + duration
+		
+	hook.Run("FH_CooldownReceive", name, duration)
+end
+
+if SERVER then
 
 	function cooldown.Send(ply, name)
 		if !IsValid(ply) then return end
@@ -66,6 +69,14 @@ if SERVER then
 			net.Send(ply)
 		end
 	end
+	
+	hook.Add( "PlayerDisconnected", "fh_clear_cds", function(ply)
+		our_cooldowns[ply] = nil
+	end)
+	
+	hook.Add( "PostCleanupMap", "fh_clear_cds", function() -- если кому то от этого плохо то скажите мне
+		our_cooldowns = {}
+	end)
 end
 
 if CLIENT then

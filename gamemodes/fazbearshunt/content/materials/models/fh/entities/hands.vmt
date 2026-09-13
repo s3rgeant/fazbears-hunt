@@ -1,0 +1,7 @@
+VertexLitGeneric
+{
+	$basetexture "models/fh/entities/body"
+	$bumpmap "models/fh/entities/body_N"
+	
+	$surfaceprop Carpet
+}

@@ -18,6 +18,9 @@ end
 SWEP.ViewModel = "models/tetTris/vm/springtrap_clown.mdl"
 SWEP.m_WeaponDeploySpeed = 0.6
 
+SWEP.HandleMinViewModel = true
+SWEP.CalcMinimalViewModelView = Vector(10,4,-10)
+
 SWEP.HitDelay = 0.8	-- через сколько после замаха надо удар сделать
 
 function SWEP:SetupDataTables()
@@ -54,13 +57,14 @@ function SWEP:PrimaryAttack()
 		ply:EmitSound("hammer_ready.wav")
 	end
 	
-	self:HandleAnimation("hit", 1.6)
+	self:HandleAnimation("hit", 1.6, -1)
 	
 	self:SetNextMeleeAttack( CurTime() + self.HitDelay )
 end
 
 local clown_boost = CreateConVar( "fh_clown_hit_boost", 4, { FCVAR_ARCHIVE, FCVAR_REPLICATED}, "Time for halo to dissolve." )
 
+local clownVP = Angle(4,0,0)
 function SWEP:DealDamage()
 	local ply = self:GetOwner()
 	local ent = pills.getMappedEnt(ply)
@@ -71,21 +75,21 @@ function SWEP:DealDamage()
 		ply:LagCompensation(true)
 	end
 	
-	local trace = util.TraceLine({
+	local tr = util.TraceLine({
 		start = ply:EyePos(),
 		endpos = ply:EyePos() + (ply:GetForward() * 100),
 		filter = ply,ent
 	})
 	
-	debugoverlay.Line(ply:EyePos(), trace.HitPos, 2, Color(255, 0, 0), true)
+	debugoverlay.Line(ply:EyePos(), tr.HitPos, 2, Color(255, 0, 0), true)
 	
-	local hitpos = trace.HitPos
+	local hitpos = tr.HitPos
 	
-	local targets = fh_get_nearest_players(hitpos, 100, ply) or (trace.Entity:IsPlayer() and trace.Entity:Team() ~= 2701) and {trace.Entity}
+	local targets = fh_get_nearest_players(hitpos, 100, ply) or (tr.Entity:IsPlayer() and tr.Entity:Team() ~= 2701) and {tr.Entity}
 	
 	local props = fh_get_nearest_props(hitpos, 100)
 	
-	--util.BlastDamage( self, ply, hitpos, 100, 40 )
+	ply:ViewPunch( clownVP )
 	
 	if SERVER and props then
 		local dmgInfo = DamageInfo()
@@ -93,7 +97,7 @@ function SWEP:DealDamage()
 		dmgInfo:SetAttacker(IsValid(ply) and ply or game.GetWorld())
 		dmgInfo:SetInflictor(self)
 		
-		for k,prop in ipairs(props) do
+		for _, prop in ipairs(props) do
 			SuppressHostEvents( NULL )
 			prop:TakeDamageInfo(dmgInfo)
 			SuppressHostEvents( ply )
@@ -107,20 +111,51 @@ function SWEP:DealDamage()
 					phys:ApplyForceCenter(force)
 				end
 			end
+			
+			local class = prop:GetClass()
+			if class == "func_breakable_surf" then
+				local localHit = prop:WorldToLocal(tr.HitPos)
+				
+				local mins = prop:OBBMins()
+				local maxs = prop:OBBMaxs()
+				local size = maxs - mins
+				
+				local x, y = 0.5, 0.5
+
+				if size.x <= size.y and size.x <= size.z then
+					x = (localHit.y - mins.y) / math.max(size.y, 1)
+					y = (localHit.z - mins.z) / math.max(size.z, 1)
+				elseif size.y <= size.x and size.y <= size.z then
+					x = (localHit.x - mins.x) / math.max(size.x, 1)
+					y = (localHit.z - mins.z) / math.max(size.z, 1)
+				else
+					x = (localHit.x - mins.x) / math.max(size.x, 1)
+					y = (localHit.y - mins.y) / math.max(size.y, 1)
+				end
+
+				x = math.Clamp(x, 0, 1)
+				y = math.Clamp(y, 0, 1)
+				
+				local shatterStr = string.format("[%.2f %.2f %d]", x, y, 48)
+				
+				prop:Fire("Shatter", shatterStr, 0, ply)
+			elseif class == "func_breakable" then
+				prop:Fire("Break", "", 0, ply)
+			end
 		end
 	end
 	
-	local trace = util.TraceLine({
+	local tr = util.TraceLine({
 		start = hitpos,
 		endpos = hitpos - Vector(0, 0, 150),
 		filter = ply,ent
 	})
 	
-	if SERVER and (trace.Hit or targets) then
+	if SERVER and (tr.Hit or targets) then
 	
 		local effectdata = EffectData()
-		effectdata:SetOrigin(trace.HitPos)
-		effectdata:SetStart(trace.HitPos)
+		effectdata:SetOrigin(tr.HitPos)
+		effectdata:SetStart(tr.HitPos)
 		effectdata:SetScale(120)
 		util.Effect("ThumperDust", effectdata, true, true)
 		

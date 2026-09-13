@@ -1,4 +1,5 @@
 "VertexlitGeneric"
 {
 	"$basetexture" "models/weapons/jammer"
+	"$bumpmap" "models/weapons/jammer_n"
 }

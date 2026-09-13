@@ -59,7 +59,7 @@ local function wrapText(text, font, maxWidth)
 end
 
 surface.CreateFont("optionMenuTitle", { 
-	font = "Share Tech Mono Regular", 
+	font = "Share Tech Mono", 
 	size = 28, 
 	extended = true, 
 	weight = 400, 
@@ -68,7 +68,7 @@ surface.CreateFont("optionMenuTitle", {
 })
 
 surface.CreateFont("optionMenuOptions", { 
-	font = "Share Tech Mono Regular", 
+	font = "Share Tech Mono", 
 	size = 22, 
 	extended = true, 
 	weight = 400, 

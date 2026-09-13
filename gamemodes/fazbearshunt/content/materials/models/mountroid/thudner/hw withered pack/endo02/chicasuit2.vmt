@@ -1,0 +1,21 @@
+"VertexlitGeneric"
+{
+$basetexture  "models\ufmp\fnaf2\witheredchicathechicken\suit2"
+$bumpmap "models\ufmp\FNaF2\WitheredChicaTheChicken\beakbump"
+
+$surfaceprop                              "plastic"
+
+
+$phong                                       "1"
+$phongexponent                        "60"
+$ambientocclusion "1"
+$phongtint "[0.264047 0.244698 0.020663]"
+$color "0.8"
+$phongboost	                   "4"
+$phongalbedotint                        "1"
+$phongfresnelranges                  "[0.05 0.5 1]"
+$halflambert                                 "0"
+$diffuseexp                                  "1.5"
+$nocull                                         "1"
+
+}

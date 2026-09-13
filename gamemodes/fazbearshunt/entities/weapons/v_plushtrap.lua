@@ -20,6 +20,9 @@ SWEP.ViewModel = "models/tetTris/vm/Plushtrap.mdl"
 SWEP.m_WeaponDeploySpeed = 0.6
 SWEP.SwayScale = 0.5
 
+SWEP.HandleMinViewModel = true
+SWEP.CalcMinimalViewModelView = Vector(4,0,-6)
+
 SWEP.HitSize = {
 	Min = Vector( -18, -18, -12 ),
 	Max = Vector( 18, 18, 12 )
@@ -108,7 +111,7 @@ function SWEP:DealDamage()
 	
 	if target:IsPlayer() and target:IsSurvivor() then
 		local edata = EffectData()
-		edata:SetOrigin(tr.HitPos)
+		edata:SetOrigin(target:NearestPoint(tr.HitPos))
 		edata:SetEntity(target)
 		util.Effect("BloodImpact", edata, true, true)
 	end
@@ -116,8 +119,34 @@ function SWEP:DealDamage()
 	if CLIENT then return end
 	
 	local class = target:GetClass()
-	if class == "func_breakable" or class == "func_breakable_surf" then
-		target:Fire("Shatter", "0", 0)
+	if class == "func_breakable_surf" then
+		local localHit = target:WorldToLocal(tr.HitPos)
+		
+		local mins = target:OBBMins()
+		local maxs = target:OBBMaxs()
+		local size = maxs - mins
+		
+		local x, y = 0.5, 0.5
+
+		if size.x <= size.y and size.x <= size.z then
+			x = (localHit.y - mins.y) / math.max(size.y, 1)
+			y = (localHit.z - mins.z) / math.max(size.z, 1)
+		elseif size.y <= size.x and size.y <= size.z then
+			x = (localHit.x - mins.x) / math.max(size.x, 1)
+			y = (localHit.z - mins.z) / math.max(size.z, 1)
+		else
+			x = (localHit.x - mins.x) / math.max(size.x, 1)
+			y = (localHit.y - mins.y) / math.max(size.y, 1)
+		end
+
+		x = math.Clamp(x, 0, 1)
+		y = math.Clamp(y, 0, 1)
+		
+		local shatterStr = string.format("[%.2f %.2f %d]", x, y, 14)
+		
+		target:Fire("Shatter", shatterStr, 0, ply)
+	elseif class == "func_breakable" then
+		target:Fire("Break", "", 0, ply)
 	end
 	
 	if target:GetMoveType() == MOVETYPE_VPHYSICS then
@@ -222,17 +251,6 @@ if CLIENT then
 					nearPlayers[ent] = true
 				end
 			end
-	
-			cam.Start3D()
-				for v, _ in pairs(nearPlayers) do
-					if v ~= LocalPlayer() and v:IsValid() and v:Health() > 0 then
-						local pos = v:GetPos()
-						if pos:ToScreen().visible then
-							v:DrawModel()
-						end
-					end
-				end
-			cam.End3D()
 			if IsValid(wep) and wep:GetClass() == "v_plushtrap" then
 				draw_orbs(nearPlayers)
 			end

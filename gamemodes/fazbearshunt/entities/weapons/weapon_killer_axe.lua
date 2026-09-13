@@ -67,11 +67,11 @@ end
 function SWEP:PrimaryAttack()
 
 	self:SetNextPrimaryFire(CurTime() + 1)
-    self:SetNextIdle(CurTime() + 1)
+    self:SetNextIdle(CurTime() + 1.3)
 
 	self:SendWeaponAnim(ACT_MELEE_ATTACK1)
 	
-	self.Owner:ViewPunch(Angle(-2,-3,0))
+	self:GetOwner():ViewPunch(Angle(-2,-3,0))
 	
 	self:SetNextMeleeAttack( CurTime() + self.HitDelay )
 end
@@ -116,7 +116,6 @@ function SWEP:DealDamage()
 		ply:LagCompensation(false)
 		
 		self:SendWeaponAnim(ACT_VM_SWINGMISS)
-		
 		return
 	end
 		
@@ -143,9 +142,11 @@ function SWEP:DealDamage()
 	
 	self:SendWeaponAnim(ACT_VM_SWINGHIT)
 		
-	local targetIsAnimatronic = (target:IsPlayer() and pills.hasMappedEnt(target))
-	local targetIsSurv = (target:IsPlayer() and target:IsSurvivor())
-	local ent = target:GetPillCostume()
+	local isPlayer = target:IsPlayer()
+		
+	local targetIsAnimatronic = (isPlayer and pills.hasMappedEnt(target))
+	local targetIsSurv = (isPlayer and target:IsSurvivor())
+	local ent = isPlayer and target:GetPillCostume()
 	local animsCount = team.NumPlayers( TEAM_PILLS )
 		
 	if targetIsAnimatronic and IsValid(ent) and ent.cloaked then 
@@ -154,7 +155,7 @@ function SWEP:DealDamage()
 	end
 		
 	-- мы увеличиваем урон по аниматроникам если их больше одного
-	local damage = targetIsAnimatronic and math.random(550, 600) + (math.max(1, animsCount-1)*15) or math.random(20,30)
+	local damage = targetIsAnimatronic and math.random(550, 600) + (math.max(1, animsCount-1)*100) or math.random(20,30)
 		
 	if targetIsAnimatronic then
 		target:EmitSound(PushSound_pills[math.random(#PushSound_pills)], nil, 90)
@@ -162,9 +163,11 @@ function SWEP:DealDamage()
 		if IsFirstTimePredicted() then
 			ply:LagCompensation(false)
 			
+			local nearestP = target:NearestPoint( tr.HitPos )
+			
 			local fx = EffectData()
-			fx:SetOrigin(tr.HitPos)
-			fx:SetStart(tr.HitPos)
+			fx:SetOrigin(nearestP)
+			fx:SetStart(nearestP)
 			fx:SetNormal(tr.HitNormal)
 			fx:SetEntity(target)
 			fx:SetScale(0.2)
@@ -349,7 +352,11 @@ if CLIENT then
 		if IsValid(wep) and wep:GetClass() == "weapon_killer_axe" then
 			for _, ply in player.Iterator() do
 				if !ply:Alive() or ply:GetNoDraw() then continue end
-				if ply ~= owner and ply:GetPos():Distance(owner:GetPos()) <= 2600 then
+				
+				local plyPos = ply:GetPos()
+				local ownerPos = owner:GetPos()
+				
+				if ply ~= owner and plyPos:Distance(ownerPos) <= 2600 then
 					local ent = pills.getMappedEnt(ply)
 
 					if IsValid(ent) and ent.formTable.name == "pill_wgfreddy2" and !owner:GetNW2Bool("_OUTWORLD_target") then continue end

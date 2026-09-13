@@ -62,7 +62,7 @@ pills.register("pill_wbonnie2",{
 			glide="jumpidle",
 			land="jumpend",
 			scare="scare",
-			ability="yoursmine",
+			yoursmine="yoursmine",
 			stun="stun",
 		},
 		gestures={
@@ -85,7 +85,7 @@ pills.register("pill_wbonnie2",{
 	},
 	type="ply",
     camera = {
-        offset = Vector(0, 0, 80),
+        offset = Vector(0, 0, 88),
 		dist = 120
     },
 	hull=Vector(32,32,86),
@@ -113,7 +113,7 @@ pills.register("pill_wbonnie2",{
 		chaseVoicelineChecker(ply, ent, "bonnie")
 	end,
 	
-	onRemove=function(ent, ft, ply)
+	onRemove=function(ply, ent)
 		if CLIENT then return end
 		cooldown.Set(ply, "yoursmine", 1)
 		
@@ -178,7 +178,7 @@ pills.register("pill_wbonnie2",{
 	end,
 	
 	land=function(ply,ent)
-		if ent.anim ~= 'ability' and IsGoodLandConditions(ply, ent) then
+		if ent.anim ~= 'yoursmine' and IsGoodLandConditions(ply, ent) then
 			ent:PillAnim("land",true)
 		end
 		
@@ -229,7 +229,7 @@ function YoursMine_Start(ply, target)
 	
 	bonnies_targets[target] = true
 	
-	ent:PillAnim('ability', false)
+	ent:PillAnim('yoursmine', false)
 	ent:SetUseForceAngles(true)
 	ent:SetForceAngles(ply:GetAngles())
 	
@@ -239,7 +239,7 @@ function YoursMine_Start(ply, target)
 	
 	local wep = ply:GetActiveWeapon()
 	if IsValid(wep) and wep:GetClass() == "v_bonnie" then
-		wep:HandleAnimation("deploy", 99999)
+		wep:HandleAnimation("holster", 99999)
 		wep.Controlling = true
 	end
 	

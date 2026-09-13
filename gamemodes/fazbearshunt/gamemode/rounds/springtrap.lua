@@ -55,7 +55,7 @@ hook.Add("fh_postendgame", "springtrap_win_dance", function(victory, anims)
 				end
 				
 				net.Start("fh_play_sound")
-				net.WriteString("#music/rampage.wav")
+				net.WriteString("#music/rampage.mp3")
 				net.Broadcast()
 				
 				timer.Simple(0, function()
@@ -69,6 +69,8 @@ hook.Add("fh_postendgame", "springtrap_win_dance", function(victory, anims)
 					ent:SetAngles(win_location:GetAngles())
 				end)
 			end)
+			
+			return 13
 		end
 	end
 end)

@@ -18,14 +18,29 @@ SWEP.ViewModel = "models/speps/vm/oldbonnie.mdl"
 SWEP.m_WeaponDeploySpeed = 0.7
 SWEP.Secondary.Automatic = true
 
+SWEP.HandleMinViewModel = true
+SWEP.CalcMinimalViewModelView = Vector(4,7,-8)
+
 function SWEP:SetupDataTables()
     self:NetworkVar("Entity", 0, "LastTarget")
     return self.BaseClass.SetupDataTables and self.BaseClass.SetupDataTables(self)
 end
 
+function SWEP:Initialize()
+	local owner = self:GetOwner()
+	if not IsValid(owner) then return end
+	
+	local ent = owner:GetPillCostume()
+	if not IsValid(ent) then return end
+	
+	if ent:GetPillName() == "pill_endo02" then
+		self.ViewModelFOV = GetConVar("cl_fov_endo"):GetFloat() or 100
+	end
+end
+
 function SWEP:SetupAnimations()
 	self:AddAnimation("scare")
-	self:AddAnimation("deploy")
+	self:AddAnimation("holster")
 	self:AddAnimation("draw")
 	self:AddAnimation("attack")
 	
@@ -258,8 +273,7 @@ if CLIENT then
         if ent:IsInvisible() then return end
 	
         local entry = OUTLINE.NormalizeEntry(rule, {
-            ent = ent,
-            outline_color = YOURSMINE_COLOR
+            ent = ent
         })
 		
 		return entry and {entry} or nil
@@ -267,7 +281,7 @@ if CLIENT then
 	
 	OUTLINE.RegisterRule("bonnie_yoursmine", {
 		priority = 120,
-		render_max_dist = 1200,
+		render_max_dist = 0,
 
 		outline_color = YOURSMINE_COLOR,
 		outline_width = 4,

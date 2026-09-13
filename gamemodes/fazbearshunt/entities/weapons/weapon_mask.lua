@@ -9,6 +9,8 @@ SWEP.SlotPos = 3
 
 SWEP.Spawnable = true
 
+SWEP.Gifted = true
+
 SWEP.ViewModel = Model( "models/weapons/c_bonmask.mdl" )
 SWEP.WorldModel = Model( "models/weapons/w_bonmask.mdl" )
 SWEP.ViewModelFOV = 75
@@ -135,6 +137,11 @@ function SWEP:Invisivility(ply)
 	
 	ply.invisible = true
 	if SERVER then
+		local ed = EffectData()
+			ed:SetOrigin( ply:GetPos() )
+			ed:SetEntity( ply )
+		util.Effect( "masked", ed )
+		
 		self:SetLastUser(ply)
 	
 		ply:SetRenderMode(RENDERMODE_TRANSALPHA)
@@ -215,6 +222,18 @@ end
 
 function SWEP:TranslateFOV( fov )
 	return fov - self.LerpFOV
+end
+
+local minVec = Vector(15,5,-6)
+function SWEP:CalcMinimalViewModelView()
+	local seq = self:GetSequence()
+	local focus = (self:GetSequenceName(seq):match("anim_fire") == "anim_fire")
+	local ft = FrameTime() * 3
+
+	minVec.x = Lerp(ft, minVec.x, focus and 0 or 15)
+	minVec.y = Lerp(ft, minVec.y, focus and 0 or 5)
+	minVec.z = Lerp(ft, minVec.z, focus and 0 or -8)
+	return minVec
 end
 
 hook.Add("fh_createragdoll", "bonnie_mask_onragdoll", function(ply, rag)

@@ -17,7 +17,7 @@ if ( SERVER ) then
 		
 		waitboys[ply] = CurTime()
 		
-		if isstring(mdl) and mdl:len() > 0 then
+		if isstring(mdlName) and mdlName:len() > 0 then
 			if !ply:IsAnimatronic() then
 				local modelPath = player_manager.TranslatePlayerModel(mdlName)
 			

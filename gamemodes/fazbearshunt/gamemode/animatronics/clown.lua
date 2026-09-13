@@ -62,11 +62,12 @@ pills.register("pill_clown",{
 		end
 	end,
 	
-	startFunction=function(ply,ent)
+	initialize=function(ply,ent)
 		chaseVoicelineChecker(ply, ent, "clown")
 	end,
 	
 	restore=function(ply,ent)
+		if CLIENT then return end
 		ply:SetJumpBoostMultiplier( getScaledJumpBoost() )
 	end,
 	

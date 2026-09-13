@@ -12,6 +12,8 @@ SWEP.BounceWeaponIcon	= false
 SWEP.Slot = 3
 SWEP.SlotPos = 2
 
+SWEP.Gifted = true
+
 SWEP.ViewModel = Model("models/johnmason/food/c_coca_cola_can.mdl")
 SWEP.WorldModel = Model("models/johnmason/food/w_coca_cola_can.mdl")
 SWEP.ViewModelFOV = 54

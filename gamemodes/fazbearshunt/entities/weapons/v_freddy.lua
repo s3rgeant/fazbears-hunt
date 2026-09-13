@@ -16,10 +16,13 @@ if CLIENT then
 	--killicon.Add( "v_freddy", "HUD/killicons/freddy", Color( 255, 80, 0, 255 ) )
 end
 
+SWEP.HandleMinViewModel = true
+SWEP.CalcMinimalViewModelView = Vector(4,0,-8)
+
 function SWEP:SetupAnimations()
 	self:AddAnimation("scare")
 	self:AddAnimation("attack")
-	self:AddAnimation("deploy")
+	self:AddAnimation("holster")
 	self:AddAnimation("draw")
 end
 

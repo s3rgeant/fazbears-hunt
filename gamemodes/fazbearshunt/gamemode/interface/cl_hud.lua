@@ -47,9 +47,9 @@ surface.CreateFont("fh_hud_ability_time", { font = "Share Tech Mono", size = 16 
 local button_ability_mat = Material( "vgui/animatronics_hud/abilities/button_ability.png", "smooth" )
 local mouse_ability_mat = Material( "vgui/animatronics_hud/abilities/mouse_ability.png", "smooth" )
 
-hook.Add("HUDShouldDraw", "pk_pill_hideHud", function(name)
+hook.Add("FH_PreDrawHud", "pills_hideHud", function(name)
 	local myself = LocalPlayer()
-	if IsValid(myself) and (IsValid(myself:GetPill()) or currentKiller:len() > 0) and (name == "CHudHealth" or name == "CHudBattery") then 	return false end
+	if IsValid(myself) and (IsValid(myself:GetPill()) or currentKiller:len() > 0) then return true end
 end)
 
 local function DrawMaterial_RealSize(mat, clr, x, y, scaleW, scaleH)
@@ -139,7 +139,8 @@ function DrawKillerInterface()
 
 	local abilityX, abilityY = size + abilities_X_add, screenH - (100 * uiScale)
 
-	for abilityName, abilityData in pairs(currentAbilities) do
+	for _, abilityData in ipairs(currentAbilities) do
+		local abilityName = abilityData.name
 		local maxTime = abilityData.maxTime
 		local timeLeft = abilityData.endTime and (abilityData.endTime - CurTime()) or 0
 		if timeLeft < 0 then timeLeft = 0 end
@@ -368,12 +369,27 @@ function assignAbilitiesByKiller(name)
     end
 end
 
-function addAbility(name, text, duration, tokens, hidden)
-    if currentAbilities[name] then
-        return
-    end
+function AbilityToggle(name, hide)
+	for _, data in ipairs(currentAbilities) do
+		if data.name == name then
+			data.hidden = hide
+			break
+		end
+	end
+end
 
-    currentAbilities[name] = {
+function AbilityRemove(name)
+	for i, data in ipairs(currentAbilities) do
+		if data.name == name then
+			currentAbilities[i] = nil
+			break
+		end
+	end
+end
+
+function AbilityAdd(name, text, duration, tokens, hidden)
+    currentAbilities[#currentAbilities + 1] = {
+		name = name,
         text = text,
         timeleft = duration,
 		tokens = tokens or -1,
@@ -397,6 +413,10 @@ function isNotStuck()
 		return Color(200, 32, 32, 200)
 	end
 	return Color(255, 255, 255, 255)
+end
+-- backup
+function addAbility(...)
+	AbilityAdd(...)
 end
 
 function CanMangleLunge()
@@ -427,20 +447,31 @@ function foxyChargeCondition()
 end
 
 function abilityParentClrFunc(name, func)
-	currentAbilities[name].color = func
+	for _, abilityData in ipairs(currentAbilities) do
+		if abilityData.name == name then
+			abilityData.color = func
+			break
+		end
+	end
 end
 
 function setDuration(name, newDuration)
-    if currentAbilities[name] then
-        currentAbilities[name].maxTime = newDuration
-        currentAbilities[name].endTime = CurTime() + newDuration
+	for _, abilityData in ipairs(currentAbilities) do
+		if abilityData.name == name then
+			abilityData.maxTime = newDuration
+			abilityData.endTime = CurTime() + newDuration
+			break
+		end
     end
 end
 
 function setTokens(name, tkns)
-    if currentAbilities[name] then
-        currentAbilities[name].tokens = tkns
-    end
+	for _, abilityData in ipairs(currentAbilities) do
+		if abilityData.name == name then
+			abilityData.tokens = tkns
+			break
+		end
+	end
 end
 
 function hud_ApplyKiller(name, ent, color)
@@ -516,7 +547,7 @@ hook.Add("PillRestore", "fh_removehudkiller", function(ply)
 	if IsValid(myself) and ply == myself then
 		hud_RemoveKiller()
 		
-		companionColor = Color(255,255,255,255)
+		companionColor = color_white
 		companionIcon = nil
 	end
 end)
@@ -537,7 +568,57 @@ net.Receive("fh_net_killer_change_tokens", function()
 	setTokens(str, net.ReadInt(9))
 end)
 
-local killBg_mat = Material("vgui/animatronics_hud/kill_bg.png")
+function FindAbilityVar(ability, var, pill)
+	if not ability then return end
+	if not var then var = "name" end
+
+	if pill then
+		if not killerAbilities[pill] then
+		
+			local pillName = killers.GetName(pill) -- ищем по короткому погонялу типо freddy
+			
+			if not killerAbilities[pillName] then return nil end
+			
+			for _, data in ipairs( killerAbilities[pillName] ) do
+				if data.name == ability then return data[var] end
+			end
+			
+		else
+		
+			for _, data in ipairs( killerAbilities[pill] ) do
+				if data.name == ability then return data[var] end
+			end
+		
+		end
+	end
+	
+	return nil
+end
+
+local function CheckForNextAbility(should)
+	if should ~= 1 then return end
+	
+	local ability = net.ReadString()
+	local pill = net.ReadString()
+	local goNext = net.ReadBit()
+	
+	local key = FindAbilityVar(ability, "key", pill)
+	
+	AbilityAdd(ability, key)
+	
+	CheckForNextAbility(goNext)
+end
+
+net.Receive("fh_AbilitiesAdd", function()
+	CheckForNextAbility(1)
+end)
+
+net.Receive("fh_AbilitiesRemove", function()
+	local ability = net.ReadString()
+	
+	AbilityRemove(ability)
+end)
+
 local killcross = Material("vgui/kill-crosshair.png", "smooth")
 local addY = 20
 local size = 24

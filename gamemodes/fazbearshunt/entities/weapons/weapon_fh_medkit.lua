@@ -12,6 +12,8 @@ end
 
 SWEP.Spawnable = true
 
+SWEP.Gifted = true
+
 SWEP.ViewModel = Model("models/weapons/c_medkit.mdl")
 SWEP.WorldModel = Model("models/weapons/w_medkit.mdl")
 SWEP.ViewModelFOV = 54
@@ -36,6 +38,13 @@ SWEP.HealCooldown = 1
 SWEP.DenyCooldown = 1
 SWEP.HealAmount = 10
 SWEP.HealRange = 64
+
+if SERVER then
+	resource.AddFile( "materials/weapons/medkit.vmt" )
+else
+	SWEP.WepSelectIcon = surface.GetTextureID( "weapons/medkit" )
+	SWEP.BounceWeaponIcon = false
+end
 
 function SWEP:Initialize()
     self:SetHoldType(self.HoldType)

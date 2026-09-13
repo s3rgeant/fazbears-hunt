@@ -1,8 +1,5 @@
 AddCSLuaFile()
 
-if SERVER then
-end
-
 shadow_freddyability = CreateConVar( "fh_sfreddy_noclip", "1", { FCVAR_NOTIFY, FCVAR_ARCHIVE, FCVAR_REPLICATED }, 
 "Should Shadow Freddy Noclip or just slide throught objects while being invisible?" )
 
@@ -96,14 +93,32 @@ pills.register("pill_sfreddy2",{
 	muteSteps = true,
 
 	noFallDamage=true,
-	restore=function(ply,ent)
-		ply:SetPushBlocked(false)
-		ply._SF_TouchedFloor_Uncloaked = nil
-	end,
 	
-	startFunction=function(ply,ent)
+	initialize=function(ply,ent)
 		chaseVoicelineChecker(ply, ent, "sfreddy")
 		ply._SF_TouchedFloor_Uncloaked = true
+		
+		local tracker = ents.Create("fh_stuck_tracker")
+		tracker:SetPos(ply:GetPos())
+		tracker:SetOwner(ply)
+		tracker:Spawn()
+		tracker:Activate()
+		
+		tracker.TeleportCond = function(owner)
+			if not ent.cloaked then return false end
+		end
+		
+		ent.stuck_tracker = tracker
+	end,
+	restore=function(ply,ent)
+		if CLIENT then return end
+		
+		ply:SetPushBlocked(false)
+		ply._SF_TouchedFloor_Uncloaked = nil
+		
+		if IsValid(ent.stuck_tracker) then
+			ent.stuck_tracker:Remove()
+		end
 	end,
 	
 	killCondition=function(ply,ent)
@@ -142,138 +157,7 @@ pills.register("pill_sfreddy2",{
 	attack2={
 		mode="trigger",
 		func = function(ply,ent)
-			if cooldown.Exists(ply, 'submerge') then return end
-			
-			ply:LagCompensation( false )
-
-			if !ply:KeyDown(IN_USE) then
-			
-				if ent.cloaked then
-					local trace = util.TraceHull({
-						start = ply:GetPos(),
-						endpos = ply:GetPos(),
-						mins = ply:OBBMins(),
-						maxs = ply:OBBMaxs(),
-						filter = ply,
-						mask = MASK_PLAYERSOLID,
-					})
-					
-					if trace.Hit then
-						net.Start("fh_play_sound")
-						net.WriteString('sfreddyerror.wav')
-						net.Send(ply)
-						return 
-					end
-			
-					local wep = ply:GetActiveWeapon()
-					if IsValid(wep) and wep:GetClass() == "v_freddy" then
-						wep:HandleAnimation("draw", 0.5)
-					end
-					
-					ply:DrawViewModel(true)
-					ply:SetPushBlocked(false)
-					ply:EmitSound("sfreddyout.mp3")
-					
-					ent.cloaked=false
-					
-					hook.Run("FH_SFreddySubmergeOut", ply, ent)
-	
-					ent:ToggleCloak()
-						
-					timer.Remove("ext" .. ply:EntIndex())
-							
-					ply:SetMoveType( MOVETYPE_WALK )
-							
-					ply:SetCollisionGroup(COLLISION_GROUP_PLAYER)
-					
-					if SERVER then
-						if ply:OnGround() then
-							cooldown.Set(ply, "kill", sfreddy_cooldowns[1])
-							cooldown.Send(ply, "kill")
-							
-							ply._SF_TouchedFloor_Uncloaked = true
-						end
-						
-						timer.Simple(0.1, function()
-							if ply:OnGround() and !ply._SF_TouchedFloor_Uncloaked then
-								cooldown.Set(ply, "kill", sfreddy_cooldowns[1])
-								cooldown.Send(ply, "kill")
-								
-								ply._SF_TouchedFloor_Uncloaked = true
-							end
-						end)
-					
-						cooldown.Set(ply, "submerge", sfreddy_cooldowns[3])
-						cooldown.Send(ply, "submerge")
-					end
-					
-					local ed = EffectData()
-						ed:SetOrigin( ent:GetPos() )
-						ed:SetEntity( ent )
-					util.Effect( "propspawn", ed, true, true )
-					
-					ent:SetSpeed( unpack(sfreddy_default_movement) )
-					ent:PillAnim("uncloak")
-					
-					timer.Create("Cloacking"..ply:EntIndex(), 0.1, 1, function()
-						if !IsValid(ent) then return end
-						
-						ent:SetMaterial()
-						ent:DrawShadow(true)
-					end)
-				else
-					if !ply:OnGround() and ply:WaterLevel() == 0 and !ply:IsStuck() then return end
-					if !IsValid(ent) then return end
-					cooldown.Set(ply, "submerge", sfreddy_cooldowns[2])
-					cooldown.Send(ply, "submerge")
-					
-					ply:EmitSound("sfreddyin.mp3")
-					ply:SetPushBlocked(true)
-			
-					local wep = ply:GetActiveWeapon()
-					if IsValid(wep) and wep:GetClass() == "v_freddy" then
-						wep:HandleAnimation("deploy", 99999)
-					end
-					
-					ent:PillAnim("cloak")
-					
-					ply:SetJumpPower( 0 )
-					
-					timer.Create( "ext" .. ply:EntIndex(), 0.2, 0, function() 
-						if !IsValid(ent) then return end
-						if ply:Health() < 1000 then ply:SetHealth(ply:Health()+1) end
-						if ent:IsOnFire() then ent:Extinguish() end
-						if ply:IsOnFire() then ply:Extinguish() end
-					end)
-					
-					ent.cloaked=true
-					
-					hook.Run("FH_SFreddySubmergeIn", ply, ent)
-					ent:ToggleCloak()
-					
-					timer.Create("Cloacking"..ply:EntIndex(), 0.67, 1, function()
-						if !IsValid(ent) then return end
-						ply:DrawViewModel(false)
-					
-						ply._SF_TouchedFloor_Uncloaked = false
-						
-						if shadow_freddyability:GetInt() == 0 then
-							ent:SetSpeed( unpack(sfreddy_noclip_movement) )
-						end
-						if shadow_freddyability:GetInt() == 1 then
-							ply:SetMoveType( MOVETYPE_NOCLIP )
-						end
-						
-						ent:SetMaterial("models/null")
-						ent:DrawShadow(false)
-						
-						ply:SetCollisionGroup(COLLISION_GROUP_DEBRIS )
-						
-						hook.Run("FH_SFreddySubmergePostIn", ply, ent)
-					end)
-				end
-			end
-			ply:LagCompensation( true )
+			ShadowFreddySubmerge_Toggle()
 		end
 	},
 	
@@ -301,6 +185,143 @@ pills.register("pill_sfreddy2",{
 		ent:PillSound("jump",false)
 	end
 })
+
+function ShadowFreddySubmerge_Toggle(ply, ent)
+	if cooldown.Exists(ply, 'submerge') then return end
+			
+	ply:LagCompensation( false )
+
+	if !ply:KeyDown(IN_USE) then
+	
+		if ent.cloaked then
+			local trace = util.TraceHull({
+				start = ply:GetPos(),
+				endpos = ply:GetPos(),
+				mins = ply:OBBMins(),
+				maxs = ply:OBBMaxs(),
+				filter = ply,
+				mask = MASK_PLAYERSOLID,
+			})
+			
+			if trace.Hit then
+				net.Start("fh_play_sound")
+				net.WriteString('sfreddyerror.wav')
+				net.Send(ply)
+				return 
+			end
+	
+			local wep = ply:GetActiveWeapon()
+			if IsValid(wep) and wep.HandleAnimation then
+				wep:HandleAnimation("draw", 0.5)
+			end
+			
+			ply:DrawViewModel(true)
+			ply:SetPushBlocked(false)
+			ply:EmitSound("sfreddyout.mp3")
+			
+			ent.cloaked=false
+			
+			hook.Run("FH_SFreddySubmergeOut", ply, ent)
+
+			ent:ToggleCloak()
+				
+			timer.Remove("ext" .. ply:EntIndex())
+					
+			ply:SetMoveType( MOVETYPE_WALK )
+					
+			ply:SetCollisionGroup(COLLISION_GROUP_PLAYER)
+			
+			if SERVER then
+				if ply:OnGround() then
+					cooldown.Set(ply, "kill", sfreddy_cooldowns[1])
+					cooldown.Send(ply, "kill")
+					
+					ply._SF_TouchedFloor_Uncloaked = true
+				end
+				
+				timer.Simple(0.1, function()
+					if ply:OnGround() and !ply._SF_TouchedFloor_Uncloaked then
+						cooldown.Set(ply, "kill", sfreddy_cooldowns[1])
+						cooldown.Send(ply, "kill")
+						
+						ply._SF_TouchedFloor_Uncloaked = true
+					end
+				end)
+			
+				cooldown.Set(ply, "submerge", sfreddy_cooldowns[3])
+				cooldown.Send(ply, "submerge")
+			end
+			
+			local ed = EffectData()
+				ed:SetOrigin( ent:GetPos() )
+				ed:SetEntity( ent )
+			util.Effect( "propspawn", ed, true, true )
+			
+			ent:SetSpeed( unpack(sfreddy_default_movement) )
+			ent:PillAnim("uncloak")
+			
+			timer.Create("Cloacking"..ply:EntIndex(), 0.1, 1, function()
+				if !IsValid(ent) then return end
+				
+				ent:SetMaterial()
+				ent:DrawShadow(true)
+			end)
+		else
+			if !ply:OnGround() and ply:WaterLevel() == 0 and !ply:IsStuck() then return end
+			if !IsValid(ent) then return end
+			cooldown.Set(ply, "submerge", sfreddy_cooldowns[2])
+			cooldown.Send(ply, "submerge")
+			
+			ply:EmitSound("sfreddyin.mp3")
+			ply:SetPushBlocked(true)
+	
+			local wep = ply:GetActiveWeapon()
+			if IsValid(wep) and wep.HandleAnimation then
+				wep:HandleAnimation("deploy", 99999)
+			end
+			
+			ent:PillAnim("cloak")
+			
+			ply:SetJumpPower( 0 )
+			
+			local extTimer = "ext" .. ply:EntIndex()
+			timer.Create( extTimer, 0.2, 0, function()
+				if !IsValid(ent) then timer.Remove(extTimer) return end
+				if !IsValid(ply) then timer.Remove(extTimer) return end
+				if ply:Health() < 1000 then ply:SetHealth(ply:Health()+1) end
+				if ent:IsOnFire() then ent:Extinguish() end
+				if ply:IsOnFire() then ply:Extinguish() end
+			end)
+			
+			ent.cloaked=true
+			
+			hook.Run("FH_SFreddySubmergeIn", ply, ent)
+			ent:ToggleCloak()
+			
+			timer.Create("Cloacking"..ply:EntIndex(), 0.67, 1, function()
+				if !IsValid(ent) then return end
+				ply:DrawViewModel(false)
+			
+				ply._SF_TouchedFloor_Uncloaked = false
+				
+				if shadow_freddyability:GetInt() == 0 then
+					ent:SetSpeed( unpack(sfreddy_noclip_movement) )
+				end
+				if shadow_freddyability:GetInt() == 1 then
+					ply:SetMoveType( MOVETYPE_NOCLIP )
+				end
+				
+				ent:SetMaterial("models/null")
+				ent:DrawShadow(false)
+				
+				ply:SetCollisionGroup( COLLISION_GROUP_DEBRIS )
+				
+				hook.Run("FH_SFreddySubmergePostIn", ply, ent)
+			end)
+		end
+	end
+	ply:LagCompensation( true )
+end
 
 if CLIENT then
 	hook.Add("FH_HandleKillerTerrorLayers", "sfreddy_handle", function(killer, theme, layer)

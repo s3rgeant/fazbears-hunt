@@ -27,6 +27,8 @@ end
 SWEP.HoldType = "grenade"
 SWEP.DrawAmmo = true
 
+SWEP.Gifted = true
+
 SWEP.Spawnable				= true;
 SWEP.AdminSpawnable			= false;
 

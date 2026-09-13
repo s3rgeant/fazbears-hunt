@@ -143,9 +143,9 @@ function fh.GetRoundTypeNameByNumber(id)
 end
 
 fh.RegisterRoundType("regular", 0, function()
-	assignKillers()
-	RandomTaser()
+	AssignKillers()
 	freezeAnimatronics()
+	RandomTaser()
 end, 100)
 
 include( "springtrap.lua" )

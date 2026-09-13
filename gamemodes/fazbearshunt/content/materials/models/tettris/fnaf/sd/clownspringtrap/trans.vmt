@@ -1,9 +1,0 @@
-"LightmappedGeneric"
-{
-	"$decal" "1"
-	"$decalscale" ".25"
-
-	"$surfaceprop" "metal"
-	$baseTexture "models\tetTris\FNaF\SD\Shamrock\Eye"
-	"$translucent" "1"
-}

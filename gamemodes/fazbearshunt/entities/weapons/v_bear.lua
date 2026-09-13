@@ -18,6 +18,9 @@ end
 
 SWEP.ViewModel = "models/speps/vm/oldfreddy.mdl"
 
+SWEP.HandleMinViewModel = true
+SWEP.CalcMinimalViewModelView = Vector(4,0,-8)
+
 SWEP.HitDelay = 0.8	-- через сколько удар будет произвёден насильно после замаха, если ты долго держишь лкм
 SWEP.ChargeStartTime = 0 -- время начала удержания ЛКМ
 
@@ -144,9 +147,35 @@ function SWEP:DealDamage()
     end
 
     local class = target:GetClass()
-    if class == "func_breakable" or class == "func_breakable_surf" then
-        target:Fire("Shatter", "0", 0)
-    end
+	if class == "func_breakable_surf" then
+		local localHit = target:WorldToLocal(tr.HitPos)
+		
+		local mins = target:OBBMins()
+		local maxs = target:OBBMaxs()
+		local size = maxs - mins
+		
+		local x, y = 0.5, 0.5
+
+		if size.x <= size.y and size.x <= size.z then
+			x = (localHit.y - mins.y) / math.max(size.y, 1)
+			y = (localHit.z - mins.z) / math.max(size.z, 1)
+		elseif size.y <= size.x and size.y <= size.z then
+			x = (localHit.x - mins.x) / math.max(size.x, 1)
+			y = (localHit.z - mins.z) / math.max(size.z, 1)
+		else
+			x = (localHit.x - mins.x) / math.max(size.x, 1)
+			y = (localHit.y - mins.y) / math.max(size.y, 1)
+		end
+
+		x = math.Clamp(x, 0, 1)
+		y = math.Clamp(y, 0, 1)
+		
+		local shatterStr = string.format("[%.2f %.2f %d]", x, y, 14)
+		
+		target:Fire("Shatter", shatterStr, 0, ply)
+	elseif class == "func_breakable" then
+		target:Fire("Break", "", 0, ply)
+	end
 
     if target:GetMoveType() == MOVETYPE_VPHYSICS then
         local owner = target:GetOwner()
@@ -182,6 +211,8 @@ function SWEP:DealDamage()
     effectData:SetHitBox(tr.HitBox or 0)
     effectData:SetScale(1)
     util.Effect("Impact_GMOD", effectData, true, true)
+
+    ply:LagCompensation(false)
 		
 	if GetConVar("bust_doors"):GetBool() then
 		if target:GetClass() == "prop_door_rotating" then
@@ -197,11 +228,15 @@ function SWEP:DealDamage()
 			return true
 		end
 	end
-
-    ply:LagCompensation(false)
 	
 	if target:IsPlayer() then
-		ply:EmitSound("fnaf3/hit.mp3")
+		target:AnimRestartGesture(4, ACT_FLINCH_STOMACH, true)
+		
+		net.Start("AnimRestartGesture")
+			net.WriteEntity(target)
+			net.WriteInt(4, 4)
+			net.WriteInt(ACT_FLINCH_STOMACH, 12)
+		net.SendPVS(target:GetPos())
 		
 		if target:GetNW2Bool("KillerObsessed") then
 			net.Abort()

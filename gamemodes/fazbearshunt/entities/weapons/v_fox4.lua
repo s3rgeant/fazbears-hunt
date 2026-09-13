@@ -15,4 +15,7 @@ if CLIENT then
 
 end
 
+SWEP.HandleMinViewModel = true
+SWEP.CalcMinimalViewModelView = Vector(6,0,-10)
+
 SWEP.ViewModel = "models/fh/animatronics/vm/fox4.mdl"

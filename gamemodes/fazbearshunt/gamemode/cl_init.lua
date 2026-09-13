@@ -36,6 +36,82 @@ function getTeam(team)
 	return teamname
 end
 
+function GM:CalcView( ply, origin, angles, fov, znear, zfar )
+	local Vehicle	= ply:GetVehicle()
+	local Weapon	= ply:GetActiveWeapon()
+	local Pill		= ply:GetPillCostume()
+
+	local view = {
+		["origin"] = origin,
+		["angles"] = angles,
+		["fov"] = fov,
+		["znear"] = znear,
+		["zfar"] = zfar,
+		["drawviewer"] = false,
+	}
+
+	if ( IsValid( Vehicle ) ) then return hook.Run( "CalcVehicleView", Vehicle, ply, view ) end
+	
+	if ( IsValid( Pill ) ) and Pill.Func then return Pill:Func( "calcView", ply, Pill, view ) end
+
+	if ( drive.CalcView( ply, view ) ) then return view end
+
+	player_manager.RunClass( ply, "CalcView", view )
+
+	if ( IsValid( Weapon ) ) then
+		local func = Weapon.CalcView
+		if ( func ) then
+			local origin, angles, fov = func( Weapon, ply, Vector( view.origin ), Angle( view.angles ), view.fov )
+			view.origin, view.angles, view.fov = origin or view.origin, angles or view.angles, fov or view.fov
+		end
+
+	end
+
+	return view
+
+end
+
+local cl_use_min_viewmodels = CreateClientConVar( "cl_use_min_viewmodels", "0", true, false, "Use minimal viewmodels (like in TF2)" )
+function GM:CalcViewModelView( wep, vm, oldEyePos, oldEyeAng, eyePos, eyeAng )
+
+	if ( !IsValid( wep ) ) then return end
+
+	local vm_origin, vm_angles = eyePos, eyeAng
+
+	-- Controls the position of all viewmodels
+	local func = wep.GetViewModelPosition
+	if ( func ) then
+		local pos, ang = func( wep, eyePos*1, eyeAng*1 )
+		vm_origin = pos or vm_origin
+		vm_angles = ang or vm_angles
+	end
+
+	-- Controls the position of individual viewmodels
+	func = wep.CalcViewModelView
+	if ( func ) then
+		local pos, ang = func( wep, vm, oldEyePos*1, oldEyeAng*1, eyePos*1, eyeAng*1 )
+		vm_origin = pos or vm_origin
+		vm_angles = ang or vm_angles
+	end
+
+	if cl_use_min_viewmodels:GetBool() then
+		local minOffset = wep.CalcMinimalViewModelView or Vector(15,5,-6)
+
+		if wep.HandleMinViewModel ~= false then
+		
+			if isfunction(minOffset) then minOffset = minOffset( wep, vm, oldEyePos, oldEyeAng, vm_origin, vm_angles ) end
+			
+			local forward = vm_angles:Forward()
+			local right = vm_angles:Right()
+			local up = vm_angles:Up()
+
+			vm_origin = vm_origin + (forward * minOffset.x) + (right * minOffset.y) + (up * minOffset.z)
+		end
+	end
+
+	return vm_origin, vm_angles
+end
+
 do
     local old_upper = string.upper
 
@@ -53,8 +129,6 @@ do
         end))
     end
 end
-
-killicon.AddAlias( "prop_physics_multiplayer", "prop_physics" )
 
 hook.Add("HUDDrawTargetID", "HidePlayerNames", function()
 	local lp = LocalPlayer()
@@ -163,6 +237,15 @@ net.Receive("fh_animatronic_left_chatmessage", function()
 	local imya = net.ReadString()
 
 	myself:ChatPrint(string.format(language.GetPhrase('fazhunt.chat.animleave'), imya ))
+end)
+
+net.Receive("AnimRestartGesture", function()
+	local ent = net.ReadEntity()
+	local slot = net.ReadInt(4)
+	local act = net.ReadInt(12)
+	
+	if not IsValid(ent) then return end
+	ent:AnimRestartGesture(slot, act, true)
 end)
 
 local jawBones = { "bip_jaw", "Jaw", "Jaw_Bn", "Jaw_jnt", "JawInner", "bip_lowerEndoJaw" }

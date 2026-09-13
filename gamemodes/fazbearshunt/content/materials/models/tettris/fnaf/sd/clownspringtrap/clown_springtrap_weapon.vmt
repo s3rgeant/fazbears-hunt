@@ -1,23 +1,15 @@
 "VertexlitGeneric"
 {
-	"$basetexture" "models\tetTris\FNaF\SD\ClownSpringtrap\Weapon_D"
-	"$bumpmap" "models\tetTris\FNaF\SD\ClownSpringtrap\Weapon_N"
+	"$basetexture" "models\tetTris\FNaF\SD\ClownSpringtrap\Weapon_D2"
+	"$bumpmap" "models\tetTris\FNaF\SD\ClownSpringtrap\Weapon_N2"
 
+	"$maskmap2" 	"models\tetTris\FNaF\SD\ClownSpringtrap\Weapon_CH"
 	"$phongexponenttexture" "models\tetTris\FNaF\SD\ClownSpringtrap\Weapon_Exponent"
-
-	"$color2"	"[0 0 0]"
-	"$blendTintByBaseAlpha"	"1"
-
+	
 	"$phong" "1"
-	"$phongboost"	"9.9934895"
+	"$phongboost"	"19.986979"
 
-	"$phongfresnelranges"	"[0.1 0.23 0.945]"
+	"$maskenvbymetalness" "0"
 
-	"$phongdisablehalflambert"	"1"
-
-	"$envmap" "models\cubemaps\fallout4cube_dithered_grey"
-	"$normalmapalphaenvmapmask"		"1"
-	"$envmapfresnel"	"1"
-
-	"$envmaptint"		"[0 0 0]"
+	"$metalnessblendtofull"	"1"
 }

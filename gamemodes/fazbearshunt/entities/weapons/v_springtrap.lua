@@ -18,6 +18,9 @@ end
 SWEP.ViewModel = "models/ufmp/fnaf3/vm/Springtrap.mdl"
 SWEP.m_WeaponDeploySpeed = 0.6
 
+SWEP.HandleMinViewModel = true
+SWEP.CalcMinimalViewModelView = Vector(4,0,-8)
+
 SWEP.HitDelay = 1.4	-- через сколько удар будет произвёден насильно после замаха, если ты долго держишь лкм
 
 SWEP.Arm = "LEFT"
@@ -67,7 +70,7 @@ function SWEP:PrimaryAttack()
 	self:SetNextMeleeAttack(CurTime() + self.HitDelay)
 end
 
-function SWEP:DealDamage()
+function SWEP:DealDamage(ply, ent)
 	local ply = self:GetOwner()
 	local ent = pills.getMappedEnt(ply)
 	if not IsValid(ent) then return end
@@ -87,11 +90,7 @@ function SWEP:DealDamage()
 	end
 	
 	if SERVER then
-		timer.Simple(0.05, function()
-			if IsValid(ent) then
-				ent:PillStopGesture('swing')
-			end
-		end)
+		ent:PillStopGesture('swing', 0.1)
 		
 		if !ply:Crouching() then
 			ent:PillGesture('attack', 2, 1, 0.1, 0.7)
@@ -134,7 +133,7 @@ function SWEP:DealDamage()
 	
 	if target:IsPlayer() and target:IsSurvivor() then
 		local edata = EffectData()
-		edata:SetOrigin(tr.HitPos)
+		edata:SetOrigin(target:NearestPoint(tr.HitPos))
 		edata:SetEntity(target)
 		util.Effect("BloodImpact", edata, true, true)
 	end
@@ -145,8 +144,34 @@ function SWEP:DealDamage()
 	end
 	
 	local class = target:GetClass()
-	if class == "func_breakable" or class == "func_breakable_surf" then
-		target:Fire("Shatter", "0", 0)
+	if class == "func_breakable_surf" then
+		local localHit = target:WorldToLocal(tr.HitPos)
+		
+		local mins = target:OBBMins()
+		local maxs = target:OBBMaxs()
+		local size = maxs - mins
+		
+		local x, y = 0.5, 0.5
+
+		if size.x <= size.y and size.x <= size.z then
+			x = (localHit.y - mins.y) / math.max(size.y, 1)
+			y = (localHit.z - mins.z) / math.max(size.z, 1)
+		elseif size.y <= size.x and size.y <= size.z then
+			x = (localHit.x - mins.x) / math.max(size.x, 1)
+			y = (localHit.z - mins.z) / math.max(size.z, 1)
+		else
+			x = (localHit.x - mins.x) / math.max(size.x, 1)
+			y = (localHit.y - mins.y) / math.max(size.y, 1)
+		end
+
+		x = math.Clamp(x, 0, 1)
+		y = math.Clamp(y, 0, 1)
+		
+		local shatterStr = string.format("[%.2f %.2f %d]", x, y, 25)
+		
+		target:Fire("Shatter", shatterStr, 0, ply)
+	elseif class == "func_breakable" then
+		target:Fire("Break", "", 0, ply)
 	end
 	
 	if target:GetMoveType() == MOVETYPE_VPHYSICS then
@@ -179,6 +204,8 @@ function SWEP:DealDamage()
 	effectData:SetHitBox(tr.HitBox or 0)
 	effectData:SetScale(1)
 	util.Effect("Impact_GMOD", effectData, true, true)
+	
+	ply:LagCompensation(false)
 		
 	if GetConVar("bust_doors"):GetBool() then
 		if target:GetClass() == "prop_door_rotating" then
@@ -195,10 +222,16 @@ function SWEP:DealDamage()
 		end
 	end
 	
-	ply:LagCompensation(false)
-	
 	if target:IsPlayer() and !target:IsAnimatronic() or target:IsNPC() then
 		ply:EmitSound("fnaf3/hit.mp3")
+		
+		target:AnimRestartGesture(4, ACT_FLINCH_HEAD, true)
+		
+		net.Start("AnimRestartGesture")
+			net.WriteEntity(target)
+			net.WriteInt(4, 4)
+			net.WriteInt(ACT_FLINCH_HEAD, 12)
+		net.SendPVS(target:GetPos())
 		
 		if target:GetNW2Bool("KillerObsessed") then
 			net.Abort()

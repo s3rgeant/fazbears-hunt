@@ -1,0 +1,19 @@
+"VertexlitGeneric"
+{
+$basetexture  "models\ufmp\FNaF2\WitheredGoldenFreddy\Teeth"
+$bumpmap "models\ufmp\flat"
+
+$surfaceprop                              "plastic"
+
+
+$phong                                       "1"
+$phongexponent                        "40"
+$phongboost	                   "3"
+$ambientocclusion "0"
+$color "1"
+$phongalbedotint                        "1"
+$phongfresnelranges                  "[0.05 0.5 1]"
+$halflambert                                 "0"
+$diffuseexp                                  "1.5"
+$nocull                                         "1"
+}

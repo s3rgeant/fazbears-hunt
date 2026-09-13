@@ -1,5 +1,5 @@
 "UnlitGeneric"
 {
-	$baseTexture "models\tetTris\FNaF\SD\ClownSpringtrap\Eye_R"
+	$baseTexture "models\tetTris\FNaF\SD\ClownSpringtrap\eye_r"
                  $color2 "[2 2 2]"
 }

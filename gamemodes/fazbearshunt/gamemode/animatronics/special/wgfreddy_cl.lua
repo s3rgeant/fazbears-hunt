@@ -267,10 +267,6 @@ if CLIENT then
 	
 	net.Receive("fh_wgfreddy_selecting_halo", fh_wgfreddy_selecting_halo)
 	
-	net.Receive("fh_wgfreddy_stop_selection_halo", function()
-		hook.Remove("PostDrawTranslucentRenderables", "fh_draw_gfreddy_target_text")
-	end)
-	
 	local mat_Grayscale = Material( "effects/shaders/merc_grayscale" )
 	local function grayscale()
 		needsDepth = true

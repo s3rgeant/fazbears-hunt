@@ -1,0 +1,18 @@
+"VertexlitGeneric"
+{
+$basetexture "models\ufmp\fnaf2\toys\toychica\pink"
+	"$nocull" "1"
+$bumpmap "models\ufmp\fnaf2\toys\toychica\flat"
+$phongexponenttexture "models\ufmp\fnaf2\toys\toychica\pinkspec"
+$surfaceprop metal
+$phong "1"
+$ambientocclusion "0.9"
+$phongexponent "0"
+$phongboost "2.5"
+$color "[0.8274510	0.8274510	0.8274510	1.000]"
+$phongfresnelranges "[0.3 0.5 1]"
+$phongalbedotint "1"
+$halflambert 0
+$basetexturetransform                       "[0 1 0 0 1 0 0 0 0 0 1 0 0 0 0 1]"
+$diffuseexp 1.5
+}

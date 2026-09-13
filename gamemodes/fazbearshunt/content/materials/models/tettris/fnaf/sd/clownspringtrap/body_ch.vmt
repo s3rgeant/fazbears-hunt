@@ -1,11 +1,7 @@
 "VertexlitGeneric"
 {
-	"$basetexture" "models\tetTris\FNaF\SD\ClownSpringtrap\Body_D"
-	"$normalmap" "models\tetTris\FNaF\SD\ClownSpringtrap\Body_N"
-
-	"$maskmap2" 	"models\tetTris\FNaF\SD\ClownSpringtrap\Body_CH"
-
-	"$nocull" "0"
+	"$basetexture" "models\tetTris\FNaF\SD\ClownSpringtrap\Body_D2"
+	"$normalmap" "models\tetTris\FNaF\SD\ClownSpringtrap\Body_N2"
 
     "$alphatest" "1"
     "$alphatestreference" "0.3"

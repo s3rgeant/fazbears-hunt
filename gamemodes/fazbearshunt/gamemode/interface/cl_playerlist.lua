@@ -5,8 +5,8 @@ local customScoreboard = nil
 local anim_scrollPanel = nil
 local surv_scrollPanel = nil
 
-surface.CreateFont("metaFont16", { font = "Share Tech Mono Regular", size = 28, extended = true, weight = fh_timer_width, antialias = true, bold = true })
-surface.CreateFont("metaFont14", { font = "Share Tech Mono Regular", size = 18, extended = true, weight = fh_timer_width, antialias = true, bold = true })
+surface.CreateFont("metaFont16", { font = "Share Tech Mono", size = 28, extended = true, weight = fh_timer_width, antialias = true, bold = true })
+surface.CreateFont("metaFont14", { font = "Share Tech Mono", size = 18, extended = true, weight = fh_timer_width, antialias = true, bold = true })
 
 local fh_logo = Material("vgui/playerlist/fh logo.png")
 local fh_logo_glow = Material("vgui/playerlist/logo_glow.png")
@@ -21,7 +21,7 @@ local left_tab_mat = Material("vgui/playerlist/tabs/left_t.png")
 
 local faded_black = Color(0, 0, 0, 200)
 
-surface.CreateFont("bySergeantFont", { font = "Share Tech Mono Regular", 
+surface.CreateFont("bySergeantFont", { font = "Share Tech Mono", 
 		size = 18, 
 		extended = true, 
 		antialias = true, 
@@ -432,7 +432,7 @@ local showAnimTooltip = false
 local animTooltipText = ""
 
 local function CreateAnimatronicPanel(scrollbar, ply, killerData)
-	local ent = pills.getMappedEnt(ply)
+	local ent = ply:GetActualPillCostume()
 	
 	local panel_height = 40
 	
@@ -448,7 +448,7 @@ local function CreateAnimatronicPanel(scrollbar, ply, killerData)
 	local imagePath = ""
 
 	if IsValid(ent) then
-		animName = ent.formTable.name
+		animName = ent:GetPillName()
 		if killerData[animName] then
 			animFullName = killerData[animName].fullname
 		

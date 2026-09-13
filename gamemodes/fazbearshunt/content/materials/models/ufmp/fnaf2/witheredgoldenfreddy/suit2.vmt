@@ -1,0 +1,21 @@
+"VertexlitGeneric"
+{
+$basetexture  "models\ufmp\FNaF2\WitheredGoldenFreddy\Suit2"
+$bumpmap "models\ufmp\FNaF2\WitheredGoldenFreddy\Bump"
+
+$surfaceprop                              "plastic"
+
+
+$phong                                       "1"
+$phongexponent                        "5"
+$ambientocclusion "1"
+$color "[0.75 0.75 0.75]"
+$phongtint "[0.101665 0.056752 0.026035]"
+$phongboost	                   "2"
+$phongalbedotint                        "1"
+$phongfresnelranges                  "[0.05 0.5 1]"
+$halflambert                                 "0"
+$diffuseexp                                  "1.5"
+$nocull                                         "1"
+
+}

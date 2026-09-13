@@ -14,7 +14,10 @@ if CLIENT then
     end)
 end
 
-SWEP.ViewModel = "models/ufmp/fnaf2/toys/vm/themangle.mdl"
+SWEP.ViewModel = "models/fh/animatronics/ufmp/fnaf2/vm/themangle.mdl"
+
+SWEP.HandleMinViewModel = true
+SWEP.CalcMinimalViewModelView = Vector(2,0,-10)
 
 SWEP.JumpHold = 0.3
 SWEP.LandHold = 0.4
@@ -26,7 +29,7 @@ function SWEP:SetupAnimations()
 end
 
 function SWEP:HandleGroundAnim()
-	local ply = self.Owner
+	local ply = self:GetOwner()
 	
 	return ply:GetNWBool("_MangleHooked")
 end

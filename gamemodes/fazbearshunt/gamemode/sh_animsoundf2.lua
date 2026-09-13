@@ -5,20 +5,20 @@ sound.Add({
 	channel = 		CHAN_STATIC,
 	level = 		90,
 	volume = 		1.0,
-	sound = 			{"2footstep1.mp3"
-						,"2footstep2.mp3"
-						,"2footstep3.mp3"
-						,"2footstep4.mp3"}
+	sound = 			{"footsteps/2footstep1.mp3"
+						,"footsteps/2footstep2.mp3"
+						,"footsteps/2footstep3.mp3"
+						,"footsteps/2footstep4.mp3"}
 })
 sound.Add({
 	name = 			"freddy.stalkfoot1",
 	channel = 		CHAN_STATIC,
 	level = 		90,
 	volume = 		1.0,
-	sound = 			{"verybigstep1.mp3"
-						,"verybigstep2.mp3"
-						,"verybigstep3.mp3"
-						,"verybigstep4.mp3"}
+	sound = 			{"footsteps/verybigstep1.mp3"
+						,"footsteps/verybigstep2.mp3"
+						,"footsteps/verybigstep3.mp3"
+						,"footsteps/verybigstep4.mp3"}
 })
 sound.Add({
 	name = 			"bear.foot1",
@@ -37,10 +37,10 @@ sound.Add({
 	channel = 		CHAN_STATIC,
 	level = 		90,
 	volume = 		1.0,
-	sound = 			{"2metalstep1.mp3"
-						,"2metalstep2.mp3"
-						,"2metalstep3.mp3"
-						,"2metalstep4.mp3"}
+	sound = 			{"footsteps/2metalstep1.mp3"
+						,"footsteps/2metalstep2.mp3"
+						,"footsteps/2metalstep3.mp3"
+						,"footsteps/2metalstep4.mp3"}
 })
 
 sound.Add({
@@ -48,10 +48,10 @@ sound.Add({
 	channel = 		CHAN_STATIC,
 	level = 		90,
 	volume = 		1.0,
-	sound = 			{"2metalstep1.mp3"
-						,"2metalstep2.mp3"
-						,"2metalstep3.mp3"
-						,"2metalstep4.mp3"}
+	sound = 			{"footsteps/2metalstep1.mp3"
+						,"footsteps/2metalstep2.mp3"
+						,"footsteps/2metalstep3.mp3"
+						,"footsteps/2metalstep4.mp3"}
 })
 
 //springtrap
@@ -100,10 +100,10 @@ sound.Add({
 	channel = 		CHAN_VOICE,
 	level = 		90,
 	volume = 		1.0,
-	sound = 			{")fnaf3/clown1.wav"
-						,")fnaf3/clown2.wav"
-						,")fnaf3/clown3.wav"
-						,")fnaf3/clown4.wav"}
+	sound = 			{"footsteps/clown1.mp3"
+						,"footsteps/clown2.mp3"
+						,"footsteps/clown3.mp3"
+						,"footsteps/clown4.mp3"}
 })
 
 sound.Add({

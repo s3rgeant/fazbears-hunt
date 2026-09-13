@@ -20,35 +20,72 @@ function highlight.ByDistance(ply, ent)
 	local totalPlayers = {}
 	if !haloUsers[ply] or haloUsers[ply].hl_Time < CurTime() then -- чел не под кулдауном? разрешай
 		highlight.Cooldown(ply, conVars.halo_cooldown:GetFloat())
-		
-		local outworlded = getOutworldVictims()
 	
 		local affectedNicknames = {}
 		for _, player in player.Iterator() do
-			if player ~= ply and player:IsPlayer() 
-							and player:IsSurvivor()
-							and !outworlded[player]
-							and hook.Run("FH_ShouldHighlightPlayer", player, ply, ent) ~= false then
-				local distance = ply:GetPos():Distance(player:GetPos())
+			if player == ply then continue end
+			if not player:IsSurvivor() then continue end
+			if hook.Run("FH_ShouldHighlightPlayer", player, ply, ent) == false then continue end
+			
+			local plyPos = ply:GetPos()
+			local playerPos = player:GetPos()
+							
+			local distance = plyPos:Distance(playerPos)
+			local inAffecteDistance = distance <= conVars.halo_radius:GetInt()
+			local isAffected = inAffecteDistance or (conVars.fair_hl:GetBool() and countNotAffected[player] and countNotAffected[player] >= 2)
+			
+			if player:GetDummy() then
+				local dummy = player:GetDummy()
 				
-				local isAffected = distance <= conVars.halo_radius:GetInt() or (conVars.fair_hl:GetBool() and countNotAffected[player] and countNotAffected[player] >= 2)
-				
-				if (isAffected) then -- передаём чуваку кто подсвечивается в радиусе
-					table.insert(totalPlayers, player)
-					table.insert(affectedNicknames, player:Nick())
-				
-					highlight.Add(ply, player)
+				if IsValid(dummy) then
+					local dummyPos = dummy:GetPos()
+			
+					local dummyDistance = plyPos:Distance(dummyPos)
+					local inAffecteDistance = dummyDistance <= conVars.halo_radius:GetInt()
 					
-					stats.Add(player, "got_highlighted", 1)
-					countNotAffected[player] = 0
+					if (inAffecteDistance) then
+						highlight.Add(ply, dummy)
+						table.insert(totalPlayers, dummy)
+						
+						highlight.Add(player, dummy)
+						
+						local playerToDummyDist = dummyPos:Distance(playerPos)
+						
+						if isAffected and playerToDummyDist <= 300 then
+							isAffected = false
+						end
+						
+						if not isAffected then
+							net.Start("fh_play_sound")
+								net.WriteString("weapons/dummy_highlight.mp3")
+							net.Send(player)
+						end
+					end
 				else
-					stats.Add(player, "evaded_highlight", 1)
-					if !countNotAffected[player] then countNotAffected[player] = 0 end
-					countNotAffected[player] = countNotAffected[player] + 1
+					player._FHDummy = nil
 				end
-				
-				highlight.NotifyTarget(player, ent, isAffected)
 			end
+			
+			if PlayerInOutworld(player) then continue end
+				
+			if (isAffected) then -- передаём чуваку кто подсвечивается в радиусе
+				table.insert(totalPlayers, player)
+				table.insert(affectedNicknames, player:Nick())
+			
+				highlight.Add(ply, player)
+				
+				stats.Add(player, "got_highlighted", 1)
+				
+				countNotAffected[player] = 0
+			else
+				stats.Add(player, "evaded_highlight", 1)
+				
+				if !countNotAffected[player] then countNotAffected[player] = 0 end
+				countNotAffected[player] = countNotAffected[player] + 1
+			end
+			
+			highlight.NotifyTarget(player, ent, isAffected)
+			
 		end
 				
 		if team.NumPlayers(TEAM_SPECTATOR) > 0 and !table.IsEmpty(affectedNicknames) then
@@ -91,7 +128,7 @@ local function highlight_remove_Timer(maboy, ply, duration)
 			net.Send(maboy)
 		end
 
-		if affectedPlayers[ply] and table.IsEmpty(affectedPlayers[maboy]) then
+		if affectedPlayers[maboy] and table.IsEmpty(affectedPlayers[maboy]) then
 			affectedPlayers[maboy] = nil
 		end
 	end)
@@ -263,7 +300,7 @@ hook.Add("PlayerDeath", "fh_halo_death_check", function(victim, inflictor, attac
 	net.Send(victim)
 
 	if IsValid(attacker) and attacker:IsPlayer() and attacker:IsAnimatronic() then
-		highlight.Cooldown(attacker, highlight.GetCooldown(attacker) + 10)
+		highlight.Cooldown(attacker, highlight.GetCooldown(attacker) + 5)
 	end
 end)
 	

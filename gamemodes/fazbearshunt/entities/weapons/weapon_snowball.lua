@@ -31,8 +31,6 @@ SWEP.Secondary.ClipSize = -1
 SWEP.Secondary.DefaultClip = -1
 SWEP.Secondary.Automatic = false
 
-local InitializeSEF = false
-
 function SWEP:Initialize()
     self:SetHoldType("grenade")
 end 

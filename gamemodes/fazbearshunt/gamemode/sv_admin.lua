@@ -193,7 +193,7 @@ end
 
 function EndRound()
 	if !roundEnding and isGameOn then
-		endRound(true, 6)
+		endRound(true, 3)
 		endgame_shared()
 		
 		net.Start('fh_net_scarysound')
@@ -223,7 +223,7 @@ function EndPostRound()
 end
 
 function EndLobbyTimer()
-	if !isGameOn then
+	if !isGameOn and fh.timer.Exists() then
 		fh.timer.RemoveTimer()
 	end
 end
@@ -390,7 +390,7 @@ local function multPlayersAction(ply, action)
 			
 			for _, teammate in ipairs(team.GetPlayers(targetTeam)) do
 				if target == teammate then continue end
-				if teammate.jumpscared then continue end
+				if teammate:IsJumpscared() then continue end
 				
 				local distance = target:GetPos():Distance(teammate:GetPos())
 				

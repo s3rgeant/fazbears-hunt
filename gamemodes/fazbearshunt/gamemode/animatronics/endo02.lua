@@ -3,52 +3,190 @@ AddCSLuaFile()
 resource.AddFile("sound/grab_player.wav")
 resource.AddFile("sound/throw_player.wav")
 
+if SERVER then
+	util.AddNetworkString("fh_endo_AbilitySelected")
+end
+
 endo = endo or {}
 
-local endoAbilities = {}
-function endo.registerAbility(abilityName, killer, func, startFunc)
+local ENDO_PILL = "pill_endo02"
+
+local endoAbilities = {
+	["pretense"] = {
+		killer = ENDO_PILL,
+		
+		attack = function(ply,ent)
+			if cooldown.Exists(ply, "kill") then return end
+			
+			if IsValid(ply:GetEntityInUse()) then return end
+			
+			local target = FindNearestPlayer(ply:EyePos(), 125, ply, 36)
+			
+			local jumpscare = performJumpscare(ply, ent, target, 1.6, "endo", 52, "v_endo")
+			
+			if !IsValid(target) or !jumpscare then 
+				if not AnimatronicBreakProp(ply, ent) then cooldown.SetSend(ply, "kill", 0.9) end
+				return 
+			end
+		end,
+		
+		attack2 = nil,
+		
+		reload = function(ply,ent)
+			highlight.ByDistance(ply, ent)
+		end,
+		
+		startFunc = nil,
+	}
+}
+
+function endo.GetAbilities()
+	return endoAbilities
+end
+
+function endo.GetSortedAbilities()
+	local tab = {}
+	for name, data in pairs(endoAbilities) do
+		local nData = table.Copy(data)
+		nData.ability = name
+		tab[#tab + 1] = nData
+	end
+	return tab
+end
+
+function endo.RegisterAbility(abilityName, killer, attack, attack2, reload, startFunc, endFunc)
     assert(abilityName, "[endo] Ability name is required")
     assert(killer, "[endo] Killer name is required")
-    assert(func, "[endo] Ability function is required")
 	
 	endoAbilities[abilityName] = {
 		killer = killer,
-		func = func,
+		attack = attack,
+		attack2 = attack2,
+		reload = reload,
 		startFunc = startFunc,
+		endFunc = endFunc,
 	}
 end
 
-local function endoApplyAbility(ply, ent, ability)
-	if !endoAbilities[ability] then return end -- Не существует способности
-
-	local data = ent.formTable
-	if !data then return end
+local customAnimations = {}
+function endo.RegisterAnimations(abilityName, killer, anims)
+	local endoData = pills.getPillTable(ENDO_PILL)
 	
-	--
+	for anim, aanim in pairs(anims) do
+		customAnimations[anim] = aanim
+	end
 end
 
+local function endoStopAbility(ply, ent, curAbility)
+	local curData = endoAbilities[curAbility]
+	
+	net.Start("fh_AbilitiesRemove") net.WriteString(curAbility) net.Send(ply)
+	
+	if curData then
+		local endFunc = curData.endFunc
+		if endFunc then endFunc(ply, ent) end
+	end
+end
+
+local function endoPretenseBackTimer(ply, ent)
+	local tName = "FH_EndoPretenseBackup" .. ent:EntIndex()
+	timer.Create(tName, 90, 1, function()
+		if not IsValid(ply) then timer.Remove(tName) return end
+		if not IsValid(ent) then timer.Remove(tName) return end
+		
+		endo.ApplyAbility(ply, ent, "pretense")
+	end)
+end
+
+function endo.ApplyAbility(ply, ent, ability, duration)
+	local data = endoAbilities[ability]
+	if !data then return end -- Не существует способности
+
+	local pillData = ent.formTable
+	if !pillData then return end
+
+	local curAbility = pillData.currentAbility
+	
+	if curAbility then
+		ent:SetNW2String("ENDO_LastAbility", curAbility)
+		endoStopAbility(ply, ent, curAbility)
+	end
+	
+	net.Start("fh_AbilitiesAdd") net.WriteString(ability) net.WriteString(data.killer) net.WriteBit(false) net.Send(ply)
+	
+	local attack = data.attack
+	local attack2 = data.attack2
+	local reload = data.reload
+	
+	if data.attack then
+		pillData.attack={
+			mode="trigger",
+			func=function(ply,ent)
+				data.attack(ply, ent)
+			end
+		}
+	else
+		pillData.attack=nil
+	end
+	
+	if data.attack2 then
+		pillData.attack2={
+			mode="trigger",
+			func=function(ply,ent)
+				data.attack2(ply, ent)
+			end
+		}
+	else
+		pillData.attack2=nil
+	end
+	
+	pillData.currentAbility = ability
+	ent:SetNW2String("ENDO_CurrentAbility", ability)
+	
+	local startFunc = data.startFunc
+	if startFunc then startFunc(ply, ent) end
+	
+	if duration and duration > 0 then
+		endoPretenseBackTimer(ply, ent, duration)
+	end
+end
+
+net.Receive("fh_endo_AbilitySelected", function(len, ply)
+	local ent = ply:GetPillCostume()
+	if not IsValid(ent) then return end
+	
+	local name = ent:GetPillName()
+	if name ~= ENDO_PILL then
+		MsgC( Color( 255, 0, 0 ), "Suspicous net message received from " .. ply:Nick() .. " (fh_endo_AbilitySelected)" ) 
+		return -- на всякий лол
+	end
+	
+	local ability = net.ReadString()
+	if not endoAbilities[ability] then 
+		MsgC( Color( 255, 0, 0 ), "Bad ability name received from " .. ply:Nick() .. " (fh_endo_AbilitySelected, " .. ability .. ")" ) 
+		return 
+	end
+	
+	if ent.formTable.currentAbility == ability then return end
+	
+	if ent:GetNW2String("ENDO_CurrentAbility", "") == ability then return end
+	if ent:GetNW2String("ENDO_LastAbility", "") == ability and ability ~= "pretense" then return end
+	
+	endo.ApplyAbility(ply, ent, ability, 90)
+	cooldown.SetSend(ply, "pretense", 5)
+end)
+
 if SERVER then
-	util.PrecacheModel("models/mountroid/thudner/hw withered pack/endo02.mdl")
+	util.PrecacheModel("models/fh/animatronics/thudner_mountroid/endo02.mdl")
 end
 
 local endo_default_movement = {120, 485, 160, 250} -- обычное передвижение
 local endo_stalk_movement = {120, 600, 75, 260} -- сталкер дохуя
 
-local function endoRageChanges(ply, ent, target)
-	ent:SetSpeed(unpack(endo_stalk_movement))
-	ent:ReplaceAnimation("run", "ragerun")
-end
-
-local function norageChanges(ply, ent, target)
-	if IsValid(ent) then
-		ent:SetSpeed(unpack(endo_default_movement))
-		ent:ReplaceAnimation("run", "run")
-	end
-end
-
-pills.register("pill_endo02", {
+pills.register(ENDO_PILL, {
 	printName="Endo02",
-	model="models/mountroid/thudner/hw withered pack/endo02.mdl",
+	currentAbility = "pretense",
+	model="models/fh/animatronics/thudner_mountroid/endo02.mdl",
 	type="ply",
 	health=10000,
 		
@@ -81,6 +219,12 @@ pills.register("pill_endo02", {
 		},
 		gestures={
 			melee="attack",
+			
+			damaged1="damaged1",
+			damaged2="damaged2",
+			damaged3="damaged3",
+			
+			equip_rightarm="g_equip_rightarm",
 		},
 	},
 	
@@ -122,8 +266,18 @@ pills.register("pill_endo02", {
 
 	noFallDamage=true,
 	
-	startFunction=function(ply,ent)
+	initialize=function(ply,ent)
 		chaseVoicelineChecker(ply, ent, "endo")
+		
+		if not table.IsEmpty(customAnimations) then
+			local anims = ent:Get("anims")
+			
+			for anim, aanim in pairs(customAnimations) do
+				anims.default[anim] = aanim
+			end
+		end
+		
+		ent:SetNW2String("ENDO_CurrentAbility", "pretense")
 	end,
 	
 	--[[die=function(ply, ent)
@@ -158,43 +312,37 @@ pills.register("pill_endo02", {
 	
 	attack={
 		mode="trigger",
-		func=function(ply,ent)
-			if cooldown.Exists(ply, "kill") then return end
-			
-			if IsValid(ply:GetEntityInUse()) then return end
-			
-			local target = FindNearestPlayer(ply:EyePos(), 125, ply, 36)
-			
-			local jumpscare = performJumpscare(ply, ent, target, 1.6, "endo", 52, "v_endo")
-			
-			if !IsValid(target) or !jumpscare then 
-				if not AnimatronicBreakProp(ply, ent) then cooldown.SetSend(ply, "kill", 0.9) end
-				return 
-			end
-		end
+		func = endoAbilities["pretense"].attack
     },
 	
-	attack2={
+	attack2_sh={
 		mode="trigger",
 		func = function(ply,ent)
-			if cooldown.Exists(ply, 'grab') then return end
-			endo.grabNeareastPlayer(ply,ent)
+			if CLIENT then
+				if cooldown.Exists(ply, "pretense") then return end
+				
+				if ent:GetNW2String("ENDO_CurrentAbility") ~= "pretense" then return end
+				
+				if not endo.IsPretenseUIOpen() then
+					endo.PretenseOpenUI()
+				end
+			end
 		end
 	},
 	
 	land=function(ply,ent)
 		if IsGoodLandConditions(ply, ent) then
-			ent:PillAnim("land",true)
+			if ent:Func("landCondition", ply, ent) ~= false then 
+				ent:PillAnim("land",true)
+			end
 		end
 		
 		landTripCheck(ply, ent, "endo")
 	end,
 
-	reload=function(ply,ent)
-		highlight.ByDistance(ply, ent)
-	end,
+	reload = endoAbilities["pretense"].reload,
 
-	onRemove=function(ent,formTable,ply)
+	onRemove=function(ply, ent)
 		endo.releasePlayer(ply)
 	end,
 	jump=function(ply,ent)
@@ -391,7 +539,7 @@ end)
 
 --[[
 	OLD Endo Pickup Stuff :)))
-	
+	--]]
 hook.Add("OnPlayerPhysicsDrop", "fh_endo_prop_drop", function(ply, ent, thrown)
 	local puppet = pills.getMappedEnt(ply)
 	if !IsValid(puppet) then return end
@@ -484,7 +632,7 @@ if CLIENT then
 		end
 	end)
 end
-]]--
+--]]--
 
 local nullvector = Vector(0,0,0)
 local endo_kills = 0
@@ -504,4 +652,281 @@ hook.Add( "PlayerDeath", "endo_myaso", function( victim, inflictor, attacker )
 			EmitSound( "sniper_railgun_double_kill.wav", nullvector, 0,nil,1,0 )
 		end
 	end
+end)
+
+local function endoRageChanges(ply, ent, target)
+	ent:SetSpeed(unpack(endo_stalk_movement))
+	ent:ReplaceAnimation("run", "ragerun")
+end
+
+local function norageChanges(ply, ent, target)
+	if IsValid(ent) then
+		ent:SetSpeed(unpack(endo_default_movement))
+		ent:ReplaceAnimation("run", "run")
+	end
+end
+
+hook.Add("FH_AnimatronicsLoaded", "endo02_abilities", function()
+
+	-- FREDDY: Blind Rage
+	endo.RegisterAbility("blindrage", "pill_wfreddy2", 
+	
+		-- attack
+		function(ply, ent)
+			if cooldown.Exists(ply, "kill") then return end
+			if IsValid(ply:GetEntityInUse()) then return end
+			local target = FindNearestPlayer(ply:EyePos(), 125, ply, 36)
+			
+			if freddy.GetBlindRageTarget(ply) and !freddy.IsBlindRageTargeted(target) then 
+				AnimatronicBreakProp(ply, ent)
+				return 
+			end
+			
+			local jumpscare = performJumpscare(ply, ent, target, 1.6, "endo", 52, "v_endo")
+			
+			if !IsValid(target) or !jumpscare then 
+				if not AnimatronicBreakProp(ply, ent) then cooldown.SetSend(ply, "kill", 0.9) end
+				return 
+			end
+		end, 
+		
+		-- attack2
+		function(ply, ent)
+			if !ply:OnGround() then return end
+		
+			startBlindRage(ply, ent, endoRageChanges, norageChanges)
+		end, 
+		
+		-- reload
+		function(ply, ent)
+			if !freddy.GetBlindRageTarget(ply) then
+				highlight.ByDistance(ply, ent)
+			end
+		end, 
+		
+		-- startFunc
+		function(ply, ent)
+		
+			ent:PillGesture("equip_rightarm", 3, 1, .15, .3)
+
+			ply:SprintDisable()
+
+			local wep = ply:GetActiveWeapon()
+			if IsValid(wep) and wep.HandleAnimation then
+				wep:HandleAnimation("holster", 1.2)
+			end
+			
+			timer.Simple(.6, function()
+				if not IsValid(ent) then return end
+				ent:SetBodygroup(13, 1)
+				ply:SprintEnable()
+			
+				local vm = ply:GetViewModel()
+				if IsValid(vm) then
+					vm:SetBodygroup(2, 1)
+				end
+			end)
+			
+			ent.formTable.landCondition = function(ply, ent)
+				if ent.anim == "stalk" then return false end -- нельзя приземляться во время сталка
+			end
+		end,
+		
+		-- endFunc
+		function(ply, ent)
+			ent.formTable.landCondition = nil
+			ent:SetBodygroup(13, 0)
+			
+			local vm = ply:GetViewModel()
+			if IsValid(vm) then
+				vm:SetBodygroup(2, 0)
+			end
+		end
+	)
+	
+	endo.RegisterAnimations("blindrage", "pill_wfreddy2", {
+		stalk = "stalk",
+	})
+	
+	endo.RegisterAbility("mine", "pill_wchica2", 
+	
+		-- attack
+		function(ply, ent)
+			if cooldown.Exists(ply, "kill") then return end
+			if IsValid(ply:GetEntityInUse()) then return end
+			
+			local target = FindNearestPlayer(ply:EyePos(), 125, ply, 36)
+			
+			local jumpscare = performJumpscare(ply, ent, target, 1.6, "endo", 52, "v_endo")
+			
+			if !IsValid(target) or !jumpscare then 
+				if not AnimatronicBreakProp(ply, ent) then cooldown.SetSend(ply, "kill", 0.9) end
+				return 
+			end
+		end, 
+		
+		-- attack2
+		function(ply, ent)
+			ChicaDeployCupcake(ply, ent)
+		end, 
+		
+		-- reload
+		function(ply, ent)
+			highlight.ByDistance(ply, ent)
+		end, 
+		
+		-- startFunc
+		function(ply, ent)
+		
+			--ent:PillGesture("equip_rightarm", 3, 1, .15, .3)
+
+			ply:SprintDisable()
+
+			local wep = ply:GetActiveWeapon()
+			if IsValid(wep) and wep.HandleAnimation then
+				wep:HandleAnimation("holster", 1.2)
+			end
+			
+			timer.Simple(.6, function()
+				if not IsValid(ent) then return end
+				ent:SetBodygroup(16, 1)
+				ent:SetBodygroup(8, 1)
+				ply:SprintEnable()
+			end)
+		end,
+		
+		-- endFunc
+		function(ply, ent)
+			ent.formTable.landCondition = nil
+			ent:SetBodygroup(16, 0)
+			ent:SetBodygroup(8, 0)
+		end
+	)
+	
+	endo.RegisterAbility("yoursmine", "pill_wbonnie2", 
+	
+		-- attack
+		function(ply, ent)
+			if cooldown.Exists(ply, "kill") then return end
+			if IsValid(ply:GetEntityInUse()) then return end
+			
+			local target = FindNearestPlayer(ply:EyePos(), 125, ply, 36)
+			
+			local jumpscare = performJumpscare(ply, ent, target, 1.6, "endo", 52, "v_bonnie")
+			
+			if !IsValid(target) or !jumpscare then 
+				if not AnimatronicBreakProp(ply, ent) then cooldown.SetSend(ply, "kill", 0.9) end
+				return 
+			end
+		end, 
+		
+		-- attack2
+		function() end, 
+		
+		-- reload
+		function(ply, ent)
+			highlight.ByDistance(ply, ent)
+		end, 
+		
+		-- startFunc
+		function(ply, ent)
+		
+			--ent:PillGesture("equip_rightarm", 3, 1, .15, .3)
+			
+			local bwep = ents.Create("v_bonnie")
+			bwep.ViewModel = "models/fh/animatronics/thudner_mountroid/vm/endo02.mdl"
+			bwep:Spawn()
+			
+			ply:SetSuppressPickupNotices(true)
+			ply:PickupWeapon(bwep)
+			ply:SelectWeapon("v_bonnie")
+			ply:SetSuppressPickupNotices(false)
+
+			ply:SprintDisable()
+
+			local wep = ply:GetActiveWeapon()
+			if IsValid(wep) and wep.HandleAnimation then
+				wep:HandleAnimation("holster", 1.2)
+			end
+			
+			timer.Simple(.6, function()
+				if not IsValid(ent) then return end
+				ent:SetBodygroup(15, 1)
+				ply:SprintEnable()
+			end)
+		end,
+		
+		-- endFunc
+		function(ply, ent)
+			ent.formTable.landCondition = nil
+			ent:SetBodygroup(15, 0)
+			
+			if ply:HasWeapon("v_endo") then
+				ply:SelectWeapon("v_endo")
+			end
+			ply:StripWeapon("v_bonnie")
+		end
+	)
+	
+	endo.RegisterAnimations("yoursmine", "pill_wbonnie2", {
+		yoursmine = "yoursmine",
+	})
+	
+	endo.RegisterAbility("submerge", "pill_sfreddy2", 
+	
+		-- attack
+		function(ply, ent)
+			if ent.cloaked or cooldown.Exists(ply, 'kill') then return end
+			
+			if IsValid(ply:GetEntityInUse()) then return end
+			
+			local target = FindNearestPlayer(ply:EyePos(), 130, ply, 36)
+			
+			local jumpscare
+			
+			if ply._SF_TouchedFloor_Uncloaked then
+				jumpscare = performJumpscare(ply, ent, target, 1.6, "endo", 52, "v_endo")
+			end
+			
+			if !IsValid(target) or !jumpscare then 
+				if not AnimatronicBreakProp(ply, ent) then cooldown.SetSend(ply, "kill", 0.9) end
+				return 
+			end
+		end, 
+		
+		-- attack2
+		function(...)
+			ShadowFreddySubmerge_Toggle(...)
+		end, 
+		
+		-- reload
+		function(...)
+			highlight.ByDistance(...)
+		end, 
+		
+		-- startFunc
+		function(ply, ent)
+		
+			ent:PillGesture("equip_rightarm", 3, 1, .15, .3)
+
+			ply:SprintDisable()
+
+			local wep = ply:GetActiveWeapon()
+			if IsValid(wep) and wep.HandleAnimation then
+				wep:HandleAnimation("holster", 1.2)
+			end
+			
+			timer.Simple(.6, function()
+				if not IsValid(ent) then return end
+				--ent:SetBodygroup(15, 1)
+				ply:SprintEnable()
+			end)
+		end,
+		
+		-- endFunc
+		function(ply, ent)
+			ent.formTable.landCondition = nil
+			--ent:SetBodygroup(15, 0)
+		end
+	)
 end)

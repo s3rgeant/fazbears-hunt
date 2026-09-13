@@ -151,7 +151,7 @@ local function getTeammates(lp, rule)
         if ent:IsPlayer() then 
             if ent:Team() ~= TEAM_PILLS then continue end
             if ent == lp then continue end 
-            ent = ent:GetPill() 
+            ent = ent:GetPillCostume() 
         end
         if not IsValid(ent) then continue end
         if not ent.DrawModel then continue end

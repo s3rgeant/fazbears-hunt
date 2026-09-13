@@ -123,10 +123,10 @@ local format_num = -1
 
 -- Позитивные эффекты
 local positiveEffects = {
-    ["medkit"] = {
-        name = "medkit",
+	["medkit"] = {
+		name = "medkit",
 		desc = "fazhunt.gifts.medkit",
-        func = function(ply)
+		func = function(ply)
 			if !ply:HasWeapon("weapon_fh_medkit") then
 				ply:Give("weapon_fh_medkit")
 			else
@@ -136,7 +136,7 @@ local positiveEffects = {
 					wep:SetClip1( wep:Clip1() + 25 )
 				end
 			end
-        end,
+		end,
 		req = function(ply)
 			if ply:Health() < 85 then
 				return true
@@ -151,35 +151,35 @@ local positiveEffects = {
 			end
 			return false
 		end
-    },
-    ["invisibility"] = {
-        name = "invisibility",
+	},
+	["invisibility"] = {
+		name = "invisibility",
 		desc = "fazhunt.gifts.invisibility",
-        func = function(ply)
-            ply:Give("weapon_mask")
-        end,
-        req = function(ply)
+		func = function(ply)
+			ply:Give("weapon_mask")
+		end,
+		req = function(ply)
 			return ( !isGameOn or fh.timer.Exists() and fh.timer.GetTimeLeft() >= 120 )
 			and !ply:HasWeapon("weapon_mask")
-        end
-    },
-    ["gravity_gun"] = {
-        name = "gravity_gun",
+		end
+	},
+	["gravity_gun"] = {
+		name = "gravity_gun",
 		desc = "fazhunt.gifts.gravity_gun",
-        func = function(ply)
-            ply:Give("weapon_physcannon")
-        end,
-        req = function(ply)
+		func = function(ply)
+			ply:Give("weapon_physcannon")
+		end,
+		req = function(ply)
 			return !ply:HasWeapon("weapon_physcannon") and #ents.FindByClass("prop_physics") > 100
-        end
-    },
-    ["defibrilator"] = {
-        name = "defibrilator",
+		end
+	},
+	["defibrilator"] = {
+		name = "defibrilator",
 		desc = "fazhunt.gifts.defibrillator",
-        func = function(ply)
-            ply:Give("weapon_defibrillator")
-        end,
-        req = function(ply)
+		func = function(ply)
+			ply:Give("weapon_defibrillator")
+		end,
+		req = function(ply)
 			if team.NumPlayers(TEAM_SPECTATOR) ~= 0 then
 				if !ply:HasWeapon("weapon_defibrillator") then
 					return true
@@ -187,43 +187,43 @@ local positiveEffects = {
 				return false
 			end
 			return false
-        end
-    },
-    ["bananas"] = {
-        name = "bananas",
+		end
+	},
+	["bananas"] = {
+		name = "bananas",
 		desc = "fazhunt.gifts.bananas",
 		num = 5,
-        func = function(ply)
+		func = function(ply)
 			local toGive = 4
 			
 			if ply:HasWeapon("weapon_banana") then
 				toGive = 5
 			end
 			
-            ply:Give("weapon_banana")
+			ply:Give("weapon_banana")
 			
 			ply:SetSuppressPickupNotices(true)
-            ply:GiveAmmo(toGive, "ammo_banana", true)
+			ply:GiveAmmo(toGive, "ammo_banana", true)
 			ply:SetSuppressPickupNotices(false)
-        end
-    },
-    ["adrenaline"] = {
-        name = "adrenaline",
+		end
+	},
+	["adrenaline"] = {
+		name = "adrenaline",
 		desc = "fazhunt.gifts.adrenaline",
-        func = function(ply)
-            ply:Give("weapon_adrenaline")
-        end,
-        req = function(ply)
+		func = function(ply)
+			ply:Give("weapon_adrenaline")
+		end,
+		req = function(ply)
 			return !ply:HasWeapon("weapon_adrenaline")
-        end
-    },
-    ["killer_mask"] = {
-        name = "killer_mask",
+		end
+	},
+	["killer_mask"] = {
+		name = "killer_mask",
 		desc = "fazhunt.gifts.killer_mask",
-        func = function(ply)
-            ply:Give("weapon_killmask")
-        end,
-        req = function(ply)
+		func = function(ply)
+			ply:Give("weapon_killmask")
+		end,
+		req = function(ply)
 			local fuck = false
 			for _, ply in player.Iterator() do
 				if ply:HasWeapon("weapon_killmask") or ply:HasWeapon("weapon_killer_axe") then
@@ -252,23 +252,23 @@ local positiveEffects = {
 				end
 			end
 			return false
-        end
-    },
+		end
+	},
 	["crucifix"] = {
-        name = "crucifix",
+		name = "crucifix",
 		desc = "fazhunt.gifts.crucifix",
-        func = function(ply)
-            ply:Give("weapon_crucifix")
-        end,
-        req = function(ply)
+		func = function(ply)
+			ply:Give("weapon_crucifix")
+		end,
+		req = function(ply)
 			return not ply:HasWeapon("weapon_crucifix")
-        end
-    },
+		end
+	},
 	["oldshotgun"] = {
-        name = "oldshotgun",
+		name = "oldshotgun",
 		desc = "fazhunt.gifts.oldshotgun",
-        func = function(ply)
-            ply:Give("weapon_oldshotgun")
+		func = function(ply)
+			ply:Give("weapon_oldshotgun")
 			
 			local buckshotAmmo = ply:GetAmmoCount(7)
 			if buckshotAmmo < 12 then
@@ -276,21 +276,50 @@ local positiveEffects = {
 			end
 			
 			ply:GiveAmmo(4 * team.NumPlayers(TEAM_PILLS), "buckshot", true)
-        end,
-        req = function(ply)
+		end,
+		req = function(ply)
 			return not ply:HasWeapon("weapon_oldshotgun")
-        end
-    },
+		end
+	},
 	["tablet"] = {
-        name = "tablet",
+		name = "tablet",
 		desc = "fazhunt.gifts.tablet",
-        func = function(ply)
-            ply:Give("weapon_tablet")
-        end,
-        req = function(ply)
+		func = function(ply)
+			ply:Give("weapon_tablet")
+		end,
+		req = function(ply)
 			return not ply:HasWeapon("weapon_tablet")
-        end
-    },
+		end
+	},
+	["detector"] = {
+		name = "detector",
+		desc = "fazhunt.gifts.detector",
+		func = function(ply)
+			ply:Give("weapon_detector")
+		end,
+		req = function(ply)
+			return not ply:HasWeapon("weapon_detector")
+		end
+	},
+	--]]
+	["dummy"] = {
+		name = "dummy",
+		desc = "fazhunt.gifts.dummy",
+		func = function(ply)
+			local pos = ply:GetPos()
+			local ang = ply:GetAngles()
+			ang.p = 0
+			
+			dummy = ents.Create("fh_dummy")
+			dummy:SetPos(pos+Vector(0,0,1))
+			dummy:SetAngles(ang)
+			dummy:SetOwner(ply)
+			dummy:Spawn()
+		end,
+		req = function(ply)
+			return not ply:GetDummy()
+		end
+	},
 }
 
 -- Негативные эффекты

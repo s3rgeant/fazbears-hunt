@@ -19,12 +19,13 @@ function PlayerInOutworld(ply)
 	return outworld_victims[ply] ~= nil or wgfreddy_targets[ply] ~= nil
 end
 
+include("wgoldenfreddy_head.lua")
+
 if SERVER then
 	util.AddNetworkString("fh_wgfreddy_target_outworld_start")
 	util.AddNetworkString("fh_wgfreddy_target_outworld_end")
 	
 	util.AddNetworkString("fh_wgfreddy_selecting_halo")
-	util.AddNetworkString("fh_wgfreddy_stop_selection_halo")
 	util.AddNetworkString("fh_wgfreddy_outworld_start")
 	util.AddNetworkString("fh_wgfreddy_outworld_stop")
 	
@@ -32,6 +33,29 @@ if SERVER then
 	
 	util.AddNetworkString("cl_target_wgfreddy_scared")
 	util.AddNetworkString("wgfreddy_second_ambience")
+	
+	util.PrecacheModel("models/speps/pill/oldgoldenfreddy.mdl")
+	util.PrecacheModel("models/speps/pill/oldgoldenfreddyhead.mdl")
+end
+
+function GoldensBullshit_Start(ply, ent, timerName)
+end
+
+local function WGFreddyRoundCheck(ply, ent, timerName)
+	if fh.timer.Exists() and fh.timer.GetTimeLeft() < 120 then
+		print("last 2 minutes")
+		return
+	end
+	
+	if table.Count(survivors) == 1 then
+		print("last survivor")
+		return
+	end
+	
+	if table.Count(animatronics) == 1 then
+		print("last anim")
+		return
+	end
 end
 
 local gfreddy_movement = {130, 130, 0, 0}
@@ -113,14 +137,27 @@ pills.register("pill_wgfreddy2",{
 		
 		ply:SetNWBool("wgfreddy_enraged", false)
 		
-		print('init')
+		local tracker = ents.Create("fh_stuck_tracker")
+		tracker:SetPos(ply:GetPos())
+		tracker:SetOwner(ply)
+		tracker:Spawn()
+		tracker:Activate()
+		
+		tracker.TeleportCond = function()
+			if not ent.cloaked then return false end
+		end
+		
+		ent.stuck_tracker = tracker
+		
+		local timerName = ent:EntIndex()
+		timer.Create(timerName, 1, 0, function()
+			if not IsValid(ply) then timer.Remove(timerName) return end
+			if not IsValid(ent) then timer.Remove(timerName) return end
+			WGFreddyRoundCheck(ply, ent, timerName)
+		end)
 	end,
 	
-	restore=function(ply,ent, formtable)
-		ply:SetCollisionGroup( COLLISION_GROUP_PLAYER )
-	end,
-	
-	onRemove=function(ent,formTable,ply)
+	restore=function(ply, ent, ft)
 		if CLIENT then
 			hook.Remove("PostDrawTranslucentRenderables", "fh_draw_gfreddy_target_text")
 			return 
@@ -128,13 +165,16 @@ pills.register("pill_wgfreddy2",{
 		cancel_outworld(ply)
 		
 		ply:SetCollisionGroup( COLLISION_GROUP_PLAYER )
-		print('remov')
 		
 		ply:SetPushBlocked(false)
 		ply:SetPushImmune(false)
 		
 		ply:SetAudible(true)
 		ply:ResetListenPlayer()
+		
+		if IsValid(ent.stuck_tracker) then
+			ent.stuck_tracker:Remove()
+		end
 	end,
 	
 	killCondition=function(ply,ent)
@@ -178,8 +218,9 @@ pills.register("pill_wgfreddy2",{
 		func = function(ply,ent)
 			if !ply:OnGround() then return end
 			
-			if !wgfreddy_targets[ply] or cooldown.Exists(ply, 'submerge') then return end
+			local victim = wgfreddy_targets[ply]
 			
+			if !victim or cooldown.Exists(ply, 'submerge') then return end
 			if ply:GetNWBool("wgfreddy_enraged") then return end
 			
 			ply:LagCompensation( false )
@@ -191,10 +232,15 @@ pills.register("pill_wgfreddy2",{
 				cooldown.Set(ply, 'submerge', 10)
 				cooldown.Send(ply, 'submerge')
 				
-				if fh_can_see_player(wgfreddy_targets[ply], ply, 1500) then
+				if fh_can_see_player(victim, ply, 1500) then
 					wgfreddy_targets[ply]:ScreenFade(SCREENFADE.IN, Color(0,0,0), 1, 0.5)
 					
-					EmitSound("gfreddy.laugh", ply:GetPos())
+					
+					local rf = RecipientFilter()
+					rf:AddPlayer(victim)
+					rf:AddPlayer(ply)
+					
+					EmitSound("gfreddy.laugh", ply:GetPos(), nil, nil, nil, nil, nil, nil, nil, rf)
 				end
 				
 				ent:SetSpeed( unpack(sfreddy_noclip_movement) )
@@ -209,7 +255,7 @@ pills.register("pill_wgfreddy2",{
 				ent.cloaked=true
 				
 			else
-				if fh_can_see_player(wgfreddy_targets[ply], ply, 1600) then return end
+				if fh_can_see_player(victim, ply, 1600) then return end
 				
 				cooldown.Set(ply, 'submerge', 1)
 				cooldown.Send(ply, 'submerge')
@@ -1122,7 +1168,7 @@ if SERVER then
 				ply:SetNWBool("can_be_gf_scared", false)
 				
 				net.Start("fh_ui_sound_play")
-				net.WriteString('fnaf2/gfreddy/gfreddy_rage_start.wav')
+				net.WriteString('fnaf2/gfreddy/gfreddy_rage_start.mp3')
 				net.Send({ply, wgfreddy})
 				
 				ply:SetJumpBoost(getScaledJumpBoost())
@@ -1148,7 +1194,11 @@ if SERVER then
 				if fh_can_see_player(victim, wgfreddy, 1500) then
 					victim:ScreenFade(SCREENFADE.IN, Color(0,0,0), 1, 0.5)
 					
-					EmitSound("gfreddy.laugh", wgfreddy:GetPos())
+					local rf = RecipientFilter()
+					rf:AddPlayer(victim)
+					rf:AddPlayer(wgfreddy)
+					
+					EmitSound("gfreddy.laugh", wgfreddy:GetPos(), nil, nil, nil, nil, nil, nil, nil, rf)
 				end
 				
 				cooldown.Set(wgfreddy, 'submerge', 12)

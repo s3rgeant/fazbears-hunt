@@ -24,6 +24,9 @@ end
 
 local fh_pill_update_rate = CreateConVar( "fh_pill_update_rate", 0, { FCVAR_ARCHIVE, FCVAR_REPLICATED}, "Increasing this will result in better performance with a lot of pill_costume running. (Animation errors might occure)" )
 
+ENT.FadeOutLayers = {}
+ENT.FadeInLayers = {}
+
 function ENT:Initialize()
 	self.formTable = pills.getPillTable(self:GetPillForm())
 	local ply = self:GetPillUser()
@@ -32,7 +35,7 @@ function ENT:Initialize()
 		ply = self:GetOwner()
 	end
 	
-	if not self.formTable or !IsValid(ply) and SERVER then
+	if (not self.formTable or !IsValid(ply)) and SERVER then
 		self:Remove()
 		return
 	end
@@ -43,24 +46,21 @@ function ENT:Initialize()
 	if self.formTable.modelScale then
 		scaleHull = self.formTable.modelScale
 	end
+
 	local hull = (self.formTable.hull or Vector(32, 32, 72)) / scaleHull
 	local duckBy = (self.formTable.duckBy or (self.formTable.hull and 0 or 36)) / scaleHull
-	ply:SetHull(-Vector(hull.x / 2, hull.y / 2, 0), Vector(hull.x / 2, hull.y / 2, hull.z))
-	ply:SetHullDuck(-Vector(hull.x / 2, hull.y / 2, 0), Vector(hull.x / 2, hull.y / 2, hull.z - duckBy or 0))
+	ply:SetHull(-Vector(hull.x * .5, hull.y * .5, 0), Vector(hull.x * .5, hull.y * .5, hull.z))
+	ply:SetHullDuck(-Vector(hull.x * .5, hull.y * .5, 0), Vector(hull.x * .5, hull.y * .5, hull.z - duckBy or 0))
+	
 	ply:SetMaterial("models/null")
 	ply:DrawShadow(false)
-	
-	--Do this so weapon equips are not blocked
-	if SERVER then
-		pills.mapEnt(ply, nil)
-	end
 		
 	hook.Run("PillApply", ply, self)
 	
 	self.justSpawned = true
 	
 	if CLIENT then
-		ply:SetRenderBounds(-Vector(hull.x / 2, hull.y / 2, 0), Vector(hull.x / 2, hull.y / 2, hull.z + 25))
+		ply:SetRenderBounds(-Vector(hull.x * .5, hull.y * .5, 0), Vector(hull.x * .5, hull.y * .5, hull.z + 25))
 		
 		local speed = self.formTable.moveSpeed or {}
 		ply:SetWalkSpeed(speed.walk or 200)
@@ -72,6 +72,7 @@ function ENT:Initialize()
 		--self:SetRenderClipPlaneEnabled( true )
 		--self:SetRenderClipPlane( normal, position )
 	end
+	--self:UseClientSideAnimation(true)
 	
 	self:ResetAngle()
 	if SERVER then
@@ -297,9 +298,9 @@ function ENT:Initialize()
 		end
 	
 		if self.formTable.modelScale then
-			self:SetModelScale(self.formTable.modelScale, 0.00001)
+			self:SetModelScale(self.formTable.modelScale, 0.000001)
 		end
-		ply:SetModelScale(self.formTable.modelScale or 1, 0.00001)
+		ply:SetModelScale(self.formTable.modelScale or 1, 0.000001)
 	
 		if self.formTable.boneMorphs then
 			for k, v in pairs(self.formTable.boneMorphs) do
@@ -320,16 +321,6 @@ function ENT:Initialize()
 				end
 			end
 		end
-		
-		if !self.usedLayers then self.usedLayers = {} end
-		if self.formTable.anims and self.formTable.anims.gestures then
-			for k,v in ipairs(self.formTable.anims.gestures) do
-				local seq = self:LookupSequence(v)
-				
-				id = self:AddLayeredSequence(seq, priority or 1)
-				self.usedLayers[seq] = id
-			end
-		end
 	
 		if self.formTable.cloak then
 			self:SetCloakLeft(self.formTable.cloak.max)
@@ -348,23 +339,22 @@ function ENT:Initialize()
 		end
 	end
 	
-	pills.mapEnt(ply, self)
-	
 	hook.Run("PillCreated", ply, self)
 end
 
 function ENT:OnRemove()
 	local ply = self:GetPillUser()
 	
-	--[[ if !IsValid(ply) then
-		ply = self:GetPrevPillUser()
-	end ]]--
-	-- не уверен
-	
 	-- compatibility
 	if self.formTable.onRemove then
 		if CLIENT and ply == LocalPlayer() then
-			self.formTable.onRemove(self, self.formTable, ply)
+			self.formTable.onRemove(ply, self)
+		end
+	end
+	
+	if self.formTable.restore then
+		if CLIENT and ply == LocalPlayer() then
+			self.formTable.restore(ply, self, self.formTable)
 		end
 	end
 	
@@ -376,19 +366,23 @@ function ENT:OnRemove()
 	
 	if newType ~= "ply" and IsValid(ply) then
 		ply:ResetHull()
-		hook.Run("PillRestore", ply, self)
 	end
+	hook.Run("PillRestore", ply, self)
 end
 
 function ENT:Think()
 	local ply = self:GetPillUser()
+	local ct = CurTime()
 	if not IsValid(self) or not IsValid(ply) then 
-		self:NextThink(CurTime() + fh_pill_update_rate:GetFloat())
-		
+		self:NextThink(ct + fh_pill_update_rate:GetFloat())
 		return true
 	end
 	
 	local vel = ply:GetVelocity():Length()
+	
+	if self.formTable.preThink then
+		self.formTable.preThink(ply, self, vel)
+	end
 	
 	if SERVER then
 		local anims = self.formTable.anims["default"] or {}
@@ -407,7 +401,7 @@ function ENT:Think()
 		
 		local anim, overrideRate
 		
-		if CurTime() > self:GetNextAnimThink() then
+		if ct > self:GetNextAnimThink() then
 			if self.anim and anims[self.anim] then
 				anim, overrideRate = anims[self.anim], anims[self.anim .. "_rate"] or 1
 				local cycle = self:GetCycle()
@@ -457,7 +451,7 @@ function ENT:Think()
 			end
 			self:PlayAnim(anim)
 			
-			self:SetNextAnimThink(CurTime() + 0.1)
+			self:SetNextAnimThink(ct + 0.1)
 		end
 		
 		self.justSpawned = false
@@ -477,25 +471,22 @@ function ENT:Think()
 			end
 		end
 	
-		self.touchingWater = ply:WaterLevel() > 1
 		if not ply:IsOnGround() and ply:WaterLevel() == 0 and self.formTable.glideThink then
 			self.formTable.glideThink(ply, self)
 		end
-	end
-	
-	if SERVER then
+		
 		if self.formTable.movePoseMode == "xy" then
 			if not overrideRate then
 				local velocity, pillspeed = ply:GetVelocity(), self.formTable.moveSpeed or {}
-				local fwd, right = ply:GetForward(), ply:EyeAngles():Right()
+				local plyAngs = ply:GetAngles()
+				plyAngs.p = 0
+				local fwd, right = plyAngs:Forward(), plyAngs:Right()
 	
 				local moveX = fwd:Dot(velocity)
 				local moveY = right:Dot(velocity)
 	
 				local maxSpeed = math.max(pillspeed.maxwalk or 80, ply:GetWalkSpeed())
-				if ply:IsSprinting() and ply:GetWalkSpeed() ~= ply:GetRunSpeed() or not ply:OnGround() then
-					maxSpeed = ply:GetRunSpeed()
-				end
+					--maxSpeed = ply:GetRunSpeed()
 				if ply:Crouching() then maxSpeed = maxSpeed * 0.5 end
 	
 				moveX = moveX / maxSpeed
@@ -515,13 +506,20 @@ function ENT:Think()
 				local targetX = moveX * ratio
 				local targetY = moveY * ratio
 				
+				local prevX = self:GetPoseParameter("move_x")
+				local prevY = self:GetPoseParameter("move_y")
+				
+				local ft = FrameTime()
+				local ftr
+				
 				if not ply:OnGround() then
-					local prevX = self:GetPoseParameter("move_x")
-					local prevY = self:GetPoseParameter("move_y")
-					
-					targetX = Lerp(FrameTime() * 8, prevX, targetX)
-					targetY = Lerp(FrameTime() * 8, prevY, targetY)
+					ftr = ft * 8
+				else
+					ftr = .5
 				end
+					
+				targetX = Lerp(ftr, prevX, targetX)
+				targetY = Lerp(ftr, prevY, targetY)
 	
 				self:SetPoseParameter("move_x", targetX)
 				self:SetPoseParameter("move_y", targetY)
@@ -529,28 +527,50 @@ function ENT:Think()
 				self:SetPoseParameter("move_x", 0)
 				self:SetPoseParameter("move_y", 0)
 			end
-	
-		elseif self.formTable.movePoseMode == "xy-bot" then
-			if not overrideRate then
-				local localvel = ply:WorldToLocal(ply:GetPos() + ply:GetVelocity())
-				local maxdim = math.max(math.abs(localvel.x), math.abs(localvel.y))
-				local clampedvel = maxdim == 0 and Vector(0, 0, 0) or localvel / maxdim
-				local move_dir = self:WorldToLocalAngles(ply:GetVelocity():Angle())
-	
-				self:SetPoseParameter("move_x", clampedvel.x)
-				self:SetPoseParameter("move_y", -clampedvel.y)
-				self:SetPoseParameter("move_yaw", move_dir.y)
-	
-				if seq_vel ~= 0 then
-					self:SetPoseParameter("move_x", math.Clamp(localvel.x / seq_vel, -0.99, 0.99))
-					self:SetPoseParameter("move_y", math.Clamp(-localvel.y / seq_vel, -0.99, 0.99))
-					self:SetPoseParameter("move_scale", math.Clamp(localvel:Length() / seq_vel, -0.99, 0.99))
+		end
+		
+		if not table.IsEmpty(self.FadeOutLayers) then
+			for id, data in pairs(self.FadeOutLayers) do
+			
+				local start = data.starttime
+				local outTime = data.endtime
+				local duration = data.duration
+				local ease = data.ease and math.ease[data.ease] or nil
+				
+				local scale = data.initialweight or 1
+				
+				local w = (ct - outTime) / duration
+				w = w*-1
+				w = math.Clamp(w, 0, 1 * scale)
+				
+				if ease then w = Lerp(ease(w), 0, 1) end
+				
+				self:SetLayerWeight(id, w)
+				
+				if w <= 0 then
+					self.FadeOutLayers[id] = nil
 				end
-			else
-				self:SetPoseParameter("move_x", 0)
-				self:SetPoseParameter("move_y", 0)
-				self:SetPoseParameter("move_yaw", 0)
-				self:SetPoseParameter("move_scale", 0)
+			end
+		end
+		
+		if not table.IsEmpty(self.FadeInLayers) then
+			for id, data in pairs(self.FadeInLayers) do
+			
+				local start = data.starttime
+				local outTime = data.endtime
+				local duration = data.duration
+				local ease = data.ease and math.ease[data.ease] or nil
+				
+				local w = (ct - outTime) / duration + 1
+				w = math.Clamp(w, 0, 1)
+				
+				if ease then w = Lerp(ease(w), 0, 1) end
+				
+				self:SetLayerWeight(id, w)
+				
+				if w >= 1 then
+					self.FadeInLayers[id] = nil
+				end
 			end
 		end
 	end
@@ -578,8 +598,12 @@ function ENT:Think()
 	
 	if SERVER then
 		self:SetPos(ply:GetPos())
-	elseif CLIENT and self:GetParent() == ply then
-		self:SetRenderOrigin(ply:GetPos())
+	elseif CLIENT then
+		if self:GetParent() == ply then
+			self:SetRenderOrigin(ply:GetPos())
+		else
+			self:SetRenderOrigin(nil)
+		end
 	end
 	
 	local usef_angs = self:GetUseForceAngles()
@@ -596,7 +620,11 @@ function ENT:Think()
 		end
 	end
 	
-	self:NextThink(CurTime() + fh_pill_update_rate:GetFloat())
+	if self.formTable.postThink then
+		self.formTable.postThink(ply, self, vel)
+	end
+	
+	self:NextThink(ct + fh_pill_update_rate:GetFloat())
 	return true
 end
 
@@ -608,6 +636,16 @@ function ENT:Get(name, default)
 	if get then return get end
 	
 	return default or nil
+end
+
+function ENT:Func(name, ...)
+	if !IsValid(self) or !self.formTable then return nil end
+	
+	local get = self.formTable[name]
+	
+	if get then return get(...) end
+	
+	return nil
 end
 
 if SERVER then
@@ -783,7 +821,7 @@ if SERVER then
 		return self
 	end
 	
-	function ENT:PillStopGesture(name)
+	function ENT:PillStopGesture(name, fadeout, ease)
 		local ply = self:GetPillUser()
 		if not IsValid(ply) then return end
 		local anims = self.formTable.anims['gestures'] or {}
@@ -794,21 +832,99 @@ if SERVER then
 		local seq = self:LookupSequence(gesture)
 		local id = nil
 		
-		if !self.usedLayers then self.usedLayers = {} end
+		if !self.usedLayers then return end -- no layer to stop
 		
 		if self.usedLayers[seq] then
 			id = self.usedLayers[seq]
 		end
-		if !id then
-			return
+		
+		if !id then return end
+		
+		--if self:GetLayerWeight(id) <= 0 then return end
+		-- Если убрать комментарий выше, то движок не сможет выключать слои в тот же тик с включением
+		
+		if fadeout and isnumber(fadeout) and fadeout > 0 then
+			local ct = CurTime()
+			
+			self:SetLayerBlendIn(id, 0)
+			self:SetLayerBlendOut(id, 0)
+			
+			self.FadeInLayers[id] = nil
+			
+			local curWeight = self:GetLayerWeight(id)
+			if curWeight >= 1 then curWeight = nil end
+			
+			self.FadeOutLayers[id] = {
+				starttime = ct,
+				endtime = ct + fadeout,
+				duration = fadeout,
+				ease = ease,
+				initialweight = curWeight,
+			}
+		else
+			self.FadeOutLayers[id] = nil
+			self.FadeInLayers[id] = nil
+		
+			self:SetLayerPlaybackRate(id, 0.5)
+			self:SetLayerCycle(id, 0)
+			
+			self:SetLayerWeight(id, 0)
+			self:SetLayerBlendIn(id, 0)
+			self:SetLayerBlendOut(id, 0)
 		end
+	end
+	
+	function ENT:PillGestureSwap(from, to, dur, dur2, ease, ease2)
+		local ply = self:GetPillUser()
+		if not IsValid(ply) then return end
 		
-		self:SetLayerPlaybackRate(id, 0.5)
-		self:SetLayerCycle(id, 0)
+		if not dur then return end
+		if not dur2 then dur2 = dur end
 		
-		self:SetLayerWeight(id, 0)
+		local anims = self.formTable.anims['gestures'] or {}
+		
+		local gesture_from = anims[from]
+		local gesture_to = anims[to]
+		
+		if !gesture_from or !gesture_to then return end
+		
+		local seq_from = self:LookupSequence(gesture_from)
+		local seq_to = self:LookupSequence(gesture_to)
+		local id = nil
+		local id2 = nil
+		
+		if !self.usedLayers then return end -- there are no layers to swap from - to
+		
+		if self.usedLayers[seq_from] then id = self.usedLayers[seq_from] end
+		if self.usedLayers[seq_to] then id2 = self.usedLayers[seq_to] end
+		
+		if !id or !id2 then return end
+		
+		if self:GetLayerWeight(id) <= 0 then return end
+		
+		local ct = CurTime()
+		
 		self:SetLayerBlendIn(id, 0)
 		self:SetLayerBlendOut(id, 0)
+		
+		self.FadeInLayers[id] = nil
+		self.FadeOutLayers[id] = {
+			starttime = ct,
+			endtime = ct + dur,
+			duration = dur,
+			ease = ease,
+		}
+		
+		self:SetLayerBlendIn(id2, 0)
+		self:SetLayerBlendOut(id2, 0)
+		
+		self.FadeOutLayers[id2] = nil
+		self.FadeInLayers[id2] = {
+			starttime = ct,
+			endtime = ct + dur2,
+			duration = dur2,
+			ease = ease2,
+		}
 	end
 	
 	function ENT:PillChargeAttack()
@@ -1044,7 +1160,7 @@ ENT.IsDrawn = true
 function ENT:Draw()
 	local ply = self:GetPillUser()
 	
-	if !IsValid(ply) then
+	if not IsValid(ply) then
 		self:DrawModel()
 		return
 	end
@@ -1053,6 +1169,7 @@ function ENT:Draw()
 	
 	if ply == myself and vrmod and vrmod.IsPlayerInVR( myself ) then
 		self.IsDrawn = false
+		self:DestroyShadow()
 		self:DrawShadow(false)
 		return
 	end
@@ -1062,6 +1179,7 @@ function ENT:Draw()
 	
 	if self:GetNoDraw() then
 		self.IsDrawn = false
+		self:DestroyShadow()
 		self:DrawShadow(false)
 	end
 	
@@ -1073,20 +1191,27 @@ function ENT:Draw()
 		return
     elseif drawHook == false then
 		self.IsDrawn = false
+		self:DestroyShadow()
 		self:DrawShadow(false)
 		return
 	end
 	
+	local rendertarget = render.GetRenderTarget()
+	local rtargetname = rendertarget ~= nil and rendertarget:GetName() or ""
+	
 	if ply == myself:GetObserverTarget() 
 	and myself:GetViewEntity() == myself
-	and myself:GetObserverMode() == OBS_MODE_IN_EYE then
+	and myself:GetObserverMode() == OBS_MODE_IN_EYE
+	and !ply:ShouldDrawLocalPlayer() then
 		return
 	end
 	
 	if ply == myself
 	and ply:GetViewEntity() == ply
-	and !pills.convars.cl_thirdperson:GetBool() then
+	and !pills.convars.cl_thirdperson:GetBool() and CurTime() >= myself:GetNW2Float("fh_pill_thirdperson")
+	and !ply:ShouldDrawLocalPlayer() then
 		self.IsDrawn = false
+		self:DestroyShadow()
 		self:DrawShadow(false)
 		return
 	end
@@ -1094,6 +1219,7 @@ function ENT:Draw()
     local invisible = self:GetMaterial() == "models/null"
 
     if invisible then
+		self:DestroyShadow()
 		self:DrawShadow(false)
     end
 
@@ -1108,63 +1234,3 @@ end
 function ENT:DrawTranslucent()
     self:Draw()
 end
-
-hook.Add("PrePlayerDraw", "fh_pill_costume_mirrors", function(ply)
-    if ply ~= LocalPlayer() then return end
-
-    local ent = ply:GetPillCostume()
-    if not IsValid(ent) then return end
-    if ent.IsDrawn or ent:GetNoDraw() or ent:GetMaterial() == "models/null" then return end
-
-    if not ent.mirrorPill or not IsValid(ent.mirrorPill) then
-        local m = ClientsideModel(ent:GetModel(), RENDERMODE_NORMAL)
-        if IsValid(m) then
-            m:SetParent(ent)
-            m:SetSkin(ent:GetSkin())
-            m:AddEffects(bit.bor(EF_BONEMERGE, EF_BONEMERGE_FASTCULL))
-            m:SetNoDraw(true)
-            ent.mirrorPill = m
-
-            local bodyGroups = ent.formTable.bodyGroups
-
-            if ent.formTable.options then
-                local options = ent.formTable.options()
-                local pickedOption
-
-                if ent.formTable.option and options[ent.formTable.option] then
-                    pickedOption = options[ent.formTable.option]
-                else
-                    pickedOption = table.Random(options)
-                end
-
-                if pickedOption and pickedOption.bodyGroups then
-                    bodyGroups = pickedOption.bodyGroups
-                end
-            end
-
-            if bodyGroups and istable(bodyGroups) then
-                for k, v in pairs(bodyGroups) do
-                    if isnumber(k) then
-                        m:SetBodygroup(k, v)
-                    elseif isstring(k) then
-                        local id = m:FindBodygroupByName(k)
-                        if id >= 0 then
-                            m:SetBodygroup(id, v)
-                        end
-                    elseif isnumber(v) then
-                        m:SetBodygroup(v, 1)
-                    end
-                end
-            end
-        end
-    end
-
-    local cm = ent.mirrorPill
-    if IsValid(cm) then
-		cm:SetParent(ent)
-        cm:SetModel(ent:GetModel())
-		
-		if vrmod and vrmod.IsPlayerInVR( ply ) then return end
-		cm:DrawModel()
-    end
-end)

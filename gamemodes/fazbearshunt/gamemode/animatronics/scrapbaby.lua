@@ -28,8 +28,8 @@ sound.Add({
 						}
 })
 
-local BABY_MISS_CD = 1 --7
-local BABY_HIT_CD = 1 --10
+local BABY_MISS_CD = 7 --7
+local BABY_HIT_CD = 10 --10
 
 local BABY = GetPillTemplate()
 local babyOrange = Color(255,110,0)
@@ -39,8 +39,8 @@ BABY.model="models/torres/ffps/salvage/scrapbabyv19.mdl"
 BABY.anims={
 	default={
 		idle="idle",
-		--crouch="crouch",
-		--crouch_walk="crouchmove",
+		crouch="crouch",
+		crouch_walk="crouchmove",
 		walk="walk",
 		run="run",
 		jump="jump",
@@ -51,18 +51,21 @@ BABY.anims={
 		clawscare="clawscare",
 	},
 	gestures={
-		--melee="melee",
+		melee="melee",
+		
 		aim="aim",
 		aimL="aim-loop",
 		shoot="shoot",
 		shootL="shoot-loop",
+		
+		shake="shake",
 	},
 }
 BABY.moveSpeed={
 	maxwalk=150,
 	walk=220,
 	run=485,
-	ducked=160,
+	ducked=80,
 }
 BABY.camera.offset=Vector(0, 0, 88)
 BABY.duckBy=60
@@ -107,7 +110,7 @@ BABY.attack={
 		
 		local target = FindNearestPlayer(ply:EyePos(), 125, ply, 36)
 		
-		local jumpscare = performJumpscare(ply, ent, target, 1.6, "scrapbaby", 52, "v_scrapbaby")
+		local jumpscare = performJumpscare(ply, ent, target, 1.6, "scrapbaby", 60, "v_scrapbaby")
 		
 		if !IsValid(target) or !jumpscare then 
 			if not AnimatronicBreakProp(ply, ent) then cooldown.SetSend(ply, "kill", 0.9) end
@@ -115,6 +118,7 @@ BABY.attack={
 		end
 	end
 }
+
 BABY.clawPlayerHit=function(ply, ent, claw, target)
 	target:TakeDamage( 10, ply, claw )
 	
@@ -150,10 +154,12 @@ BABY.clawPlayerHit=function(ply, ent, claw, target)
 		util.Effect("BloodImpact", edata, true, true)
 	end)
 end
+
 BABY.clawEnvironmentHit=function(ply, ent, target)
 	cooldown.Set(ply, "snatch", BABY_MISS_CD)
 	cooldown.Send(ply, "snatch")
 end
+
 BABY.playerCatch=function(ply, ent, claw, target)
 	local plyIndex = target:EntIndex()
 	local timerName = "scrapbaby_clawhitDamage" .. plyIndex
@@ -200,9 +206,15 @@ BABY.playerCatch=function(ply, ent, claw, target)
 		if IsValid(target) then 
 			target:TakeDamage( 25, ply )
 			
+			if target:Alive() then
+				ply:SetSpeedSlowdown(2.5)
+			end
+			
 			target:SetJumpscared(false)
 			target:SetCollisionGroup(5)
 			target:CollisionRulesChanged()
+			
+			cooldown.SetSend(ply, "kill", 1.5)
 			
 			if target:IsPlayer() then
 				target:Freeze(false)
@@ -238,9 +250,9 @@ pills.register("fh_scrapbaby", BABY)
 killers.Register("fh_scrapbaby", "scrapbaby", "Scrap Baby", babyOrange)
 
 killers.SetAbilities("scrapbaby", {
-	{ name = 'highlight', key = 'R' },
 	{ name = 'kill', key = 'LMB', hidden = true },
 	{ name = 'snatch', key = 'RMB' },
+	{ name = 'highlight', key = 'R' },
 })
 
 local function resetSBB_NW(ply)

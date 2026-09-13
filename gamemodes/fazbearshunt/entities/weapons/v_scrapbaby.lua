@@ -18,6 +18,9 @@ SWEP.ViewModel = "models/torres/ffps/salvage/vm/scrapbabyv19.mdl"
 SWEP.m_WeaponDeploySpeed = 0.7
 SWEP.LandHold = 0.2
 
+SWEP.HandleMinViewModel = true
+SWEP.CalcMinimalViewModelView = Vector(6,0,-10)
+
 SWEP.LoopSoundBaby = nil
 SWEP.LoopSoundClaw = nil
 
@@ -44,6 +47,7 @@ function SWEP:SetupAnimations()
 	self:AddAnimation("hit")
 	self:AddAnimation("pull")
 	self:AddAnimation("return")
+	self:AddAnimation("scare")
 end
 
 function SWEP:PrimaryAttack()
@@ -73,16 +77,14 @@ function SWEP:SecondaryAttack()
     if SERVER then
 		ent:PillGesture('aim', 2, 1, 0.1, 0.3)
 		
-		timer.Simple(0.5, function()
+		timer.Create(self:EntIndex() .. "scrapbaby_aim_loop", .2, 1, function()
 			if not ply:KeyDown(IN_ATTACK2) then return end
 			if not IsValid(ent) then return end
 			if self:GetClawWait() or self:GetClawFlying() or self:GetClawFlyingHome() then return end
 			
 			ent:PillGesture('aimL', 1, 1, 0, 0, nil, true)
-			timer.Simple(0, function()
-				if not IsValid(ent) then return end
-				ent:PillStopGesture("aim")
-			end)
+			
+			ent:PillGestureSwap("aim", "aimL", 1, 1, "InCubic", "OutCubic")
 		end)
         ply:EmitSound("animatronics/scrapbaby/baby_hook_ready.mp3", 90)
     end
@@ -106,20 +108,20 @@ function SWEP:ThrowHook()
 	local ply = self:GetOwner()
     local ent = self:GetPillCostume()
 	
+	timer.Remove(self:EntIndex() .. "scrapbaby_aim_loop")
+	
 	self.Stuckie = 0
 	
     if SERVER then
-		ent:PillGesture('shoot', 2, 1, 0.1, 0.3)
+		ent:PillGesture('shoot', 2, 2, 0.1, 0.3)
 		
-		timer.Simple(0.5, function()
+		timer.Simple(0.2, function()
 			if not IsValid(ent) then return end
 			if not self:GetClawFlying() and not self:GetClawFlyingHome() and not self:GetClawWait() then return end
 			
 			ent:PillGesture('shootL', 1, 1, 0, 0, nil, true)
-			timer.Simple(0, function()
-				if not IsValid(ent) then return end
-				ent:PillStopGesture("shoot")
-			end)
+			
+			ent:PillGestureSwap("shoot", "shootL", .4, .3)
 		end)
 		ply:EmitSound("animatronics/scrapbaby/baby_hook_throw.mp3", 90)
     end
@@ -138,7 +140,19 @@ function SWEP:ThrowHook()
 	
 	if CLIENT then return end
 	
-	local spawnPos = (ply:EyePos() - Vector(0,0,4)) + (ply:GetForward() * 20) + (ply:GetRight() * 2)
+	local shootPos = ply:GetShootPos()
+	
+	local tr = util.TraceLine({
+		start = shootPos,
+		endpos = (shootPos - Vector(0,0,4)) + (ply:GetForward() * 20) + (ply:GetRight() * 2),
+		filter = ply,
+	})
+	
+	if tr.Hit then
+		tr.HitPos = tr.HitPos - (ply:GetForward() * 4)
+	end
+	
+	local spawnPos = tr.HitPos
 	
 	local claw = ents.Create("baby_claw")
 	
@@ -202,6 +216,10 @@ function SWEP:ClawHit(target)
     self:HandleAnimation("hit", 2)
 	self:SetClawFlying(false)
 	self:SetClawWait(true)
+	
+	if SERVER and IsValid(ent) then
+		ent:PillGesture("shake", 5, 1)
+	end
 		
 	local claw = self:GetClaw()
 	
@@ -285,7 +303,7 @@ function SWEP:ClawHit(target)
 	end)
 end
 
-function SWEP:ClawBack()
+function SWEP:ClawBack(shake)
     self:HandleAnimation("return", -1, true)
 	
 	self.ProcessedHit = false
@@ -306,8 +324,13 @@ function SWEP:ClawBack()
 	if SERVER then
 		local ent = ply:GetPillCostume()
 		if IsValid(ent) then
-			ent:PillStopGesture("shoot")
-			ent:PillStopGesture("shootL")
+			ent:PillStopGesture("shoot", .2, "InSine")
+			ent:PillStopGesture("shootL", .2, "InSine")
+	
+			if shake then
+				ent:PillGesture("shake", 5, 1)
+			end
+			
 			ent:SetBodygroup(1, 0)
 		end
 	end
@@ -327,8 +350,8 @@ function SWEP:Think()
 		local ent = self:GetPillCostume()
 		
 		if SERVER and IsValid(ent) then
-			ent:PillStopGesture("aim")
-			ent:PillStopGesture("aimL")
+			ent:PillStopGesture("aim", .3, "InOutSine")
+			ent:PillStopGesture("aimL", .3, "InOutSine")
 		end
         return
     end
@@ -344,6 +367,10 @@ function SWEP:AskClawBack()
     self:HandleAnimation("hit", 2)
 	self:SetClawFlying(false)
 	self:SetClawWait(true)
+	
+	if SERVER and IsValid(ent) then
+		ent:PillGesture("shake", 5, 1)
+	end
 	
 	local claw = self:GetClaw()
 	
@@ -425,11 +452,12 @@ hook.Add( "SetupMove", "fh_baby_slowwalk_aim", function( ply, mv, cmd )
 		return
 	end
 	
-	-- ХЗ это круто что я это заюзал кайф не???
-	if cooldown.Exists(ply, "kill") then
+	-- ХЗ это круто что я это заюзал кайф не??? ХУЙНЯ!!!
+	--[[ if cooldown.Exists(ply, "kill") then
 		mv:SetMaxSpeed(120)
 		mv:SetMaxClientSpeed(120)
 	end
+	]] --
 	
 	if not wep.GetCharging or not wep.GetClawWait or not wep.GetClawFlying or not wep.GetClawFlyingHome then return end
 	

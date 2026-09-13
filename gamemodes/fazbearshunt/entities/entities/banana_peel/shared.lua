@@ -57,7 +57,7 @@ if SERVER then
 		ragdoll:SetRenderMode(pill:GetRenderMode())
 		ragdoll:SetMaterial(pill:GetMaterial() or "")
 		ragdoll:SetCollisionGroup(COLLISION_GROUP_PASSABLE_DOOR)
-		ragdoll:SetOwner(target)
+		ragdoll:SetOwner(ply)
 
 		if pill.GetBodyGroups then
 			for _, bodygroup in ipairs(pill:GetBodyGroups()) do
@@ -82,8 +82,8 @@ if SERVER then
 			if bone and bone:IsValid() then
 				local bonepos, boneang = pill:GetBonePosition(pill:TranslatePhysBoneToBone(i))
 				
-				bone:SetPos(bonepos)
-				bone:SetAngles(boneang)
+				if bonepos then bone:SetPos(bonepos) end
+				if boneang then bone:SetAngles(boneang) end
 				bone:SetVelocity(plyvel)
 			end
 		end
@@ -206,11 +206,21 @@ if SERVER then
 		end
 	end)
 	
+	hook.Add("OnPillHitGround", "IsBananaSlipped", function(v, ent, inwater)
+		if v:GetNWBool("banana_slipped", false) then
+			v:SetNWBool("banana_slipped", nil)
+			if not inwater then
+				v:TakeDamage(math.random(1,2), self, self)
+				v:EmitSound("slip_end.wav")
+			end
+		end
+	end)
+	
 	function ENT:OnTakeDamage(dmginfo)
 		local attacker = dmginfo:GetAttacker()
 		local owner = self:GetOwner()
 		
-		if attacker:IsSurvivor() and attacker ~= owner then return 0 end
+		if attacker:IsPlayer() and attacker:IsSurvivor() and attacker ~= owner then return 0 end
 
 		self:TakePhysicsDamage(dmginfo)
 		
@@ -221,5 +231,9 @@ if SERVER then
 		if health <= 0 then
 			self:Remove()
 		end
+	end
+	
+	function ENT:FHGravGunPunt()
+		return false
 	end
 end

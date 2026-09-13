@@ -94,6 +94,10 @@ function fh.timer.Exists()
 	return timer.Exists(timerName)
 end
 
+function fh.timer.TimeLeft()
+	return fh.timer.GetTimeLeft()
+end
+
 function fh.timer.GetTimeLeft()
 	if timer.Exists(timerName) then
 		return timer.TimeLeft(timerName)

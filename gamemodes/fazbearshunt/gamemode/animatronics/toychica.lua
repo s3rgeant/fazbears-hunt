@@ -506,19 +506,13 @@ pills.register("pill_toychica",{
 		end)
 	end,
 
-	onRemove=function(ent,formTable,ply)
+	restore=function(ply, ent)
 		if CLIENT then 
 			removeTChicaALLBARS()
 			return 
 		end
 		chicaRestore(ply)
 		
-		ply:SetJumpBoost( getScaledJumpBoost() )
-		ply:SprintEnable()
-	end,
-
-	restore=function(ply,ent)
-		chicaRestore(ply)
 		ply:SetJumpBoost( getScaledJumpBoost() )
 		ply:SprintEnable()
 	end,
@@ -1171,7 +1165,7 @@ if CLIENT then
 	local heart_low = Material("vgui/animatronics_hud/abilities/toy_chica/heart_low.png")
 
 	surface.CreateFont("tchica_victim_nick", { 
-		font = "Share Tech Mono Regular", 
+		font = "Share Tech Mono", 
 		size = 18 --[[* uiScale ]], 
 		extended = true, 
 		weight = 400, 

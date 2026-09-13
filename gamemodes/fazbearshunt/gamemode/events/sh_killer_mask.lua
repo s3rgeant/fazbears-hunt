@@ -12,6 +12,9 @@ end)
 hook.Add("FH_KillerObsessed", "killermask_hook", function()
 	ALLOW_KILLMASK_GIFT=false
 end)
+hook.Add("FH_KillerAxeReceived", "killermask_hook", function()
+	ALLOW_KILLMASK_GIFT=false
+end)
 
 hook.Add( "CustomPlayerTakeDamageConditions", "fh_axe_shouldtakedamage", function( ply, attacker )
 	if IsValid(attacker) and attacker:IsPlayer() and IsValid(attacker:GetActiveWeapon()) and attacker:GetActiveWeapon():GetClass() == "weapon_killer_axe" then

@@ -35,6 +35,8 @@ recursive_include("fazbearshunt/gamemode/mount/")
 recursive_include("fazbearshunt/gamemode/events/")
 recursive_include("fazbearshunt/gamemode/support/")
 
+util.AddNetworkString("AnimRestartGesture")
+
 util.AddNetworkString("KillerPicked")
 util.AddNetworkString("ApplyKillerCompanion")
 util.AddNetworkString("RemoveKillerCompanion")
@@ -131,23 +133,33 @@ survivors = survivors or {}
 
 usedKillers = {}
 
+Min_5Killers = 64
+Min_4Killers = 32
+Min_3Killers = 20
+Min_2Killers = 10
+
+function GetKillerCountByPlayerCount(totalPlayers)
+	if totalPlayers >= Min_5Killers then
+		return 5
+	elseif totalPlayers >= Min_4Killers then
+		return 4
+	elseif totalPlayers >= Min_3Killers then
+		return 3
+	elseif totalPlayers >= Min_2Killers then
+		return 2
+	elseif totalPlayers >= 1 then
+		return 1
+	end
+	return 1
+end
+
 forceAnimSelectTime = forceAnimSelectTime or 0
-function assignKillers()
+function AssignKillers()
     local players = player.GetAll()
     local totalPlayers = #players
 	local curKillers = {}
-
-    if totalPlayers >= 64 then
-        curMaxKillers = 5
-    elseif totalPlayers >= 32 then
-        curMaxKillers = 4
-    elseif totalPlayers >= 20 then
-        curMaxKillers = 3
-    elseif totalPlayers >= 10 then
-        curMaxKillers = 2
-    elseif totalPlayers >= 1 then
-        curMaxKillers = 1
-    end
+	
+	curMaxKillers = GetKillerCountByPlayerCount(totalPlayers)
 	
 	if totalPlayers == 0 or !players then return end
 	
@@ -223,7 +235,7 @@ hook.Add("ShouldPlayerPush", "fh_push_management", function(pusher, victim)
 	end
 end)
 
-local function giveKillerShared(ply, killer, force)
+local function giveKillerShared(ply, killer, force, silent)
 	local killers_ = killers.getAll()
 	
 	local killerData = {}
@@ -251,7 +263,9 @@ local function giveKillerShared(ply, killer, force)
 		
 	usedKillers[killerName] = ply
 
-	pills.apply(ply:Nick(), killerName, "user")
+	local ent = pills.apply(ply:Nick(), killerName, "user")
+	
+	if IsValid(ent) then ent.silentSpawn = true end
 	
 	if timer.Exists("UnfreezeAnims") then
 		ply.lobbyFreeze = true
@@ -308,7 +322,7 @@ end
 function giveKillerSilent(ply, killer, force)
 	force = force or false
 	
-	giveKillerShared(ply, killer, force)
+	giveKillerShared(ply, killer, force, true)
 end
 
 function setupPlayerVars(ply)
@@ -357,7 +371,9 @@ function endRound(killerVictory, duration)
 	
 	modifiers.End()
 	
-	hook.Run("fh_postendgame", killerVictory, animatronics)
+	local newDuration = hook.Run("fh_postendgame", killerVictory, animatronics)
+	
+	duration = newDuration or duration
 	
 	timer.Create("endGameWait", duration, 1, function() 
 		endGame()
@@ -379,7 +395,7 @@ function endGame()
 	
 	for _, ply in player.Iterator() do
 		ply:SetTeam(TEAM_SURVIVOR)
-		if ply:GetPill() then
+		if ply:GetPillCostume():IsValid() then
 			pills.restore(ply:Nick(), true)
 		end
 		ply:Spawn()
@@ -496,7 +512,7 @@ function registerNewRound(forceid)
 		ply:RemoveRagdoll()
 		survivors[ply] = true
 
-		if ply:GetPill() then
+		if ply:GetPillCostume():IsValid() then
 			pills.restore(ply:Nick(), true)
 		end
     end
@@ -514,7 +530,7 @@ function restoreAnimatronics()
 	
 	local animteam = team.GetPlayers(2701)
 	if !table.IsEmpty(animteam) then
-		for _, ply in pairs(animteam) do
+		for _, ply in ipairs(animteam) do
 			pills.restore(ply:Nick(), true)
 		end
 	end
@@ -582,6 +598,8 @@ function SpawnGifts()
 end
 
 concommand.Add( "fh_grant_gift", function( ply, cmd, args )
+	if not ply:IsSuperAdmin() then return end
+
 	timer.Simple(2, function()
 		if IsValid(ply) then
 			local gift = ents.Create("fh_gift")
@@ -592,7 +610,23 @@ concommand.Add( "fh_grant_gift", function( ply, cmd, args )
 	end)
 end )
 
+concommand.Add( "fh_grant_gift_others", function( ply, cmd, args )
+	if not ply:IsSuperAdmin() then return end
+	
+	timer.Simple(2, function()
+		local ply2 = Entity(2)
+		if IsValid(ply2) then
+			local gift = ents.Create("fh_gift")
+			gift:SetPos(ply2:GetPos() + Vector(0, 0, 10))
+			gift:SetOwner(ply2)
+			gift:Spawn()
+		end
+	end)
+end )
+
 concommand.Add( "fh_grant_gift_bots", function( ply, cmd, args )
+	if not ply:IsSuperAdmin() then return end
+	
 	timer.Simple(2, function()
 		for _, ply in player.Iterator() do
 			if !ply:IsBot() then continue end
@@ -659,7 +693,7 @@ hook.Add("PlayerInitialSpawn", "fh_ply_spawn", function(ply)
 end)
 
 hook.Add( "AllowPlayerPickup", "fh_allow_pickup", function( ply, ent )
-    return ply:Team() != TEAM_SPECTATOR
+    return ply:Team() ~= TEAM_SPECTATOR
 end )
 
 hook.Add("SetupMove", "fh_lock_position", function(ply, mv, cmd)
@@ -1081,14 +1115,17 @@ hook.Add("PillApply", "fh_joinpill", function(ply, ent)
 end)
 
 hook.Add("PillRestore", "fh_restorepill", function(ply, ent)
-	if usedKillers[ent.formTable.name] then
-		usedKillers[ent.formTable.name] = nil
+	local pillName = ent:Get("name")
+	if usedKillers[pillName] then
+		usedKillers[pillName] = nil
 	end
 end)
 
 hook.Add("GravGunPunt", "fh_gravgun_punt", function(ply,ent)
+	if ent.GravGunPunt and ent:GravGunPunt(ply) == false then return false end
 	timer.Simple(0, function()
 		if !IsValid(ent) then return end
+		if ent.FHGravGunPunt and ent:FHGravGunPunt(ent, ply) == false then return end
 		
 		local phys = ent:GetPhysicsObject()
 		if IsValid(phys) then
@@ -1167,6 +1204,12 @@ net.Receive("fh_initpostentity", function(len, ply)
 	net.Send(ply)
 end)
 
+hook.Add("OnReloaded", "fh_syncronise_preferables", function()
+	net.Start("fh_share_notprefered")
+	net.WriteTable(killers.getAllPreferables(true))
+	net.Broadcast()
+end)
+
 hook.Add("OnEntityWaterLevelChanged", "fh_drowning", function(ent, oldLevel, newLevel)
 	if not ent:IsPlayer() then return end
 	if ent:Team() ~= TEAM_SURVIVOR then return end
@@ -1206,6 +1249,21 @@ hook.Add("OnEntityWaterLevelChanged", "fh_drowning", function(ent, oldLevel, new
 		timer.Remove(timerName)
 	end
 end)
+
+hook.Add( "OnEntityCreated", "filter_activator_team_fix", function( ent )
+	timer.Simple(0, function()
+		if not IsValid(ent) then return end
+		if ent:GetClass() == "filter_activator_team" then
+			local value = tonumber(ent:GetInternalVariable("filterteam"))
+			
+			if value == 2 then
+				ent:SetKeyValue("filterteam", TEAM_SURVIVOR)
+			elseif value == 3 then
+				ent:SetKeyValue("filterteam", TEAM_PILLS)
+			end
+		end
+	end)
+end )
 
 function FindSuitableVictoryPos(forwardCheck, backCheck)
 	local win_location = ents.FindByClass("info_killer_win")[1]

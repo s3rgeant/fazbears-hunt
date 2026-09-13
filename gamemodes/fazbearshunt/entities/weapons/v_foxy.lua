@@ -20,6 +20,9 @@ SWEP.m_WeaponDeploySpeed = 0.5
 SWEP.LandHold = 0.2
 SWEP.JumpHold = 0.5
 
+SWEP.HandleMinViewModel = true
+SWEP.CalcMinimalViewModelView = Vector(4,0,-8)
+
 SWEP.HitDelay = 1	-- через сколько удар будет произвёден насильно после замаха, если ты долго держишь лкм
 
 SWEP.IsCharging = false -- переменная для отслеживания удержания ЛКМ

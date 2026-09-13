@@ -7,14 +7,14 @@ local function fh_default_check_scarysound()
     myself = myself or LocalPlayer()
 	
     if !IsValid(myself) or IsValid(pills.getMappedEnt(myself)) then return end
+	
+	if !myself:Alive() or myself:Team() == TEAM_SPECTATOR then return end
 
     local eyePos = myself:EyePos()
     local eyeAngles = myself:EyeAngles()
     local forward = eyeAngles:Forward()
 
     local viewRadius = 250
-	
-	if !myself:Alive() or myself:Team() == TEAM_SPECTATOR then return end
 
     for _, ply in player.Iterator() do
         if ply ~= myself and ply:Alive() and ply:GetMoveType() ~= MOVETYPE_NOCLIP then
@@ -236,7 +236,7 @@ local function fh_gfreddy_check_scarysound()
 			end)
 
 			hook.Add("CreateMove", "fh_gfreddy_magnet_view", function(cmd)
-				if !IsValid(targetPlayer) then
+				if not IsValid( myself:GetNWEntity("_WGoldenFreddy") ) then
 					hook.Remove("CreateMove", "fh_gfreddy_magnet_view")
 					return
 				end

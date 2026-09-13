@@ -1,6 +1,8 @@
 AddCSLuaFile()
 local model_prefix = IsHalloween() and "phantom" or "old"
 
+freddy = freddy or {}
+
 if SERVER then
 	util.AddNetworkString("fh_stalker_freddy_halo_start")
 	util.AddNetworkString("fh_stalker_freddy_halo_stop")
@@ -20,6 +22,14 @@ npc_blindrage = CreateConVar( "fh_blindrage_npcs", "0", { FCVAR_NOTIFY, FCVAR_AR
 local norageFuncs = {}
 local stalkers = {}
 local stalkTargets = {}
+
+function freddy.GetBlindRageTarget(ply)
+	return stalkers[ply]
+end
+
+function freddy.IsBlindRageTargeted(ply)
+	return stalkTargets[ply]
+end
 
 local wfreddy_default_movement = {150, 490, 70, 250} -- обычное передвижение
 local wfreddy_stalk_movement = {150, 600, 75, 260} -- сталкер дохуя
@@ -89,6 +99,8 @@ FREDDY.anims={
 		damaged1="damaged1",
 		damaged2="damaged2",
 		damaged3="damaged3",
+		
+		jammerstun="jammerstun",
 	},
 }
 FREDDY.moveSpeed={
@@ -99,6 +111,10 @@ FREDDY.moveSpeed={
 FREDDY.viewmodel={
 	weapon="v_freddy",
 	skin=IsHalloween() and 3 or 0
+}
+FREDDY.camera = {
+	offset = Vector(0, 0, 87),
+	dist = 150
 }
 FREDDY.animEvent=function(ply,ent,event)
 	if event == "FREDDY_DOOR_BREAK" then
@@ -216,14 +232,14 @@ FREDDY.land=function(ply,ent)
 	landTripCheck(ply, ent, "freddy")
 end
 
-FREDDY.onRemove=function(ent,formtable, ply)
+FREDDY.onRemove=function(ply, ent)
 	if CLIENT then wfreddy_stalker_door_halo_OFF() return end
 	
 	noMoreStalk(ply)
 
 	timer.Remove("SmoothLookAt_"..ply:EntIndex())
 	timer.Remove("stalk_check"..ent:EntIndex())
-	cooldown.Set(ply, "stalk", 1)
+	cooldown.Set(ply, "blindrage", 1)
 	
 	net.Start('fh_sound_stop')
 	net.WriteString('freddy_raged2_looped.wav')
@@ -233,7 +249,7 @@ end
 pills.register("pill_wfreddy2", FREDDY)
 
 function startBlindRage(ply, ent, succFunc, endFunc)
-	if cooldown.Exists(ply, "stalk") then return false end
+	if cooldown.Exists(ply, "blindrage") then return false end
 
 	if ply._isStalkingActive or stalkers[ply] then return false end
 	
@@ -244,8 +260,8 @@ function startBlindRage(ply, ent, succFunc, endFunc)
 		net.WriteString('ability_failed.wav')
 		net.Send(ply)
 		
-		cooldown.Set(ply, "stalk", 1)
-		cooldown.Send(ply, "stalk")
+		cooldown.Set(ply, "blindrage", 1)
+		cooldown.Send(ply, "blindrage")
 		return false
 	end
 	
@@ -263,8 +279,8 @@ function startBlindRage(ply, ent, succFunc, endFunc)
 	net.Send(ply)
 
 	local wep = ply:GetActiveWeapon()
-	if IsValid(wep) and wep:GetClass() == "v_freddy" then
-		wep:HandleAnimation("deploy", 10)
+	if IsValid(wep) and wep.HandleAnimation then
+		wep:HandleAnimation("holster", 10)
 	end
 	
 	net.Start('fh_ent_sound_play')
@@ -283,7 +299,7 @@ function startBlindRage(ply, ent, succFunc, endFunc)
 				ply:SetFOV(0, 1)
 
 				local wep = ply:GetActiveWeapon()
-				if IsValid(wep) and wep:GetClass() == "v_freddy" then
+				if IsValid(wep) and wep.HandleAnimation then
 					wep:HandleAnimation("idle", 0.1)
 				end
 
@@ -297,11 +313,11 @@ function startBlindRage(ply, ent, succFunc, endFunc)
 
 				if IsValid(ent) then
 					ent:EmitSound("freddy_cancelled.wav")
-					ent:PillAnim("idle")
+					ent.anim = nil
 				end
 				
-				cooldown.Set(ply, "stalk", 15)
-				cooldown.Send(ply, "stalk")
+				cooldown.Set(ply, "blindrage", 15)
+				cooldown.Send(ply, "blindrage")
 					
 				hook.Run("FH_BlindRageFailed", ply, ent, target)
 			end
@@ -366,7 +382,7 @@ function startBlindRage(ply, ent, succFunc, endFunc)
 					end
 
 					local wep = ply:GetActiveWeapon()
-					if IsValid(wep) and wep:GetClass() == "v_freddy" then
+					if IsValid(wep) and wep.HandleAnimation then
 						wep:HandleAnimation("idle", 0.1)
 					end
 
@@ -375,8 +391,8 @@ function startBlindRage(ply, ent, succFunc, endFunc)
 						stats.Add(target, "evaded_blind_rage", 1)
 					end
 
-					cooldown.Set(ply, "stalk", 40)
-					cooldown.Send(ply, "stalk")
+					cooldown.Set(ply, "blindrage", 40)
+					cooldown.Send(ply, "blindrage")
 					
 					hook.Run("FH_BlindRageFailed", ply, ent, target)
 					return
@@ -422,14 +438,14 @@ function smoothLookAt(ply, target)
     if not IsValid(ply) or not IsValid(target) then return end
 
     timer.Create("SmoothLookAt_" .. ply:EntIndex(), 0.01, 0, function()
-        if not IsValid(ply) or not IsValid(target) or !target:Alive() then
+        if not IsValid(ply) or not IsValid(target) or (target:IsPlayer() and !target:Alive()) then
             timer.Remove("SmoothLookAt_" .. ply:EntIndex())
             return
         end
 
         local currentAngle = ply:EyeAngles()
 
-        local targetPos = target:EyePos()
+        local targetPos = (target.EyePos and target:EyePos()) or (target.GetPos and target:GetPos()) or (target.GetCenter and target:GetCenter() + Vector(0,0,32))
         local direction = (targetPos - ply:EyePos()):GetNormalized()
 
         local targetAngle = direction:Angle()
@@ -500,8 +516,8 @@ function noMoreStalk(ply, ent, target)
 	
 	ply:SetNW2Bool("_BlindRaged", false)
 
-	cooldown.Set(ply, "stalk", 80)
-	cooldown.Send(ply, "stalk")
+	cooldown.Set(ply, "blindrage", 80)
+	cooldown.Send(ply, "blindrage")
 	
 	net.Start("freddy_cancel_target")
 	net.Send(ply)
@@ -527,8 +543,6 @@ hook.Add("PlayerUse", "AccurateBlockedDoorUse", function(ply, ent)
 	
 	local puppet = pills.getMappedEnt(ply)
 	if !IsValid(puppet) then return end
-	
-	if puppet.formTable.name ~= "pill_wfreddy2" then return end
 
     local class = ent:GetClass()
 	
@@ -592,7 +606,7 @@ hook.Add("FuncDoorBust", "fh_blindrage_doorbust", function(ply, door)
 	if not IsValid(puppet) then return end
 	local name = puppet.formTable.name
 
-	if name == "pill_wfreddy2" and stalkers[ply] then
+	if stalkers[ply] then
 		breakBustDoor(ply, door)
 	end
 end)

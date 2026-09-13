@@ -8,7 +8,7 @@ ENT.Editable = false
 ENT.Spawnable = false
 ENT.AdminOnly = false
 
-ENT.HopTime = 0.4
+ENT.HopTime = 0.2
 
 ENT.Mins = Vector(-10, -10, -5)
 ENT.Maxs = Vector(10, 10, 15)
@@ -25,7 +25,7 @@ function ENT:Initialize()
 	self:SetTrigger(true)
 	--self:UseTriggerBounds(true, 0)
 	
-	self:AddEFlags(EFL_NO_WATER_VELOCITY_CHANGE)
+	self:AddEFlags(EFL_NO_WATER_VELOCITY_CHANGE) -- не тот эффект который я ожидал
 	
 	self:SetCollisionBounds(self.Mins, self.Maxs)
 	self:NextThink( CurTime() )
@@ -122,21 +122,21 @@ function ENT:Think()
 				local phys = self:GetPhysicsObject()
 				
 				if IsValid(phys) then
-					phys:SetVelocity(direction * -600 + Vector(0,0,100))
+					phys:SetVelocity(direction * -700 + Vector(0,0,25))
 				end
 				
 				self:SetHopThink(CurTime() + self.HopTime)
-				self.HopTime = math.max(0.1, self.HopTime - 0.01)
+				self.HopTime = math.max(0, self.HopTime - 0.01)
 			end
 		end
 	end
 	
 	if false and SERVER then
-		if IsValid(self:GetOwner()) and self:GetVelocity():Length() >= 100 then
+		if IsValid(ply) and self:GetVelocity():Length() >= 100 then
 			local tr = util.TraceLine({
-				start = self:GetOwner():GetPos() + Vector(0,0,16),
+				start = ply:GetPos() + Vector(0,0,16),
 				endpos = self:GetPos(),
-				filter = {self, self:GetOwner(), self:GetSucker()}
+				filter = {self, ply, self:GetSucker()}
 			})
 			
 			if not tr.HitWorld and tr.Hit and tr.Entity:IsPlayer() then
@@ -184,7 +184,7 @@ function ENT:OnRemove()
 	
 	if IsValid(wep) then
 		if wep.ClawBack then -- проверяю наличие одной функции и похуй
-			wep:ClawBack()
+			wep:ClawBack(true)
 		end
 	end
 end

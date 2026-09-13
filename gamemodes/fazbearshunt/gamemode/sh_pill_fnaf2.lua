@@ -3,6 +3,9 @@
 if SERVER then
 	util.AddNetworkString("JumpscareLight")
 	
+	util.AddNetworkString("fh_AbilitiesAdd")
+	util.AddNetworkString("fh_AbilitiesRemove")
+	
 	util.AddNetworkString("fh_adv_sound_play")
 	util.AddNetworkString("fh_ui_sound_play")
 	util.AddNetworkString("fh_pos_sound_play")
@@ -18,11 +21,14 @@ if SERVER then
 	
 	util.AddNetworkString("fh_play_sound")
 	
-	util.PrecacheModel("models/speps/pill/oldgoldenfreddy.mdl")
-	util.PrecacheModel("models/speps/pill/oldgoldenfreddyhead.mdl")
-	
-	resource.AddFile( "materials/models/null.vmt" )
+	resource.AddSingleFile( "materials/models/null.vmt" )
 end
+
+hook.Add( "AllowPlayerPickup", "fh_pills_disallow", function( ply, ent )
+	if ent:IsWeapon() and pills.hasMappedEnt(ply) then
+		return false
+	end
+end )
 
 function chaseVoicelineChecker(ply, ent, name)
 	local index = ply:EntIndex()
@@ -30,7 +36,6 @@ function chaseVoicelineChecker(ply, ent, name)
 	timer.Create(timername, 2, 0, function()
 		if not IsValid(ent) then
 			timer.Remove(timername)
-			timer.Remove(index)
 			return
 		end
 		
@@ -131,96 +136,6 @@ function IsGoodLandConditions(ply, ent, waterlevel, velocity, posdistance)
 	end
 	return false
 end
-
--- GFREDDY HEAD
-
-pills.register("pill_wgfreddyhead2",{
-	printName="Withered Golden Freddy Head",
-	model="models/speps/pill/oldgoldenfreddyhead.mdl",
-	bodyGroups={[0] = 1},
-	anims={
-		default={
-			idle="idle",
-			crouch="crouch",
-			walk="walk",
-			out="special",
-			inn="tohead",
-			run="run",
-		},
-	},
-	modelScale="2.5",
-	moveSpeed={
-		walk=300,
-		run=1000,
-		ducked=0,
-	},
-	sounds={
-		scream="fnaf2/bonniescream.wav",
-		melee=")fnaf2/xscream2.wav",
-	},
-	type="ply",
-    camera = {
-        offset = Vector(0, 0, 90),
-		dist = 150
-    },
-	bloodType=BLOOD_COLOR_MECH,
-	hull=Vector(32,32,86),
-	duckBy=60,
-	
-	muteSteps = true,
-	
-	cloak={
-		max=-1
-	},
-    jumpPower=0,
-	health=10000,
-	movePoseMode="xy",
-	aim = {
-		xPose="aim_yaw",
-		yPose="aim_pitch"
-	},
-	
-	noFallDamage=true,
-	
-	attack={
-		mode="trigger",
-		func=function(ply,ent)
-			local target = FindNearestPlayer(ent:GetPos(), 130, ply, 75)
-			if !IsValid(target) then return end
-			target:TakeDamage(target:Health() + target:Armor(), ply)
-			ent:PillSound("melee",false)
-		end
-    },
-
-	attack2={
-		mode="trigger",
-		func = function(ply,ent)
-			if !ply:OnGround() then return end
-		end
-	},
-	
-	flashlight=function(ply,ent)
-		if !ply:OnGround() then return end
-
-		timer.Simple(.1,function()
-			if !IsValid(ent) then return end
-			local tracein={}
-			tracein.maxs=Vector(16,16,72)
-			tracein.mins=Vector(-16,-16,0)
-			tracein.start=ply:EyePos()
-			tracein.endpos=ply:EyePos()+ply:EyeAngles():Forward()*9999
-			tracein.filter = {ply,ent}
-
-			local traceout= util.TraceHull(tracein)
-			ply:SetPos(traceout.HitPos)
-			ent:PillSound("teleport")
-		end)
-	end,
-	
-	jump=function(ply,ent)
-		ent:PillSound("gs",false)
-	end
-})
 
 function playVoiceline(character, line, who, when)
 	if CLIENT then return end
@@ -514,122 +429,161 @@ function jumpscareEvent(ply, ent, target, dist)
 	end
 end
 
-function breakBustDoor(ply, door, dur)
-	local dur = dur or 90
-	if not IsValid(door) then return end
-	
-	if door.IsBreakBusted then return end
+local function breakBustDoorBase(ply, door, dur, createPhysDoor)
+	dur = dur or 90
+
+	if not IsValid(door) or door.IsBreakBusted then return end
 
 	local mdl = door:GetModel()
 	if not mdl then return end
 
 	local pos = door:GetPos()
-	local ang = door:GetAngles()
 	local skin = door:GetSkin()
-
-	local mins = door:OBBMins()
-	local maxs = door:OBBMaxs()
+	local oldColl = door:GetCollisionGroup()
 
 	door:Fire("Unlock", "", 0)
 	door:Fire("Open", "", 0)
-	
-	local oldColl = door:GetCollisionGroup()
+
+	door.IsBreakBusted = true
 
 	door:SetCollisionGroup(COLLISION_GROUP_DEBRIS)
 	door:CollisionRulesChanged()
-	
-	door.IsBreakBusted = true
-	
+
 	timer.Simple(0, function()
-		if IsValid(door) then
-			door:SetNoDraw(true)
-            door:SetNotSolid(true)
-			
-			for _, child in pairs(door:GetChildren()) do
-				child:SetNoDraw(true)
-                child:SetNotSolid(true)
-			end
+		if not IsValid(door) then return end
+
+		door:SetNoDraw(true)
+		door:SetNotSolid(true)
+
+		for _, child in ipairs(door:GetChildren()) do
+			child:SetNoDraw(true)
+			child:SetNotSolid(true)
 		end
 	end)
 
-	local physDoor = ents.Create("prop_physics")
+	local physDoor = createPhysDoor()
 	if not IsValid(physDoor) then return end
 
-	physDoor:SetModel(mdl)
-	physDoor:SetPos(pos + (door:GetForward() * 16))
-	physDoor:SetAngles(ang)
 	physDoor:SetSkin(skin)
 	physDoor:Spawn()
 	physDoor:Activate()
-
-	physDoor:SetCollisionBounds(mins, maxs)
+	physDoor:SetCollisionGroup(COLLISION_GROUP_DEBRIS)
+	physDoor:CollisionRulesChanged()
 
 	local phys = physDoor:GetPhysicsObject()
+
 	if IsValid(phys) then
 		phys:SetMass(35)
 		phys:Wake()
+
+		local dir = (door:WorldSpaceCenter() - ply:WorldSpaceCenter()):GetNormalized()
+		phys:ApplyForceCenter(dir * 15000)
 	end
-	
-	timer.Simple(dur, function()
-		if IsValid(physDoor) then
-			physDoor:Dissolve()
-		end
-	end)
-	
-	timer.Simple(dur + 20, function()
-		if IsValid(door) then
-			
-			local timerName = "door_back_fh_" .. door:EntIndex()
-			
-			timer.Create(timerName, 5, 0, function()
-				if !IsValid(door) then
-					timer.Remove(timerName)
-					return
-				end
-				
-				local playerFound = false
-				
-				for _, ent in ipairs(ents.FindInSphere( door:GetPos(), 300 )) do
-					if ent:Alive() and ent:IsPlayer() then
-						playerFound = true
-						break
-					end
-				end
-				
-				if !playerFound then
-					door:SetNoDraw(false)
-					door:SetNotSolid(false)
-					for _, child in pairs(door:GetChildren()) do
-						child:SetNoDraw(false)
-						child:SetNotSolid(false)
-					end
-					door:SetCollisionGroup(oldColl)
-					door:CollisionRulesChanged()
-					door.IsBreakBusted = nil
-					timer.Remove(timerName)
-				end
-			end)
-		end
-	end)
-	
+
 	timer.Simple(1, function()
 		if IsValid(phys) then
 			phys:SetMass(200)
 		end
 	end)
 
-	physDoor:SetCollisionGroup(COLLISION_GROUP_DEBRIS)
-	physDoor:CollisionRulesChanged()
-	
+	timer.Simple(dur, function()
+		if IsValid(physDoor) then
+			physDoor:Dissolve()
+		end
+	end)
+
+	timer.Simple(dur + 20, function()
+		if not IsValid(door) then return end
+
+		local timerName = "door_back_fh_" .. door:EntIndex()
+
+		timer.Create(timerName, 5, 0, function()
+			if not IsValid(door) then
+				timer.Remove(timerName)
+				return
+			end
+
+			local playerFound = false
+
+			for _, ent in ipairs(ents.FindInSphere(door:GetPos(), 300)) do
+				if ent:IsPlayer() and ent:Alive() then
+					playerFound = true
+					break
+				end
+			end
+
+			if playerFound then return end
+
+			door:SetNoDraw(false)
+			door:SetNotSolid(false)
+
+			for _, child in ipairs(door:GetChildren()) do
+				child:SetNoDraw(false)
+				child:SetNotSolid(false)
+			end
+
+			door:SetCollisionGroup(oldColl)
+			door:CollisionRulesChanged()
+			door.IsBreakBusted = nil
+
+			timer.Remove(timerName)
+		end)
+	end)
+
 	stats.Add(ply, "broke_doors", 1)
 
-	if IsValid(phys) then
-		local dir = ply:GetForward()
-		phys:ApplyForceCenter(dir * 15000)
-	end
-
-	sound.Play("Wood_Crate.Break", pos, 90, math.random(90,110))
+	sound.Play("Wood_Crate.Break", pos, 90, math.random(90, 110))
 	util.ScreenShake(pos, 5, 5, 0.5, 200)
+end
+
+
+function breakBustDoor(ply, door, dur)
+	if not IsValid(door) then return end
+
+	local mdl = door:GetModel()
+	if not mdl then return end
+
+	local mins = door:OBBMins()
+	local maxs = door:OBBMaxs()
+
+	breakBustDoorBase(ply, door, dur, function()
+		local physDoor = ents.Create("prop_physics")
+		if not IsValid(physDoor) then return end
+
+		physDoor:SetModel(mdl)
+		physDoor:SetPos(door:GetPos() + door:GetForward() * 16)
+		physDoor:SetAngles(door:GetAngles())
+		physDoor:SetCollisionBounds(mins, maxs)
+
+		local phys = physDoor:GetPhysicsObject()
+		if IsValid(phys) then
+			phys:SetMass(35)
+			phys:Wake()
+		end
+
+		return physDoor
+	end)
+end
+
+
+function breakBustFuncDoor(ply, door, dur)
+	if not IsValid(door) then return end
+	local class = door:GetClass()
+	if class ~= "func_door_rotating" and class ~= "func_door" then return end
+
+	local mdl = door:GetModel()
+	if not mdl then return end
+
+	breakBustDoorBase(ply, door, dur, function()
+		local physDoor = ents.Create("prop_physics")
+		if not IsValid(physDoor) then return end
+
+		physDoor:SetModel(mdl)
+		physDoor:SetPos(door:WorldSpaceCenter())
+		physDoor:SetAngles(door:GetAngles())
+
+		return physDoor
+	end)
 end
 
 if SERVER then
@@ -743,9 +697,35 @@ function AnimatronicBreakProp(ply, ent, cd)
 	end
 	
     local class = target:GetClass()
-    if class == "func_breakable" or class == "func_breakable_surf" then
-        target:Fire("Shatter", "0", 0)
-    end
+	if class == "func_breakable_surf" then
+		local localHit = target:WorldToLocal(tr.HitPos)
+		
+		local mins = target:OBBMins()
+		local maxs = target:OBBMaxs()
+		local size = maxs - mins
+		
+		local x, y = 0.5, 0.5
+
+		if size.x <= size.y and size.x <= size.z then
+			x = (localHit.y - mins.y) / math.max(size.y, 1)
+			y = (localHit.z - mins.z) / math.max(size.z, 1)
+		elseif size.y <= size.x and size.y <= size.z then
+			x = (localHit.x - mins.x) / math.max(size.x, 1)
+			y = (localHit.z - mins.z) / math.max(size.z, 1)
+		else
+			x = (localHit.x - mins.x) / math.max(size.x, 1)
+			y = (localHit.y - mins.y) / math.max(size.y, 1)
+		end
+
+		x = math.Clamp(x, 0, 1)
+		y = math.Clamp(y, 0, 1)
+		
+		local shatterStr = string.format("[%.2f %.2f %d]", x, y, 24)
+		
+		target:Fire("Shatter", shatterStr, 0, ply)
+	elseif class == "func_breakable" then
+		target:Fire("Break", "", 0, ply)
+	end
 	
 	if target:GetMoveType() == MOVETYPE_VPHYSICS then
 		local owner = target:GetOwner()
@@ -810,6 +790,7 @@ function AnimatronicBreakProp(ply, ent, cd)
 		
 		util.Effect("Impact_GMOD", effectData, true, true)
 		
+		ent:Func("postPropMelee", ply, ent)
 		hook.Run("fh_animatronic_post_break_prop", ply, ent, tr)
 		return true
 	end
@@ -818,7 +799,7 @@ function AnimatronicBreakProp(ply, ent, cd)
 	return res
 end
 
-hook.Add("FH_ChaseVoicelineHandler", "killer_mask_animvc", function(ply,ent,name)
+hook.Add("FH_ChaseVoicelineHandler", "killer_mask_animvc", function(ply,ent,name,target)
 	if IsValid(target) and target:GetNW2Bool("KillerObsessed") then
 		return true, "negative"
 	end
@@ -838,7 +819,7 @@ function chaseCheck(ply, name, ent)
 		if target:IsNPC() then return end
 		
 		if target:IsSprinting() and target:GetVelocity():LengthSqr() > target:GetWalkSpeed() and !target:IsInvisible() then
-			local shouldPlay, forceVoiceline, newCooldown = hook.Run("FH_ChaseVoicelineHandler",ply,ent,name)
+			local shouldPlay, forceVoiceline, newCooldown = hook.Run("FH_ChaseVoicelineHandler",ply,ent,name,target)
 			
 			if shouldPlay == true or shouldPlay == nil then
 				local vc = forceVoiceline or "chase"
@@ -888,3 +869,5 @@ end
 include("animatronics/special/bear5.lua")
 include("animatronics/special/wgfreddy.lua")
 include("animatronics/special/wgfreddy_cl.lua")
+
+hook.Run("FH_AnimatronicsLoaded")

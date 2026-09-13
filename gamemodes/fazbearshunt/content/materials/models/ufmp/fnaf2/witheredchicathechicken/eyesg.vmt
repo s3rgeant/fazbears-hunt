@@ -1,0 +1,21 @@
+"UnlitGeneric"
+{
+$basetexture  "models\ufmp\FNaF2\WitheredChicaTheChicken\Eyes"
+$bumpmap "models\ufmp\flat"
+$phongexponenttexture "models\ufmp\FNaF2\shared\EyeSpec"
+
+$surfaceprop                              "plastic"
+
+
+$phong                                       "1"
+$phongexponent                        "0"
+$phongboost	                   "15"
+$ambientocclusion "0"
+$color "0.53"
+$phongtint "0.33"
+$phongalbedotint                        "1"
+$phongfresnelranges                  "[0.05 0.5 1]"
+$halflambert                                 "0"
+$diffuseexp                                  "1.5"
+$nocull                                         "1"
+}

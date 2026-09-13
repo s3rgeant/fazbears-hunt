@@ -1,10 +1,12 @@
 AddCSLuaFile()
 
 if SERVER then
-	util.PrecacheModel("models/ufmp/fnaf2/toys/themangle.mdl")
+	util.PrecacheModel("models/fh/animatronics/ufmp/fnaf2/themangle.mdl")
+	util.AddNetworkString("MangleLandSync")
 end
 
 local JUMPING = {}
+
 
 local man_speed = {
 	[1] = {66, 475, 80, 250},
@@ -34,7 +36,7 @@ end
 
 pills.register("pill_mangle",{
 	printName="Mangle",
-	model="models/ufmp/fnaf2/toys/themangle.mdl",
+	model="models/fh/animatronics/ufmp/fnaf2/themangle.mdl",
 	options=function() return {
 		["default"] = {
 			bodyGroups = {
@@ -166,11 +168,24 @@ pills.register("pill_mangle",{
 				end
 				
 				JUMPING[ply] = true
+			elseif ply:GetNWBool("_MangleHooked") then
+				local eyeAng = ply:EyeAngles()
+
+				if ply:GetNWString("_MangleLastHookType") ~= "ceiling" then
+					local diff = math.AngleDifference(eyeAng.y, ply:GetNWAngle("_MangleHookAngle").y)
+					if diff < -90 or diff > 90 then return end
+				end
+				
+				JUMPING[ply] = true
 			end
 		end
 	},
 	
 	land=function(ply,ent)
+		if ply:GetNWBool("_MangleHookReady") then
+			net.Start("MangleLandSync")
+			net.Send(ply)
+		end
 	
 		ply:SetNWBool("_MangleHooked", false)
 		ply:SetNWBool("_MangleHookReady", false)
@@ -371,23 +386,12 @@ hook.Add( "PlayerButtonUp", "mangle_ctrl", function( ply, button )
 end)
 
 hook.Add("Move", "mangle_hooked", function(ply, mv, cmd)
-	if ply:GetNWBool("_MangleHooked") then
-		if bit.band( mv:GetButtons(), IN_ATTACK2 ) ~= 0 and bit.band( mv:GetOldButtons(), IN_ATTACK2 ) == 0 then
-			local eyeAng = ply:EyeAngles()
-
-			if ply:GetNWString("_MangleLastHookType") ~= "ceiling" then
-				local diff = math.AngleDifference(eyeAng.y, ply:GetNWAngle("_MangleHookAngle").y)
-				if diff < -90 or diff > 90 then return end
-			end
-			
-			JUMPING[ply] = true
-		end
-	end
-	
 	if ply:GetNWBool("_MangleHookReady") and crouching[ply] then
 		mv:SetVelocity(mv:GetVelocity() - Vector(0,0,12))
 	end
 end)
+
+local allowedClip = "TOOLS/TOOLSINVISIBLE"
 
 local SKIPFIRST = {}
 local START_VELOCITY = {}
@@ -475,8 +479,6 @@ hook.Add("FinishMove", "mangle_hook_ready", function( ply, mv )
 		SKIPFIRST[ply] = true
 		ENDGOAL[ply] = nil
 	end
-		
-	--print(343, ply:GetVelocity())
 	
 	if CLIENT and ply:GetNWBool("_MangleHooked") and ENDGOAL[ply] and !IsFirstTimePredicted() then
 		ply:SetLocalVelocity(Vector(0,0,0))
@@ -497,9 +499,7 @@ hook.Add("FinishMove", "mangle_hook_ready", function( ply, mv )
 		local tr = MangleHookUpCheck(ply, mv)
 		ply:LagCompensation(false)
 		
-		--print(tr.HitNormal.z)
-		
-		if !tr.HitSky and !tr.HitNoDraw and tr.Hit and tr.Entity == game.GetWorld() and tr.HitNormal.z <= 0.29 then
+		if !tr.HitSky and (!tr.HitNoDraw or tr.HitTexture == allowedClip) and tr.Hit and tr.Entity == game.GetWorld() and tr.HitNormal.z <= 0.29 then
 			if SERVER or CLIENT then
 				local ent = pills.getMappedEnt(ply)
 				local pos
@@ -659,6 +659,20 @@ hook.Add("FinishMove", "mangle_hook_ready", function( ply, mv )
 	end
 end)
 
+if CLIENT then
+	net.Receive("MangleLandSync", function()
+		local ply = LocalPlayer()
+		if ply:GetNWBool("_MangleHooked") and ENDGOAL[ply] then
+			ply:SetNWBool("_MangleHooked", false)
+			ply:SetNWBool("_MangleHookReady", false)
+			ply:SetNWString("_MangleLastHookType", "")
+			ENDGOAL[ply] = nil
+			ply:SetMoveType(MOVETYPE_WALK)
+			ply:SetViewOffset(Vector(0,0,70))
+		end
+	end)
+end
+
 hook.Add("StartCommand", "mangle_hooked_command", function(ply, cmd)
 	if ply:GetNWBool("_MangleHooked") then
 		cmd:ClearMovement()
@@ -680,6 +694,8 @@ hook.Add("KeyPress", "mangle_unhook", function(ply, key)
 		
 			if IsValid(ent) then
 				if ply:GetNWBool("_MangleHooked") then 
+					ENDGOAL[ply] = nil
+					
 					ply:SetNWBool("_MangleHooked", false)
 					ply:SetNWBool("_MangleHookReady", false)
 					ply:SetNWString("_MangleLastHookType", "")

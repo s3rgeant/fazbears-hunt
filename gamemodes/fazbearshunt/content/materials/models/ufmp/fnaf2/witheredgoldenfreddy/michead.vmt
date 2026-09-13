@@ -1,0 +1,26 @@
+"VertexlitGeneric"
+{
+$basetexture  "models\UFMP\White"
+$bumpmap "models\UFMP\FNaF2\Shared\MicBump"
+
+$surfaceprop                              "plastic"
+
+
+$phong                                       "1"
+$phongexponent                        "20"
+$phongtint                                  "[1 1 1]"
+$ambientocclusion "0"
+$basetexturetransform "[0.5 0 0 0 0 0.5 0 0 0 0 1 0 0 0 0 1]"
+$rimlight "1"
+$rimlightboost "0.1000000015"
+$color "0"
+$rimlightexponent "1"
+$phongboost	                   "8"
+$basemapluminancephongmask "1"
+$phongalbedotint                        "1"
+$phongfresnelranges                  "[0 0.200000003 10"
+$halflambert                                 "0"
+$diffuseexp                                  "1.5"
+$nocull                                         "1"
+
+}

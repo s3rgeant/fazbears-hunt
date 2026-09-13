@@ -10,6 +10,8 @@ end
 SWEP.Slot = 1
 SWEP.SlotPos = 1
 
+SWEP.Gifted = true
+
 SWEP.ViewModel = Model( "models/fh/items/v_springbonnie_mask.mdl" )
 SWEP.WorldModel = Model( "models/fh/items/w_springbonnie_mask_hand.mdl" )
 SWEP.ViewModelFOV = 75
@@ -112,13 +114,13 @@ function SWEP:SpringLock()
 
 	self:SetHoldType( "normal" )
 	
-	self:EmitSound("weapons/AudioEvent_K06_Status_Start.mp3")
+	self:EmitSound("weapons/springman_breathing.mp3")
 	
 	if CLIENT then
 		surface.PlaySound("weapons/killermask_equip.wav")
 		
 		timer.Simple(8.5, function()
-			if !IsValid(ply) or !ply:Alive() then return end
+			if !IsValid(ply) or !ply:Alive() or !IsValid(self) then return end
 			ply:ScreenFade( SCREENFADE.OUT, Color( 255, 0, 0, 255 ), 0.1, 4 )
 			util.ScreenShake( Vector(0, 0, 0), 2, 40, 1, 2 )
 			timer.Simple(3.8, function()
@@ -140,7 +142,15 @@ function SWEP:SpringLock()
 			rf:AddPAS(ply:EyePos())
 			rf:RemovePlayer(ply)
 			
-			self:EmitSound("weapons/springlock.mp3", 65, 100, 0.2, CHAN_AUTO, 0, 1, rf)
+			self:EmitSound("weapons/springlock.mp3", 65, 100, 0.6, CHAN_AUTO, 0, 1, rf)
+	
+			ply:AnimRestartGesture(4, ACT_FLINCH_HEAD, true)
+			
+			net.Start("AnimRestartGesture")
+				net.WriteEntity(ply)
+				net.WriteInt(4, 4)
+				net.WriteInt(ACT_FLINCH_HEAD, 12)
+			net.SendPVS(ply:GetPos())
 			
 			--ply:StripWeapon("weapon_killmask")
 			
@@ -166,16 +176,18 @@ function SWEP:SpringLock()
 			ply:SetSuppressPickupNotices(true)
 			ply:Give("weapon_killer_axe")
 			ply:SetSuppressPickupNotices(false)
+			
+			hook.Run("FH_KillerAxeReceived", ply)
 		end)
 	
 		timer.Simple(13, function()
 			if !IsValid(ply) or !ply:Alive() then return end
 	
 			ply:Freeze(false)
-			ply:SetRunSpeed(475)
-			ply:SetRunSpeed(475)
-			ply:SetCrouchedWalkSpeed( 0.5 )
-			ply:SetJumpBoostMultiplier(0.4)
+			ply:SetRunSpeed(440)
+			--ply:SetRunSpeed(475) ?
+			--ply:SetCrouchedWalkSpeed( 0.3 )
+			--ply:SetJumpBoostMultiplier(0.4)
 			ply:AllowFlashlight(true)
 		end)
 	end
@@ -204,10 +216,25 @@ end
 
 if SERVER then return end
 
+local minVec = Vector(15,5,-6)
+function SWEP:CalcMinimalViewModelView()
+	local seq = self:GetSequence()
+	local focus = (self:GetSequenceName(seq):match("anim_release") == "anim_release")
+	local ft = FrameTime() * 3
+
+	minVec.x = Lerp(ft, minVec.x, focus and 0 or 15)
+	minVec.y = Lerp(ft, minVec.y, focus and 0 or 5)
+	minVec.z = Lerp(ft, minVec.z, focus and 0 or -8)
+	return minVec
+end
+
 local model = ClientsideModel( "models/fh/items/w_springbonnie_mask.mdl" )
 model.RenderOverride = function(self, flags)
-	if not IsValid(self:GetParent()) then return end
-	if IsValid(self:GetParent()) and not self:GetParent():GetNW2Bool("KillerMaskEquiped") then self:SetParent() return end
+	local parent = self:GetParent()
+	local myself = LocalPlayer()
+	
+	if not IsValid( parent ) or parent:IsDormant() or (parent == myself and not myself:ShouldDrawLocalPlayer()) then return end
+	if IsValid( parent ) and not self:GetParent():GetNW2Bool("KillerMaskEquiped") then self:SetParent() return end
 	self:DrawModel()
 end
 
@@ -251,4 +278,29 @@ function SWEP:DrawWorldModel( flags )
 	if !ply:GetNW2Bool("KillerMaskEquiped") then
 		self:DrawModel( flags )
 	end
+end
+
+function SWEP:TranslateActivity( act )
+	local ply = self:GetOwner()
+
+	if ply:IsNPC() then
+		if ( self.ActivityTranslateAI[ act ] ) then
+			return self.ActivityTranslateAI[ act ]
+		end
+		return -1
+	end
+
+	if ply:GetNW2Bool("KillerMaskEquiped") then
+		if act == 990 then
+			return ACT_HL2MP_IDLE_SUITCASE
+		elseif act == 997 then
+			return ACT_HL2MP_WALK_SUITCASE
+		end
+	end
+
+	if ( self.ActivityTranslate[ act ] != nil ) then
+		return self.ActivityTranslate[ act ]
+	end
+
+	return -1
 end

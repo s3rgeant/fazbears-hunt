@@ -222,7 +222,7 @@ function PLAYER:FinishMove(move)
 
 	if JUMPING then
 		local boost = ply:GetJumpBoostMultiplier()
-		boost = math.Clamp(boost - 0.08, 0, ply:GetJumpBoost())
+		boost = math.Clamp(boost - 0.09, 0, ply:GetJumpBoost())
 		
 		--print(boost)
 

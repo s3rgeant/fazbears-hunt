@@ -124,22 +124,44 @@ local function IsPlayerStuck(ply)
         maxs = ply:OBBMaxs(),
 		filter = ply,
 		collisiongroup = COLLISION_GROUP_PLAYER,
-		mask = MASK_SOLID
+		mask = MASK_PLAYERSOLID
     })
     return tr.Hit
 end
 
-local function QuickIsStuck(ent)
+local function QuickIsStuck(ent, oldColl, ignoreWorld)
 	if not IsValid(ent) then return false end
 
 	local trace = util.TraceEntity({
 		start = ent:GetPos(),
 		endpos = ent:GetPos(),
 		filter = ent,
-		mask = MASK_SOLID
+		mask = MASK_SOLID,
+		collisiongroup = oldColl or COLLISION_GROUP_NONE,
+		ignoreworld = ignoreWorld or false
 	}, ent)
 
 	return trace.Hit
+end
+
+local function QuickIsStuckHull(ent, oldColl, ignoreWorld)
+	if not IsValid(ent) then return false end
+	
+	local pos = ent:GetPos()
+	local minsB, maxsB = ent:OBBMins(), ent:OBBMaxs()
+	local minsA, maxsA = ent:GetRotatedAABB( minsB, maxsB )
+
+	local tr = util.TraceHull({
+		start = 	pos,
+		endpos = 	pos,
+		mins = 		minsA,
+		maxs = 		maxsA,
+		filter = ent,
+		--collisiongroup = oldColl or COLLISION_GROUP_NONE,
+		ignoreworld = ignoreWorld or false
+	})
+
+	return tr.Hit, tr.Entity
 end
 
 local function FindSafePosition(ply, startPos)
@@ -270,40 +292,57 @@ end
 
 function PLAYER:RepeatRestoreCollision(duration)
 	duration = duration or 0.5
+	local timerName = "fh_repeat_unstuck" .. self:EntIndex()
 	
-	timer.Create("fh_repeat_unstuck" .. self:EntIndex(), duration, 0, function()
+	timer.Create(timerName, duration, 0, function()
 		if IsValid(self) and !QuickIsStuck(self) then
 			self:SetCollisionGroup(COLLISION_GROUP_PLAYER)
-			timer.Remove("fh_repeat_unstuck" .. self:EntIndex())
+			timer.Remove(timerName)
 			return
 		end
 		
 		if !IsValid(self) or !self:Alive() then
-			timer.Remove("fh_repeat_unstuck" .. self:EntIndex())
+			timer.Remove(timerName)
 		end
 	end)
 end
 
-hook.Add("fh_startgame", "fh_startgame_unstuck", function(roundType)
-	--for i, ply in player.Iterator() do
-		--timer.Simple(i/10, function()
-			--if ply:IsStuck() then
-				--ply:Unstuck()
-			--end
-		--end)
-	--end
-end)
+local ENTITY = FindMetaTable("Entity")
+
+function ENTITY:IsRestoringCollision()
+	local timerName = "fh_repeat_unstuck" .. self:EntIndex()
+	return timer.Exists(timerName)
+end
+
+function ENTITY:RepeatRestoreCollision(duration, oldColl, ignoreWorld)
+	duration = duration or 0.5
+	local timerName = "fh_repeat_unstuck" .. self:EntIndex()
+	
+	if timer.Exists(timerName) then return end
+	timer.Create(timerName, duration, 0, function()
+		if not IsValid(self) then timer.Remove(timerName) end
+		
+		local stuck, ent = QuickIsStuckHull(self, oldColl, ignoreWorld)
+		if !stuck then
+			self:SetCollisionGroup(oldColl or COLLISION_GROUP_NONE)
+			timer.Remove(timerName)
+			return
+		end
+		
+		if IsValid(ent) and ent:IsPlayer() then
+			local dir = (ent:GetPos() - self:GetPos())
+			dir:Normalize()
+			dir.z = 0
+			ent:SetVelocity(dir * 500)
+		end
+	end)
+end
 
 hook.Add("fh_defibrillator_spawn", "fh_startgame_unstuck", function()
 	
-	hook.Add("KeyPress", "CheckStuckAndTeleport", function(ply, key)
-		keyPressCheck(ply,key)
-	end)
+	hook.Add("KeyPress", "CheckStuckAndTeleport", keyPressCheck)
 	
-	if timer.Exists("remove_unstuck_hook") then 
-		timer.Remove("remove_unstuck_hook")
-	end
-	
+	timer.Remove("remove_unstuck_hook")
 	timer.Create("remove_unstuck_hook", 10, 1, function()
 		hook.Remove("KeyPress", "CheckStuckAndTeleport")
 	end)

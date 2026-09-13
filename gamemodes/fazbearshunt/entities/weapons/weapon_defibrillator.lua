@@ -20,6 +20,10 @@ end
 SWEP.PrintName = "#weapon_defibrillator"
 SWEP.Spawnable = true
 
+SWEP.Instructions = "Найди один из подсвеченных трупов, и возроди мёртвого."
+
+SWEP.Gifted = true
+
 --SWEP.ViewModelFOV = 75
 SWEP.ViewModel = "models/weapons/defib/v_defibrillator.mdl"
 SWEP.WorldModel = "models/weapons/defib/w_eq_defibrillator.mdl"
@@ -53,6 +57,8 @@ SWEP.Secondary.DefaultClip = -1
 SWEP.Secondary.Automatic = true
 SWEP.Secondary.Ammo = "none"
 SWEP.Secondary.Delay = 1
+
+SWEP.CalcMinimalViewModelView = Vector(10,0,-5)
 
 function SWEP:Initialize()
 	self:SetWeaponHoldType( self.HoldType )

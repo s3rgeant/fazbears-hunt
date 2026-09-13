@@ -1,14 +1,16 @@
 AddCSLuaFile()
 
 if SERVER then
-	util.PrecacheModel("models/speps/pill/oldchica.mdl")
+	util.PrecacheModel("models/fh/animatronics/UFMP/WitheredChica.mdl")
 end
 
+local CUPCAKE_CLASS = "cakemine" --"fh_cupcake"
 local cupcakes = {} 
 
 pills.register("pill_wchica2",{
 	printName="Withered Chica",
-	model="models/speps/pill/oldchica.mdl",
+	model="models/fh/animatronics/UFMP/WitheredChica.mdl",
+	modelScale="1.4",
 		
 	options=function() return {
 		["default"] = {
@@ -32,7 +34,7 @@ pills.register("pill_wchica2",{
 			run="run",
 			cloak="special1",
 			jump="jump",
-			glide="air",
+			glide="glide",
 			land="land",
 			scare="scare",
 			stun="stun",
@@ -42,7 +44,7 @@ pills.register("pill_wchica2",{
 		},
 	},
 	moveSpeed={
-		walk=80,
+		walk=114,
 		run=485,
 		ducked=80,
 	},
@@ -50,7 +52,7 @@ pills.register("pill_wchica2",{
 		jump="jump.mp3",
 		land="land.mp3",
 		melee=")fnaf2/xscream2.wav",
-		deploy="chica_deploycake.wav",
+		deploy=")chica_deploycake.wav",
 	},
 	type="ply",
     camera = {
@@ -73,8 +75,14 @@ pills.register("pill_wchica2",{
 
 	noFallDamage=true,
 	
-	startFunction=function(ply,ent)
+	initialize=function(ply, ent)
 		chaseVoicelineChecker(ply, ent, "chica")
+		ent:SetFlexWeight( 0, .6 )
+	end,
+	restore=function(ply, ent)
+		if SERVER then
+			killCupcakes(ply)
+		end
 	end,
 	
 	killCondition=function(ply,ent)
@@ -106,39 +114,14 @@ pills.register("pill_wchica2",{
 	
 	attack2={
 		mode="trigger",
-		func = function(ply,ent)
-			if !cupcakes[ply] then cupcakes[ply] = 0 end
-			if cupcakes[ply] < conVars.fh_max_cupcakes:GetInt() and !cooldown.Exists(ply, "mine") then
-				cooldown.Set(ply, "mine", 15)
-				cooldown.Send(ply, "mine")
-				
-				local playerPos = ply:GetPos()
-				local spawnPos = playerPos + ply:GetUp() * 10
-				local cupcake = ents.Create("cakemine")
-				
-				if not IsValid(cupcake) then return end
-				
-				ent:PillSound('deploy')
-
-				if math.random(1, 10) > 4 then playVoiceline('chica', 'plant', ply, 0.1) end
-				
-				cupcake:SetPos(spawnPos)
-				cupcake:SetAngles(ply:GetAngles())
-				cupcake:SetOwner(ply)
-				cupcake:Spawn()
-				cupcake:Activate()
-				
-				hook.Run("FH_MinePlanted", ply, ent, cupcake)
-				
-				cupcakes[ply] = cupcakes[ply] + 1
-			
-				net.Start("fh_cooldown_receive")
-				net.WriteString("addmine")
-				net.WriteFloat(1)
-				net.Send(ply)
-			end
-		end
+		func = function(ply, ent)
+			ChicaDeployCupcake(ply, ent)
+		end,
 	},
+	
+	postPropMelee = function(ply, ent)
+		ply:ViewPunch( Angle( 10, 0, 0 ) )
+	end,
 	
 	land=function(ply,ent)
 		if IsGoodLandConditions(ply, ent) then
@@ -155,12 +138,42 @@ pills.register("pill_wchica2",{
 	jump=function(ply,ent)
 		ent:PillSound("jump", false)
 	end,
-	onRemove=function(ent,formTable,ply)
-		if SERVER then
-			killCupcakes(ply)
-		end
-	end
 })
+
+function ChicaDeployCupcake(ply, ent)
+	if cooldown.Exists(ply, "mine") then return end
+	if !cupcakes[ply] then cupcakes[ply] = 0 end
+	
+	if cupcakes[ply] < conVars.fh_max_cupcakes:GetInt() then
+		cooldown.Set(ply, "mine", 15)
+		cooldown.Send(ply, "mine")
+		
+		local playerPos = ply:GetPos()
+		local spawnPos = playerPos + ply:GetUp() * 10
+		local cupcake = ents.Create( CUPCAKE_CLASS )
+		
+		if not IsValid(cupcake) then return end
+		
+		ent:EmitSound('chica_deploycake.wav')
+
+		if math.random(1, 10) > 4 then playVoiceline('chica', 'plant', ply, 0.1) end
+		
+		cupcake:SetPos(spawnPos)
+		cupcake:SetAngles(ply:GetAngles())
+		cupcake:SetOwner(ply)
+		cupcake:Spawn()
+		cupcake:Activate()
+		
+		hook.Run("FH_MinePlanted", ply, ent, cupcake)
+		
+		cupcakes[ply] = cupcakes[ply] + 1
+	
+		net.Start("fh_cooldown_receive")
+		net.WriteString("addmine")
+		net.WriteFloat(1)
+		net.Send(ply)
+	end
+end
 	
 hook.Add( "PlayerDisconnected", "fh_pill_wchica_cupcakes", function( ply )
 	killCupcakes(ply)
@@ -168,7 +181,7 @@ end)
 	
 function killCupcakes(ply)
 	if table.IsEmpty(cupcakes) or !cupcakes[ply] then return end
-	for _, ent in ipairs( ents.FindByClass( "cakemine" ) ) do
+	for _, ent in ipairs( ents.FindByClass( CUPCAKE_CLASS ) ) do
 		if ent:GetOwner() == ply then
 			ent:Remove()
 		end
@@ -180,7 +193,7 @@ local fh_cupcake_blast = CreateConVar( "fh_cupcake_blast", "0", { FCVAR_ARCHIVE,
 "Should Chica's cupcakes blast damage when destroyed?" )
 	
 hook.Add("EntityRemoved", "RemoveKilledCupcake", function(ent)
-	if ent:GetClass() == "cakemine" then
+	if ent:GetClass() == CUPCAKE_CLASS then
 		local owner = ent:GetOwner() 
 		
 		if fh_cupcake_blast:GetBool() then
@@ -192,11 +205,6 @@ hook.Add("EntityRemoved", "RemoveKilledCupcake", function(ent)
 				cupcakes[owner] = math.max(0, cupcakes[owner] - 1)
 			end
 		end
-	end
-end)
-
-hook.Add( "EntityRemoved", "fh_go_cakemine", function( ent )
-	if ent:GetClass() == "cakemine" then
 	end
 end)
 

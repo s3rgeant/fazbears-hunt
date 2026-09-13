@@ -204,3 +204,5 @@ function SWEP:Ammo2()
 
 	return self:GetOwner():GetAmmoCount( self:GetSecondaryAmmoType() )
 end
+
+include( "melee.lua" )

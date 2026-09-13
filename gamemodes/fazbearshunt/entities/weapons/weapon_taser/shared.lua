@@ -18,6 +18,8 @@ if CLIENT then
 end
 SWEP.DrawWeaponInfoBox = false
 
+SWEP.Gifted = true
+
 SWEP.Spawnable = true
 SWEP.Slot = 1
 SWEP.SlotPos = 2
@@ -37,9 +39,35 @@ SWEP.ViewModel	= "models/fh/weapons/c_taser.mdl"
 SWEP.ViewModelFOV = 70
 SWEP.WorldModel = "models/realistic_police/taser/w_taser.mdl"
 
+function SWEP:SetupDataTables()
+	self:NetworkVar( "Float", 1, "NextIdle" )
+end
+
+function SWEP:Think()
+    if self:GetNextIdle() > 0 and CurTime() >= self:GetNextIdle() then
+        self:SendWeaponAnim(ACT_SPRINT)
+        self:SetNextIdle(0)
+    end
+	
+	if true then return end
+	
+	local owner = self:GetOwner()
+	
+	if not owner:IsValid() then return end
+	
+	local vel = owner:GetVelocity()
+	local speed = vel:Length()
+	
+	local vm = owner:GetViewModel()
+	
+	if not vm:IsValid() then return end
+	vm:SetPoseParameter("move_speed", speed)
+end
+
 function SWEP:Initialize()
     self:SetHoldType("pistol")
 	self.Weapon:SetClip1( 100 )
+    self:SetNextIdle(CurTime() + 1)
 end
 
 function SWEP:Holster()
@@ -57,6 +85,10 @@ function SWEP:PrimaryAttack()
     if !IsValid(owner) then return end
 	
 	if self:Clip1() < 100 then return end
+	
+	local ct = CurTime()
+	
+    self:SetNextIdle(ct + 1)
 	
 	self:SendWeaponAnim( ACT_VM_PRIMARYATTACK )
 	
@@ -94,7 +126,7 @@ function SWEP:PrimaryAttack()
 		if target:IsPlayer() and target:IsAnimatronic() then
 			if target:Alive() and not target.tasered and not target.lobbyFreeze then
 				wait = 65
-				TaseAnimatronic(target)
+				TaseAnimatronic(target, owner)
 				stats.Add(owner, "tasered", 1)
 			end
 		end
@@ -129,11 +161,11 @@ function SWEP:PrimaryAttack()
 			dlight.brightness = 2
 			dlight.decay = 450
 			dlight.size = 256
-			dlight.dietime = CurTime() + 3
+			dlight.dietime = ct + 3
 		end
 	end
 	
-	self:SetNextPrimaryFire(CurTime() + wait)
+	self:SetNextPrimaryFire(ct + wait)
 end
 
 function SWEP:SecondaryAttack()
@@ -167,88 +199,79 @@ net.Receive("StunEffect_Shake", function()
     util.ScreenShake(ply:GetPos(), 15, 5, 5, 500)
 end)
 
-function TaseAnimatronic(ent)
-	local puppet = pills.getMappedEnt(ent)
+local data = {}
+function TaseAnimatronic(ply, taserer)
+	local ent = pills.getMappedEnt(ply)
 	
-	if !IsValid(puppet) then return end
+	if !IsValid(ent) then return end
 	
-	if hook.Run("FH_HandleTaserHit", ent, puppet) == false then return end
+	if hook.Run("FH_HandleTaserHit", ply, ent, taserer) == false then return end
 	
-	local formtbl = puppet.formTable
+	local formtbl = ent.formTable
 	local movespeed = formtbl.moveSpeed
 	
 	if !formtbl or !movespeed then return end
 	
 	if SERVER then
-		ent.tasered = true
-		ent:DropToFloor()
+		ply.tasered = true
+		ply:DropToFloor()
 		
-		if IsValid(puppet) then
-			local stunTimer = "TaserStun" .. ent:EntIndex()
-			if formtbl.name == "pill_springtrap" then
-				puppet:PillGesture('stun', 3, 1, 0, 0.3)
-				
-				ent:SetWalkSpeed(60)
-				ent:SetRunSpeed(60)
-				ent:SetSlowWalkSpeed(60)
+		if IsValid(ent) then
+			local stunTimer = "TaserStun" .. ply:EntIndex()
+			
+			data.timerName = stunTimer
+			data.taserer = taserer
+			
+			local taserHandler = ent:Func("taserStun", ply, ent, data)
+			
+			if not taserHandler ~= false then
+				ply:Freeze(true)
 				timer.Create(stunTimer, 5, 1, function()
-					if IsValid(ent) then
-						if IsValid(puppet) then
-							ent:SetRunSpeed(movespeed.run)
-							ent:SetWalkSpeed(movespeed.walk)
-							ent:SetSlowWalkSpeed(movespeed.walk)
-						end
-						ent.tasered = false
+					if IsValid(ply) then
+						ply:Freeze(false) 
+						ply.tasered = false
 					end
 				end)
-			else
-				ent:Freeze(true)
-				timer.Create(stunTimer, 5, 1, function()
-					if IsValid(ent) then
-						ent:Freeze(false) 
-						ent.tasered = false
-					end
-				end)
-				playVoiceline(killers.GetName(formtbl.name), 'tasered', ent, 0.05)
+				playVoiceline(killers.GetName(formtbl.name), 'tasered', ply, 0.05)
 				
-				if ent.jumpscaring then
-					local poorguy = ent.jumpscaring
+				if ply.jumpscaring then
+					local poorguy = ply.jumpscaring
 					
 					poorguy:Freeze(false)
 					poorguy:SetJumpscared(false)
 					
-					ent.jumpscaring = nil
+					ply.jumpscaring = nil
 				end
 				
 				if formtbl == "pill_endo02" then
-					endoRelease(ent)
+					endoRelease(ply)
 				end
 				
-				puppet:PillAnim("stun", true)
-				puppet:SetUseForceAngles(false)
-				timer.Remove("FH_JumpscareKill_" .. ent:EntIndex())
+				ent:PillAnim("stun", true)
+				ent:SetUseForceAngles(false)
+				timer.Remove("FH_JumpscareKill_" .. ply:EntIndex())
 			end
-			puppet:EmitSound('weapons/tasergun/active_stun.mp3')
+			ent:EmitSound('weapons/tasergun/active_stun.mp3')
 		end
 	
 		net.Start("StunEffect_Shake")
-		net.Send(ent)
+		net.Send(ply)
 	
-		ent:ScreenFade(SCREENFADE.IN, Color(255, 255, 255, 128), 2, 2)
+		ply:ScreenFade(SCREENFADE.IN, Color(255, 255, 255, 128), 2, 2)
 	end
 	
-	if !IsValid(puppet) then
-		puppet = ent
+	if !IsValid(ent) then
+		ent = ply
 	end
 	
 	local fx = EffectData()
-	fx:SetOrigin(ent:GetPos() + Vector(0, 0, 40))
-	fx:SetStart(ent:GetPos())
+	fx:SetOrigin(ply:GetPos() + Vector(0, 0, 40))
+	fx:SetStart(ply:GetPos())
 	fx:SetMagnitude(10)
-	fx:SetEntity(puppet)
+	fx:SetEntity(ent)
 	util.Effect("teslaHitBoxes", fx, true, true)
 	
-	hook.Run("SuccessTaserHit", ent, puppet)
+	hook.Run("SuccessTaserHit", ply, ent, taserer)
 end
 
 hook.Add( "PlayerShouldTakeDamage", "fh_tasered_cant_deal_damage", function( ply, attacker )

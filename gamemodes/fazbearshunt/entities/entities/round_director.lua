@@ -48,4 +48,12 @@ if SERVER then
 			director:TriggerOutput("OnTimerCutback")
 		end
 	end)
+
+	hook.Add("FH_LastManStanding", "round_director_outputs", function(killW)
+		local director = ents.FindByClass("round_director")[1]
+		
+		if IsValid(director) then
+			director:TriggerOutput("OnLastManStanding")
+		end
+	end)
 end

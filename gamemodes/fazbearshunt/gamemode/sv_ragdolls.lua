@@ -43,6 +43,7 @@ function meta:CreateRagdoll()
 	ent:SetColor(ply_col)
 	ent:SetMaterial(ply_mat)
 	ent:SetCreator(self)
+	ent:SetOwner(self)
 	for k, v in ipairs(self:GetBodyGroups()) do
 		ent:SetBodygroup( v.id, self:GetBodygroup(v.id) )
 	end
@@ -50,7 +51,7 @@ function meta:CreateRagdoll()
 	
 	local phys = ent:GetPhysicsObject()
 	if phys:IsValid() then
-		phys:SetMass(phys:GetMass())
+		phys:SetMass(12.775918006897)
 	end
 	
 	self.DeathRagdoll = ent
@@ -79,8 +80,6 @@ function meta:CreateRagdoll()
 	else
 		phys:SetVelocity(plyvel)
 	end
-
-	ent:SetOwner(self)
 	
 	if self:IsOnFire() then ent:Ignite(math.Rand(6, 8), 0) end
 	

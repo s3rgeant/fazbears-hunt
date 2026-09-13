@@ -38,6 +38,8 @@ SWEP.Spawnable= true
 SWEP.AdminSpawnable= true
 SWEP.AdminOnly = false
 
+SWEP.Gifted = true
+
 SWEP.ViewModelFOV = 60
 SWEP.ViewModel = "models/weapons/v_pumpshotgun.mdl"
 SWEP.WorldModel = "models/weapons/w_shotgun.mdl"
@@ -148,6 +150,19 @@ function SWEP:PrimaryAttack()
 	bullet.Damage = self.Primary.Damage
 	bullet.AmmoType = self.Primary.Ammo
 	
+	if CLIENT then
+		local light = DynamicLight(self:EntIndex())
+		if light then
+			light.pos = owner:EyePos() + owner:GetForward() * 100
+			light.r = 180
+			light.g = 120
+			light.b = 0
+			light.brightness = 2
+			light.Decay = 1000
+			light.Size = 150
+			light.DieTime = CurTime() + .2
+		end
+	end
 	
 	owner:SetAnimation( PLAYER_ATTACK1 )
 	owner:FireBullets( bullet )
@@ -353,7 +368,11 @@ if SERVER then
 					local damage = dmginfo:GetDamage()
 					
 					if ply.oldshotgunShots > 0 and damage >= 10 then
-						ply.SpeedSlowEnd = (ply.SpeedSlowEnd or CurTime() - CurTime()) + CurTime() + (damage / 35)
+						ply.SpeedSlowEnd = CurTime() + ((ply.SpeedSlowEnd or CurTime()) - CurTime()) + (damage / 35)
+						
+						if ply.SpeedSlowEnd > CurTime() + 6 then -- Как бы сильно не старались, анима кдшит максимум на 10 сек
+							ply.SpeedSlowEnd = CurTime() + 6
+						end
 						
 						net.Start("fh_oldshotgun_slowdown")
 						net.WriteFloat(ply.SpeedSlowEnd)
@@ -375,7 +394,19 @@ if SERVER then
 				end
 			end
 		end
-	end )
+	end)
+	
+	local PLAYER = FindMetaTable("Player")
+	
+	if PLAYER then
+		function PLAYER:SetSpeedSlowdown(duration)
+			self.SpeedSlowEnd = CurTime() + duration
+			
+			net.Start("fh_oldshotgun_slowdown")
+			net.WriteFloat(self.SpeedSlowEnd)
+			net.Send(self)
+		end
+	end
 else
 	net.Receive("fh_oldshotgun_slowdown", function()
 		local ply = LocalPlayer()

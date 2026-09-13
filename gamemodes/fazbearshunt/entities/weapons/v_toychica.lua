@@ -14,6 +14,9 @@ if CLIENT then
     end)
 end
 
+SWEP.HandleMinViewModel = true
+SWEP.CalcMinimalViewModelView = Vector(4,0,-6)
+
 SWEP.ViewModel = "models/ufmp/fnaf2/toys/vm/toychica.mdl"
 
 function SWEP:SetupAnimations()
@@ -26,8 +29,10 @@ if CLIENT then
     local crouchFactor = 0
 
     function SWEP:CalcViewModelView(ViewModel, OldEyePos, OldEyeAng, EyePos, EyeAng)
-        local ply = self.Owner
+        local ply = self:GetOwner()
+        local ent = ply:GetPillCostume()
         if not IsValid(ply) then return EyePos, EyeAng end
+        if not IsValid(ent) then return EyePos, EyeAng end
 		
         local target = (self:GetSequenceName(self:GetSequence()):match("hold") == "hold") and 1 or 0
         crouchFactor = Lerp(FrameTime() * 5, crouchFactor, target)
@@ -35,7 +40,7 @@ if CLIENT then
         local newPitch = Lerp(crouchFactor, EyeAng.p, 15)
         EyeAng.p = newPitch
 		
-		local pillAngleY = ply:GetPill():GetAngles().y
+		local pillAngleY = ent:GetAngles().y
 		
 		while EyeAng.y > 180 do
 			EyeAng.y = EyeAng.y - 360

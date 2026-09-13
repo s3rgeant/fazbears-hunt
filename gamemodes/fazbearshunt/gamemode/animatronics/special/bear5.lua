@@ -147,7 +147,7 @@ pills.clone("bear5_main", "pill_wfreddy2", {
 		["bip_EyeLid_1_L"] = {scale = Vector(0,0,0)},
 	},
 	
-	startFunction=function(ply,ent)
+	initialize=function(ply,ent)
 		chaseVoicelineChecker(ply, ent, "freddy")
 		cooldown.Set(ply, "death", 60 * 7) -- 6 минут раунда
 		timer.Simple(3, function()
@@ -155,7 +155,7 @@ pills.clone("bear5_main", "pill_wfreddy2", {
 		end)
 	end,
 	
-	onRemove=function(ply,ent)
+	restore=function(ply,ent)
 		if CLIENT then return end
 		
 		cooldown.Set(ply, "death", 0)
@@ -357,7 +357,7 @@ pills.register("fox4",{
 		end
     },
 	
-	onRemove=function(ent,formTable,ply)
+	onRemove=function(ply, ent)
 		if CLIENT then return end
 		net.Start("player_renderer_clear_e")
 		net.Send(ply)
@@ -552,7 +552,7 @@ local auraNoiseState = {}
 local function IsPillBear5(ent)
     if not IsValid(ent) then return false end
 
-    if ent:GetPillName() == "bear5_main" or ent:GetPillName():find("bear5", 1, true) then
+    if ent:GetPillName() == "bear5_main" then
         return true
     end
 

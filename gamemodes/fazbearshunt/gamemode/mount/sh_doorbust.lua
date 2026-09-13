@@ -7,74 +7,99 @@ CreateClientConVar("bust_viewpunch", 1, true, true, "Enable or disable bust view
 
 local BUST_SPEED = 600
 if SERVER then
-    util.AddNetworkString("BustEffect")
+	util.AddNetworkString("BustEffect")
 
-    local et1
-	
+	local et1
+
 	local bustedDoors = {}
 
-    local function PushPlayersFromDoor(door, buster)
+	local function PushPlayersFromDoor(door, buster)
 		local forceDir = buster:GetForward()
-        for _, ply in player.Iterator() do
-            if not IsValid(ply) or not ply:Alive() then continue end
-            local dist = ply:GetPos():Distance(door:GetPos())
-            if dist < 100 then
-                local dirToPlayer = (ply:GetPos() - door:GetPos()):GetNormalized()
-                if dirToPlayer:Dot(forceDir) > 0 then
-                    local physObj = ply:GetPhysicsObject()
-                    if IsValid(physObj) then
-                        ply:SetVelocity(dirToPlayer * (buster:IsAnimatronic() and 740 or 350))
-                    end
-                end
-            end
-        end
-    end
+		for _, ply in player.Iterator() do
+			if not IsValid(ply) or not ply:Alive() then continue end
+			local dist = ply:GetPos():Distance(door:GetPos())
+			if dist < 100 then
+				local dirToPlayer = (ply:GetPos() - door:GetPos()):GetNormalized()
+				if dirToPlayer:Dot(forceDir) > 0 then
+					local physObj = ply:GetPhysicsObject()
+					if IsValid(physObj) then
+						ply:SetVelocity(dirToPlayer * (buster:IsAnimatronic() and 740 or 350))
+					end
+				end
+			end
+		end
+	end
 
-    local function BustDoorTest(ply, tbl, fx)
-        local ent, surf = tbl[1], tbl[2]
-        if not IsValid(ent) then print("if you see this something went wrong with doorbusting") return end
-        if GetConVar("bust_doors"):GetBool() then
-            if ent:GetClass() == "prop_door_rotating" then
-                BustRotatingDoor(ply, ent, fx)
+	local function BustDoorTest(ply, tbl, fx)
+		local ent, surf = tbl[1], tbl[2]
+		if not IsValid(ent) then print("if you see this something went wrong with doorbusting") return end
+		if GetConVar("bust_doors"):GetBool() then
+			if ent:GetClass() == "prop_door_rotating" then
+				BustRotatingDoor(ply, ent, fx)
 				return true
-            elseif ent:GetClass() == "func_door_rotating" then
-                BustFuncDoor(ply, ent, fx)
+			elseif ent:GetClass() == "func_door_rotating" then
+				BustFuncDoor(ply, ent, fx)
 				return true
-            end
-        end
-        if GetConVar("bust_windows"):GetBool() and (string.find(surf, "glass") or string.find(surf, "default")) then
-            if ent:GetClass() == "func_breakable_surf" then
+			end
+		end
+		if GetConVar("bust_windows"):GetBool() and (string.find(surf, "glass") or string.find(surf, "default")) then
+			if ent:GetClass() == "func_breakable_surf" then
 				SuppressHostEvents( NULL )
-                ent:Fire("Shatter", "0.5 0.5 " .. ent:BoundingRadius())
-                BustEffects(ply, ent, false)
+				local hitPos = ply:GetEyeTrace().HitPos
+            
+				local localHit = ent:WorldToLocal(hitPos)
+				local mins = ent:OBBMins()
+				local maxs = ent:OBBMaxs()
+				local size = maxs - mins
+				
+				local x, y = 0.5, 0.5
+
+				if size.x <= size.y and size.x <= size.z then
+					x = (localHit.y - mins.y) / math.max(size.y, 1)
+					y = (localHit.z - mins.z) / math.max(size.z, 1)
+				elseif size.y <= size.x and size.y <= size.z then
+					x = (localHit.x - mins.x) / math.max(size.x, 1)
+					y = (localHit.z - mins.z) / math.max(size.z, 1)
+				else
+					x = (localHit.x - mins.x) / math.max(size.x, 1)
+					y = (localHit.y - mins.y) / math.max(size.y, 1)
+				end
+
+				x = math.Clamp(x, 0, 1)
+				y = math.Clamp(y, 0, 1)
+				
+				local shatterStr = string.format("%.3f %.3f %.1f", x, y, ent:BoundingRadius() * 0.5)
+				
+				ent:Fire("Shatter", shatterStr)
+				BustEffects(ply, ent, false)
 				return true
-            elseif !ent:IsPlayer() and ent:Health() > 0 and ent:Health() <= ent:GetMaxHealth() then
+			elseif !ent:IsPlayer() and ent:Health() > 0 and ent:Health() <= ent:GetMaxHealth() then
 				SuppressHostEvents( NULL )
-                ent:TakeDamage(10, ply, ent)
-                ent:EmitSound("Glass.Strain")
-                BustEffects(ply, ent, false)
+				ent:TakeDamage(10, ply, ent)
+				ent:EmitSound("Glass.Strain")
+				BustEffects(ply, ent, false)
 				return true
-            end
-        end
+			end
+		end
 		return false
-    end
+	end
 
 	local tr_t = {}
-    hook.Add("SetupMove", "DoorBustSetup", function(ply, mv, cmd)
-        local notSolid = ply:GetMoveType() == MOVETYPE_NOCLIP 
-            or ply:GetCollisionGroup() == COLLISION_GROUP_WORLD
-            or ply:GetCollisionGroup() == COLLISION_GROUP_DEBRIS
-
-        if not IsFirstTimePredicted() or not GetConVar("bust_enabled"):GetBool() or not ply:Alive() then return end
-
-        local vel = mv:GetVelocity()
+	hook.Add("SetupMove", "DoorBustSetup", function(ply, mv, cmd)
+		local notSolid = ply:GetMoveType() == MOVETYPE_NOCLIP 
+			or ply:GetCollisionGroup() == COLLISION_GROUP_WORLD
+			or ply:GetCollisionGroup() == COLLISION_GROUP_DEBRIS
+	
+		if not IsFirstTimePredicted() or not GetConVar("bust_enabled"):GetBool() or not ply:Alive() then return end
+	
+		local vel = mv:GetVelocity()
 		if (!ply:Crouching() or !ply:OnGround()) and (ply:IsSprinting() and vel:Length() > 50 or !ply:IsSprinting() and vel:Length() > 300) then
-
+	
 			local dir = vel:GetNormalized()
 			local pos = ply:GetPos() + Vector(0, 0, ply:GetStepSize() + 1)
 			local pos2 = ply:GetPos() + (ply:OBBMins() + ply:OBBMaxs())
 			local fwd, rt = dir, Vector(dir.y, -dir.x, dir.z)
-
+	
 			tr_t.start = pos2
 			tr_t.endpos = pos2 + fwd * 40
 			tr_t.filter = function(ent)
@@ -85,49 +110,56 @@ if SERVER then
 			local ent, ent2 = {et1.Entity, util.GetSurfacePropName(et1.SurfaceProps)}
 			tr_t.start = pos
 			et1 = util.TraceLine(tr_t)
-
+	
 			if et1.HitNonWorld and not notSolid then
 				if et1.Entity == ent[1] then
 					BustDoorTest(ply, ent, true)
 				end
 				if not IsValid(et1.Entity) or (string.find(ent[2], "glass") or string.find(ent[2], "default")) then return end
-
+	
 				local et2 = util.QuickTrace(pos - (rt * 16), fwd * 45, ply)
 				if not IsValid(et2.Entity) or et2.Entity == ent[1] then
 					et2 = util.QuickTrace(pos + (rt * 16), fwd * 45, ply)
 				end
 				if not IsValid(et2.Entity) or et2.Entity == ent[1] then return end
-
+	
 				ent2 = {et2.Entity, util.GetSurfacePropName(et2.SurfaceProps)}
 				if ent2 and ent2 ~= ent then
 					BustDoorTest(ply, ent2, false)
 				end
 			end
 		end
-    end)
+	end)
 
-    function BustRotatingDoor(ply, door, fx)
-        ply:SetName("Buster" .. ply:EntIndex())
-        local state = door:GetInternalVariable("m_eDoorState")
-        if state == 2 then return end
+	function BustRotatingDoor(ply, door, fx)
+		ply:SetName("Buster" .. ply:EntIndex())
+		local state = door:GetInternalVariable("m_eDoorState")
+		if state == 2 then return end
 		
 		if bustedDoors[door] then
 			if CurTime() < bustedDoors[door] then return end
 		end
-
-        local isLocked = door:GetInternalVariable("m_bLocked")
-        local oldDir = door:GetInternalVariable("opendir")
-        local oldSpeed = door:GetInternalVariable("speed")
-
-        if isLocked then return end
+	
+		local isLocked = door:GetInternalVariable("m_bLocked")
+		local oldDir = door:GetInternalVariable("opendir")
+		local oldSpeed = door:GetInternalVariable("speed")
+	
+		if isLocked then return end
 		
 		door:SetKeyValue("opendir", 0)
 		door:Fire("SetSpeed", BUST_SPEED, 0)
 		door:Fire("OpenAwayFrom", "Buster" .. ply:EntIndex(), 0)
 		door:Fire("Lock", "", 0)
 		
+		local oldColl = door:GetCollisionGroup()
+		
+		if not door:IsRestoringCollision() then
+			door:SetCollisionGroup(COLLISION_GROUP_PASSABLE_DOOR)
+			door:RepeatRestoreCollision(.2, oldColl, true)
+		end
+		
 		hook.Run("FuncDoorBust", ply, door)
-
+	
 		PushPlayersFromDoor(door, ply)
 		
 		timer.Simple(0.1, function()
@@ -135,7 +167,7 @@ if SERVER then
 				door:SetKeyValue("opendir", oldDir)
 			end
 		end)
-
+	
 		timer.Simple(0.3, function()
 			if IsValid(door) then
 				door:Fire("SetSpeed", oldSpeed, 0)
@@ -144,22 +176,21 @@ if SERVER then
 		end)
 		
 		bustedDoors[door] = CurTime() + engine.TickInterval()
+	
+		if not fx then return end
+		BustEffects(ply, door, true)
+	end
 
-        if not fx then return end
-        BustEffects(ply, door, true)
-    end
-
-    local function BustFuncRotating(ply, door)
+	local function BustFuncRotating(ply, door)
 		if bustedDoors[door] then
 			if CurTime() < bustedDoors[door] then return end
 		end
 		
-		--PrintTable(door:GetKeyValues())
-        door:SetSaveValue("m_hactivator", ply)
-        door:Fire("SetSpeed", 500, 0)
-        door:Fire("Open", "", 0)
+		door:SetSaveValue("m_hActivator", ply) -- НЕ РАБОТАЕТ??
+		door:Fire("SetSpeed", 500, 0)
+		door:Fire("Use", "", 0, ply, ply)
 		door:Fire("Lock", "", 0)
-        PushPlayersFromDoor(door, ply)
+		PushPlayersFromDoor(door, ply)
 		
 		bustedDoors[door] = CurTime() + engine.TickInterval()
     end
@@ -231,8 +262,8 @@ if SERVER then
         if not tobool(ply:GetInfoNum("bust_viewpunch", 0)) then return end
 
         local isLeftBust = tobool(math.random(0, 1))
-        local bustYaw, bustRoll = isLeftBust and 10 or -10, isLeftBust and -10 or 10
-        ply:ViewPunch(Angle(10, bustYaw, bustRoll))
+        local bustYaw, bustRoll = isLeftBust and 5 or -5, isLeftBust and -5 or 5
+        ply:ViewPunch(Angle(5, bustYaw, bustRoll))
     end
 	
 	local TrackedEnts = {

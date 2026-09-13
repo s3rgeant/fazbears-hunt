@@ -272,19 +272,15 @@ if SERVER then
             return
         end
 
-        local oldvel
-
-        if IsValid(old) and old.formTable.type == "phys" then
-            local phys = old:GetPhysicsObject()
-            oldvel = IsValid(phys) and phys:GetVelocity() or Vector(0, 0, 0)
-        else
-            oldvel = ply:GetVelocity()
-        end
+        local oldvel = ply:GetVelocity()
 
         --Remove old AFTER we had a chance to set the new
         if IsValid(old) then
 			if old.formTable.onRemove then
-				old.formTable.onRemove(old, old.formTable, ply)
+				old.formTable.onRemove(ply, old)
+			end
+			if old.formTable.restore then
+				old.formTable.restore(ply, old)
 			end
             old:Remove()
         end
@@ -297,17 +293,11 @@ if SERVER then
 		e:Spawn()
 		e:Activate()
 		
+		mapEnt(ply, e)
+		
 		ply:SetTeam(TEAM_PILLS)
 
         hook.Run("PillServerApply", ply, e.formTable.name)
-
-		if t.type == "phys" then
-			local phys = e:GetPhysicsObject()
-
-			if IsValid(phys) then
-				phys:SetVelocity(oldvel)
-			end
-		end
 
 		--end
 		if t.type ~= "ply" then
@@ -380,7 +370,9 @@ function restore(ply, breakout)
 				if wasCrouching then
 					ply:ConCommand("+duck")
 					timer.Simple(0.1, function()
-						ply:ConCommand("-duck")
+						if IsValid(ply) then
+							ply:ConCommand("-duck")
+						end
 					end)
 				end
             end
@@ -519,6 +511,8 @@ if SERVER then
 			ply._wereJumpingPill = nil
 			ply._jumpPosPill = nil
 			
+			hook.Run("OnPillHitGround", ply, ent, iW, oF, speed)
+			
 			if ent.formTable.noFallDamage then return true end
 		end
 	end)
@@ -562,7 +556,6 @@ if SERVER then
     hook.Add("PlayerSilentDeath", "pk_pill_death", function(ply)
         if hasMappedEnt(ply) then
             if SERVER then
-				ply:SuppressRagdollSpawn()
                 getMappedEnt(ply):PillDie()
             end
         end
@@ -622,16 +615,31 @@ else -- CLIENT HOOKS
 	hook.Add("PillApply", "no_selection", function(ply)
 		local myself = LocalPlayer()
 		
-		if ply == myself then hook.Add("HUDShouldDraw", "pk_pill_noselection", noSelection) end
+		if ply == myself then 
+			hook.Add("HUDShouldDraw", "pk_pill_noselection", noSelection) 
+			hook.Add("HandleInventoryScrolling", "pk_pill_noselection", function() return false end) 
+		end
 	end)
 	hook.Add("PillRestore", "no_selection", function(ply)
 		local myself = LocalPlayer()
 		
-		if ply == myself then hook.Remove("HUDShouldDraw", "pk_pill_noselection") end
+		if ply == myself then 
+			hook.Remove("HUDShouldDraw", "pk_pill_noselection") 
+			hook.Remove("HandleInventoryScrolling", "pk_pill_noselection") 
+		end
 	end)
 end
 
 -- Shared hooks
+hook.Add("Move", "pk_pill_movemod", function(ply, mv)
+    local ent = getMappedEnt(ply)
+
+    if IsValid(ent) then
+        if ent.formTable.move then
+            ent.formTable.move(ply, ent, mv)
+        end
+    end
+end)
 hook.Add("SetupMove", "pk_pill_movemod", function(ply, mv, cmd)
     local ent = getMappedEnt(ply)
 

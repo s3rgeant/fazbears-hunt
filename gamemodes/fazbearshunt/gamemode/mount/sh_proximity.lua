@@ -50,6 +50,7 @@ if SERVER then
 		ply.fh_deaf = nil
 	end)
 	
+	hook.Remove( "PlayerCanHearPlayersVoice", "EPVC Maximum Voice Range")
 	hook.Add("PlayerCanHearPlayersVoice", "fh_proximity_sv", function(listener, talker)
 		if not IsValid(listener) or not IsValid(talker) then return false, false end
 		
@@ -169,6 +170,7 @@ else
 			and !bothInSameBlockedTeam
 	end
 	
+	timer.Remove("Update EPVC")
 	if not timer.Exists("FH_UpdateVoiceChat") then
 		timer.Create("FH_UpdateVoiceChat", 0.25, 0, function()
 			local listener = LocalPlayer()
@@ -183,10 +185,14 @@ else
 		end)
 	end
 	
+	hook.Remove("PlayerEndVoice", "EPVC ClientVoiceFilterEnd")
 	hook.Add("PlayerEndVoice", "ClientVoiceFilterEnd", function(ply)
-		ply:SetVoiceVolumeScale(1)
+		if IsValid(ply) then
+			ply:SetVoiceVolumeScale(1)
+		end
 	end)
 	
+	hook.Remove("PlayerStartVoice", "EPVC ClientVoiceFilterStart")
 	hook.Add("PlayerStartVoice", "ClientVoiceFilterStart", function(ply)
 		if IsValid(ply) and (ply:Team() == TEAM_SPECTATOR or ply:Team() == 2701 and LocalPlayer():Team() == 2701) then
 			ply:SetVoiceVolumeScale(1)

@@ -47,6 +47,10 @@ function SWEP:PrimaryAttack()
 			return
 		end
 		
+		if HitEnt.DragHandle then
+			if HitEnt:DragHandle(HitEnt, self, ply) == false then return end
+		end
+		
 		if HitEnt:GetVelocity():Length2D() > 100 then
 			return
 		end
@@ -89,18 +93,21 @@ function SWEP:PrimaryAttack()
 			return
 		end
 		
+		if HitEnt.DragFunc then
+			HitEnt.DragFunc(HitEnt, self, Phys, ply, Pos, Aim)
+			return
+		end
+		
 		local Pos2 = Pos + Aim * self.Range * self.Drag.Fraction
 		local OffPos = HitEnt:LocalToWorld(self.Drag.OffPos)
 		local Dif = Pos2 - OffPos
-		
 
 		local mass = Phys:GetMass()
 		if HitEnt:IsRagdoll() then mass = 10 end
 		
 		local forceMult = math.max(10, 500 - mass)
-		
 
-		local Nom = (Dif:GetNormal() * math.min(1, Dif:Length() / 100) * forceMult - Phys:GetVelocity()) * mass
+		local Nom = (Dif:GetNormalized() * math.min(1, Dif:Length() / 100) * forceMult - Phys:GetVelocity()) * mass
 		Phys:ApplyForceOffset(Nom, OffPos)
 		Phys:AddAngleVelocity(-Phys:GetAngleVelocity() / 4)
 	end
@@ -193,6 +200,8 @@ if CLIENT then
 			endpos = Pos +Aim *self.Range,
 			filter = ply,
 		}
+		
+		local drawIt
 
 		local HitEnt = Tr.Entity
 		if IsValid( HitEnt ) and HitEnt:GetMoveType() == MOVETYPE_VPHYSICS and
@@ -201,17 +210,21 @@ if CLIENT then
 			not IsValid( HitEnt:GetParent() ) and
 			not HitEnt:GetNWBool( "NoDrag", false ) then
 
-			self.Time = math.min( 1, self.Time +2 *FrameTime() )
-		else
-			self.Time = math.max( 0, self.Time -2 *FrameTime() )
+			drawIt = true
 		end
+		
+		if HitEnt.DragHandle then
+			if HitEnt:DragHandle(HitEnt, self, ply) == false then drawIt = nil end
+		end
+		
+		self.Time = Lerp(FrameTime()*16, self.Time, drawIt and 1 or 0)
 
 		if self.Time > 0 then
 			Col.a = MainCol.a *self.Time
 
 			draw.SimpleText(
-				"Drag",
-				"DermaLarge",
+				"#fazhunt.drag",
+				"fh_hud_ability_title",
 				x,
 				y,
 				Col,

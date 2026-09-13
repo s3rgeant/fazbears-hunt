@@ -14,14 +14,17 @@ if CLIENT then
     end)
 end
 
-SWEP.ViewModel = "models/speps/vm/endo02.mdl"
+SWEP.ViewModel = "models/fh/animatronics/thudner_mountroid/vm/endo02.mdl"
 SWEP.m_WeaponDeploySpeed = 1
 SWEP.LandHold = 0.2
+
+SWEP.HandleMinViewModel = true
+SWEP.CalcMinimalViewModelView = Vector(4,0,-6)
 
 function SWEP:SetupAnimations()
 	self:AddAnimation("scare")
 	self:AddAnimation("attack")
-	self:AddAnimation("deploy")
+	self:AddAnimation("holster")
 	self:AddAnimation("draw")
 end
 

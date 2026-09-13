@@ -1,0 +1,18 @@
+"VertexlitGeneric"
+{
+$basetexture "models/ufmp/fnaf2/WitheredChicaTheChicken/nails"
+$bumpmap "models/ufmp/fnaf2/witheredfreddyfazbear/bump"
+$color 0.89
+$color2 "[1 1 1]"
+$nodecal 1
+$model 1
+$phong "1" 
+$phongboost "2"
+$phongexponent "7"
+$ambientocclusion "0"
+$phongfresnelranges "[0.05 0.5 1]"
+$phongalbedotint "1"
+$halflambert 1
+$diffuseexp 1.5
+$nocull 1
+}

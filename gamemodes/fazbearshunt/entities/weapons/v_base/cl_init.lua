@@ -163,6 +163,8 @@ function SWEP:FireAnimationEvent( pos, ang, event, options )
 
 end
 
+SWEP.HandleMinViewModel = false
+
 function SWEP:DoDrawCrosshair(x, y)
 	if !self.GetLastAttack then return end
 
@@ -185,4 +187,9 @@ function SWEP:DoDrawCrosshair(x, y)
 		surface.SetDrawColor(255,255,255)
 		surface.DrawRect(x - (max_width/2) * fill, y + 8, max_width * fill, 4)
 	end
+end
+
+function SWEP:Change(this, to)
+	if not self[this] then return end
+	self[this] = to
 end

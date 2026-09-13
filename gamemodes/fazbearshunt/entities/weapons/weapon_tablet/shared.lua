@@ -1,7 +1,7 @@
 local game = game
 local math = math
 
-SWEP.PrintName		= "CCTV Tablet"
+SWEP.PrintName		= "#weapon_tablet"
 
 SWEP.ViewModel		= "models/weapons/vondaram/c_tablet.mdl"
 SWEP.WorldModel		= "models/weapons/vondaram/w_tablet.mdl"

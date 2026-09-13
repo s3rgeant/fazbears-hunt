@@ -1,7 +1,7 @@
 "VertexlitGeneric"
 {
-	"$basetexture" "models\tetTris\FNaF\SD\ClownSpringtrap\Weapon_D"
-	"$normalmap" "models\tetTris\FNaF\SD\ClownSpringtrap\Weapon_N"
+	"$basetexture" "models\tetTris\FNaF\SD\ClownSpringtrap\Weapon_D2"
+	"$normalmap" "models\tetTris\FNaF\SD\ClownSpringtrap\Weapon_N2"
 
 	"$maskmap2" 	"models\tetTris\FNaF\SD\ClownSpringtrap\Weapon_CH"
 	"$phongexponenttexture" "models\tetTris\FNaF\SD\ClownSpringtrap\Weapon_Exponent"

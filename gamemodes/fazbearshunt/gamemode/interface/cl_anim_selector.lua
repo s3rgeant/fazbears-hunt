@@ -43,7 +43,7 @@ local anim_box_stolen = Material("vgui/selector/anim_box_stolen.png")
 local side_window = Material("vgui/selector/side_window.png")
 local select_button = Material("vgui/selector/select_button.png")
 
-local animatronics 		= {}
+local availableKillers 		= {}
 local selector_panel	= false
 local model_viewer 		= false
 local description_panel = false
@@ -54,8 +54,8 @@ local grid 				= false
 local curSelected = ""
 local animTooltipText = ""
 
-surface.CreateFont("animNameFont", { font = "Share Tech Mono Regular", size = 32, extended = true, antialias = true, shadow = true })
-surface.CreateFont("animDescriptionFont", { font = "Share Tech Mono Regular", size = 22, extended = true, antialias = true, shadow = true })
+surface.CreateFont("animNameFont", { font = "Share Tech Mono", size = 32, extended = true, antialias = true, shadow = true })
+surface.CreateFont("animDescriptionFont", { font = "Share Tech Mono", size = 22, extended = true, antialias = true, shadow = true })
 
 selector = selector or {}
 
@@ -94,7 +94,7 @@ end
 hook.Run("FH_SelectorInit")
 
 function draw_killer_selector()
-    if not istable(animatronics) then return end
+    if not istable(availableKillers) then return end
 
     if IsValid(fh_admin_panel) then 
         fh_admin_panel:Remove()
@@ -150,13 +150,13 @@ function draw_killer_selector()
     grid:Dock(TOP)
     grid:DockMargin(0, 0, 0, 0)
 
-    local rowCount = math.ceil(#animatronics / 3)
+    local rowCount = math.ceil(#availableKillers / 3)
     grid:SetTall(rowCount * 150)
 	
 	local killerData = killers.getAll()
 	local entiretyOfPills = pills.getAllPills()
 
-    for i, animName in ipairs(animatronics) do
+    for i, animName in ipairs(availableKillers) do
 		local animImage = nil
 		local storedAvatar = killers.GetAvatar(animName)
 		if storedAvatar then
@@ -170,7 +170,7 @@ function draw_killer_selector()
 
 		box.DoClick = function()
 			
-			local key = "fazhunt.animatronics.description." .. killerData[box.name].name
+			local key = "fazhunt.availableKillers.description." .. killerData[box.name].name
 			local fullname = killerData[box.name].fullname
 			local localized = language.GetPhrase(key)
 			
@@ -503,7 +503,7 @@ local function closeSelector()
 end
 
 net.Receive("fh_let_killers_choose", function()
-    animatronics = net.ReadTable()
+    availableKillers = net.ReadTable()
     draw_killer_selector()
 end)
 

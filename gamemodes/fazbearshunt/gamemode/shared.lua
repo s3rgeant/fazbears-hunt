@@ -19,6 +19,7 @@ DEVELOPER_MODE = true
 
 TEAM_SURVIVOR = 2700
 TEAM_PILLS = 2701
+TEAM_SECRET_PILLS = 27
 TEAM_ADMIN = 2702
 TEAM_EDITOR = 2703
 
@@ -104,70 +105,71 @@ local killerData = killerData or {
 }
 
 killerAbilities = {
-    freddy = {
-        { name = 'kill', key = 'LMB', hidden = true },
-        { name = 'stalk', key = 'RMB' },
-        { name = 'highlight', key = 'R' }
-    },
-    bonnie = {
-        { name = 'kill', key = 'LMB', hidden = true },
-        { name = 'yoursmine', key = 'RMB' },
-        { name = 'highlight', key = 'R' }
-    },
-    chica = {
-        { name = 'kill', key = 'LMB', hidden = true },
-        { name = 'mine', key = 'RMB' },
-        { name = 'highlight', key = 'R' }
-    },
-    foxy = {
-        { name = 'kill', key = 'LMB', hidden = true },
-		{ name = 'charge', key = 'RMB', tokens = 5,
+	freddy = {
+		[1] = { name = 'kill', key = 'LMB', hidden = true },
+		[2] = { name = 'blindrage', key = 'RMB' },
+		[3] = { name = 'highlight', key = 'R' }
+	},
+	bonnie = {
+		[1] = { name = 'kill', key = 'LMB', hidden = true },
+		[2] = { name = 'yoursmine', key = 'RMB' },
+		[3] = { name = 'highlight', key = 'R' }
+	},
+	chica = {
+		[1] = { name = 'kill', key = 'LMB', hidden = true },
+		[2] = { name = 'mine', key = 'RMB' },
+		[3] = { name = 'highlight', key = 'R' }
+	},
+	foxy = {
+		[1] = { name = 'kill', key = 'LMB', hidden = true },
+		[2] = { name = 'charge', key = 'RMB', tokens = 5,
 		condition = function()
-            return foxyChargeCondition()
-        end},
-        { name = 'highlight', key = 'R' }
-    },
-    sfreddy = {
-        { name = 'kill', key = 'LMB', hidden = true },
-        { name = 'submerge', key = 'RMB', condition = function()
-            return isNotStuck()
-        end },
-        { name = 'highlight', key = 'R' }
-    },
-    endo = {
-        { name = 'kill', key = 'LMB', hidden = true },
-        { name = 'grab', key = 'RMB' },
-        { name = 'highlight', key = 'R' }
-    },
-    clown = {
-        { name = 'attack', key = 'LMB' },
-        { name = 'highlight', key = 'R' }
-    },
-    plushtrap = {
-        { name = 'attack', key = 'LMB' },
-        { name = 'lifetime', hidden = true }
-    },
-    springtrap = {
-        { name = 'attack', key = 'LMB' },
-        { name = 'summon', key = 'RMB' },
-        { name = 'highlight', key = 'R' },
-    },
-    gfreddy = {
-        { name = 'submerge', key = 'RMB' },
-        { name = 'choose_target', key = 'R' }
-    },
-    mangle = {
-        { name = 'kill', key = 'LMB', hidden = true },
-        { name = 'lunge', key = 'RMB', condition = function()
-            return CanMangleLunge()
-        end },
-        { name = 'highlight', key = 'R'}
-    },
-    tchica = {
-        { name = 'kill', key = 'LMB', hidden = true },
-        { name = 'hold', key = 'RMB' },
-        { name = 'highlight', key = 'R' }
-    },
+			return foxyChargeCondition()
+		end},
+		[3] = { name = 'highlight', key = 'R' }
+	},
+	sfreddy = {
+		[1] = { name = 'kill', key = 'LMB', hidden = true },
+		[2] = { name = 'submerge', key = 'RMB', condition = function()
+			return isNotStuck()
+		end },
+		[3] = { name = 'highlight', key = 'R' }
+	},
+	endo = {
+		[1] = { name = 'kill', key = 'LMB', hidden = true },
+		[2] = { name = 'pretense', key = 'RMB' },
+		[3] = { name = 'highlight', key = 'R' }
+	},
+	clown = {
+		[1] = { name = 'attack', key = 'LMB' },
+		[2] = { name = 'highlight', key = 'R' }
+	},
+	plushtrap = {
+		[1] = { name = 'attack', key = 'LMB' },
+		[2] = { name = 'lifetime', hidden = true },
+		[2] = { name = 'hitch', key = "RMB" }
+	},
+	springtrap = {
+		[1] = { name = 'attack', key = 'LMB' },
+		[2] = { name = 'summon', key = 'RMB' },
+		[3] = { name = 'highlight', key = 'R' },
+	},
+	gfreddy = {
+		[1] = { name = 'submerge', key = 'RMB' },
+		[2] = { name = 'choose_target', key = 'R' }
+	},
+	mangle = {
+		[1] = { name = 'kill', key = 'LMB', hidden = true },
+		[2] = { name = 'lunge', key = 'RMB', condition = function()
+			return CanMangleLunge()
+		end },
+		[3] = { name = 'highlight', key = 'R'}
+	},
+	tchica = {
+		[1] = { name = 'kill', key = 'LMB', hidden = true },
+		[2] = { name = 'hold', key = 'RMB' },
+		[3] = { name = 'highlight', key = 'R' }
+	},
 }
 
 killers = killers or {}
@@ -386,7 +388,7 @@ pill_RequiresNavmesh("pill_wgfreddy2")
 
 pill_SetDamageAttack( {"pill_springtrap", "pill_plushtrap", "pill_clown"} )
 
-pill_makeSecondary( {"pill_sfreddy2", "pill_wgfreddy2", "pill_toychica", "pill_endo02"} )
+pill_makeSecondary( {"pill_sfreddy2", "pill_wgfreddy2", "pill_toychica"} )
 
 function save_dontPrefer(net)
 	net = net or false
@@ -520,15 +522,13 @@ utf8.sub = function(str, startChar, endChar)
 end
 
 hook.Add("ShouldCollide", "fh_collisions", function(ent1, ent2)
-    local cg1, cg2 = ent1:GetCollisionGroup(), ent2:GetCollisionGroup()
-    local class1, class2 = ent1:GetClass(), ent2:GetClass()
-    local isPlayer1, isPlayer2 = ent1:IsPlayer(), ent2:IsPlayer()
-	
     local snca = ent1.ShouldNotCollide
     if snca and snca( ent1, ent2 ) then return ( false ) end
 
     local sncb = ent2.ShouldNotCollide
     if sncb and sncb( ent2, ent1 ) then return ( false ) end
+	
+    local isPlayer1, isPlayer2 = ent1:IsPlayer(), ent2:IsPlayer()
 	
 	if CLIENT then
 		if isPlayer1 and ent1:GetNW2Entity("HeldEnt") == ent2 then
@@ -537,6 +537,9 @@ hook.Add("ShouldCollide", "fh_collisions", function(ent1, ent2)
 			return false
 		end
 	end
+	
+    local cg1, cg2 = ent1:GetCollisionGroup(), ent2:GetCollisionGroup()
+    local class1, class2 = ent1:GetClass(), ent2:GetClass()
 
     -- Shadow + Golden Freddy
     if cg1 == COLLISION_GROUP_DEBRIS and isPlayer1 then

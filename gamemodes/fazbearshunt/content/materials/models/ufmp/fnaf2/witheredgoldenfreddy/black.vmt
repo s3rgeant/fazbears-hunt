@@ -1,0 +1,24 @@
+"VertexlitGeneric"
+{
+$basetexture  "models\ufmp\Black"
+$bumpmap "models\ufmp\FNaF2\Shared\HatBump"
+
+$surfaceprop                              "plastic"
+
+
+$phong                                       "1"
+$phongexponent                        "50"
+$phongtint                                  "[1 1 1]"
+$ambientocclusion "0"
+$color2 "[0 0 0]"
+$rimlight "1"
+$rimlightboost "0.1"
+$rimlightexponent "1"
+$phongboost	                   "0.5"
+$phongalbedotint                        "1"
+$phongfresnelranges                  "[0.5 0.5 0.5]"
+$halflambert                                 "0"
+$diffuseexp                                  "1.5"
+$nocull                                         "1"
+
+}

@@ -1,0 +1,28 @@
+"VertexlitGeneric"
+{
+$basetexture  "models\ufmp\fnaf2\shared\endoteethspec2"
+$bumpmap "models\ufmp\Flat"
+$phongexponenttexture "models\ufmp\fnaf2\shared\endoteethspec"
+$phongwarptexture "models\ufmp\white"
+
+$surfaceprop                              "plastic"
+
+
+$phong                                       "1"
+$phongexponent                        "1"
+$phongtint                                  "[1 1 1]"
+$rimlight "1"
+$rimlightboost "0.1"
+$rimlightexponent "1"
+$ambientocclusion "0"
+$color2 "[0 0 0]"
+$basetexturetransform "[0.95 0 0 0 0 0.95 0 0 0 0 1 0 0 0 0 1]"
+$phongboost	                   "1"
+$basemapluminancephongmask "1"
+$phongalbedotint                        "1"
+$phongfresnelranges                  "[0.05 0.5 1]"
+$halflambert                                 "0"
+$diffuseexp                                  "1"
+$nocull                                         "1"
+
+}

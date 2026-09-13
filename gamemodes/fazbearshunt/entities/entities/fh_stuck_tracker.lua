@@ -104,6 +104,10 @@ function ENT:CheckTeleportTriggers()
 	local position = owner:WorldSpaceCenter()
 
 	self:SetPos(position)
+	
+	if self.TeleportCond and self.TeleportCond(owner, self) == false then
+		return
+	end
 
 	for _, trigger in ipairs(ents.FindByClass("trigger_teleport")) do
 		if not IsValid(trigger) then continue end

@@ -17,6 +17,9 @@ end
 SWEP.ViewModel = "models/fh/animatronics/vm/bear5.mdl"
 SWEP.Secondary.Automatic = true
 
+SWEP.HandleMinViewModel = true
+SWEP.CalcMinimalViewModelView = Vector(8,0,-12)
+
 SWEP.HitDelay = 0.1
 SWEP.CritHitDelay = 0.4
 SWEP.SwayScale = 0.5
@@ -140,16 +143,12 @@ function SWEP:DealDamage()
     end
 
     if target:IsPlayer() and target:IsSurvivor() then
-        local edata = EffectData()
-        edata:SetOrigin(tr.HitPos)
-        edata:SetEntity(target)
-        util.Effect("BloodImpact", edata, true, true)
 
 		local edata = EffectData()
-		edata:SetOrigin(target:WorldSpaceCenter())
+		edata:SetOrigin(target:NearestPoint(tr.HitPos))
 		edata:SetNormal(ply:GetAngles():Forward())
 		edata:SetMagnitude(3)
-		edata:SetScale(10)
+		edata:SetScale(7)
 		edata:SetColor(0)
 		edata:SetFlags(3)
 		util.Effect('bloodspray', edata, true, true)
@@ -161,9 +160,35 @@ function SWEP:DealDamage()
     end
 
     local class = target:GetClass()
-    if class == "func_breakable" or class == "func_breakable_surf" then
-        target:Fire("Shatter", "0", 0)
-    end
+	if class == "func_breakable_surf" then
+		local localHit = target:WorldToLocal(tr.HitPos)
+		
+		local mins = target:OBBMins()
+		local maxs = target:OBBMaxs()
+		local size = maxs - mins
+		
+		local x, y = 0.5, 0.5
+
+		if size.x <= size.y and size.x <= size.z then
+			x = (localHit.y - mins.y) / math.max(size.y, 1)
+			y = (localHit.z - mins.z) / math.max(size.z, 1)
+		elseif size.y <= size.x and size.y <= size.z then
+			x = (localHit.x - mins.x) / math.max(size.x, 1)
+			y = (localHit.z - mins.z) / math.max(size.z, 1)
+		else
+			x = (localHit.x - mins.x) / math.max(size.x, 1)
+			y = (localHit.y - mins.y) / math.max(size.y, 1)
+		end
+
+		x = math.Clamp(x, 0, 1)
+		y = math.Clamp(y, 0, 1)
+		
+		local shatterStr = string.format("[%.2f %.2f %d]", x, y, 14)
+		
+		target:Fire("Shatter", shatterStr, 0, ply)
+	elseif class == "func_breakable" then
+		target:Fire("Break", "", 0, ply)
+	end
 
     if target:GetMoveType() == MOVETYPE_VPHYSICS then
         local owner = target:GetOwner()

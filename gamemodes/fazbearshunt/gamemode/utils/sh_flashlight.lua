@@ -19,22 +19,20 @@ if CLIENT then
 	local Flashlights = Flashlights or {}
 	local myself
 
-	hook.Add("Think", "fh_fp_flashlight", function()
+	hook.Add("PreDrawOpaqueRenderables", "fh_fp_flashlight", function()
 		myself = myself or LocalPlayer()
 		if not IsValid(myself) then return end
 
 		local enabled = myself:GetNW2Bool("FH_Flashlight", false)
-		
-		--local isFirstPerson = myself:ShouldDrawLocalPlayer() == false
 
 		if enabled then
 			if not Flashlights[myself] then
 				local fl = ProjectedTexture()
 				fl:SetTexture("effects/flashlight001")
-				fl:SetFOV(70)
-				fl:SetFarZ(900)
-				fl:SetNearZ(8)
-				fl:SetBrightness(2)
+				fl:SetFOV(60)
+				fl:SetFarZ(770)
+				fl:SetNearZ(2)
+				fl:SetBrightness(1)
 				fl:SetEnableShadows(false)
 				Flashlights[myself] = fl
 			end
@@ -51,9 +49,7 @@ if CLIENT then
 		end
 	end)
 
-	local coneMat   = Material("effects/vol_light001")
 	local lampMat   = Material("sprites/light_ignorez")
-
 	local PixVis_ply = {}
 	hook.Add("PostPlayerDraw", "FH_ThirdPersonFlashlight_SoftCone", function(ply)
 		if ply == LocalPlayer() and not ply:ShouldDrawLocalPlayer() then return end
