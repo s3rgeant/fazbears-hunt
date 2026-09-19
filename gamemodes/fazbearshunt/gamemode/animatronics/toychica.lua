@@ -19,9 +19,9 @@ sound.Add({
 	channel = 		CHAN_STATIC,
 	level = 		90,
 	volume = 		1.0,
-	sound = 			{"toychica/toy_step1.mp3"
-						,"toychica/toy_step2.mp3"
-						,"toychica/toy_step3.mp3"}
+	sound = 			{"footsteps/toy_step1.mp3"
+						,"footsteps/toy_step2.mp3"
+						,"footsteps/toy_step3.mp3"}
 })
 
 local dr_alpha = 0
@@ -911,26 +911,26 @@ if CLIENT then
 	terror_radius.addTheme("pill_toychica", "default")
 	
 	local KindaObsessor = false
-	hook.Add("FH_HandleKillerTerrorRadius", "toychica_handle", function(killer, theme)
-		if IsValid(killer:GetPill()) and killer:GetPill():GetPillName() == "pill_toychica" then
+	hook.Add("FH_HandleKillerTerrorRadius", "toychica_handle", function(myself, killer, theme, ent)
+		if IsValid(ent) and ent:GetPillName() == "pill_toychica" then
 			if !KindaObsessor then
 				return false
 			end
 		end
 	end)
+	
 	local SecondTierObsessor = false
-	hook.Add("FH_HandleKillerTerrorLayers", "toychica_handle", function(killer, theme, layer)
-		if IsValid(killer:GetPill()) and killer:GetPill():GetPillName() == "pill_toychica" then
+	hook.Add("FH_HandleKillerTerrorLayers", "toychica_handle", function(myself, killer, theme, layer, ent)
+		if IsValid(ent) and ent:GetPillName() == "pill_toychica" then
 			if !SecondTierObsessor and KindaObsessor and (layer == "first_layer" or layer == "second_layer") then
 				return layer, true
 			end
 		end
 	end)
 	
-	hook.Add("FH_HandleMineTerrorRadius", "toychica_handle", function(ply, theme)
-		local killer = LocalPlayer()
-		if IsValid(killer:GetPill()) and killer:GetPill():GetPillName() == "pill_toychica" then
-			if !killer:IsSprinting() then
+	hook.Add("FH_HandleMineTerrorRadius", "toychica_handle", function(me, ply, theme, ent)
+		if IsValid(ent) and ent:GetPillName() == "pill_toychica" then
+			if !me:IsSprinting() then
 				return false
 			end
 		end

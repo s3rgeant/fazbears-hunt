@@ -16,8 +16,6 @@ local model_prefix = IsHalloween() and "phantom" or "old"
 
 if SERVER then
 	util.PrecacheModel("models/speps/pill/" .. model_prefix .. "foxy.mdl")
-	
-	util.AddNetworkString("fh_foxycharge_sync")
 end
 
 pills.register("pill_wfoxy2",{
@@ -180,7 +178,37 @@ pills.register("pill_wfoxy2",{
 	
 	jump=function(ply,ent)
 		ent:PillSound("jump",false)
-	end
+	end,
+	
+	taserStun = function(ply, ent)
+		if ply:GetNWBool("blightRushing") then
+			if ply.blightTimeoutTimer then
+				timer.Remove(ply.blightTimeoutTimer)
+			end
+			ply:SetNWBool("blightRushing", false)
+			ply:SetNWBool("isBlightRushing", false)
+			ply:SetNWBool("isBlightBouncing", false)
+			
+			if !timer.Exists("receiving_tokens" .. ply:EntIndex()) then
+				receiveTokensBack(ply)
+			end
+		end
+	end,
+	
+	jammerStun = function(ply, ent)
+		if ply:GetNWBool("blightRushing") then
+			if ply.blightTimeoutTimer then
+				timer.Remove(ply.blightTimeoutTimer)
+			end
+			ply:SetNWBool("blightRushing", false)
+			ply:SetNWBool("isBlightRushing", false)
+			ply:SetNWBool("isBlightBouncing", false)
+			
+			if !timer.Exists("receiving_tokens" .. ply:EntIndex()) then
+				receiveTokensBack(ply)
+			end
+		end
+	end,
 })
 
 if SERVER then
@@ -296,6 +324,8 @@ end
 			FOXY RUSH ABILITY
 ]]--
 function foxyRush(ply, ent)
+	if ent:GetNW2Bool("Jammered") then return end
+	
 	if ply:GetNWBool("isBlightRushing") then return end
 
 	if not ply:OnGround() or ply:Crouching() then return end
@@ -337,9 +367,6 @@ function foxyRush(ply, ent)
 	
 	if CLIENT then
 		RemoveRMBHint()
-		
-		--net.Start("fh_foxycharge_sync")
-		--net.SendToServer()
 	end
 
 	if SERVER then
@@ -369,43 +396,6 @@ function foxyRush(ply, ent)
 		net.Send(ply)
 	end
 end
-
-net.Receive("fh_foxycharge_sync", function(len, ply)
-	if ply:GetNWBool("blightRushing") then return end
-	
-	if ply:GetNWBool("isBlightRushing") then return end
-
-	if not ply:OnGround() or ply:Crouching() then return end
-
-	ply:SetNWBool("isBlightBouncing", false)
-	
-	if ply:GetNWInt("RushTokens") > 0 then
-		foxyUNStun(ply)
-		
-		cooldown.Send(ply, "charge")
-
-		ply:SetNWBool("blightRushing", true)
-		ply:SetFOV(100, 0.5)
-		ply:SetNWInt("RushTokens", ply:GetNWInt("RushTokens") - 1)
-		ply:SetNWBool("isBlightRushing", true)
-		stopReceivingTokens(ply)
-		
-		local rushDuration = 3.5
-		ply:SetNWFloat("RushEndTime", CurTime() + rushDuration)
-
-		if ply.blightTimeoutTimer then
-			timer.Remove(ply.blightTimeoutTimer)
-			ply.blightTimeoutTimer = nil
-		end
-
-		if SERVER then
-			net.Start("fh_net_killer_change_tokens")
-			net.WriteString("charge")
-			net.WriteInt(ply:GetNWInt("RushTokens"), 9)
-			net.Send(ply)
-		end
-	end
-end)
 
 local function BlightCheckCollision(ply)
 	local velocity = ply:GetVelocity()
@@ -553,7 +543,7 @@ hook.Add("Move", "foxy_charge_prediction", function(ply, mv)
 			if SERVER then
 				ply:EmitSound("blight/impact.wav")
 				
-				local ent = ply:GetPill()
+				local ent = ply:GetPillCostume()
 				if IsValid(ent) then
 					ent:PillGesture("chargestun", 1, 0.8, 0.1, 0.3)
 				end
@@ -720,21 +710,6 @@ function StopBleeding(ply)
         DecalTimers[steamID] = nil
     end
 end
-
-hook.Add("SuccessTaserHit", "foxy_nocharge", function(ply)
-	if ply:GetNWBool("blightRushing") and SERVER then
-		if ply.blightTimeoutTimer then
-			timer.Remove(ply.blightTimeoutTimer)
-		end
-		ply:SetNWBool("blightRushing", false)
-		ply:SetNWBool("isBlightRushing", false)
-		ply:SetNWBool("isBlightBouncing", false)
-		
-		if !timer.Exists("receiving_tokens" .. ply:EntIndex()) then
-			receiveTokensBack(ply)
-		end
-	end
-end)
 
 if CLIENT then
 	hook.Add("ShouldCollide", "foyx_collide", function(ent1, ent2)

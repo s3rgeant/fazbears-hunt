@@ -11,6 +11,7 @@ end
 
 local zombie = {}
 hook.Add("GravGunPunt", "fh_damagecheker", function(ply,ent)
+	ent._ImpulseOwner = ply
 
 	if zombie[ent] then 
 		ent:RemoveCallback("PhysicsCollide", zombie[ent])

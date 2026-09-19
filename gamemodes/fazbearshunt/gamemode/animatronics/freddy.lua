@@ -694,15 +694,14 @@ if CLIENT then
 		surface.PlaySound("freddy_target_stalked.wav")
 		drawHighlightTimer(false)
 		
-		fh_change_display(language.GetPhrase('fazhunt.freddy.foundrun'), language.GetPhrase('fazhunt.freddy.found'), 6)
+		DisplayText(language.GetPhrase('fazhunt.freddy.foundrun'), language.GetPhrase('fazhunt.freddy.found'), 6)
 	end)
 
 	net.Receive("notify_freddys_victim_norage", function()
 		hook.Remove("HUDPaint", "fh_hl_overlay_draw")
 	end)
 	
-	hook.Add("FH_HandleKillerTerrorRadius", "freddy_enraged", function(killer, theme)
-		local myself = LocalPlayer()
+	hook.Add("FH_HandleKillerTerrorRadius", "freddy_enraged", function(myself, killer, theme)
 		if IsValid(myself:GetNW2Entity("_BlindRageFreddy")) and killer ~= myself:GetNW2Entity("_BlindRageFreddy") then
 			return false
 		end
@@ -712,8 +711,7 @@ if CLIENT then
 		end
 	end)
 	
-	hook.Add("FH_HandleKillerTerrorLayers", "freddy_enraged", function(killer, theme, layer)
-		local myself = LocalPlayer()
+	hook.Add("FH_HandleKillerTerrorLayers", "freddy_enraged", function(myself, killer, theme, layer)
 		if IsValid(myself:GetNW2Entity("_BlindRageFreddy")) and killer == myself:GetNW2Entity("_BlindRageFreddy") then
 			if layer == "second_layer" then
 				return "approaching_rage", false
@@ -723,8 +721,7 @@ if CLIENT then
 		end
 	end)
 	
-	hook.Add("FH_HandlePostTerrorRadius", "freddy_enraged", function(theme, layer)
-		local myself = LocalPlayer()
+	hook.Add("FH_HandlePostTerrorRadius", "freddy_enraged", function(myself, theme, layer)
 		local my_freddy = myself:GetNW2Entity("_BlindRageFreddy")
 		if IsValid(my_freddy) and !theme and !layer then
 			local theme = terror_radius.getPlayerTheme(my_freddy)

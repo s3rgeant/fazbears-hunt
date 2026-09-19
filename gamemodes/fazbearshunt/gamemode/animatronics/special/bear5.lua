@@ -410,6 +410,8 @@ killers.Register("bear5_main", "bear5", "Bear 5", Color(0,120,255), "Freaks")
 killers.Register("bear5_clone", "bearling5", "Bearling 5", Color(0,120,255), "Freaks")
 killers.Register("fox4", "fox4", "Fox 4", Color(0,255,20), "Freaks")
 
+pill_makeSecondary( {"bear5_clone", "fox4"} )
+
 killers.SetAbilities("bear5", {
 	{ name = 'highlight', key = 'R' },
 	{ name = 'death', key = 'RMB' },

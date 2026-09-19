@@ -510,7 +510,7 @@ hook.Add("PlayerPostThink", "yoursmine_movement_copying", function(ply)
 end)
 
 if CLIENT then
-	hook.Add("FH_HandleKillerTerrorRadius", "bonnie_control", function(killer, theme)
+	hook.Add("FH_HandleKillerTerrorRadius", "bonnie_control", function(myself, killer, theme)
 		if killer:GetNWBool("_yoursmine_user") then
 			return false
 		end

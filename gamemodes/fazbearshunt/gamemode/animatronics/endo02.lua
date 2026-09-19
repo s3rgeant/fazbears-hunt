@@ -157,13 +157,19 @@ net.Receive("fh_endo_AbilitySelected", function(len, ply)
 	
 	local name = ent:GetPillName()
 	if name ~= ENDO_PILL then
-		MsgC( Color( 255, 0, 0 ), "Suspicous net message received from " .. ply:Nick() .. " (fh_endo_AbilitySelected)" ) 
+		MsgC( Color( 255, 0, 0 ), "Suspicous net message received from " .. ply:Nick() .. " (fh_endo_AbilitySelected)", "\n" ) 
 		return -- на всякий лол
 	end
 	
 	local ability = net.ReadString()
 	if not endoAbilities[ability] then 
-		MsgC( Color( 255, 0, 0 ), "Bad ability name received from " .. ply:Nick() .. " (fh_endo_AbilitySelected, " .. ability .. ")" ) 
+		MsgC( Color( 255, 0, 0 ), "Bad ability name received from " .. ply:Nick() .. " (fh_endo_AbilitySelected, " .. ability .. ")", "\n" ) 
+		return 
+	end
+	
+	local abilitierName = net.ReadString()
+	if abilitierName:len() <= 0 then 
+		MsgC( Color( 255, 0, 0 ), "Invalid animatronic name received from " .. ply:Nick() .. " (fh_endo_AbilitySelected, " .. ability .. ")", "\n" ) 
 		return 
 	end
 	
@@ -171,6 +177,13 @@ net.Receive("fh_endo_AbilitySelected", function(len, ply)
 	
 	if ent:GetNW2String("ENDO_CurrentAbility", "") == ability then return end
 	if ent:GetNW2String("ENDO_LastAbility", "") == ability and ability ~= "pretense" then return end
+	
+	for _, pill in ipairs( ents.FindByClass("pill_costume") ) do -- я еблан или нет? оцените пожалуйста
+		if pill:GetPillName() == abilitierName then
+			MsgC( Color( 255, 0, 0 ), "Endo tried pretense as an teammate - " .. ply:Nick() .. " (fh_endo_AbilitySelected, " .. ability .. " - " .. abilitierName .. ")", "\n" ) 
+			return 
+		end
+	end
 	
 	endo.ApplyAbility(ply, ent, ability, 90)
 	cooldown.SetSend(ply, "pretense", 5)
@@ -219,6 +232,8 @@ pills.register(ENDO_PILL, {
 		},
 		gestures={
 			melee="attack",
+			
+			jammerstun="jammerstun",
 			
 			damaged1="damaged1",
 			damaged2="damaged2",
@@ -539,7 +554,7 @@ end)
 
 --[[
 	OLD Endo Pickup Stuff :)))
-	--]]
+
 hook.Add("OnPlayerPhysicsDrop", "fh_endo_prop_drop", function(ply, ent, thrown)
 	local puppet = pills.getMappedEnt(ply)
 	if !IsValid(puppet) then return end
@@ -632,7 +647,7 @@ if CLIENT then
 		end
 	end)
 end
---]]--
+]]--
 
 local nullvector = Vector(0,0,0)
 local endo_kills = 0
@@ -884,9 +899,9 @@ hook.Add("FH_AnimatronicsLoaded", "endo02_abilities", function()
 			
 			local jumpscare
 			
-			if ply._SF_TouchedFloor_Uncloaked then
+			--if ply._SF_TouchedFloor_Uncloaked then
 				jumpscare = performJumpscare(ply, ent, target, 1.6, "endo", 52, "v_endo")
-			end
+			--end
 			
 			if !IsValid(target) or !jumpscare then 
 				if not AnimatronicBreakProp(ply, ent) then cooldown.SetSend(ply, "kill", 0.9) end
@@ -927,6 +942,24 @@ hook.Add("FH_AnimatronicsLoaded", "endo02_abilities", function()
 		function(ply, ent)
 			ent.formTable.landCondition = nil
 			--ent:SetBodygroup(15, 0)
+			
+			if ent.cloaked then
+				if ply:IsStuck() then
+					ply:Unstuck()
+				end
+				if ply:IsStuck() then
+					if not TeleportToNearestTeammate(ply) then
+						ply:ReturnToSpawn()
+					end
+				end
+				ShadowFreddySubmerge_Force(ply, ent)
+			end
+			ent:SetDefaultSpeed()
 		end
 	)
+	
+	endo.RegisterAnimations("yoursmine", "pill_sfreddy2", {
+		uncloak="disappear",
+		cloak="appear",
+	})
 end)

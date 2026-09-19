@@ -34,6 +34,13 @@ SWEP.Secondary = {
 	Ammo = "none"
 }
 
+if SERVER then
+	resource.AddFile( "materials/weapons/tablet.vmt" )
+else
+	SWEP.WepSelectIcon = surface.GetTextureID( "weapons/tablet" )
+	SWEP.BounceWeaponIcon = false
+end
+
 util.PrecacheModel( SWEP.ViewModel )
 util.PrecacheModel( SWEP.WorldModel )
 
@@ -45,7 +52,6 @@ local MIN_FOV = 0.7
 local FOV_STEP = 1
 
 if CLIENT then
-	//PREDICTED_CAMSWITCH = CreateClientConVar("ca_cams_predict_camswitch", 0, true, false, "Determine if cams should be switched without waiting for server response (may cause visual bugs with ping)",0,1)
 	SWEP.ZoomStatus = false
 	SWEP.CurFOV = DEFAULT_FOV
 	SWEP.GoalFOV = DEFAULT_FOV
@@ -54,31 +60,12 @@ end
 function SWEP:Initialize()
 
 	self:SetHoldType( "pistol" )
+	self:SetEnergy(30)
 
 	self.m_bInitialized = true
 end
 
-function SWEP:OnCameraSwitch(name,old,new)
-	local ow = self:GetOwner()
-
-	if !IsValid(ow) then return end
-	
-	hook.Call("CA_CamSwitched",nil,self,old,new)
-end
-
-if CLIENT then
-	function SWEP:OnFlashToggle(name,old,new)
-		local ow = self:GetOwner()
-
-		if !IsValid(ow) || ( ow == LocalPlayer() && !game.SinglePlayer() ) then return end
-
-		hook.Call("CA_CamFlashToggled",nil,self,new)
-	end
-end
-
 function SWEP:SetupDataTables()
-	self:NetworkVar( "Int", 0, "CurCamera" )
-
 	// IDLE ANIM VARS
 	self:NetworkVar( "Float",0,"IdleTimer")
 	self:NetworkVar("Bool",0,"IsIdle")
@@ -88,10 +75,13 @@ function SWEP:SetupDataTables()
 	self:NetworkVar("Bool",1,"IsHolstering")
 	self:NetworkVar("Entity",1,"HolsterEntity")
 
-	self:NetworkVar("Bool",3,"IsFullView" )
+	self:NetworkVar("Bool",2,"IsFullView" )
 
-	self:NetworkVar("Bool", 4,"FlashlightOn")
-	self:NetworkVar("Float",5,"ReloadTimer")
+	self:NetworkVar("Bool", 3,"FlashlightOn")
+	self:NetworkVar("Float",2,"ReloadTimer")
+	
+	self:NetworkVar("Float",2,"NextEnergyDrain")
+	self:NetworkVar("Int",1,"Energy")
 end
 
 function SWEP:resetWepDataInternal(isIniting)
@@ -109,13 +99,13 @@ function SWEP:resetWepDataInternal(isIniting)
 	end
 end
 
-function SWEP:EmitSoundPredicted(...) // на вики написано, что эта функция уже учитывает предикцию, но при проверке воспроизводимых звуков c помощью EntityEmitSound они высираются пачками
+function SWEP:EmitSoundPredicted(...)
 	if IsFirstTimePredicted() then
 		self:EmitSound(...)
 	end
 end
 
-function SWEP:deployInternal(kostilClient) // т.к используеся в двух функциях (костыль ебанный)
+function SWEP:deployInternal(kostilClient) -- т.к используеся в двух функциях (костыль ебанный)
 	self:SetHoldType("pistol")
 	self:SendWeaponAnim( ACT_VM_DEPLOY )
 	self:EmitSoundPredicted("weapons/ca_tablet/equip.wav",75,100,0.25)
@@ -123,8 +113,7 @@ function SWEP:deployInternal(kostilClient) // т.к используеся в д
 
 	local vm = self:GetOwner():GetViewModel()
 
-	self:SetNextPrimaryFire(CurTime() + vm:SequenceDuration() * 0.5)
-	self:SetNextSecondaryFire(CurTime() + vm:SequenceDuration() * 0.5)
+	--self:SetNextPrimaryFire(CurTime() + vm:SequenceDuration() * 0.5)
 	self:SetIdleTimer(CurTime() + vm:SequenceDuration() * 0.75)
 
 	self:resetWepDataInternal()
@@ -147,43 +136,94 @@ function SWEP:Deploy()
 end
 
 function SWEP:Holster( wep )
-	if ( !IsValid(wep) and !self:GetIsHolstering() ) or wep:GetClass() == self:GetClass() then // фикс поднятия предметов
-		return true
-	end
-	
-	
-	if self:GetHolsterTimer() <= CurTime() then
-		self:SetHolsterTimer(math.huge)
-		self:SetHolsterEntity(NULL)
-		return true 
-	end
-
-	if !IsValid(wep) then return end
-	
 	if self:GetIsHolstering() then
-		self:SetHolsterEntity(wep)
-		return 
+		return false
 	end
-
-	if self:GetIsFullView() then
-		self:SendWeaponAnim( ACT_VM_HOLSTER_EMPTY )
-	else 
-		self:SendWeaponAnim( ACT_VM_HOLSTER )
-	end
-
-	self:EmitSoundPredicted("weapons/ca_tablet/holster.wav",75,100,0.8)
-
-	self:SetHoldType("normal")
-
-	self:SetHolsterEntity(wep)
-	self:SetIsHolstering(true)
-	self:SetHolsterTimer(CurTime() + self:GetOwner():GetViewModel():SequenceDuration())
 	
-	return false
+	return true
 end
+
 
 function SWEP:GetHolsterTime()
 	// эта функция нужна просто для того, чтобы один из аддонов на смену оружия игнорировал его и не ломал анимацию
+end
+
+function SWEP:PrimaryAttack()
+	if self:GetIsHolstering() then  return end
+	
+	self:SetIsFullView( !self:GetIsFullView() )
+	
+	local curtime = CurTime()
+
+	if self:GetIsFullView() then
+		self:SendWeaponAnim( ACT_LOOKBACK_LEFT )
+		self:SetHoldType("camera")
+		
+		if self:GetEnergy() > 1 then
+			self:SetNextEnergyDrain(curtime + 0.1)
+		else
+			self:SetNextEnergyDrain(curtime + 1)
+			self:SetNextPrimaryFire(curtime + 1.5)
+			return
+		end
+	else 
+		self:SendWeaponAnim( ACT_LOOKBACK_RIGHT )
+		self:SetHoldType("pistol")
+	end
+
+	self:SetIsIdle(false)
+
+	local vm = self:GetOwner():GetViewModel()
+
+	self:SetIdleTimer(curtime + vm:SequenceDuration())
+
+	self:SetNextPrimaryFire(curtime + vm:SequenceDuration() * 0.4)
+end
+
+function SWEP:DrainEnergy()
+	if self:GetIsFullView() then
+	
+		local curtime = CurTime()
+		
+		if self:GetNextEnergyDrain() > 0 and curtime >= self:GetNextEnergyDrain() then
+			local curEnergy = self:GetEnergy()
+			
+			if curEnergy > 1 then
+			
+				self:SetEnergy( curEnergy - 1 )
+				self:SetNextEnergyDrain(curtime + 1)
+				
+			else -- NO ENERGY;	 SHUTDOWN
+			
+				self:SetEnergy( 0 )
+				self:SetNextEnergyDrain(0)
+				
+				if self:GetIsFullView() then
+					self:SendWeaponAnim( ACT_VM_HOLSTER_EMPTY )
+				else 
+					self:SendWeaponAnim( ACT_VM_HOLSTER )
+				end
+
+				self:EmitSoundPredicted("weapons/ca_tablet/holster.wav",75,100,0.8)
+
+				self:SetHoldType("normal")
+
+				local dur = self:GetOwner():GetViewModel():SequenceDuration()
+
+				self:SetHolsterEntity(wep)
+				self:SetIsHolstering(true)
+				self:SetHolsterTimer(CurTime() + dur)
+				
+				if SERVER then
+					timer.Simple(dur, function()
+						if IsValid(self) then
+							self:Remove()
+						end
+					end)
+				end
+			end
+		end
+	end
 end
 
 function SWEP:Think()
@@ -194,36 +234,12 @@ function SWEP:Think()
 
 	if !IsValid(owner) then return end
 	
+	self:DrainEnergy()
+	
     if self:GetIsIdle() == false and self:GetIdleTimer() <= CurTime() and !self:GetIsHolstering() and !self:GetIsFullView() then -- Idle Sequence
 		self:SendWeaponAnim(ACT_VM_IDLE)  
 		self:SetIsIdle(true)
     end
-end
-
-function SWEP:PrimaryAttack()
-	if self:GetIsHolstering() then return end
-	if self:GetReloadTimer() >= CurTime() then return end
-	
-	self:SetIsFullView( !self:GetIsFullView() )
-
-	if self:GetIsFullView() then
-		self:SendWeaponAnim( ACT_LOOKBACK_LEFT )
-		self:SetHoldType("camera")
-	else 
-		self:SendWeaponAnim( ACT_LOOKBACK_RIGHT )
-		self:SetHoldType("pistol")
-	end
-
-	self:SetIsIdle(false)
-
-	local vm = self:GetOwner():GetViewModel()
-
-	self:SetIdleTimer(CurTime() + vm:SequenceDuration())
-
-	self:SetNextPrimaryFire(CurTime() + vm:SequenceDuration() * 0.4)
-	self:SetNextSecondaryFire(CurTime() + vm:SequenceDuration() * 0.4)
-
-	self:SetReloadTimer(CurTime() + vm:SequenceDuration() * 0.4)
 end
 
 function SWEP:SecondaryAttack()

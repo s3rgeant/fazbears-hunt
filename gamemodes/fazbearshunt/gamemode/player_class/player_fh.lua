@@ -254,4 +254,4 @@ function PLAYER:FinishMove(move)
 	JUMPING = false
 end
 
-player_manager.RegisterClass( "player_sandbox", PLAYER, "player_default" )
+player_manager.RegisterClass( "player_fh", PLAYER, "player_default" )

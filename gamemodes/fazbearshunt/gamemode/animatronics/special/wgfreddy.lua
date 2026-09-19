@@ -38,22 +38,38 @@ if SERVER then
 	util.PrecacheModel("models/speps/pill/oldgoldenfreddyhead.mdl")
 end
 
-function GoldensBullshit_Start(ply, ent, timerName)
+function GoldensBullshit_Start(ply, ent, timerName, sex)
+	timer.Remove(timerName)
+	
+	giveKillerSilent(ply, "fh_wgfreddyhead", true)
+	
+	local rf = RecipientFilter()
+	rf:AddAllPlayers()
+	rf:RemovePlayer(ply)
+	
+	local ent = ply:GetPillCostume()
+	ent.RageSound = CreateSound(ent, ")fnaf2/gfreddy/gfreddy_enraged.wav", rf)
+	ent.RageSound:PlayEx(0, 100)
+	ent.RageSound:ChangeVolume(1, 3)
+	
+	net.Start("fh_gfreddyhead_jumpscare") net.Send(rf)
 end
 
 local function WGFreddyRoundCheck(ply, ent, timerName)
+	if roundEnding or not roundActive then return end
+
 	if fh.timer.Exists() and fh.timer.GetTimeLeft() < 120 then
-		print("last 2 minutes")
+		GoldensBullshit_Start(ply, ent, timerName, "2minutes")
 		return
 	end
 	
 	if table.Count(survivors) == 1 then
-		print("last survivor")
+		GoldensBullshit_Start(ply, ent, timerName, "lastsurvivor")
 		return
 	end
 	
 	if table.Count(animatronics) == 1 then
-		print("last anim")
+		GoldensBullshit_Start(ply, ent, timerName, "lastgolden")
 		return
 	end
 end
@@ -303,6 +319,8 @@ pills.register("pill_wgfreddy2",{
 			ply:ChatPrint("Refused. No navmesh.")
 			return 
 		end
+		
+		if PlayerInOutworld(target) then return end
 		
 		start_outworld(ply, ent, target)
 	end,

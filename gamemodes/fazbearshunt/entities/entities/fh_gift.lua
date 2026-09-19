@@ -12,10 +12,15 @@ if SERVER then
     util.AddNetworkString("fh_hl_badkid")
     util.AddNetworkString("fh_hl_animatronics")
     util.AddNetworkString("fh_net_thinkfast")
+    util.AddNetworkString("fh_gift_notify")
 end
 
 local giftModel = IsHalloween() and "pumpkin_loot" or "halloween_gift"
 local modelScale = (giftModel == "pumpkin_loot") and 1.5 or 1
+
+function ENT:SetupDataTables()
+    self:NetworkVar("Bool", 0, "Boosted")
+end
 
 function ENT:Initialize()
     if SERVER then
@@ -51,7 +56,7 @@ if SERVER then
 			if hook.Run("FH_HandleGiftPickup", self, ent) == false then return end
 			
             self.IsUsed = true
-            self:ApplyEffect(ent)
+            self:ApplyEffect(ent, self:GetBoosted() and 2 or 1)
             self:Remove()
         end
     end
@@ -102,6 +107,19 @@ if CLIENT then
 		end
 	end
 	
+	local overlayMat = Material("models/props_combine/portalball001_sheet")
+
+	function ENT:Draw()
+		self:DrawModel()
+
+		if self:GetBoosted() then
+			render.MaterialOverride(overlayMat)
+			render.SetBlend(.8)
+			self:DrawModel()
+			render.MaterialOverride()
+			render.SetBlend(1)
+		end
+	end
 end
 
 local PLAYER = FindMetaTable("Player")
@@ -301,7 +319,6 @@ local positiveEffects = {
 			return not ply:HasWeapon("weapon_detector")
 		end
 	},
-	--]]
 	["dummy"] = {
 		name = "dummy",
 		desc = "fazhunt.gifts.dummy",
@@ -318,6 +335,16 @@ local positiveEffects = {
 		end,
 		req = function(ply)
 			return not ply:GetDummy()
+		end
+	},
+	["jammer"] = {
+		name = "jammer",
+		desc = "fazhunt.gifts.jammer",
+		func = function(ply)
+			ply:Give("weapon_jammer")
+		end,
+		req = function(ply)
+			return not ply:HasWeapon("weapon_jammer")
 		end
 	},
 }
@@ -561,14 +588,27 @@ if SERVER then
 	end
 end
 
-function ENT:ApplyEffect(player)
+function ENT:ApplyEffect(player, amount)
 	local isOwner = self:GetOwner() == player
+	local isPositive = true
+	amount = amount or 1
+	
+	if !isOwner then
+		isPositive = math.random(1,2) == 1
+	end
+	
 	local effects = {}
 	
-	for name, effect in pairs(positiveEffects) do
-		if effect.req and effect.req(player, self, isOwner) then
-			effects[name] = effect
-		elseif !effect.req then
+	if isPositive then
+		for name, effect in pairs(positiveEffects) do
+			if effect.req and effect.req(player, self, isOwner) then
+				effects[name] = effect
+			elseif !effect.req then
+				effects[name] = effect
+			end
+		end
+	else
+		for name, effect in pairs(negativeEffects) do
 			effects[name] = effect
 		end
 	end
@@ -578,18 +618,23 @@ function ENT:ApplyEffect(player)
 		return
 	end
 	
-	local effect = table.Random(effects)
-	effect.func(player, self, isOwner)
+	local receivedEffects = {}
+	local isSilent = false
 	
-	local isPositive = false
-	for name, posEffect in pairs(effects) do
-		if positiveEffects[name] == effect then
-			isPositive = true
-			break
-		end
+	for i = 1, amount do
+		if table.Count(effects) <= 0 then break end
+		
+		local effect, name = table.Random(effects)
+		effect.func(player, self, isOwner)
+		
+		if effect.silent then isSilent = true end
+		
+		effects[name] = nil
+		table.insert(receivedEffects, effect)
 	end
 	
-	if !effect.silent then
+	
+	if not isSilent then
 		if isPositive then
 			self:EmitSound("orch_hit_csharp_short.wav")
 		else
@@ -597,10 +642,203 @@ function ENT:ApplyEffect(player)
 		end
 	end
 		
-	net.Start('fh_net_display')
-	net.WriteString('fazhunt.gifts.' .. (isPositive and 'positive' or 'negative'))
-	net.WriteString(effect.desc or "")
-	net.WriteFloat(effect.num or -1)
-	net.WriteFloat(5)
+	net.Start('fh_gift_notify')
+		net.WriteString('fazhunt.gifts.' .. (isPositive and 'positive' or 'negative'))
+	
+		for i = 1, #receivedEffects do
+			local effect = receivedEffects[i]
+		
+			net.WriteString(effect.desc or "")
+			net.WriteFloat(effect.num or -1)
+			net.WriteBit(i < #receivedEffects)
+		end
+		
+		net.WriteFloat(5)
 	net.Send(player)
+end
+
+if CLIENT then
+	local gift_bar = Material("vgui/base/gift_bar.png")
+	local gift_bar_w = gift_bar:Width()
+	local gift_bar_h = gift_bar:Height()
+	
+	local gift_status_bar = Material("vgui/base/gift_status_bar.png")
+	local gift_status_bar_w = gift_status_bar:Width()
+	local gift_status_bar_h = gift_status_bar:Height()
+	
+	local gift_desc_bar = Material("vgui/base/gift_desc_bar.png")
+	local gift_desc_bar_w = gift_desc_bar:Width()
+	local gift_desc_bar_h = gift_desc_bar:Height()
+	
+	local gift_spin = Material("vgui/gift_spin")
+	local gift_spin_w = gift_spin:Width()
+	local gift_spin_h = gift_spin:Height()
+	
+	local gifts_color = Color(255,195,0)
+	
+	-- текст смешной сверху
+	surface.CreateFont("GiftUpper", {
+		font = "Share Tech Mono",
+		shadow = true,
+		extended = true,
+		antialias = true,
+		size = 40,
+		weight = 700
+	})
+
+	surface.CreateFont("GiftMiddle", {
+		font = "Share Tech Mono",
+		shadow = true,
+		extended = true,
+		antialias = true,
+		size = 32,
+		weight = 500
+	})
+
+	surface.CreateFont("GiftSmall", {
+		font = "Share Tech Mono",
+		shadow = true,
+		extended = true,
+		antialias = true,
+		size = 26,
+		weight = 500
+	})
+
+	function DisplayGiftNotify(status, text2, duration, smallerFont)
+		local displayText1 = status
+		local displayText2 = text2
+		local duration = duration
+		local startTime = CurTime()
+		
+		local secondFont = smallerFont and "GiftSmall" or "GiftMiddle"
+		local giftColor = gifts_color:Copy()
+		
+		hook.Add("HUDPaint", "fh_gift_notify", function()
+			if GetConVar("cl_drawhud"):GetBool() then
+				local elapsedTime = CurTime() - startTime
+				local alpha = 255
+
+				if elapsedTime > duration then
+					local fadeDuration = 1
+					local fadeTime = elapsedTime - duration
+					if fadeTime < fadeDuration then
+						alpha = 255 * (1 - fadeTime / fadeDuration)
+					else
+						hook.Remove("HUDPaint", "fh_gift_notify")
+						return
+					end
+				end
+				
+				local scrW = ScrW()
+				local scrH = ScrH()
+				
+				local halfW = scrW * .5
+				
+				local status_w = gift_status_bar_w
+				local w = status_w
+				local status_h = gift_status_bar_h
+				local h = status_h
+				
+				local status_y = scrH - 372
+	
+				surface.SetMaterial( gift_status_bar )
+				surface.SetDrawColor( 255, 255, 255, alpha )
+				surface.DrawTexturedRect( halfW - w*.5, status_y, w, gift_status_bar_h ) --768
+				
+				--text
+
+				surface.SetFont("GiftUpper")
+				surface.SetTextColor(255, 255, 255, alpha)
+
+				local w, h = surface.GetTextSize(displayText1)
+				local x = halfW - w * .5
+				local y = scrH - 342 - h * .5
+
+				surface.SetTextPos(x, y)
+				surface.DrawText(displayText1)
+				
+				if displayText2 and displayText2:len() > 0 then
+					local w = gift_desc_bar_w
+				
+					local desc_y = status_y + h + 32
+					
+					local w2, h2 = surface.GetTextSize(displayText2)
+					local x2 = halfW
+					
+					local gift_desc_w = math.max(w, w2*.8)
+		
+					surface.SetMaterial( gift_desc_bar )
+					surface.SetDrawColor( 255, 255, 255, alpha )
+					surface.DrawTexturedRect( halfW - gift_desc_w*.5, desc_y, gift_desc_w, gift_desc_bar_h )
+					
+					giftColor.a = alpha
+					
+					draw.DrawText( displayText2, secondFont, x2, desc_y + (gift_desc_bar_h*.5 - h2*.45), giftColor, TEXT_ALIGN_CENTER )
+				end
+				
+				-- gift spins
+				
+				local s = 48
+	
+				surface.SetMaterial( gift_spin )
+				surface.SetDrawColor( 255, 255, 255, alpha )
+				surface.DrawTexturedRect( halfW - s*.5 - 290, scrH - 342 - s * .5, s, s )
+	
+				surface.SetMaterial( gift_spin )
+				surface.SetDrawColor( 255, 255, 255, alpha )
+				surface.DrawTexturedRect( halfW - s*.5 + 290, scrH - 342 - s * .5, s, s )
+				
+			end
+		end)
+	end
+	
+	local fullString
+	local function getGiftNotifyText()
+		
+		local text2 = net.ReadString()
+		local frmt = net.ReadFloat() or -1
+		
+		if text2:len() > 0 then text2 = language.GetPhrase(text2) end
+		
+		if frmt > 0 then
+			text2 = string.format(tostring(text2), frmt)
+		end
+		
+		if not fullString then
+			fullString = text2
+		else
+			fullString = fullString .. "\n" .. text2
+		end
+		
+		local goNext = net.ReadBit()
+		
+		if goNext == 1 then
+			return getGiftNotifyText()
+		else
+			return fullString
+		end
+		return "?"
+	end
+
+	net.Receive("fh_gift_notify", function()
+		fullString = nil
+		
+		local text1 = net.ReadString()
+		if text1:len() > 0 then text1 = language.GetPhrase(text1) end
+		
+		local text2 = getGiftNotifyText()
+		
+		local duration = net.ReadFloat()
+		DisplayGiftNotify(text1, text2, duration)
+	end)
+
+	concommand.Add("fh_test_gift", function(ply, cmd, args)
+		if ply:IsAdmin() then
+			local text1 = args[1] or "Hello"
+			local text2 = args[2] or "World"
+			local duration = tonumber(args[3]) or 5
+			
+			DisplayGiftNotify(text1, text2, duration)
+		end
+	end)
 end

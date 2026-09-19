@@ -344,6 +344,32 @@ local function morphGuy(ply, action)
 	pills.apply(ply:Nick(), anim, "user")
 end
 
+function TeleportToNearestTeammate(target)
+	local targetTeam = target:Team()
+	
+	local nearestPos
+	local nearestTeammate
+	
+	for _, teammate in ipairs(team.GetPlayers(targetTeam)) do
+		if target == teammate then continue end
+		if teammate:IsJumpscared() then continue end
+		
+		local distance = target:GetPos():Distance(teammate:GetPos())
+		
+		if !nearestPos or distance < nearestPos then
+			nearestPos = distance
+			nearestTeammate = teammate
+		end
+	end
+		
+	if IsValid(nearestTeammate) then
+		target:SetPos(nearestTeammate:GetPos())
+		target:NoPlayerCollide(0.25)
+		return true
+	end
+	return false
+end
+
 addAction( "fh_max_cupcakes", setCCFloat )
 addAction( "fh_round_duration", setCCFloat )
 addAction( "morph_myself", morphGuy)
@@ -383,27 +409,7 @@ local function multPlayersAction(ply, action)
 				target:Unstuck()
 			end
 		elseif action == "tp_to_teammate" then
-			local targetTeam = target:Team()
-			
-			local nearestPos
-			local nearestTeammate
-			
-			for _, teammate in ipairs(team.GetPlayers(targetTeam)) do
-				if target == teammate then continue end
-				if teammate:IsJumpscared() then continue end
-				
-				local distance = target:GetPos():Distance(teammate:GetPos())
-				
-				if !nearestPos or distance < nearestPos then
-					nearestPos = distance
-					nearestTeammate = teammate
-				end
-			end
-				
-			if IsValid(nearestTeammate) then
-				target:SetPos(nearestTeammate:GetPos())
-				target:NoPlayerCollide(0.25)
-			end
+			TeleportToNearestTeammate(target)
 		elseif action == "immune_gfreddy" then
 			if PlayerInOutworld(target) then
 				cancel_outworld(target)

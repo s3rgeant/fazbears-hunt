@@ -20,6 +20,7 @@ local function recursive_include(path)
 		elseif file_name:StartWith("sh_") then
 			AddCSLuaFile(full_path)
 			include(full_path)
+			print(file_name)
 	
 		elseif file_name:StartWith("cl_") then
 			AddCSLuaFile(full_path)
@@ -326,7 +327,7 @@ function giveKillerSilent(ply, killer, force)
 end
 
 function setupPlayerVars(ply)
-	local class = baseclass.Get("player_sandbox")
+	local class = baseclass.Get("player_fh")
 
 	ply:AllowFlashlight(true)
 	ply:SetRunSpeed(class.RunSpeed)
@@ -507,14 +508,14 @@ function registerNewRound(forceid)
 	table.Empty(animatronics)
 	table.Empty(usedKillers)
     for _, ply in player.Iterator() do
+		if ply:GetPillCostume():IsValid() then
+			pills.restore(ply:Nick(), true)
+		end
+		
         ply:Spawn()
 		ply:SetTeam(TEAM_SURVIVOR)
 		ply:RemoveRagdoll()
 		survivors[ply] = true
-
-		if ply:GetPillCostume():IsValid() then
-			pills.restore(ply:Nick(), true)
-		end
     end
 	
 	restoreAnimatronics()
@@ -589,6 +590,9 @@ function SpawnGifts()
 				local gift = ents.Create("fh_gift")
 				gift:SetPos(ply:GetPos() + Vector(0, 0, 10))
 				gift:SetOwner(ply)
+				if math.random(15) == 1 then
+					gift:SetBoosted(true)
+				end
 				gift:Spawn()
 				
 				ply:SetGiftOwnership(true)
@@ -777,7 +781,7 @@ function FixSetModel()
 end
 
 hook.Add("PlayerSpawn", "fh_spawn", function( ply, transiton )
-	player_manager.SetPlayerClass( ply, "player_sandbox" )
+	player_manager.SetPlayerClass( ply, "player_fh" )
 	ply:SetShouldServerRagdoll(true)
 
 	if not IsValid(ply:GetPillCostume()) then
@@ -971,14 +975,14 @@ local function fh_death_hook(victim)
 		
 		if timer.Exists("RandomGifts") then
 			local timertime = timer.TimeLeft("RandomGifts")
-			if timertime >= 5 then
-				local adjustTime = timertime - 11
-				if adjustTime < 0 then
-					sub_timer = adjustTime * -1
-					adjustTime = 0
-				end
-				timer.Adjust("RandomGifts", adjustTime)
+			
+			local adjustTime = timertime - 11
+			if adjustTime < 0 then
+				sub_timer = adjustTime * -1
+				adjustTime = 0
 			end
+			timer.Adjust("RandomGifts", adjustTime)
+			
 		end
 		
 		local animCount = table.Count(animatronics)

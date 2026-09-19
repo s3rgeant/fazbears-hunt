@@ -4,7 +4,7 @@ local cl_drawhud = GetConVar( "cl_drawhud" )
 
 surface.CreateFont("FHKillicon", { 
 	font = "Share Tech Mono", 
-	size = 26, 
+	size = 22, 
 	shadow = true,
 	extended = true, 
 	weight = 500, 

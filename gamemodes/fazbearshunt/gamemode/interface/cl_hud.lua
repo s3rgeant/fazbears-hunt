@@ -659,66 +659,50 @@ surface.CreateFont("SmallTextFont", {
     weight = 500
 })
 
-local displayText1 = ""
-local displayText2 = ""
-local displayDuration = 0
-local startTime = 0
-local isDisplaying = false
-hook.Add("HUDPaint", "fh_display_text", function()
-    if isDisplaying and GetConVar("cl_drawhud"):GetBool() then
-        local elapsedTime = CurTime() - startTime
-        local alpha = 255
+function DisplayText(text1, text2, duration)
+    local displayText1 = text1
+    local displayText2 = text2
+    local displayDuration = duration
+    local startTime = CurTime()
+	
+	hook.Add("HUDPaint", "fh_display_text", function()
+		if GetConVar("cl_drawhud"):GetBool() then
+			local elapsedTime = CurTime() - startTime
+			local alpha = 255
 
-        if elapsedTime > displayDuration then
-            local fadeDuration = 1
-            local fadeTime = elapsedTime - displayDuration
-            if fadeTime < fadeDuration then
-                alpha = 255 * (1 - fadeTime / fadeDuration)
-            else
-                isDisplaying = false
-                return
-            end
-        end
+			if elapsedTime > displayDuration then
+				local fadeDuration = 1
+				local fadeTime = elapsedTime - displayDuration
+				if fadeTime < fadeDuration then
+					alpha = 255 * (1 - fadeTime / fadeDuration)
+				else
+					hook.Remove("HUDPaint", "fh_display_text")
+					return
+				end
+			end
 
-        surface.SetFont("BigTextFont")
-        surface.SetTextColor(255, 255, 255, alpha)
+			surface.SetFont("BigTextFont")
+			surface.SetTextColor(255, 255, 255, alpha)
 
-        local w, h = surface.GetTextSize(displayText1)
-        local x = ScrW() / 2 - w / 2
-        local y = ScrH() / 4
+			local w, h = surface.GetTextSize(displayText1)
+			local x = ScrW() / 2 - w / 2
+			local y = ScrH() / 4
 
-        surface.SetTextPos(x, y)
-        surface.DrawText(displayText1)
+			surface.SetTextPos(x, y)
+			surface.DrawText(displayText1)
 
-        surface.SetFont("SmallTextFont")
-        surface.SetTextColor(255, 255, 255, alpha)
+			surface.SetFont("SmallTextFont")
+			surface.SetTextColor(255, 255, 255, alpha)
 
-        local w2, h2 = surface.GetTextSize(displayText2)
-        local x2 = ScrW() / 2 - w2 / 2
-        local y2 = y + h + 5
+			local w2, h2 = surface.GetTextSize(displayText2)
+			local x2 = ScrW() / 2 - w2 / 2
+			local y2 = y + h + 5
 
-        surface.SetTextPos(x2, y2)
-        surface.DrawText(displayText2)
-    end
-end)
-
-function fh_change_display(text1, text2, duration)
-    displayText1 = text1
-    displayText2 = text2
-    displayDuration = duration
-    startTime = CurTime()
-    isDisplaying = true
+			surface.SetTextPos(x2, y2)
+			surface.DrawText(displayText2)
+		end
+	end)
 end
-
-concommand.Add("fh_test_broadcast", function(ply, cmd, args)
-	if ply:IsAdmin() then
-		local text1 = args[1] or "Hello"
-		local text2 = args[2] or "World"
-		local duration = tonumber(args[3]) or 5
-		
-		fh_change_display(text1, text2, duration)
-	end
-end)
 
 net.Receive("fh_net_display", function()
     local text1 = net.ReadString()
@@ -726,19 +710,25 @@ net.Receive("fh_net_display", function()
     local frmt = net.ReadFloat() or -1
     local duration = net.ReadFloat()
 	
-	if string.len(text1) > 0 then
-		text1 = language.GetPhrase(text1)
-	end
+	if text1:len() > 0 then text1 = language.GetPhrase(text1) end
 	
-	if string.len(text2) > 0 then
-		text2 = language.GetPhrase(text2)
-	end
+	if text2:len() > 0 then text2 = language.GetPhrase(text2) end
 	
 	if frmt > 0 then
 		text2 = string.format(tostring(text2), frmt)
 	end
 	
-    fh_change_display(text1, text2, duration)
+    DisplayText(text1, text2, duration)
+end)
+
+concommand.Add("fh_test_broadcast", function(ply, cmd, args)
+	if ply:IsAdmin() then
+		local text1 = args[1] or "Hello"
+		local text2 = args[2] or "World"
+		local duration = tonumber(args[3]) or 5
+		
+		DisplayText(text1, text2, duration)
+	end
 end)
 
 //think fast chucklenuts

@@ -1,6 +1,6 @@
 VertexLitGeneric
 {
-$baseTexture "models\v_models\Weapons\Shotgun/V_Pump_Shotgun_Reference"
+$baseTexture "models\fh\Weapons\Shotgun/V_Pump_Shotgun_Reference"
 $bumpmap "effects/flat_normal"
 $halflambert 1
 $phong 0

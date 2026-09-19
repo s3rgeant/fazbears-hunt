@@ -31,16 +31,21 @@ SWEP.Secondary.Automatic = false
 SWEP.Secondary.Ammo = "none"
 
 SWEP.Skin = 4
-SWEP.SubMaterial = "models/johnmason/food/fanta_can"
 
 SWEP.FlexWeight = 0
 
 SWEP.Consuming = false
 
+if SERVER then
+	resource.AddFile( "materials/weapons/fanta.vmt" )
+else
+	SWEP.WepSelectIcon = surface.GetTextureID( "weapons/fanta" )
+	SWEP.BounceWeaponIcon = false
+end
+
 function SWEP:Initialize()
 	self:SetHoldType("slam")
 	self:SetSkin(self.Skin)
-	self:SetSubMaterial(1, self.SubMaterial)
 end
 
 function SWEP:PrimaryAttack()
@@ -70,15 +75,16 @@ function SWEP:PrimaryAttack()
 		if not IsValid(self) or not IsValid(self.Owner) then return end
 
 		if SERVER then
-			self.Owner:StripWeapon(self:GetClass())
+			self:Remove()
 		end
 	end)
 end
 
 function SWEP:OnDrink()
-	if not (IsValid(self.Owner) and SERVER) then return end
-
-	local ply = self.Owner
+	if not SERVER then return end
+	local ply = self:GetOwner()
+	
+	if not IsValid(ply) then return end
 	
 	local heal = math.random(3,5)
 	local armor = 10
@@ -99,11 +105,11 @@ function SWEP:OnDrink()
 		end) 
 	end
 	
-	ply:SetJumpPower(ply:GetJumpPower() * 2)
+	ply:SetNW2Bool("FazbearsFantaEffect", true)
 	
 	timer.Simple(12, function()
 		if IsValid(ply) then
-			ply:SetJumpPower(math.max(ply:GetJumpPower() / 2, 200))
+			ply:SetNW2Bool("FazbearsFantaEffect", false)
 		end
 	end)
 end
@@ -116,16 +122,9 @@ end
 
 function SWEP:OnRemove()
 	timer_Remove("drink_remove_" .. self:EntIndex())
-
-	if CLIENT and IsValid(self.Owner) and IsValid(self.Owner:GetViewModel()) then
-		self.Owner:GetViewModel():SetSubMaterial(1, nil)
-	end
 end
 
 function SWEP:Holster()
-	if CLIENT and IsValid(self.Owner) and IsValid(self.Owner:GetViewModel()) then
-		self.Owner:GetViewModel():SetSubMaterial(1, nil)
-	end
 	if self.Consuming then
 		return false
 	end
@@ -179,3 +178,9 @@ function SWEP:Think()
 	vm:SetFlexScale( 1 )
 	return true
 end
+
+hook.Add("OnPlayerJump", "fanta_buff", function(ply, speed)
+	if ply:GetNW2Bool("FazbearsFantaEffect") then
+		ply:SetVelocity(ply:GetAimVector() * 250)
+	end
+end)

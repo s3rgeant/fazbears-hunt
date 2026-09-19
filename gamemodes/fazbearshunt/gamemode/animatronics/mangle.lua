@@ -153,6 +153,7 @@ pills.register("pill_mangle",{
 	attack2_sh={
 		mode="trigger",
 		func = function(ply,ent)
+			if ent:GetNW2Bool("Jammered") then return end
 			if not ply:GetNWBool("_MangleHooked") then
 				local eyeAng = ply:EyeAngles()
 				

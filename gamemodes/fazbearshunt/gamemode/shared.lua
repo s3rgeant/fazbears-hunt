@@ -1,5 +1,5 @@
 
-include( "player_class/player_sandbox.lua" )
+include( "player_class/player_fh.lua" )
 include( "utils/editor_player.lua" )
 
 GM.Name = "Fazbear's Hunt"
@@ -7,13 +7,13 @@ GM.Author = "sergeant"
 GM.Email = "N/A"
 GM.Website = "N/A"
 
-local fh_version = "4.1.2"
+local fh_version = "5.0.0"
 
 function fh.GetVersion()
     return fh_version
 end
 
-DEVELOPER_MODE = true
+DEVELOPER_MODE = false
 
 --DeriveGamemode("sandbox")
 
@@ -82,11 +82,14 @@ local colors = {
     Springtrap = !IsHalloween() and Color(105, 150, 70) or Color(150, 129, 61),
     Plushtrap = Color(130, 119, 48),
 	
+    Mangle = Color(226, 154, 184),
+	
     Golden = Color(255, 210, 0),
-	ToyChica = Color(255, 201, 53)
+	ToyChica = Color(255, 201, 53),
+	ScrapBaby = Color(255,110,0),
 }
 
-local killerData = killerData or {
+local killerData = {
 	["pill_wfreddy2"] = {name = "freddy", fullname = "fazhunt.animatronics.freddy", color = colors.Freddy},
 	["pill_wbonnie2"] = {name = "bonnie", fullname = "fazhunt.animatronics.bonnie", color = colors.Bonnie},
 	["pill_wchica2"] = {name = "chica", fullname = "fazhunt.animatronics.chica", color = colors.Chica},
@@ -99,9 +102,10 @@ local killerData = killerData or {
 	["pill_springtrap"] = {name = "springtrap", fullname = "fazhunt.animatronics.springtrap", color = colors.Springtrap},
 	["pill_plushtrap"] = {name = "plushtrap", fullname = "fazhunt.animatronics.plushtrap", color = colors.Plushtrap},
 	
-	["pill_mangle"] = {name = "mangle", fullname = "fazhunt.animatronics.mangle", color = colors.Endo},
+	["pill_mangle"] = {name = "mangle", fullname = "fazhunt.animatronics.mangle", color = colors.Mangle},
 	
 	["pill_toychica"] = {name = "tchica", fullname = "fazhunt.animatronics.toychica", color = colors.ToyChica},
+	["fh_scrapbaby"] = {name = "scrapbaby", fullname = "fazhunt.animatronics.scrapbaby", color = colors.ScrapBaby},
 }
 
 killerAbilities = {

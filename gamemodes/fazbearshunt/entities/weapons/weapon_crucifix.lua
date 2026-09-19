@@ -234,3 +234,25 @@ if meta then
 		end)
 	end
 end
+
+local meta = FindMetaTable("Entity")
+
+if meta then
+	function meta:GodEffects(repeats)
+		local timerName = self:EntIndex() .. "_FHGodEffects"
+		timer.Create(timerName, .5, repeats, function()
+			if not IsValid(self) then timer.Remove(timerName) end
+			
+			self:EmitSound("ambient/energy/spark"..math.random(4)..".wav")
+			
+			local pos = self:GetPos()
+			
+			local effect2 = EffectData()
+			effect2:SetOrigin(pos)
+			effect2:SetStart(pos)
+			effect2:SetMagnitude(5)
+			effect2:SetEntity(self)
+			util.Effect("teslaHitBoxes", effect2)
+		end)
+	end
+end

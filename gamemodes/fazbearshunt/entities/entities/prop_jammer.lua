@@ -47,6 +47,8 @@ end
 function ENT:PhysicsCollide( data, physobj )
 	if ( CLIENT ) then return end
 	
+	if self.Activated then return end
+	
 	local HitEnt = data.HitEntity
 	if not HitEnt:IsPlayer() then
 		self:Remove()
@@ -69,10 +71,13 @@ function ENT:PhysicsCollide( data, physobj )
 				local pill = HitEnt:GetPillCostume()
 				
 				if pill:IsValid() then
-					JammerStunAnimatronic( HitEnt, pill, owner )
+					JammerStunAnimatronic( HitEnt, pill, owner, self )
+					
+					self.Activated = true
 				end
+				self:Remove()
 			end
-			self:Remove()
+			--self:Remove()
 		elseif data.HitNormal.x > 0 or data.HitNormal.x < 0 or data.HitNormal.y > 0 or data.HitNormal.y < 0 or data.HitNormal.z > 0 or data.HitNormal.z then
 			self:Remove()
 		end
@@ -101,21 +106,21 @@ if CLIENT then
 end
 
 local data = {}
-function JammerStunAnimatronic(ply, ent, attacker)
+function JammerStunAnimatronic(ply, ent, attacker, jammer)
 	if !IsValid(ent) then return end
 	
 	if hook.Run("FH_HandleJammerHit", ply, ent, taserer) == false then return end
 	
 	local formtbl = ent.formTable
-	local movespeed = formtbl.moveSpeed
 	
-	if !formtbl or !movespeed then return end
+	if !formtbl then return end
 	
 	if SERVER then
 		ply.jammered = true
 		ply:DropToFloor()
 		
 		if IsValid(ent) then
+			ent:SetNW2Bool("Jammered", true)
 			local stunTimer = "JammerStun" .. ply:EntIndex()
 			
 			data.timerName = stunTimer
@@ -125,22 +130,27 @@ function JammerStunAnimatronic(ply, ent, attacker)
 			
 			if not jammerHandler ~= false then
 				ent:PillGesture("jammerstun", 5)
+				ent:PillGesture("damaged1", 5)
+				ent:GodEffects(8)
 				ply:SetSpeedSlowdown(5)
 				
 				timer.Create(stunTimer, 5, 1, function()
-					if IsValid(ply) and IsValid(ent) then
+					if IsValid(ply) then
 						ply.jammered = false
+					end
+					if IsValid(ent) then
+						ent:SetNW2Bool("Jammered", false)
 					end
 				end)
 				playVoiceline(killers.GetName(formtbl.name), 'tasered', ply, 0.05)
 			end
-			ent:EmitSound('weapons/tasergun/active_stun.mp3')
+			ent:EmitSound('weapons/jammer_stun.mp3')
 		end
 	
 		net.Start("StunEffect_Shake")
 		net.Send(ply)
 	
-		ply:ScreenFade(SCREENFADE.IN, Color(255, 255, 255, 128), 2, 2)
+		ply:ScreenFade(SCREENFADE.IN, Color(255, 255, 255, 20), 2, 2)
 	end
 	
 	if !IsValid(ent) then
@@ -154,5 +164,5 @@ function JammerStunAnimatronic(ply, ent, attacker)
 	fx:SetEntity(ent)
 	util.Effect("teslaHitBoxes", fx, true, true)
 	
-	hook.Run("SuccessTaserHit", ply, ent, taserer)
+	hook.Run("SuccessJammerHit", ply, ent, attacker, jammer)
 end

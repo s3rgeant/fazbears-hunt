@@ -188,6 +188,10 @@ if CLIENT then
 	local x, y = ScrW() /2, ScrH() /2
 	local MainCol = Color( 255, 255, 255, 255 )
 	local Col = Color( 255, 255, 255, 255 )
+	
+	local color_surv = team.GetColor( TEAM_SURVIVOR )
+	
+	surface.CreateFont("FHDrag", { font = "Share Tech Mono", size = 28, extended = true, weight = 400, antialias = true, bold = true, shadow = true })
 
 	function SWEP:DrawHUD()
 		local ply = self:GetOwner()
@@ -224,7 +228,7 @@ if CLIENT then
 
 			draw.SimpleText(
 				"#fazhunt.drag",
-				"fh_hud_ability_title",
+				"FHDrag",
 				x,
 				y,
 				Col,
@@ -240,9 +244,10 @@ if CLIENT then
 			local A = OffPos:ToScreen()
 			local B = Pos2:ToScreen()
 			
-			surface.SetDrawColor(MainCol)
+			surface.SetDrawColor(color_surv)
 			surface.DrawRect( A.x -2, A.y -2, 4, 4 )
 			surface.DrawRect( B.x -2, B.y -2, 4, 4 )
+			--surface.SetDrawColor(MainCol)
 			surface.DrawLine( A.x, A.y, B.x, B.y )
 		end
 	end

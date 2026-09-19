@@ -36,7 +36,7 @@ function GM:PlayerDeath( ply, inflictor, attacker )
 end
 
 hook.Add( "PostEntityTakeDamage", "FH_LastAssistantSet", function( ent, dmgInfo, wasDamageTaken )
-	if ( ent:IsPlayer() or ent:IsNPC() ) and wasDamageTaken then
+	if ( ent:IsPlayer() --[[ or ent:IsNPC() --]] ) and wasDamageTaken then
 		local attacker = dmgInfo:GetAttacker()
 		
 		if ent ~= attacker and not attacker:IsWeapon() then
@@ -111,7 +111,8 @@ function GM:DoPlayerDeath( ply, attacker, dmginfo )
 		self:SendDeathNotice( attacker, inflictor:GetClass(), ply, 0, assistant )
 
 		if IsValid(assistant) then
-			MsgAll( attacker:Nick() .. " killed " .. ply:Nick() .. " using " .. inflictor:GetClass() .. " with assistance of " .. assistant:Name() .. "\n" )
+			local assisPronounce = assistant:IsPlayer() and assistant:Nick() or assistant:GetName()
+			MsgAll( attacker:Nick() .. " killed " .. ply:Nick() .. " using " .. inflictor:GetClass() .. " with assistance of " .. assisPronounce .. "\n" )
 		else
 			MsgAll( attacker:Nick() .. " killed " .. ply:Nick() .. " using " .. inflictor:GetClass() .. "\n" )
 		end

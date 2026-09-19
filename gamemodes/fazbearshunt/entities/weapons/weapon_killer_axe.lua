@@ -77,8 +77,8 @@ function SWEP:PrimaryAttack()
 end
 
 local PushSound_pills = {
-	"physics/metal/metal_sheet_impact_hard7.wav",
-	"physics/metal/metal_sheet_impact_hard8.wav",
+	")physics/metal/metal_sheet_impact_hard7.wav",
+	")physics/metal/metal_sheet_impact_hard8.wav",
 }
 
 local TASERED_SKIP = 0.8
@@ -209,14 +209,14 @@ function SWEP:DealDamage()
 	end
 	
 	if targetIsSurv then
-		ply:EmitSound("weapons/axe/melee_axe_0" .. math.random(1,3) .. ".wav", 45, 100, 0.7, CHAN_AUTO )
+		ply:EmitSound(")weapons/axe/melee_axe_0" .. math.random(1,3) .. ".wav", 45, 100, 0.7, CHAN_AUTO )
 		
 		local edata = EffectData()
 		edata:SetOrigin(tr.HitPos)
 		edata:SetEntity(target)
 		util.Effect("BloodImpact", edata, true, true)
 	else
-		ply:EmitSound("weapons/axe/axe_impact_world" .. math.random(1,2) .. ".wav", 45, 100, 0.4, CHAN_AUTO )
+		ply:EmitSound(")weapons/axe/axe_impact_world" .. math.random(1,2) .. ".wav", 45, 100, 0.4, CHAN_AUTO )
 	end
 
 	local dmginfo = DamageInfo()

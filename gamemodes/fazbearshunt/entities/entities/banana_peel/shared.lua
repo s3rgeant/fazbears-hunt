@@ -32,19 +32,20 @@ function ENT:Initialize()
 	
     self.SpawnTime = CurTime()
 end
+
+ENT.NoRagdollPills = {
+	["pill_wgfreddy2"] = true,
+}
 	
 if SERVER then
 	local zeroveloc = Vector(0,0,0)
-	local blockedRaggies = {
-		["pill_wgfreddy2"] = true,
-	}
 	local function createAnimatronicRagdoll(ply)
 		local pill = pills.getMappedEnt(ply)
 						
 		if not IsValid(pill) then return NULL end
 		
 		local pillName = pill:GetPillName()
-		if blockedRaggies[pillName] then return NULL end
+		if self.NoRagdollPills[pillName] then return NULL end
 		
 		local ragdoll = ents.Create("prop_ragdoll")
 		if not IsValid(ragdoll) then return NULL end
@@ -229,6 +230,14 @@ if SERVER then
 		self:SetHealth(health)
 
 		if health <= 0 then
+			local pos = self:GetPos()
+	
+			local effectdata = EffectData()
+			effectdata:SetStart( pos )
+			effectdata:SetOrigin( pos )
+			effectdata:SetScale( 1 )
+			util.Effect( "GlassImpact", effectdata )
+			
 			self:Remove()
 		end
 	end
@@ -236,4 +245,8 @@ if SERVER then
 	function ENT:FHGravGunPunt()
 		return false
 	end
+end
+
+function ENT:DragHandle(wep, ent, dragger)
+	return false
 end

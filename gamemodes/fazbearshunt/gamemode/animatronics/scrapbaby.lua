@@ -82,7 +82,7 @@ BABY.sounds={
 }
 BABY.chaseTheme="scrapbaby"
 BABY.startFunction=function(ply,ent)
-	chaseVoicelineChecker(ply, ent, "endo")
+	--chaseVoicelineChecker(ply, ent, "endo")
 end
 BABY.killCondition=function(ply,ent)
 	local wep = ply:GetActiveWeapon()
@@ -230,6 +230,7 @@ BABY.playerCatch=function(ply, ent, claw, target)
 		end
 	end)
 end
+
 BABY.land=function(ply,ent)
 	if IsGoodLandConditions(ply, ent) then
 		local wep = ply:GetActiveWeapon()
@@ -241,13 +242,12 @@ BABY.land=function(ply,ent)
 	end
 	landTripCheck(ply, ent, "sbaby")
 end
+
 BABY.reload=function(ply,ent)
 	highlight.ByDistance(ply, ent)
 end
 
 pills.register("fh_scrapbaby", BABY)
-
-killers.Register("fh_scrapbaby", "scrapbaby", "Scrap Baby", babyOrange)
 
 killers.SetAbilities("scrapbaby", {
 	{ name = 'kill', key = 'LMB', hidden = true },

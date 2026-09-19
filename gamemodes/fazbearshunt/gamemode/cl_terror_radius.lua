@@ -5,8 +5,6 @@ terror_radius = terror_radius or {}
 -- это хуйня нужна чтобы локальные переменные сохранялись после перезапуска скриптов
 
 state.currentKillers = state.currentKillers or {}
-state.stealthKillers = state.stealthKillers or {}
-state.stealthKillers2 = state.stealthKillers2 or {}
 state.everyoneKillers = state.everyoneKillers or {}
 state.availableThemes = state.availableThemes or {}
 state.loadedMusic = state.loadedMusic or {}
@@ -14,8 +12,6 @@ state.isChasing = state.isChasing or {}
 state.chaseTimers = state.chaseTimers or {}
 
 local currentKillers   = state.currentKillers
-local stealthKillers   = state.stealthKillers
-local stealthKillers2  = state.stealthKillers2
 local everyoneKillers  = state.everyoneKillers
 local availableThemes  = state.availableThemes
 local loadedMusic      = state.loadedMusic
@@ -573,8 +569,6 @@ local function applyApproachDistanceBlend(themeName, selectedLayer, distance, vo
     return terrorSetLayerBlend(themeName, sourceLayer, targetLayer, targetFraction, volume, distanceBlendResponseDuration, selectedLayer)
 end
 
-local stealthDelay = 2 -- чтобы террор быстро не пропадал если аниматроник резко застелсил
-local stealthLastActive = {}
 local imChasing = false
 
 function terror_radius.imChasing()
@@ -604,8 +598,8 @@ timer.Create("tr_update", 0.5, 0, function()
 		if shouldProccess ~= false then
 			if currentKillers[myself] then
 				for _, ply in player.Iterator() do
-					if !ply:Alive() or (!everyoneKillers[myself] and ply:Team() == myself:Team()) then continue end
 					if ply:IsDormant() then continue end
+					if !ply:Alive() or (!everyoneKillers[myself] and ply:Team() == myself:Team()) then continue end
 
 					local distance = myself:GetPos():Distance(ply:GetPos())
 
@@ -613,8 +607,10 @@ timer.Create("tr_update", 0.5, 0, function()
 					
 					if distance < tr_Close then
 						checkChase(ply, myself)
+				
+						local ent = myself:GetPillCostume()
 
-						local shouldProccessMy = hook.Run("FH_HandleMineTerrorRadius", ply, theme)
+						local shouldProccessMy = hook.Run("FH_HandleMineTerrorRadius", myself, ply, theme, ent)
 
 						if shouldProccessMy == false then continue end
 
@@ -635,8 +631,10 @@ timer.Create("tr_update", 0.5, 0, function()
 			end
 			for killer, theme in pairs(currentKillers) do
 				if !theme or !IsValid(killer) then continue end 
+				
+				local ent = killer:GetPillCostume()
 
-				local shouldProccessKiller = hook.Run("FH_HandleKillerTerrorRadius", killer, theme)
+				local shouldProccessKiller = hook.Run("FH_HandleKillerTerrorRadius", myself, killer, theme, ent)
 
 				if shouldProccessKiller == false then continue end
 
@@ -645,37 +643,23 @@ timer.Create("tr_update", 0.5, 0, function()
 				if killer == myself or !killer:Alive() or (!everyoneKillers[killer] and killer:Team() == myself:Team()) then continue end
 
 				local distance = myself:GetPos():Distance(killer:GetPos())
-				local candidateAllowsDistanceBlend = true
+				local allowDistanceBlend = true
 
 				if closestGuyPos and distance > closestGuyPos then continue end
 				
-				if distance > tr_Far then continue end
+				local d_Far = tr_Far
+				local d_Approach = tr_Approach
+				local d_Close = tr_Close
 				
-				--if IsValid(killer:GetPill()) and killer:GetPill():GetMaterial() == "models/null" then continue end
-
-				if stealthKillers[killer] then
-					if isRunning(killer) or isChasing[myself] == killer then
-						stealthLastActive[killer] = CurTime()
-					elseif stealthLastActive[killer] and (CurTime() - stealthLastActive[killer]) < stealthDelay then
-					else
-						continue
-					end
-				elseif stealthKillers2[killer] then
-					if isMoving(killer) or isChasing[myself] == killer then
-						stealthLastActive[killer] = CurTime()
-					elseif stealthLastActive[killer] and (CurTime() - stealthLastActive[killer]) < stealthDelay then
-					else
-						continue
-					end
-				end
+				if distance > d_Far then continue end
 
 				foundNoOne = false
 				
-				if distance < tr_Far and distance > tr_Approach then
+				if distance < d_Far and distance > d_Approach then
 					layer = getLayer(theme, "first_layer")
-				elseif distance < tr_Approach and distance > tr_Close then
+				elseif distance < d_Approach and distance > d_Close then
 					layer = getLayer(theme, "second_layer") or getLayer(theme, "first_layer")
-				elseif distance < tr_Close then
+				elseif distance < d_Close then
 					layer = getLayer(theme, "third_layer") or getLayer(theme, "second_layer") or getLayer(theme, "first_layer")
 				end
 				
@@ -683,7 +667,7 @@ timer.Create("tr_update", 0.5, 0, function()
 
 				if isChasing[myself] == killer then
 					layer = "chase"
-					candidateAllowsDistanceBlend = false
+					allowDistanceBlend = false
 
 					if getLayer(theme, "chase_low") and myself:Health() <= myself:GetMaxHealth() / 2 then
 						layer = "chase_low"
@@ -691,11 +675,11 @@ timer.Create("tr_update", 0.5, 0, function()
 				end
 				
 				local forceLayer, forceNotFound = nil, nil
-				forceLayer, forceNotFound = hook.Run("FH_HandleKillerTerrorLayers", killer, theme, layer)
+				forceLayer, forceNotFound = hook.Run("FH_HandleKillerTerrorLayers", killer, theme, layer, ent)
 				
 				if forceLayer then
 					layer = forceLayer
-					candidateAllowsDistanceBlend = false
+					allowDistanceBlend = false
 				end
 				
 				if forceNotFound then
@@ -706,13 +690,13 @@ timer.Create("tr_update", 0.5, 0, function()
 
 				closestGuyPos = distance
 				closestTheme = theme
-				closestLayerAllowsDistanceBlend = candidateAllowsDistanceBlend
+				closestLayerAllowsDistanceBlend = allowDistanceBlend
 			end
 		end
 	end
 	
 	local closestTheme_handler, layer_handler = nil, nil
-	closestTheme_handler, layer_handler = hook.Run("FH_HandlePostTerrorRadius", closestTheme, layer)
+	closestTheme_handler, layer_handler = hook.Run("FH_HandlePostTerrorRadius", myself, closestTheme, layer)
 	
 	if closestTheme_handler and layer_handler then
 		closestTheme = closestTheme_handler
@@ -785,15 +769,6 @@ local animatronicThemes = {
     ["fox4"] 				= "bear5",
 }
 
-local stealthAnims = {
-    ["pill_springtrap"] = true,
-    ["pill_toychica"] = true,
-}
-
-local stealth2Anims = {
-    ["pill_mangle"] = true,
-}
-
 local function getThemeByName(name)
     if availableThemes[name] then
         return name
@@ -825,11 +800,6 @@ function terror_radius.setPlayerTheme(ply, theme)
 	local selectedTheme = getThemeByName(theme)
 	if selectedTheme then
 		currentKillers[ply] = selectedTheme
-		if stealthAnims[theme] then
-			stealthKillers[ply] = true
-		elseif stealth2Anims[theme] then
-			stealthKillers2[ply] = true
-		end
 	end
 end
 
@@ -838,8 +808,6 @@ function terror_radius.resetPlayerTheme(ply)
 	
 	if currentKillers[ply] then
 		currentKillers[ply] = nil
-		stealthKillers[ply] = nil
-		stealthKillers2[ply] = nil
 		everyoneKillers[ply] = nil
 	end
 end

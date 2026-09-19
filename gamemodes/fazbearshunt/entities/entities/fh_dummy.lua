@@ -86,15 +86,24 @@ function ENT:OnTakeDamage(dmginfo)
 	local attacker = dmginfo:GetAttacker()
 	local owner = self:GetOwner()
 	
+	local isOwner = attacker == owner
+	
 	if attacker:IsPlayer() and attacker:IsSurvivor() and attacker ~= owner then return 0 end
 
-	self:TakePhysicsDamage(dmginfo)
-	
-	local health = self:Health()
-	health = health - dmginfo:GetDamage()
-	self:SetHealth(health)
+	if not isOwner then
+		self:TakePhysicsDamage(dmginfo)
+		
+		local health = self:Health()
+		health = health - dmginfo:GetDamage()
+		self:SetHealth(health)
+	else
+		local phys = self:GetPhysicsObject()
+		if phys:IsValid() then
+			phys:SetVelocity(dmginfo:GetDamageForce() * 35)
+		end
+	end
 
-	if health <= 0 then
+	if self:Health() <= 0 then
 		local force = (self:GetPos() - attacker:GetPos())
 		force:Normalize()
 		

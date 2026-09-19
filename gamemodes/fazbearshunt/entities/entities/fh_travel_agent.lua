@@ -140,70 +140,39 @@ if SERVER then
 	end
 
 	function ENT:Think()
-		if self.Finished or not self.Path or not self.TargetPoint then
+		local owner = self:GetOwner()
+
+		if self.Finished or not self.Path or not self.TargetPoint or not IsValid(owner) then
 			self:NextThink(CurTime())
 			return true
 		end
 
-		local owner = self:GetOwner()
-		local pos = self:GetPos()
+		local pos = owner:GetPos()
 		local target = self.TargetPoint
 		local distance = pos:Distance(target)
-		local step = self.Speed * FrameTime()
-		local direction = (target - pos):GetNormalized()
 
-		if distance <= step then
-			self:SetPos(target)
-
+		if distance <= 25 then
 			if self.PathIndex >= #self.Path then
 				self.Finished = true
 				self.TargetPoint = nil
-				self:SetVelocity(vector_origin)
 
-				if IsValid(owner) then
-					owner:SetPos(self:GetPos())
-					owner:SetLocalVelocity(vector_origin)
-					
-					local ent = owner:GetPillCostume()
-					
-					if IsValid(ent) then
-						ent:Func("travelAgentEnded", owner, ent)
-					end
+				local ent = owner:GetPillCostume()
+
+				if IsValid(ent) then
+					ent:Func("travelAgentEnded", owner, ent)
 				end
 
 				self:OnReachedGoal()
 			else
 				self.PathIndex = self.PathIndex + 1
+
 				local nextArea = self.Path[self.PathIndex]
 				self.CurrentArea = nextArea
 				self.TargetPoint = nextArea:GetCenter()
 			end
-		else
-			self:SetPos(pos + direction * step)
 		end
 
-		if self.TargetPoint then
-			direction = (self.TargetPoint - self:GetPos()):GetNormalized()
-			local angle = direction:Angle()
-
-			self:SetAngles(angle)
-			self:SetVelocity(direction * self.Speed)
-
-			if IsValid(owner) then
-				local posLerp = math.min(FrameTime() * 64, 1)
-				local angleLerp = math.min(FrameTime() * 6, 1)
-				local targetPos = self:GetPos()
-				local targetAng = direction:Angle()
-				
-				local lerpAngle = LerpAngle(angleLerp, owner:EyeAngles(), targetAng)
-				lerpAngle.r = 0
-
-				owner:SetNetworkOrigin(LerpVector(posLerp, owner:GetPos(), targetPos))
-				owner:SetEyeAngles(lerpAngle)
-				owner:SetLocalVelocity(direction * self.Speed)
-			end
-		end
-
+		self:SetPos(owner:GetPos())
 		self:NextThink(CurTime())
 		return true
 	end

@@ -31,7 +31,7 @@ SWEP.Primary.ClipSize = 1
 SWEP.Primary.DefaultClip = 1
 SWEP.Primary.Ammo = "none"
 SWEP.Primary.Automatic = false
-SWEP.Primary.Sound = Sound("weapons/adren/adrenuse.wav")
+SWEP.Primary.Sound = Sound(")weapons/adren/adrenuse.wav")
 SWEP.Primary.Delay = 0.2
 
 SWEP.Secondary.Automatic = false
@@ -138,68 +138,70 @@ end
 
 -- спиздил с дефибриллятора
 function SWEP:SecondaryAttack()
+
+	local owner = self:GetOwner()
     
-	self.Owner:LagCompensation( true )
+	owner:LagCompensation( true )
 	
 	local tr = util.TraceLine( {
-	start = self.Owner:GetShootPos(),
-	endpos = self.Owner:GetShootPos() + self.Owner:GetAimVector() * 65,
-	filter = self.Owner,
+	start = owner:GetShootPos(),
+	endpos = owner:GetShootPos() + owner:GetAimVector() * 65,
+	filter = owner,
 	mask = MASK_SHOT_HULL,
 	} )
 	
 	if !IsValid( tr.Entity ) then
 		tr = util.TraceHull( {
-		start = self.Owner:GetShootPos() + self.Owner:GetAimVector() * 10,
-		endpos = self.Owner:GetShootPos() + self.Owner:GetAimVector() * 65,
-		filter = self.Owner,
+		start = owner:GetShootPos() + owner:GetAimVector() * 10,
+		endpos = owner:GetShootPos() + owner:GetAimVector() * 65,
+		filter = owner,
 		mins = Vector( -20, -20, -12 ),
 		maxs = Vector( 20, 20, 12 ),
 		mask = MASK_SHOT_HULL,
 		} )
 	end
 	
-	local vm = self.Owner:GetViewModel()
+	local vm = owner:GetViewModel()
 	vm:SendViewModelMatchingSequence( vm:LookupSequence( "melee" ) )
-	--self.Owner:SetAnimation( PLAYER_ATTACK1 )
+	--owner:SetAnimation( PLAYER_ATTACK1 )
 	
 	if SERVER then
-		local force = self.Owner:GetAimVector() * 500
+		local force = owner:GetAimVector() * 500
 		local dmginfo = DamageInfo()
-		dmginfo:SetAttacker(self.Owner)
+		dmginfo:SetAttacker(owner)
 		dmginfo:SetInflictor(self)
 		dmginfo:SetDamagePosition(tr.HitPos)
 		dmginfo:SetDamageType(DMG_SLASH) 
 		dmginfo:SetDamage(5)
 			
 		if tr.Hit and (tr.Entity:IsPlayer() || tr.Entity:IsNPC() || tr.Entity:GetClass() == "prop_ragdoll") then
-			self.Owner:EmitSound( "player/survivor/hit/rifle_swing_hit_infected" .. math.random(7, 12) .. ".wav")
+			owner:EmitSound( ")player/survivor/hit/rifle_swing_hit_infected" .. math.random(7, 12) .. ".wav")
 			dmginfo:SetDamageForce(force)
 			SuppressHostEvents( NULL )
 			tr.Entity:TakeDamageInfo( dmginfo )
-			SuppressHostEvents( self.Owner )
+			SuppressHostEvents( owner )
 			tr.Entity:SetVelocity(Vector(force.x,force.y,10))
 		elseif tr.Hit then
-			self.Owner:EmitSound( "player/survivor/hit/rifle_swing_hit_world.wav")
+			owner:EmitSound( ")player/survivor/hit/rifle_swing_hit_world.wav")
 			if IsValid(tr.Entity) then
 				dmginfo:SetDamageForce(force/100)
 				SuppressHostEvents( NULL )
 				tr.Entity:TakeDamageInfo( dmginfo )
-				SuppressHostEvents( self.Owner )
+				SuppressHostEvents( owner )
 			end
 		else
-			self.Owner:EmitSound( "weapons/bat/bat_swing_miss" .. math.random(1, 2) .. ".wav")
+			owner:EmitSound( ")weapons/bat/bat_swing_miss" .. math.random(1, 2) .. ".wav")
 		end
 	else -- CLIENT
-		self.Owner:AnimRestartGesture( GESTURE_SLOT_ATTACK_AND_RELOAD, ACT_HL2MP_GESTURE_RANGE_ATTACK_KNIFE, true )
+		owner:AnimRestartGesture( GESTURE_SLOT_ATTACK_AND_RELOAD, ACT_HL2MP_GESTURE_RANGE_ATTACK_KNIFE, true )
 	end
 	
 	self:SetNextSecondaryFire( CurTime() + self.Primary.Delay + 0.7 )
 	
 	self.Idle = 0
-	self.IdleTimer = CurTime() + self.Owner:GetViewModel():SequenceDuration()
+	self.IdleTimer = CurTime() + owner:GetViewModel():SequenceDuration()
 	
-	self.Owner:LagCompensation( false )
+	owner:LagCompensation( false )
 end
 
 function SWEP:Reload()

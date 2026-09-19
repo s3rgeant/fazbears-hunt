@@ -246,22 +246,14 @@ if SERVER then
 
         local old = getMappedEnt(ply)
 
-        local overridePos
-        local overrideAng
-
         --restriction logic
         if mode == "user" then
             local success = true
 
             if not t.printName then
                 ply:ChatPrint("You cannot use this pill directly.")
-                success = false
+				return
             end
-
-            net.Start("pk_pill_morphsound")
-            net.WriteBit(success)
-            net.Send(ply)
-            if not success then return end
         end
 
         local e
@@ -298,11 +290,6 @@ if SERVER then
 		ply:SetTeam(TEAM_PILLS)
 
         hook.Run("PillServerApply", ply, e.formTable.name)
-
-		--end
-		if t.type ~= "ply" then
-			ply:SetLocalVelocity(Vector(0, 0, 0))
-		end
 
 		return e
     end
@@ -631,12 +618,12 @@ else -- CLIENT HOOKS
 end
 
 -- Shared hooks
-hook.Add("Move", "pk_pill_movemod", function(ply, mv)
+hook.Add("StartCommand", "pk_pill_cmd", function(ply, cmd)
     local ent = getMappedEnt(ply)
 
     if IsValid(ent) then
-        if ent.formTable.move then
-            ent.formTable.move(ply, ent, mv)
+        if ent.formTable.startCommand then
+            ent.formTable.startCommand(ply, ent, cmd)
         end
     end
 end)
@@ -661,6 +648,15 @@ hook.Add("SetupMove", "pk_pill_movemod", function(ply, mv, cmd)
                 ply:SetEyeAngles(angs)
                 mv:SetVelocity(angs:Forward() * charge.vel)
             end
+        end
+    end
+end)
+hook.Add("Move", "pk_pill_movemod", function(ply, mv)
+    local ent = getMappedEnt(ply)
+
+    if IsValid(ent) then
+        if ent.formTable.move then
+            ent.formTable.move(ply, ent, mv)
         end
     end
 end)

@@ -1,7 +1,7 @@
 AddCSLuaFile()
 
 if SERVER then
-	util.AddNetworkString("fh_addaffected_springtrap")
+	util.AddNetworkString("fh_springtrap_target_fx")
 	
 	-- спиртап
 	util.AddNetworkString("pt_request")
@@ -125,8 +125,6 @@ pills.register("pill_springtrap",{
 				
 				if !isGameOn or roundEnding then return end
 				
-				if ent:GetNWBool("SpringtrapEnraged") then return end
-				
 				if !ply:IsSprinting() or ply:GetVelocity():LengthSqr() < ply:GetRunSpeed() * 0.9 then
 					return
 				end
@@ -163,15 +161,22 @@ pills.register("pill_springtrap",{
 				})
 
 				if not tr.Hit then
+					-- В АГРЕ мы следим ТОКА ЗА ЧЕЛОВЕКОМ ПОД РЕЙДЖОМ
+					-- извини концепт маффа
+					if ent:GetNWBool("SpringtrapEnraged") and target ~= ent.spring_rage_target then
+						continue
+					end
+				
 					local agr = ent.Enragies[target] or 0
 					ent.Enragies[target] = agr + 1 -- прибавка секунды агра
 					
+					print( ply:Nick() .. " agr == ", agr + 1)
+					
 					local lastTarget = ent.LastEnragie
+					local tName = IsValid(lastTarget) and "SpringtrapLostEnragie" .. lastTarget:EntIndex() or nil
 					if ent.Enragies[lastTarget] and IsValid(lastTarget) and lastTarget:Alive() and lastTarget:IsSurvivor() then
 					
-						local timerName = "SpringtrapLostEnragie" .. lastTarget:EntIndex()
-						
-						timer.Create(timerName, 5, 1, function()
+						timer.Create(tName, 5, 1, function()
 							if not IsValid(ent) then return end
 							if not IsValid(lastTarget) then return end
 							
@@ -182,7 +187,14 @@ pills.register("pill_springtrap",{
 					
 					if ent.Enragies[target] >= 20 then
 						ent:Func("successRage", ply, ent, target)
+						ent.Enragies[target] = 20
+						
+						if tiName and timer.Exists(tName) then timer.Remove(tName) end
 					end
+					
+					--if ent.Enragies[target] % 5 == 0 then
+					--
+					--end
 					
 					ent.LastEnragie = target
 					break
@@ -192,25 +204,35 @@ pills.register("pill_springtrap",{
 		
 		ply:LagCompensation(false)
 	end,
-	
+
 	successRage=function(ply, ent, target)
+		highlight.Add( ply, {target}, 20, SPRINGTRAP_RAGE_HL_COLOR )
+		
+		local tName = "fh_SpringtrapRage".. ply:EntIndex()
+		
+		net.Start("fh_draw_hl_overlay_timed")
+			net.WriteBool(true)
+			net.WriteFloat(20)
+		net.Send(target)
+		
+		if ent:GetNWBool("SpringtrapEnraged") and ent.spring_rage_target == target then 
+			if timer.Exists(tName) then
+				timer.Adjust(tName, 20)
+			end
+			return 
+		end
+		
 		ent:SetNWBool("SpringtrapEnraged", true)
-		spring_rage_target = target
+		ent.spring_rage_target = target
 		
 		ent:SetSpeed(spring_rage_movement[1], 
-		spring_rage_movement[2], 
-		spring_rage_movement[3], 
-		spring_rage_movement[4])
+			spring_rage_movement[2], 
+			spring_rage_movement[3], 
+			spring_rage_movement[4])
 		
-		highlight.Add( ply, {target}, 90, SPRINGTRAP_RAGE_HL_COLOR )
-		
-		net.Start('fh_addaffected_springtrap')
+		net.Start('fh_springtrap_target_fx')
 		net.WriteEntity(target)
 		net.Send(ply)
-		
-		net.Start("fh_draw_hl_overlay")
-		net.WriteBool(false)
-		net.Send(target)
 		
 		net.Start("fh_play_sound")
 		net.WriteString("fnaf3/spr_enraged.wav")
@@ -219,13 +241,12 @@ pills.register("pill_springtrap",{
 		net.Start("fh_play_sound")
 		net.WriteString("fnaf3/spr_rage_affected.wav")
 		net.Send(target)
+			
+		net.Start("fh_play_sound")
+		net.WriteString('fnaf3/springtrap_rage_warning.mp3')
+		net.SendOmit({ply, target})
 		
-		net.Start("fh_draw_hl_overlay_timed")
-		net.WriteBool(true)
-		net.WriteFloat(90)
-		net.Send(target)
-		
-		timer.Create("fh_SpringtrapRage".. ply:EntIndex(), 90, 1, function()
+		timer.Create(tName, 20, 1, function()
 			if !IsValid(ply) then return end
 			if !IsValid(ent) then return end
 			ent:Func("stopRage", ply, ent)
@@ -233,29 +254,41 @@ pills.register("pill_springtrap",{
 		
 		hook.Run("FH_SpringtrapEnraged", ply, ent, target)
 	end,
-	
+
 	stopRage=function(ply, ent)
 		ent:SetSpeed(spring_default_movement[1], 
-		spring_default_movement[2], 
-		spring_default_movement[3], 
-		spring_default_movement[4])
+			spring_default_movement[2], 
+			spring_default_movement[3], 
+			spring_default_movement[4])
 		
 		ent:SetNWBool("SpringtrapEnraged", false)
 		
-		if IsValid(spring_rage_target) then
+		local target = ent.spring_rage_target
+		ent.Enragies[target] = nil
+		
+		if IsValid(target) then
+		
 			net.Start("RemoveAffectedPlayer")
-			net.WriteEntity(spring_rage_target)
+			net.WriteEntity(target)
 			net.Send(ply)
 			
-			if spring_rage_target:IsSurvivor() then
+			if target:IsSurvivor() then
 				net.Start("fh_nodraw_hl_overlay")
-				net.Send(spring_rage_target)
+				net.Send(target)
 			end
+			
 		end
 	end,
-	
+
 	restore=function(ply,ent)
+		local tName = "fh_SpringtrapRage".. ply:EntIndex()
+		if timer.Exists(tName) then
+			timer.Remove(tName)
+			ent:Func("stopRage")
+		end		
 		
+		local tName = "CheckConditions" .. ply:EntIndex()
+		timer.Remove(tName)
 	end,
 	
 	attack2={
@@ -338,8 +371,6 @@ pills.register("pill_springtrap",{
 			if IsValid(plushtrap) then
 				plushtrap:Remove()
 			end
-		
-			ent:Func("killPlushtrap", request_plushtrap)
 			
 			spectators = team.GetPlayers(TEAM_SPECTATOR)
 			
@@ -355,24 +386,12 @@ pills.register("pill_springtrap",{
 				net.Start("RemoveKillerCompanion")
 				net.Send(ply)
 			end
+		
+			KillPlushtrap( ply, ent, request_plushtrap )
 		end)
 		
 		ent:PillAnim("summon", true)
 		ply:GoPillThirdperson(1.7)
-	end,
-	
-	killPlustrap = function(ply, ent, plushtrap)
-		if IsValid(plushtrap) then
-			inventory_backup.SuppressNextSave(plushtrap, true)
-			plushtrap:Kill()
-			plushtrap:SetTeam(TEAM_SPECTATOR)
-			plushtrap:SendLua( "LocalPlayer():ChatPrint( language.GetPhrase('fazhunt.springtrap.plushtime') )" )
-			
-			request_plushtrap = nil
-		end
-		
-		net.Start("fh_plushalert_outrange")
-		net.Broadcast()
 	end,
 
 	land=function(ply,ent)
@@ -414,6 +433,20 @@ pills.register("pill_springtrap",{
 		return true
 	end,
 })
+
+function KillPlushtrap(ply, ent, plushtrap)
+	if IsValid(plushtrap) then
+		inventory_backup.SuppressNextSave(plushtrap, true)
+		plushtrap:Kill()
+		plushtrap:SetTeam(TEAM_SPECTATOR)
+		plushtrap:SendLua( "LocalPlayer():ChatPrint( language.GetPhrase('fazhunt.springtrap.plushtime') )" )
+		
+		request_plushtrap = nil
+	end
+	
+	net.Start("fh_plushalert_outrange")
+	net.Broadcast()
+end
 
 plushtrap_visionrange = CreateConVar( "fh_plushtrap_highlight_range", "2200", { FCVAR_ARCHIVE, FCVAR_REPLICATED }, 
 "Distance, on which plushtrap will highlight everyone for himself." )
@@ -526,6 +559,13 @@ pills.register("pill_plushtrap",{
 					ent:SetNWEntity("KissingTarget", target)
 					ent:PillAnim("kiss")
 					
+					local wep = ply:GetActiveWeapon()
+					
+					if IsValid(wep) then
+						wep:SetNextPrimaryFire(CurTime() + 3)
+						wep:SetNextSecondaryFire(CurTime() + 3)
+					end
+					
 					ply:GoPillThirdperson(3)
 					
 					local vpv = Angle(5,5,15)
@@ -588,6 +628,7 @@ pills.register("pill_plushtrap",{
 			ply:SetLocalVelocity(vel + boost + up)
 			
 			if SERVER then
+				cooldown.Set(ply, "hitch", 10)
 				timer.Simple(0, function()
 					if not IsValid(ent) then return end
 					if not ent.AttackJump then return end
@@ -723,10 +764,6 @@ function plushtrap_request_complete(springtrap, ply)
 	
 	if ply:Alive() then return end -- на а хули?
 	
-	if timer.Exists("pt_waiting" .. springtrap:EntIndex()) then
-		timer.Remove("pt_waiting" .. springtrap:EntIndex())
-	end
-	
 	if !isGameOn then return end
 	
 	ply:Spawn()
@@ -734,7 +771,7 @@ function plushtrap_request_complete(springtrap, ply)
 	ply:SetTeam(TEAM_SURVIVOR)
 	
 	local pt_lastpos = nil
-	local pt_lastangle = nil
+	local pt_lastangs = nil
 	local pt_found = false
 	
 	if IsValid(pt_request_springtrap_ply) then
@@ -743,7 +780,7 @@ function plushtrap_request_complete(springtrap, ply)
 	
 	for k,v in ipairs(ents.FindByClass("plushtrap")) do
 		pt_lastpos = v:GetPos()
-		pt_lastangle = v:GetAngles()
+		pt_lastangs = v:GetAngles()
 		v:Remove()
 		pt_found = true
 		break
@@ -752,29 +789,30 @@ function plushtrap_request_complete(springtrap, ply)
 	giveKillerSilent(ply, "pill_plushtrap", true)
 	
 	timer.Simple(1, function()
-		if timer.Exists("pt_kill_timer" .. springtrap:EntIndex()) then
-			cooldown.Set(ply, "lifetime", timer.TimeLeft("pt_kill_timer" .. springtrap:EntIndex()))
-			cooldown.Send(ply, "lifetime")
+		local tName = "pt_kill_timer" .. springtrap:EntIndex()
+		if timer.Exists(tName) then
+			cooldown.Set( ply, "lifetime", timer.TimeLeft( tName ) )
+			cooldown.Send( ply, "lifetime" )
 		end
 	end)
 	
-	if pt_lastpos ~= nil then
-		ply:SetPos(pt_lastpos)
-	end
-	if pt_lastangle ~= nil then
-		ply:SetEyeAngles(pt_lastangle)
-	end
+	if pt_lastpos ~= nil then ply:SetPos(pt_lastpos) end
+	if pt_lastangs ~= nil then ply:SetEyeAngles(pt_lastangs) end
 	
 	request_plushtrap = ply
 	
 	if !pt_found then -- на случай, если навмешей нет, и пш не заспавнился, мы создаём таймеры, которые не создались.
-		cooldown.Set(ply, "summon", plushtrap_summon_cd)
-		cooldown.Send(ply, "summon")
+		cooldown.Set(springtrap, "summon", plushtrap_summon_cd)
+		cooldown.Send(springtrap, "summon")
 		
-		timer.Adjust('fh_pt_summon', plushtrap_summon_cd, nil, nil)
+		net.Start("ApplyKillerCompanion")
+		net.WriteString("plushtrap")
+		net.WriteColor( Color(130, 119, 48) )
+		net.WriteFloat( CurTime() + 60 )
+		net.Send(springtrap)
 			
-		timer.Create("pt_waiting" .. springtrap:EntIndex(), 60, 1, function()
-			kill_plushtrap(request_plushtrap)
+		timer.Create("pt_kill_timer" .. springtrap:EntIndex(), 60, 1, function()
+			KillPlushtrap(springtrap, ent, request_plushtrap)
 			pt_request_springtrap_ply = nil
 			springtrap:SendLua( "LocalPlayer():ChatPrint( language.GetPhrase('fazhunt.springtrap.plushdead') )" )
 		end)
@@ -792,6 +830,7 @@ end
 
 
 concommand.Add( "dev_spawn_plushtrap", function( ply, cmd, args )
+		print("SPERMA")
 	if !ply:IsSuperAdmin() then return end
 	
 	local ent = pills.getMappedEnt(ply)
@@ -822,3 +861,44 @@ concommand.Add( "dev_spawn_plushtrap", function( ply, cmd, args )
 	
 	print("dev_spawn_plushtrap - has failed! Maybe the nickname was wrong.")
 end )
+
+if CLIENT then
+	hook.Add("FH_HandleMineTerrorRadius", "springtrap_handle", function(myself, ply, theme, ent)
+		if IsValid(ent) and ent:GetPillName() == "pill_springtrap" then
+			if !myself:IsSprinting() then
+				return false
+			end
+		end
+	end)
+	
+	hook.Add("FH_HandleKillerTerrorRadius", "springtrap_handle", function(myself, killer, theme, ent)
+		if IsValid(ent) and ent:GetPillName() == "pill_springtrap" then
+			if !killer:IsSprinting() then
+				return false
+			end
+		end
+	end)
+	
+	net.Receive("fh_springtrap_target_fx", function()
+		local player = net.ReadEntity()
+		
+		local starttime = CurTime()
+		local dur = 20
+		
+		local lp = LocalPlayer()
+		
+		hook.Add("RenderScreenspaceEffects", "fh_springtrap_fx", function()
+			local t = CurTime() - starttime
+			local frac = 1 - math.Clamp((t / dur), 0, 1)
+		
+			DrawToyTown(2, ScrH()/2)
+			DrawBloom( 0.65, 1 * frac, 9, 9, 1, 1, 1, 1, 1 )
+		end)
+		
+		hook.Remove("RenderScreenspaceEffects", "fh_springtrap_fx")
+		
+		if player:IsPlayer() then
+			lp:ChatPrint(string.format(language.GetPhrase('fazhunt.springtrap.target'), player:Nick() ))
+		end
+	end)
+end

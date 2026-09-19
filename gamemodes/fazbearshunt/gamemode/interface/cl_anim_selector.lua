@@ -358,12 +358,12 @@ function draw_killer_selector()
 	end
     modelpanel:Dock(TOP)
 	
-	modelpanel:SetAmbientLight(Color(155, 80, 80))
 	modelpanel:SetDirectionalLight(BOX_TOP, Color(255, 255, 255))
 	modelpanel:SetDirectionalLight(BOX_FRONT, Color(230, 230, 230))
 	modelpanel:SetDirectionalLight(BOX_LEFT, Color(180, 180, 180))
 	modelpanel:SetDirectionalLight(BOX_RIGHT, Color(100, 100, 100))
 	modelpanel:SetDirectionalLight(BOX_BOTTOM, Color(60, 60, 60))
+	modelpanel:SetAmbientLight(Color(40, 40, 40))
 
 	function modelpanel:DragMousePress()
 		self.PressX, self.PressY = gui.MousePos()

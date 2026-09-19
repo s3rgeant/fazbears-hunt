@@ -102,8 +102,20 @@ function endo.PretenseOpenUI()
 	local myself = LocalPlayer()
 	local ent = myself:GetPillCostume()
 	
+	local skipThese = {}
+			
+	for _, teammate in ipairs( team.GetPlayers( myself:Team() ) ) do -- я еблан или нет? оцените пожалуйста
+		local pill = teammate:GetPillCostume()
+		if IsValid(pill) then
+			if pill.GetPillName then skipThese[ pill:GetPillName() ] = true end
+		end
+	end
+	
 	for _, data in ipairs(sortedAbilities) do
 		local ability = data.ability
+		local killer = data.killer
+		
+		if skipThese[killer] then continue end
 		
 		if IsValid(ent) then
 			if ent:GetNW2String("ENDO_CurrentAbility", "") == ability then continue end
@@ -144,6 +156,7 @@ function endo.PretenseOpenUI()
 		
 			net.Start("fh_endo_AbilitySelected")
 				net.WriteString( availableKillers[ curSelected + 1 ].ability )
+				net.WriteString( availableKillers[ curSelected + 1 ].killer )
 			net.SendToServer()
 			
 			cooldown.Set(LocalPlayer(), "pretense", 2)

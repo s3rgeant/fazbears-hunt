@@ -128,30 +128,6 @@ net.Receive("AddAffectedPlayers", function()
 	end
 end)
 
-net.Receive("fh_addaffected_springtrap", function()
-	local player = net.ReadEntity()
-	
-	local starttime = CurTime()
-	
-	local lp = LocalPlayer()
-	
-	hook.Add("RenderScreenspaceEffects", "fh_springtrap_fx", function()
-		local t = CurTime() - starttime
-		local frac = 1 - math.Clamp((t / 90), 0, 1)
-	
-		DrawToyTown(2, ScrH()/2)
-		DrawBloom( 0.65, 1 * frac, 9, 9, 1, 1, 1, 1, 1 )
-	end)
-	
-	timer.Simple(90, function()
-		hook.Remove("RenderScreenspaceEffects", "fh_springtrap_fx")
-	end)
-	
-	if player:IsPlayer() then
-		lp:ChatPrint(string.format(language.GetPhrase('fazhunt.springtrap.target'), player:Nick() ))
-	end
-end)
-
 net.Receive("RemoveAffectedPlayer", function()
     targetPlayer = net.ReadEntity()
 	removeAffected(targetPlayer)
@@ -480,20 +456,18 @@ local CUPCAKE_COLOR   = Color(255, 155, 0, 255)
 local cupcakeHighlightEntries = {}
 local cupcakeHighlightEntryPool = {}
 
-local function getCupcakes(localPlayer)
-	local pillEntity =
-		pills.getMappedEnt(localPlayer)
+local function getCupcakes(lp)
+	local ent = pills.getMappedEnt(lp)
 	
-	if not IsValid(pillEntity) or not pillEntity.formTable then return nil end
-	
-	if pillEntity.formTable.name ~= "pill_wchica2" then return nil end
+	if not IsValid(ent) or not ent.formTable then return nil end
 	
 	ClearReusableEntryList( cupcakeHighlightEntries )
 	
 	local entryCount = 0
 	
-	for _, cupcakeEntity in ipairs( ents.FindByClass("cakemine") ) do
-		if not cupcakeEntity:GetPos():ToScreen().visible then continue end
+	for _, cupcake in ipairs( ents.FindByClass("cakemine") ) do
+		if cupcake:GetOwner() ~= lp then continue end
+		if not cupcake:GetPos():ToScreen().visible then continue end
 	
 		entryCount = entryCount + 1
 	
@@ -503,7 +477,7 @@ local function getCupcakes(localPlayer)
 				entryCount
 			)
 	
-		highlightEntry.ent = cupcakeEntity
+		highlightEntry.ent = cupcake
 		highlightEntry.outline_color = CUPCAKE_COLOR
 		highlightEntry.fill_color = CUPCAKE_COLOR
 	

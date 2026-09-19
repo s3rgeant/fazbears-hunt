@@ -47,7 +47,7 @@ hook.Add( "PlayerSpawn", "reset_push_onspawn", function(ply)
 	ply._PushImmune = nil
 end)
 
-local crzy = 20
+local crzy = 5
 hook.Add("KeyPress", "PushInteraction", function(ply, key)
 	if ply:IsPushBlocked() then return end
 

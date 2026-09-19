@@ -39,7 +39,7 @@ local function handleAFK(ply, idleTime)
 		lastActiveTime = CurTime()
 
 		surface.PlaySound("player/suit_denydevice.wav")
-		fh_change_display(
+		DisplayText(
 			language.GetPhrase("afk.kick_message"),
 			"",
 			20

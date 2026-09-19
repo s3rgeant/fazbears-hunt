@@ -12,7 +12,7 @@ sound.Add(
 	volume = 0.7,
 	pitch = 95, 105,
 	soundlevel = SNDLVL_NORM,
-	sound = "player/survivor/swing/Swish_WeaponSwing_Swipe5.wav"
+	sound = ")player/survivor/swing/Swish_WeaponSwing_Swipe5.wav"
 })
 sound.Add(
 {
@@ -21,7 +21,7 @@ sound.Add(
 	volume = 1.0,
 	pitch = 95, 105,
 	soundlevel = SNDLVL_90dB,
-	sound = "player/survivor/hit/rifle_swing_hit_world.wav"
+	sound = ")player/survivor/hit/rifle_swing_hit_world.wav"
 })
 sound.Add(
 {
@@ -29,7 +29,7 @@ sound.Add(
 	channel = CHAN_STATIC,
 	volume = 0.8,
 	soundlevel = SNDLVL_70dB,
-	sound = "player/survivor/hit/rifle_swing_hit_infected7.wav"
+	sound = ")player/survivor/hit/rifle_swing_hit_infected7.wav"
 })
 
 SWEP.PrintName = "#weapon_oldshotgun"
@@ -41,8 +41,8 @@ SWEP.AdminOnly = false
 SWEP.Gifted = true
 
 SWEP.ViewModelFOV = 60
-SWEP.ViewModel = "models/weapons/v_pumpshotgun.mdl"
-SWEP.WorldModel = "models/weapons/w_shotgun.mdl"
+SWEP.ViewModel = "models/fh/weapons/v_pumpshotgun.mdl"
+SWEP.WorldModel = "models/fh/weapons/w_shotgun.mdl"
 SWEP.ViewModelFlip = false
 
 SWEP.SwayScale = 0.5
@@ -92,6 +92,13 @@ SWEP.Secondary.Damage = 10
 SWEP.Secondary.Delay = 0.73
 SWEP.Secondary.Force = 1
 
+if SERVER then
+	resource.AddFile( "materials/weapons/pumpshotgun.vmt" )
+else
+	SWEP.WepSelectIcon = surface.GetTextureID( "weapons/pumpshotgun" )
+	SWEP.BounceWeaponIcon = false
+end
+
 function SWEP:Initialize()
 	self:SetWeaponHoldType( self.HoldType )
 	self.Idle = 0
@@ -99,10 +106,8 @@ function SWEP:Initialize()
 end
 
 function SWEP:Deploy()
-	local owner = self:GetOwner()
-	self:SetWeaponHoldType( self.HoldType )
 	timer.Simple(0.1, function()
-		if IsValid(self) then self:EmitSound("weapons/shotgun/gunother/shotgun_pump_1.wav") end
+		if IsValid(self) then self:EmitSound(")weapons/shotgun/gunother/shotgun_pump_1.wav") end
 	end)
 	self.ShotgunReload = 0
 	self.ShotgunReloadTimer = CurTime()
@@ -193,7 +198,7 @@ function SWEP:PrimaryAttack()
 	
 	timer.Simple(0.15, function() 
 		if IsValid(self) then
-			self:EmitSound("weapons/shotgun/gunother/shotgun_pump_1.wav", nil, nil, .3, CHAN_AUTO)
+			self:EmitSound(")weapons/shotgun/gunother/shotgun_pump_1.wav", nil, nil, .3, CHAN_AUTO)
 		end
 	end)
 end
@@ -202,7 +207,10 @@ function SWEP:SecondaryAttack()
 	local owner = self:GetOwner()
 	
 	if !( self.ShotgunReload == 0 ) then return end
-	self.ShotgunReloadTimer = CurTime() + 0.5
+	
+	local curtime = CurTime()
+	
+	self.ShotgunReloadTimer = curtime + 0.5
 	
 	owner:EmitSound( self.Secondary.Sound )
 	owner:LagCompensation( true )
@@ -241,7 +249,7 @@ function SWEP:SecondaryAttack()
 		target:TakeDamageInfo( dmginfo )
 		if tr.Hit then
 			if target:IsNPC() || target:IsPlayer() || target:Health() > 0 then
-				local pill = target:GetPillCostume()
+				local pill = target:IsPlayer() and target:GetPillCostume() or nil
 				if IsValid(pill) and not pill:IsInvisible() and not pill.cloaked then
 					owner:EmitSound( "Weapon.HitWorld" )
 				else
@@ -256,17 +264,17 @@ function SWEP:SecondaryAttack()
 	owner:LagCompensation( false )
 	self:SendWeaponAnim( ACT_VM_SECONDARYATTACK )
 	owner:DoAnimationEvent( ACT_GMOD_GESTURE_MELEE_SHOVE_2HAND )
-	self:SetNextPrimaryFire( CurTime() + self.Secondary.Delay )
-	self:SetNextSecondaryFire( CurTime() + self.Secondary.Delay )
+	self:SetNextPrimaryFire( curtime + self.Secondary.Delay )
+	self:SetNextSecondaryFire( curtime + self.Secondary.Delay )
 	self.Idle = 0
-	self.IdleTimer = CurTime() + owner:GetViewModel():SequenceDuration()
+	self.IdleTimer = curtime + owner:GetViewModel():SequenceDuration()
 end
 
 function SWEP:Reload()
 	local owner = self:GetOwner()
 	
 	if self:Clip1() < self.Primary.ClipSize and self:Ammo1() > 0 and self.ShotgunReload == 0 and self.ShotgunReloadTimer <= CurTime() then
-		self:EmitSound("weapons/shotgun/gunother/shotgun_load_shell_2.wav")
+		self:EmitSound(")weapons/shotgun/gunother/shotgun_load_shell_2.wav")
 		
 		self:SendWeaponAnim( ACT_VM_RELOAD )
 		owner:SetAnimation( PLAYER_RELOAD )
@@ -292,7 +300,7 @@ function SWEP:Think()
 		self.IdleTimer = CurTime() + 0.6
 	end
 	if self.ShotgunReload == 2 and self.ShotgunReloadTimer <= CurTime() and self:Clip1() < self.Primary.ClipSize and self:Ammo1() > 0 then
-		self:EmitSound("weapons/shotgun/gunother/shotgun_load_shell_2.wav")
+		self:EmitSound(")weapons/shotgun/gunother/shotgun_load_shell_2.wav")
 
 		self:SetClip1( self:Clip1() + 1 )
 		owner:RemoveAmmo( 1, self.Primary.Ammo, false )

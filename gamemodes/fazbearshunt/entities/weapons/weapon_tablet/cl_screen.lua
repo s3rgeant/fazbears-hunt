@@ -30,65 +30,94 @@ local RtView = GetRenderTargetEx("CA_XRayView",
     IMAGE_FORMAT_BGRA8888
 )
 
-local function drawTablet(alpha)
+local black = Color(0,0,0)
+
+--surface.CreateFont("FHTablet", { font = "Share Tech Mono", size = 28, extended = true, weight = 400, antialias = true, bold = true, shadow = true })
+	
+local function drawTablet(self, alpha)
     render.DrawTextureToScreen(RtView)
+	
+	local scrW = ScrW()
+	local scrH = ScrH()
     
     if alpha < 255 then
         surface.SetDrawColor(0, 0, 0, 255 - alpha)
-        surface.DrawRect(0, 0, ScrW(), ScrH())
+        surface.DrawRect(0, 0, scrW, scrH)
     end
+	
+	local energy = self:GetEnergy()
+	if not self.lastEnergy then
+		self.lastEnergy = self:GetEnergy()
+	end
+	
+	local curEnergy = Lerp(0.005, self.lastEnergy, energy)
+	self.lastEnergy = curEnergy
+	
+	local w = scrW * (curEnergy / 30)
+	
+	local x = (ScrW() * .5) - (w * .95) * .5
+	local y = scrH - 64
+	
+	surface.SetDrawColor(0,0,0,255)
+    surface.DrawRect(x - 2, y - 2, (w * .95) + 4, 28)
+	
+	surface.SetDrawColor(255,255,255,255)
+    surface.DrawRect(x, y, (w * .95), 24)
+	
+	if curEnergy > 1.5 then
+		draw.DrawText( math.floor(self:GetEnergy() * 3.3) .. " %", "ChatFont", ScrW() * .5, scrH - 64, black, TEXT_ALIGN_CENTER )
+	end
 end
 
 local isRenderingScreen = false
-local isCapturingXRay = false -- Флаг: рендерится ли сцена ИМЕННО для планшета прямо сейчас
 local screenAlpha = 0
 local fadeSpeed = 1500
 
 function SWEP:RenderScreen()
-    if isRenderingScreen then return end
-    
-    local ply = LocalPlayer()
-    if not IsValid(ply) then return end
-    
-    isRenderingScreen = true
-    
-    local targetAlpha = (self:GetIsFullView() and not self:GetIsHolstering()) and 255 or 0
-    screenAlpha = math.Approach(screenAlpha, targetAlpha, RealFrameTime() * fadeSpeed)
-    
-    if screenAlpha > 0 then 
-        render.PushRenderTarget(RtView)
-            render.Clear(0, 0, 0, 255, true, true)
-            
-            local viewData = {
-                origin = ply:EyePos(),
-                angles = ply:EyeAngles(),
-                x = 0,
-                y = 0,
-                w = RES,
-                h = RES,
-                fov = ply:GetFOV() * 0.4,
-                drawhud = false,
-                drawviewmodel = false,
-            }
-            
-                render.RenderView(viewData)
-            
-        render.PopRenderTarget()
-        
-        render.PushRenderTarget(RtTexture)
-            cam.Start2D()
-                drawTablet(screenAlpha)
-            cam.End2D()
-        render.PopRenderTarget()
-    else
-        render.PushRenderTarget(RtTexture)
-            render.Clear(0, 0, 0, 255, true, true)
-        render.PopRenderTarget()
-    end
-    
-    isRenderingScreen = false
-    
-    matScreen:SetTexture("$basetexture", RtTexture)
+	if isRenderingScreen then return end
+
+	local ply = LocalPlayer()
+	if not IsValid(ply) then return end
+
+	isRenderingScreen = true
+
+	local targetAlpha = (self:GetIsFullView() and not self:GetIsHolstering()) and 255 or 0
+	screenAlpha = math.Approach(screenAlpha, targetAlpha, RealFrameTime() * fadeSpeed)
+
+	if screenAlpha > 0 then 
+		render.PushRenderTarget(RtView)
+			render.Clear(0, 0, 0, 255, true, true)
+			
+			local viewData = {
+				origin = ply:EyePos(),
+				angles = ply:EyeAngles(),
+				x = 0,
+				y = 0,
+				w = RES,
+				h = RES,
+				fov = ply:GetFOV() * 0.4,
+				drawhud = false,
+				drawviewmodel = false,
+			}
+			
+			render.RenderView(viewData)
+			
+		render.PopRenderTarget()
+		
+		render.PushRenderTarget(RtTexture)
+			cam.Start2D()
+				drawTablet(self, screenAlpha)
+			cam.End2D()
+		render.PopRenderTarget()
+	else
+		render.PushRenderTarget(RtTexture)
+			render.Clear(0, 0, 0, 255, true, true)
+		render.PopRenderTarget()
+	end
+
+	isRenderingScreen = false
+	
+	matScreen:SetTexture("$basetexture", RtTexture)
 end
 
 local worldDarkness = 150

@@ -48,6 +48,12 @@ function ENT:Initialize()
 	end
 
 	local hull = (self.formTable.hull or Vector(32, 32, 72)) / scaleHull
+	
+	local renderHull 
+	if self.formTable.renderHull then
+		renderHull = self.formTable.renderHull
+	end
+	
 	local duckBy = (self.formTable.duckBy or (self.formTable.hull and 0 or 36)) / scaleHull
 	ply:SetHull(-Vector(hull.x * .5, hull.y * .5, 0), Vector(hull.x * .5, hull.y * .5, hull.z))
 	ply:SetHullDuck(-Vector(hull.x * .5, hull.y * .5, 0), Vector(hull.x * .5, hull.y * .5, hull.z - duckBy or 0))
@@ -60,7 +66,11 @@ function ENT:Initialize()
 	self.justSpawned = true
 	
 	if CLIENT then
-		ply:SetRenderBounds(-Vector(hull.x * .5, hull.y * .5, 0), Vector(hull.x * .5, hull.y * .5, hull.z + 25))
+		if renderHull then
+			self:SetRenderBounds(-Vector(renderHull.x, renderHull.y, 0), Vector(renderHull.x, renderHull.y, renderHull.z))
+		else
+			ply:SetRenderBounds(-Vector(hull.x * .5, hull.y * .5, 0), Vector(hull.x * .5, hull.y * .5, hull.z + 25))
+		end
 		
 		local speed = self.formTable.moveSpeed or {}
 		ply:SetWalkSpeed(speed.walk or 200)
@@ -297,11 +307,6 @@ function ENT:Initialize()
 			end
 		end
 	
-		if self.formTable.modelScale then
-			self:SetModelScale(self.formTable.modelScale, 0.000001)
-		end
-		ply:SetModelScale(self.formTable.modelScale or 1, 0.000001)
-	
 		if self.formTable.boneMorphs then
 			for k, v in pairs(self.formTable.boneMorphs) do
 				local b = self:LookupBone(k)
@@ -339,6 +344,11 @@ function ENT:Initialize()
 		end
 	end
 	
+	if self.formTable.modelScale then
+		self:SetModelScale(self.formTable.modelScale, 0)
+	end
+	ply:SetModelScale(self.formTable.modelScale or 1, 0)
+	
 	hook.Run("PillCreated", ply, self)
 end
 
@@ -360,6 +370,10 @@ function ENT:OnRemove()
 	
 	if SERVER then
 		self:PillLoopStopAll()
+	end
+	
+	if CLIENT and IsValid(ply) then
+		ply:SetModelScale(1)
 	end
 	
 	local newType, newName = pills.unmapEnt(ply, self)
@@ -1154,6 +1168,8 @@ function ENT:SetDefaultSpeed()
     ply:SetCrouchedWalkSpeed(speed.ducked / (speed.walk or 200))
 	ply:SetJumpPower(jump)
 end
+
+if SERVER then return end
 
 ENT.IsDrawn = true
 
