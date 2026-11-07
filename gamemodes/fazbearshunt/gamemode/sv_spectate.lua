@@ -117,7 +117,7 @@ end)
 hook.Add( "KeyPress", "KEY_PRESS_SPECTATOR", function( ply, key )
 	if ply:Team() == TEAM_SPECTATOR and ply:GetViewEntity() == ply then
 		
-		if key == IN_JUMP and IsValid( ply:GetObserverTarget() ) then	
+		if  key == IN_JUMP and IsValid( ply:GetObserverTarget() ) and not ply:KeyDown(IN_SPEED) then	
 			if ply:GetObserverMode() == OBS_MODE_ROAMING then
 				ply:Spectate(OBS_MODE_IN_EYE)
 			elseif ply:GetObserverMode() == OBS_MODE_IN_EYE then

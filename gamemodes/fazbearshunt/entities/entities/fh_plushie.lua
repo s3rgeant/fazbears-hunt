@@ -9,7 +9,7 @@ if SERVER then
     AddCSLuaFile()
 
     function ENT:Initialize()
-		self:SetModel("models/RobGamings/ChuizaProductions/FNAF1/Plush/FreddyPlush.mdl")
+		self:SetModel("models/fh/entities/plushies/RobGamings_ChuizaProductions/FreddyPlush.mdl")
 		self:PhysicsInit(SOLID_VPHYSICS)
 		self:SetMoveType(MOVETYPE_NONE)
 		self:SetSolid(SOLID_VPHYSICS)

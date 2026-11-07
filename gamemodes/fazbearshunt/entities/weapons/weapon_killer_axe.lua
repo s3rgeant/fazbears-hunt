@@ -1,7 +1,3 @@
-local math_min = math.min
-local timer_Create = timer.Create
-local timer_Remove = timer.Remove
-
 SWEP.Base = "weapon_base"
 
 SWEP.PrintName = "#weapon_killer_axe"
@@ -26,8 +22,6 @@ SWEP.Primary.Ammo = "none"
 
 SWEP.Secondary.Automatic = false
 SWEP.Secondary.Ammo = "none"
-
-SWEP.Skin = 4
 
 SWEP.HitDelay = 0.4
 
@@ -60,8 +54,6 @@ end
 
 function SWEP:Initialize()
 	self:SetHoldType("melee2")
-	self:SetSkin(self.Skin)
-	self:SetSubMaterial(1, self.SubMaterial)
 end
 
 function SWEP:PrimaryAttack()
@@ -197,14 +189,7 @@ function SWEP:DealDamage()
 		end
 		
 		if IsValid(ent) then
-			if ent:GetPillName() == "pill_endo02" then
-				if target._endoHoldingPlayer == ply then
-					endo.releasePlayer(target, true)
-		
-					cooldown.Set(target, 'grab', 6)
-					cooldown.Send(ply, "grab")
-				end
-			end
+			ent:Func("killerAxeAttacked", target, ent, ply, tr)
 		end
 	end
 	
@@ -343,7 +328,6 @@ end)
 if CLIENT then
 	local AXE_COLOR = Color(255, 0, 0)
 	local function getAxeHl(owner, rule)
-		local owner = LocalPlayer()
 		local target = owner:GetObserverTarget()
 		if IsValid(target) and target:IsPlayer() then owner = target end
 		local wep = owner:GetActiveWeapon()
@@ -352,12 +336,32 @@ if CLIENT then
 		if IsValid(wep) and wep:GetClass() == "weapon_killer_axe" then
 			for _, ply in player.Iterator() do
 				if !ply:Alive() or ply:GetNoDraw() then continue end
+				if ply == owner then continue end
 				
 				local plyPos = ply:GetPos()
 				local ownerPos = owner:GetPos()
 				
-				if ply ~= owner and plyPos:Distance(ownerPos) <= 2600 then
-					local ent = pills.getMappedEnt(ply)
+				local distance = plyPos:Distance(ownerPos)
+				
+				if distance <= 2600 then
+					local ent = ply:GetPillCostume()
+					
+					local skip = hook.Run("FH_HandleKillerAxeHighlight", owner, ply, rule)
+					
+					if skip == true then continue end
+					
+					if isentity(skip) then 
+						local entry = OUTLINE.NormalizeEntry(rule, {
+							ent = skip,
+							outline_color = AXE_COLOR,
+							fill_color = AXE_COLOR
+						})
+
+						if entry then
+							out[#out + 1] = entry
+						end
+						return
+					end
 
 					if IsValid(ent) and ent.formTable.name == "pill_wgfreddy2" and !owner:GetNW2Bool("_OUTWORLD_target") then continue end
 					

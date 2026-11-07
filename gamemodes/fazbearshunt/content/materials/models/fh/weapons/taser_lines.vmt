@@ -1,0 +1,5 @@
+"VertexLitGeneric"
+{
+	"$baseTexture" "Models/fh/weapons/taser_lines4"
+	$vertexalpha 1
+}

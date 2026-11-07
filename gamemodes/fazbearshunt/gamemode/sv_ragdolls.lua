@@ -27,6 +27,8 @@ function meta:CreateRagdoll()
 	local ply_col = self:GetColor()
 	local ply_mat = self:GetMaterial()
 	
+	print(self:LastHitGroup())
+	
 	local playerModelIsRagdoll = self:GetBoneCount() > 1
 
 	local ent
@@ -88,8 +90,8 @@ function meta:CreateRagdoll()
 		if ent:GetClass() == ent2:GetClass() then return true end
 		if ent2:IsPlayer() then return true end
 	end
-	
 	ent:SetCustomCollisionCheck( true )
+	ent:CollisionRulesChanged()
 
 	self:SpectateEntity(ent)
 	self:Spectate(OBS_MODE_CHASE)

@@ -38,6 +38,7 @@ SWEP.CritAttackDelay = 1
 
 function SWEP:SetupDataTables()
     self:NetworkVar("Float", 0, "NextMeleeAttack")
+	self:NetworkVar("Int", 0, "NextArm")
     return self.BaseClass.SetupDataTables and self.BaseClass.SetupDataTables(self)
 end
 
@@ -56,23 +57,18 @@ function SWEP:PrimaryAttack()
 	
 	if ply:IsFrozen() then return end
 	
-	local name = (math.Round( self.NextArmHit ) == 1) and "attack1" or "attack2"
 	
-	if IsFirstTimePredicted() then
-		self:HandleAnimation(name, 0.5, true)
-		
-		self._ArmCounter = self._ArmCounter + 1
-		self.NextArmHit = util.SharedRandom( "BL5_Arm", 1, 2, self._ArmCounter )
-	end
 	local now = CurTime()
+	self:SetNextArm((math.floor(now) % 2))
 	
-	if SERVER then
-		self:SetNextPrimaryFire(now + self.AttackDelay)
-		self:SetNextSecondaryFire(now + self.AttackDelay)
-		self:SetNextMeleeAttack( now + self.HitDelay )
+	local name = self:GetNextArm() == 0 and "attack1" or "attack2"
+	self:HandleAnimation(name, 0.5, true)
 	
-		self:SetLastAttack(now)
-	end
+	self:SetNextPrimaryFire(now + self.AttackDelay)
+	self:SetNextSecondaryFire(now + self.AttackDelay)
+	self:SetNextMeleeAttack( now + self.HitDelay )
+
+	self:SetLastAttack(now)
 end
 
 function SWEP:SecondaryAttack()
@@ -208,6 +204,7 @@ function SWEP:DealDamage()
     local dmginfo = DamageInfo()
     dmginfo:SetAttacker(ply)
     dmginfo:SetInflictor(self)
+	dmginfo:SetDamagePosition(tr.HitPos)
     dmginfo:SetDamage(target:IsPlayer() and 2 or 10)
 
     SuppressHostEvents(NULL)

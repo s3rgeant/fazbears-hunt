@@ -1,10 +1,9 @@
-local Angle = Angle
 local math = math
 local render = render
 local surface = surface
 local cam = cam
 
-local matScreen = Material( "models/weapons/vondaram/tablet/ekran" )
+local matScreen = Material( "models/fh/weapons/vondaram/tablet/ekran" )
 
 if matScreen:IsError() then
     ErrorNoHalt("Tablet's screen texture not found!")
@@ -30,53 +29,83 @@ local RtView = GetRenderTargetEx("CA_XRayView",
     IMAGE_FORMAT_BGRA8888
 )
 
-local black = Color(0,0,0)
-
---surface.CreateFont("FHTablet", { font = "Share Tech Mono", size = 28, extended = true, weight = 400, antialias = true, bold = true, shadow = true })
-	
-local function drawTablet(self, alpha)
-    render.DrawTextureToScreen(RtView)
-	
-	local scrW = ScrW()
-	local scrH = ScrH()
-    
-    if alpha < 255 then
-        surface.SetDrawColor(0, 0, 0, 255 - alpha)
-        surface.DrawRect(0, 0, scrW, scrH)
-    end
-	
-	local energy = self:GetEnergy()
-	if not self.lastEnergy then
-		self.lastEnergy = self:GetEnergy()
-	end
-	
-	local curEnergy = Lerp(0.005, self.lastEnergy, energy)
-	self.lastEnergy = curEnergy
-	
-	local w = scrW * (curEnergy / 30)
-	
-	local x = (ScrW() * .5) - (w * .95) * .5
-	local y = scrH - 64
-	
-	surface.SetDrawColor(0,0,0,255)
-    surface.DrawRect(x - 2, y - 2, (w * .95) + 4, 28)
-	
-	surface.SetDrawColor(255,255,255,255)
-    surface.DrawRect(x, y, (w * .95), 24)
-	
-	if curEnergy > 1.5 then
-		draw.DrawText( math.floor(self:GetEnergy() * 3.3) .. " %", "ChatFont", ScrW() * .5, scrH - 64, black, TEXT_ALIGN_CENTER )
-	end
-end
+local black = Color(0, 0, 0)
 
 local isRenderingScreen = false
+local isRenderingTabletView = false
 local screenAlpha = 0
 local fadeSpeed = 1500
+
+hook.Add("ShouldCollectAffected", "weapon_tablet", function(target, myself)
+	if isRenderingScreen then
+		return false
+	end
+end)
+
+local tabletColorModify = {
+	["$pp_colour_addr"] = 0,
+	["$pp_colour_addg"] = 0,
+	["$pp_colour_addb"] = 0,
+	["$pp_colour_brightness"] = -0.12,
+	["$pp_colour_contrast"] = 2.9,
+	["$pp_colour_colour"] = 0,
+	["$pp_colour_mulr"] = 0,
+	["$pp_colour_mulg"] = 0,
+	["$pp_colour_mulb"] = 0
+}
+
+hook.Add("FH_PreHighlightRender", "CA_Tablet_PreHighlightEffect", function()
+	if not isRenderingTabletView then return end
+
+	cam.Start2D()
+		DrawColorModify(tabletColorModify)
+	cam.End2D()
+end)
+
+local function drawTablet(self, alpha)
+	render.DrawTextureToScreen(RtView)
+
+	if alpha < 255 then
+		surface.SetDrawColor(0, 0, 0, 255 - alpha)
+		surface.DrawRect(0, 0, RES, RES)
+	end
+
+	local energy = self:GetEnergy()
+
+	if self.lastEnergy == nil then
+		self.lastEnergy = energy
+	end
+
+	local currentEnergy = Lerp(0.005, self.lastEnergy, energy)
+	self.lastEnergy = currentEnergy
+
+	local energyWidth = RES * (currentEnergy / 30)
+	local barWidth = energyWidth * 0.95
+	local barX = RES * 0.5 - barWidth * 0.5
+	local barY = RES - 64
+
+	surface.SetDrawColor(0, 0, 0, 255)
+	surface.DrawRect(barX - 2, barY - 2, barWidth + 4, 28)
+
+	surface.SetDrawColor(255, 255, 255, 255)
+	surface.DrawRect(barX, barY, barWidth, 24)
+
+	if currentEnergy > 1.5 then
+		draw.DrawText(
+			math.floor(energy * 3.3) .. " %",
+			"ChatFont",
+			RES * 0.5,
+			barY,
+			black,
+			TEXT_ALIGN_CENTER
+		)
+	end
+end
 
 function SWEP:RenderScreen()
 	if isRenderingScreen then return end
 
-	local ply = LocalPlayer()
+	local ply = self:GetOwner()
 	if not IsValid(ply) then return end
 
 	isRenderingScreen = true
@@ -100,15 +129,23 @@ function SWEP:RenderScreen()
 				drawviewmodel = false,
 			}
 			
-			render.RenderView(viewData)
+        isRenderingTabletView = true
+                
+        local renderSucceeded, renderError = pcall(render.RenderView, viewData)
+                
+        isRenderingTabletView = false
+                
+        if not renderSucceeded then
+        	ErrorNoHalt("Error occured: " .. tostring(renderError) .. ":( \n")
+        end
 			
-		render.PopRenderTarget()
-		
-		render.PushRenderTarget(RtTexture)
-			cam.Start2D()
-				drawTablet(self, screenAlpha)
-			cam.End2D()
-		render.PopRenderTarget()
+        render.PopRenderTarget()
+
+        render.PushRenderTarget(RtTexture, 0, 0, RES, RES)
+        	cam.Start2D()
+        		drawTablet(self, screenAlpha)
+        	cam.End2D()
+        render.PopRenderTarget()
 	else
 		render.PushRenderTarget(RtTexture)
 			render.Clear(0, 0, 0, 255, true, true)
@@ -151,10 +188,10 @@ local function ResolveTeammateColor(lp, ent, storedColor)
         return storedColor
     end
 
-    if !lp:IsAnimatronic() and killers and killers.getColor and ent.GetPillName then
+    if !lp:IsAnimatronic() and killers and killers.GetColor and ent.GetPillName then
         local pillName = ent:GetPillName()
         if pillName then
-            local killerColor = killers.getColor(pillName)
+            local killerColor = killers.GetColor(pillName)
             if IsColor(killerColor) then
                 return killerColor
             end

@@ -2,6 +2,12 @@
 local PANEL = {}
 local PlayerVoicePanels = {}
 
+local voice_bar = Material("vgui/base/voice_bar.png")
+local voice_w, voice_h = voice_bar:Width(), voice_bar:Height()
+
+local voice_gradient = Material("vgui/base/voice_gradient.png")
+local voiceg_w, voiceg_h = voice_gradient:Width(), voice_gradient:Height()
+
 function PANEL:Init()
 
 	self.LabelName = vgui.Create( "DLabel", self )
@@ -22,7 +28,7 @@ function PANEL:Init()
 	self.Color = color_transparent
 
 	self:SetSize( 250, 32 + 8 )
-	self:DockPadding( 4, 4, 4, 4 )
+	self:DockPadding( 10, 4, 4, 4 )
 	self:DockMargin( 2, 2, 2, 2 )
 	self:Dock( BOTTOM )
 
@@ -56,7 +62,17 @@ end
 function PANEL:Paint( w, h )
 
 	if ( !IsValid( self.ply ) ) then return end
-	draw.RoundedBox( 4, 0, 0, w, h, Color( 0, self.ply:VoiceVolume() * 255, 0, 240 ) )
+	--draw.RoundedBox( 4, 0, 0, w, h, Color( 0, self.ply:VoiceVolume() * 255, 0, 240 ) )
+	
+	surface.SetMaterial( voice_bar )
+	surface.SetDrawColor( 255, 255, 255, 255 )
+	surface.DrawTexturedRect( 0, 0, voice_w, voice_h )
+	
+	local vv = self.ply:VoiceVolume()
+	local red = math.Remap(vv, 0.3, 1, 0, 255)
+	surface.SetMaterial( voice_gradient )
+	surface.SetDrawColor( red, 255, 0, Lerp(math.ease.OutQuad(vv * 2), 0, vv * 255 * 2) )
+	surface.DrawTexturedRect( 55, 0, voiceg_w, voiceg_h )
 
 end
 
@@ -155,22 +171,35 @@ hook.Add( "InitPostEntity", "CreateVoiceVGUI", CreateVoiceVGUI )
 
 local speaker = Material("voice/icntlk_pl.vtf")
 local speaker_mute = Material("voice/muted_speaker.png")
+
+local clr_background = Color(0,0,0,166)
 hook.Add("PlayerStartVoice", "HideVoicePanels", function(ply)
     local listener = LocalPlayer()
 	
 	if !IsValid(listener) then return end
 	
     if ply == listener and listener:Team() ~= 2701 and listener:Team() ~= TEAM_SPECTATOR then
+		local scrw = ScrW()
+		local scrh = ScrH()
         hook.Add("HUDPaint", "DrawLocalPlayerVoiceIcon", function()
-            local x, y = (ScrW() / 2) - (64 / 2), ScrH() - 50 - (64 / 2)
+            local x, y = (scrw * .5) - (64 * .5), scrh - 50 - (64 * .5)
 			local icon = (!listener:GetAudible() and listener:GetPill()) and speaker_mute or speaker
 			
-			draw.RoundedBox(12, x, y, 64, 64, Color(0, 0, 0, 120))
+			draw.RoundedBox(12, x, y, 64, 64, clr_background)
 			
-			local x, y = (ScrW() / 2) - (48 / 2), ScrH() - 50 - (48 / 2)
+			local size = 48
+			local hsize = size * .5
+			
+			local x, y = (scrw * .5) - hsize, scrh - 50 - hsize
+			
+			local volume = ply:VoiceVolume()
+			
+			local a = math.Remap(volume, 0, 1, 150, 255)
+			local volsize = math.Remap(volume, 0, 1, 0, 16)
+			
 			surface.SetMaterial(icon)
-			surface.SetDrawColor(255, 255, 255, 255)
-			surface.DrawTexturedRect(x, y, 48, 48)
+			surface.SetDrawColor(a, a, a, 255)
+			surface.DrawTexturedRect(x - (volsize*.5), y - (volsize*.5), size+volsize, size+volsize)
         end)
 		return false
     end

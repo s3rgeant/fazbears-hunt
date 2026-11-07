@@ -153,7 +153,7 @@ function draw_killer_selector()
     local rowCount = math.ceil(#availableKillers / 3)
     grid:SetTall(rowCount * 150)
 	
-	local killerData = killers.getAll()
+	local killerData = killers.GetAll()
 	local entiretyOfPills = pills.getAllPills()
 
     for i, animName in ipairs(availableKillers) do
@@ -358,11 +358,6 @@ function draw_killer_selector()
 	end
     modelpanel:Dock(TOP)
 	
-	modelpanel:SetDirectionalLight(BOX_TOP, Color(255, 255, 255))
-	modelpanel:SetDirectionalLight(BOX_FRONT, Color(230, 230, 230))
-	modelpanel:SetDirectionalLight(BOX_LEFT, Color(180, 180, 180))
-	modelpanel:SetDirectionalLight(BOX_RIGHT, Color(100, 100, 100))
-	modelpanel:SetDirectionalLight(BOX_BOTTOM, Color(60, 60, 60))
 	modelpanel:SetAmbientLight(Color(40, 40, 40))
 
 	function modelpanel:DragMousePress()
@@ -381,6 +376,32 @@ function draw_killer_selector()
 			ent:SetAngles(Angle(0, ent:GetAngles().y, 0))
 		end
 		ent:FrameAdvance(FrameTime())
+	end
+
+	modelpanel:SetAmbientLight( Color( 20, 6, 4 ) )
+
+	for i = 0, 5 do
+		modelpanel:SetDirectionalLight( i, Color( 0, 0, 0 ) )
+	end
+
+	local fnafLights = {
+		{
+			type  = MATERIAL_LIGHT_POINT,
+			pos   = Vector( 100, 40, 60 ),
+			color = Vector( 1.7, 0.45, 0.4 )
+		},
+
+		{
+			type  = MATERIAL_LIGHT_POINT,
+			pos   = Vector( 60, 0, -15 ),
+			color = Vector( 0.4, 0.04, 0.03 )
+		},
+	}
+
+	function modelpanel:PreDrawModel()
+		render.SetLocalModelLights( fnafLights )
+		render.BindLocalCubemap( "editor/cubemap" )
+		return true
 	end
 	
 	local buttonSelect = vgui.Create("DButton", model_viewer)

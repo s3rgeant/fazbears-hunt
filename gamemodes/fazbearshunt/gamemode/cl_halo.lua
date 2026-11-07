@@ -283,13 +283,13 @@ local function collectSpects(lply)
 	
 		if not IsValid(pill) then
 			if not targetPlayer:IsInvisible() then continue end
-	
-			pill = targetPlayer
 		else
 			if not pill:IsInvisible() then 
 				continue 
 			end
-			targetColor = killers.getColor(pill:Get("name"))
+			targetColor = killers.GetColor(pill:Get("name"))
+	
+			targetPlayer = pill
 		end
 	
 		entryCount = entryCount + 1
@@ -348,7 +348,7 @@ local AFFECTED_ORB_FULL_DISTANCE_SQR = AFFECTED_ORB_FULL_DISTANCE * AFFECTED_ORB
 local affectedHighlightEntries = {}
 local affectedHighlightEntryPool = {}
 
-local function ApplyAffectedOrbHighlightFilter(highlightEntry, qualityContext)
+local function affectedDistanceCut(highlightEntry, qualityContext)
 	local localPlayer = qualityContext.local_player
 	local highlightedEntity = highlightEntry.ent
 	
@@ -363,7 +363,7 @@ local function ApplyAffectedOrbHighlightFilter(highlightEntry, qualityContext)
 	end
 end
 
-local function getAffected(localPlayer)
+local function getAffected(localPlayer, rule)
 	if not istable(affectedPlayers) then return nil end
 	
 	ClearReusableEntryList(affectedHighlightEntries)
@@ -383,6 +383,8 @@ local function getAffected(localPlayer)
 		if isPlayer and target:IsSurvivor() and target:IsInvisible() then continue end
 	
 		if not target:GetPos():ToScreen().visible then continue end
+		
+		if hook.Run("ShouldCollectAffected", target, localPlayer) == false then continue end
 	
 		entryCount = entryCount + 1
 	
@@ -432,25 +434,11 @@ OUTLINE.RegisterRule("affected_players", {
         auto = true,
         low = true,
 
-        always_apply = ApplyAffectedOrbHighlightFilter
+        always_apply = affectedDistanceCut
     },
 
     collect = getAffected
 })
-
-local function GetViewOrigin(ply)
-    local viewEnt = ply:GetViewEntity()
-
-    if IsValid(viewEnt) then
-        if viewEnt:IsPlayer() then
-            return viewEnt:EyePos()
-        end
-
-        return viewEnt:GetPos()
-    end
-
-    return ply:EyePos()
-end
 
 local CUPCAKE_COLOR   = Color(255, 155, 0, 255)
 local cupcakeHighlightEntries = {}
@@ -527,7 +515,7 @@ end)
 
 local TEAMMATE_COLOR = Color(0, 255, 0, 255)
 
-local function ResolveTeammateColor(localPlayer, target, storedColor)
+local function getPillPlayerColor(localPlayer, target, storedColor)
     if IsColor(storedColor) then
         return storedColor
     end
@@ -536,7 +524,7 @@ local function ResolveTeammateColor(localPlayer, target, storedColor)
         local pillName = target:GetPillName()
 
         if pillName then
-            local killerColor = killers.getColor(pillName)
+            local killerColor = killers.GetColor(pillName)
 
             if IsColor(killerColor) then
                 return killerColor
@@ -547,34 +535,26 @@ local function ResolveTeammateColor(localPlayer, target, storedColor)
     return TEAMMATE_COLOR
 end
 
-local function CanCollectTeammateHighlights(localPlayer)
-    local fh_halo_teammates = GetConVar("fh_halo_teammates")
+local function canDrawTeammatesHalos(myself)
+    if not fh_halo_teammates:GetBool() and myself:Team() == TEAM_PILLS then return false end
 
-    if fh_halo_teammates and not fh_halo_teammates:GetBool() and localPlayer:IsAnimatronic() then return false end
+    if myself:Team() ~= TEAM_PILLS then return false end
 
-    if not localPlayer:IsAnimatronic() then return false end
-
-    if not istable(animatronics) or table.IsEmpty(animatronics) then return false end
+    if table.IsEmpty(animatronics) then return false end
 
     return true
 end
 
-local function ResolveHighlightedAnimatronic(localPlayer, pill)
-    if not IsValid(pill) then return NULL end
-
-    if not pill:IsPlayer() then
-        return pill
-    end
-
-    if pill:Team() ~= TEAM_PILLS then
-        return NULL
-    end
-
-    if pill == localPlayer then
-        return NULL
-    end
-
-    return pill:GetPill()
+local function getBetterPill(myself, pill)
+	if not IsValid(pill) then return NULL end
+	
+	if not pill:IsPlayer() then return pill end
+	
+	if pill:Team() ~= TEAM_PILLS then return NULL end
+	
+	if pill == myself then return NULL end
+	
+	return pill:GetPill()
 end
 
 local TeammateHighlightCache = {
@@ -585,7 +565,7 @@ local TeammateHighlightCache = {
     regularEntryPool = {},
 }
 
-local function RebuildTeammateHighlightCache( localPlayer )
+local function rebuildTeammateHaloCache( localPlayer )
     local cache = TeammateHighlightCache
 
     cache.frameNumber = FrameNumber()
@@ -593,25 +573,26 @@ local function RebuildTeammateHighlightCache( localPlayer )
 
     ClearReusableEntryList(cache.regularEntries)
 
-    if not CanCollectTeammateHighlights( localPlayer ) then return end
+    if not canDrawTeammatesHalos( localPlayer ) then return end
 
     local regularEntryCount = 0
 
     for animatronicReference, storedColor in pairs(animatronics) do
-        local target = ResolveHighlightedAnimatronic(localPlayer,animatronicReference)
+        local target = getBetterPill(localPlayer,animatronicReference)
 
         if not IsValid(target) then continue end
         if target:IsDormant() then continue end
 		
 		if not target:IsInvisible() then
 			local owner = target.GetPillUser and target:GetPillUser() or nil
-			local isPlayer = owner and owner:IsPlayer() or false
+			local ownerValid = owner and owner:IsValid()
+			local isPlayer = ownerValid and owner:IsPlayer() or false
 			
 			local filtr = {localPlayer}
 			if owner then filtr[#filtr+1] = owner end
 			
-			local targetPos = target:GetPos()
-			if owner then targetPos = isPlayer and target:EyePos() or target:GetPos() end
+			local targetPos = (target:GetPos() + target:OBBCenter())
+			if ownerValid then targetPos = isPlayer and owner:EyePos() or (owner:GetPos() + owner:OBBCenter()) end
 			
 			local tr = util.TraceLine({
 				start = localPlayer:GetShootPos(),
@@ -622,7 +603,7 @@ local function RebuildTeammateHighlightCache( localPlayer )
 			if not tr.Hit then continue end
 		end
 
-        local teammateColor = ResolveTeammateColor( localPlayer,target,storedColor)
+        local teammateColor = getPillPlayerColor( localPlayer,target,storedColor)
         
 		regularEntryCount = regularEntryCount + 1
 
@@ -644,23 +625,21 @@ local function RebuildTeammateHighlightCache( localPlayer )
     end
 end
 
-local function EnsureTeammateHighlightCache(localPlayer)
+local function getTeammateHaloCache(localPlayer)
     local cache = TeammateHighlightCache
     local currentFrameNumber = FrameNumber()
 
     if cache.frameNumber == currentFrameNumber and cache.localPlayer == localPlayer then return end
 
-    RebuildTeammateHighlightCache(localPlayer)
+    rebuildTeammateHaloCache(localPlayer)
 end
 
 local function GetTeammatesForHighlight(localPlayer)
-	EnsureTeammateHighlightCache(localPlayer)
+	getTeammateHaloCache(localPlayer)
 
 	local highlightEntries = TeammateHighlightCache.regularEntries
 
-	if #highlightEntries == 0 then
-		return nil
-	end
+	if #highlightEntries == 0 then return nil end
 
 	return highlightEntries
 end
@@ -725,7 +704,7 @@ hook.Add("HUDPaint", "fh_draw_affected", function()
 		anims[anim] = IsColor(color) and color or true
 	end
 	
-    if ply:IsAnimatronic() then
+    if ply:Team() == TEAM_PILLS then
 		draw_pill_avatars(anims, nil, GetGlobal2Float("FarZ", 8000))
 	end
 end)
@@ -927,7 +906,7 @@ function draw_pill_avatars(tbl, material, distance)
                 end
 				
                 if IsValid(ent) and killers.GetFullName(ent:GetPillName()) and ply:IsSurvivor() then
-					ourColor = IsColor(color) and color or killers.getColor(ent:GetPillName())
+					ourColor = IsColor(color) and color or killers.GetColor(ent:GetPillName())
 				end
 
 				surface.SetDrawColor(ourColor.r, ourColor.g, ourColor.b, alpha)

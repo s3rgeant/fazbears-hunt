@@ -255,3 +255,10 @@ function PLAYER:FinishMove(move)
 end
 
 player_manager.RegisterClass( "player_fh", PLAYER, "player_default" )
+
+local path = "fazbearshunt/gamemode/player_class/subclasses/"
+local files, folders = file.Find(path .. "*", "LUA")
+	
+for _, file_name in ipairs(files) do
+	include(path .. file_name)
+end

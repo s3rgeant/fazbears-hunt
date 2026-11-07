@@ -173,13 +173,13 @@ net.Receive( "DeathNoticeEvent", function()
 
 	-- Handle player entities
 	if ( isentity( attacker ) and attacker:IsValid() and attacker:IsPlayer() ) then 
-		attacker = attacker:Name() 
+		attacker = attacker:Nick() 
 	end
 	if ( isentity( victim ) and victim:IsValid() and victim:IsPlayer() ) then 
-		victim = victim:Name() 
+		victim = victim:Nick() 
 	end
 	if ( isentity( assistant ) and assistant:IsValid() and assistant:IsPlayer() ) then 
-		assistant = assistant:Name() 
+		assistant = assistant:Nick() 
 	end
 
 	-- Handle other entities
@@ -247,7 +247,11 @@ local function DrawDeath( x, y, death, time )
 	
 	local assistantLeft
 	if ( death.assistant ) then
-		assistantLeft = death.assistant .. " + "
+		if isstring(death.assistant) then
+			assistantLeft = death.assistant .. " + "
+		else
+			--ErrorNoHaltWithStack( "Ошибка с отрисовкой килл фида ", death.assistant )
+		end
 	end
 
 	-- Draw KILLER

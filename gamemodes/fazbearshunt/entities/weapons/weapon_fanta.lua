@@ -5,8 +5,8 @@ local timer_Remove = timer.Remove
 SWEP.Base = "weapon_base"
 
 SWEP.PrintName = "#weapon_fanta"
+SWEP.Purpose = "#info_fanta"
 
-SWEP.DrawWeaponInfoBox	= false
 SWEP.BounceWeaponIcon	= false 
 
 SWEP.Slot = 3
@@ -181,6 +181,8 @@ end
 
 hook.Add("OnPlayerJump", "fanta_buff", function(ply, speed)
 	if ply:GetNW2Bool("FazbearsFantaEffect") then
-		ply:SetVelocity(ply:GetAimVector() * 250)
+		local vel = ply:GetAimVector()
+		vel.z = math.max(vel.z, 0)
+		ply:SetVelocity(vel * 250)
 	end
 end)

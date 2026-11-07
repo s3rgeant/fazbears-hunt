@@ -3,6 +3,9 @@
 AddCSLuaFile()
 
 -- Them hooks
+local vecfive = Vector(0,0,5)
+local mins = Vector(-4,-4,-5)
+local maxs = Vector(4,4,5)
 hook.Add("CalcView", "momo_calcview", function(ply, pos, ang, fov, nearZ, farZ)
 	local myself = LocalPlayer()
 	local ent = pills.getMappedEnt(myself)
@@ -20,7 +23,7 @@ hook.Add("CalcView", "momo_calcview", function(ply, pos, ang, fov, nearZ, farZ)
 			dist = ent.formTable.camera and ent.formTable.camera.dist or 100
 	
 			local underslung = ent.formTable.camera and ent.formTable.camera.underslung
-			local offset = LocalToWorld(Vector(-dist, 0, underslung and -dist / 5 or dist / 5), Angle(0, 0, 0), Vector(0, 0, 0), ang)
+			local offset = LocalToWorld(Vector(-dist, 0, underslung and -dist / 5 or dist / 5), angle_zero, vector_origin, ang)
 	
 			local tr = util.TraceHull({
 				start = startpos,
@@ -40,17 +43,17 @@ hook.Add("CalcView", "momo_calcview", function(ply, pos, ang, fov, nearZ, farZ)
 			return view
 		else
 			if ply:GetMoveType() == MOVETYPE_NOCLIP then return end
-			local maxs = ply:OBBMaxs()
-			maxs.x = 0
-			maxs.y = 0
-			local startpos = ply:GetPos() + maxs
+			local pmaxs = ply:OBBMaxs()
+			pmaxs.x = 0
+			pmaxs.y = 0
+			local startpos = ply:GetPos() + (pmaxs - vecfive)
 			local offset = ply:EyePos()
 			local tr = util.TraceHull({
 				start = startpos,
 				endpos = offset,
 				filter = ent.camTraceFilter,
-				mins = Vector(-4, -4, -5),
-				maxs = Vector(4, 4, 5),
+				mins = mins,
+				maxs = maxs,
 				mask = MASK_VISIBLE
 			})
 			

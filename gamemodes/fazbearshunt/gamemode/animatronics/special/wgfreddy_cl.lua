@@ -155,26 +155,18 @@ net.Receive("wgfreddy_second_ambience", function()
 	end)
 end)
 
+local ourTarget
 local GFREDDY_COLOR   = Color(255, 200, 0, 255)
 local function getGFreddyTarget(lp, rule)
 	if not lp:GetNW2Bool("_OUTWORLD_gfreddy") then return nil end
 
-	local outTarget = nil
+	if not IsValid(ourTarget) then return nil end
 
-	for _, ply in player.Iterator() do
-		if IsValid(ply) and ply:GetNW2Bool("_OUTWORLD_target") then
-			outTarget = ply
-			break
-		end
-	end
-
-	if not IsValid(outTarget) then return nil end
-
-	local pos = outTarget:GetPos()
+	local pos = ourTarget:GetPos()
 	if !pos:ToScreen().visible then return end
 
 	local entry = OUTLINE.NormalizeEntry(rule, {
-		ent = outTarget,
+		ent = ourTarget,
 		outline_color = GFREDDY_COLOR
 	})
 
@@ -199,10 +191,7 @@ OUTLINE.RegisterRule("gfreddy_outworld_target", {
 })
 
 local function getGFreddySelectie(lp, rule)
-	if not isfunction(fh_get_wgfreddy_target) then return nil end
-	if not pills.getMappedEnt then return nil end
-
-	local pill = pills.getMappedEnt(lp)
+	local pill = lp:GetPillCostume()
 	if not IsValid(pill) or pill:GetPillName() ~= "pill_wgfreddy2" then return nil end
 	if lp:GetNW2Bool("_OUTWORLD_gfreddy") then return nil end
 
@@ -253,7 +242,7 @@ local function fh_wgfreddy_selecting_halo()
 		ang:RotateAroundAxis(ang:Forward(), 90)
 	
 		cam.Start3D2D(pos, ang, 0.1)
-			draw.SimpleText(language.GetPhrase("fazhunt.wgfreddy.press_r"), "timerFontBelow", 0, 0, Color(255, 200, 0), TEXT_ALIGN_CENTER, TEXT_ALIGN_CENTER)
+			draw.SimpleTextOutlined(language.GetPhrase("fazhunt.wgfreddy.press_r"), "timerFontBelow", 0, 0, Color(255, 200, 0), TEXT_ALIGN_CENTER, TEXT_ALIGN_CENTER, 4, color_black)
 		cam.End3D2D()
 	end)
 end
@@ -448,6 +437,7 @@ net.Receive("fh_wgfreddy_target_outworld_end", function()
 	hook.Remove("CreateMove", "fh_limit_camera_outworld")
 	hook.Remove("FH_PreDrawHud", "gfreddy_hud")
 	hook.Remove("PreDrawEffects", "gfreddy_hud")
+	ourTarget = nil
 end)
 
 --[[
@@ -457,6 +447,7 @@ end)
 net.Receive("fh_wgfreddy_outworld_start", function()
 	myself = myself or LocalPlayer()
 	local target = net.ReadPlayer()
+	ourTarget = target
 	
 	stopDrawingEveryone(target)
 	
@@ -522,4 +513,5 @@ hook.Add( "PostCleanupMap", "fh_pill_wgfreddy_reset", function( name )
 	
 	isin_outworld = false
 	fh_cl_dontdraw_plushies()
+	ourTarget = nil
 end)

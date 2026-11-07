@@ -15,9 +15,9 @@ function GiveAnimatronic(ply, killer, silent, onplace, secretly)
 		ply:Spawn()
 	end
 	if silent then
-		giveKillerSilent(ply, killer, true)
+		GiveKillerSilent(ply, killer, true)
 	else
-		giveKiller(ply, killer, true)
+		GiveKiller(ply, killer, true)
 	end
 	if !onplace then
 		ply:ReturnToSpawn()
@@ -191,14 +191,10 @@ local function endgame_shared()
 	end
 end
 
-function EndRound()
+function Admin_EndRound()
 	if !roundEnding and isGameOn then
-		endRound(true, 3)
+		EndRound(true, 3)
 		endgame_shared()
-		
-		net.Start('fh_net_scarysound')
-		net.WriteBool(false)
-		net.SendOmit( table.GetKeys( getOutworldVictims() ) )
 	end
 end
 
@@ -209,10 +205,6 @@ function EndPostRound()
 		endgame_shared()
 		
 		forceAnimSelectTime = 0
-	
-		net.Start('fh_net_scarysound')
-		net.WriteBool(true)
-		net.SendOmit( table.GetKeys( getOutworldVictims() ) )
 		
 		local vremya = fh.GetGameDuration()
 
@@ -228,7 +220,7 @@ function EndLobbyTimer()
 	end
 end
 
-function setConvarValue(n, value)
+local function setConvarValue(n, value)
 	game.ConsoleCommand(n.." "..value.."\n")
 end
 
@@ -267,6 +259,9 @@ local function spawnGifts()
 				local gift = ents.Create("fh_gift")
 				gift:SetPos(ply:GetPos() + Vector(0, 0, 10))
 				gift:SetOwner(ply)
+				if math.random(15) == 1 then
+					gift:SetBoosted(true)
+				end
 				gift:Spawn()
 				
 				ply:SetGiftOwnership(true)
@@ -277,7 +272,7 @@ end
 
 addAction( "start_round", StartRound )
 addAction( "highlight_all", HighlightAll )
-addAction( "end_round", EndRound )
+addAction( "end_round", Admin_EndRound )
 addAction( "pause_game", ToggleGamePause )
 addAction( "set_highlight_delay", function() 
 	local value = net.ReadFloat()
@@ -308,19 +303,18 @@ addAction( "fh_auto_map_hl", function()
 	setConvarValue("halo_radius", mapInfo.halo_radius)
 	setConvarValue("fh_max_cupcakes", mapInfo.max_cupcakes)
 end)
-addAction( "fh_auto_map_save", function()
+local function auto_map_save(map)
 	AddOrUpdateMapData(
-	
-		game.GetMap(), 
+		map, 
 		{
 			halo_cooldown = GetConVar('halo_cooldown'):GetInt(),
 			halo_time = GetConVar('halo_time'):GetInt(),
 			halo_radius = GetConVar('halo_radius'):GetInt(),
 			max_cupcakes = GetConVar('fh_max_cupcakes'):GetInt()
 		}
-		
 	)
-end)
+end
+addAction( "fh_auto_map_save", function() auto_map_save(game.GetMap()) end)
 addAction( "fh_gifts_spawning", function()
 	local bool = net.ReadBool()
 	if !bool then
@@ -531,76 +525,167 @@ end)
 local filePath = "fh_map_data.json"
 
 function fh.GetMapData(map)
-    local mapName = map or game.GetMap()
+	local mapName = map or game.GetMap()
 
-    if not file.Exists(filePath, "DATA") then
-        print("File " .. filePath .. " not found")
-        return nil
-    end
+	if not file.Exists(filePath, "DATA") then
+		print("File " .. filePath .. " not found")
+		return nil
+	end
 
-    local jsonData = file.Read(filePath, "DATA")
-    if not jsonData or jsonData == "" then
-        print("File is empty or couldn't read: " .. filePath)
-        return nil
-    end
+	local jsonData = file.Read(filePath, "DATA")
+	if not jsonData or jsonData == "" then
+		print("File is empty or couldn't read: " .. filePath)
+		return nil
+	end
 
-    local allMapData = util.JSONToTable(jsonData)
-    if not allMapData or type(allMapData) ~= "table" then
-        print("Error when reading JSON.")
-        return nil
-    end
+	local allMapData = util.JSONToTable(jsonData)
+	if not allMapData or type(allMapData) ~= "table" then
+		print("Error when reading JSON.")
+		return nil
+	end
 
-    local mapData = allMapData[mapName]
-    if not mapData then
-        print("Data for map: " .. mapName .. " not found.")
-        return nil
-    end
+	local mapData = allMapData[mapName]
+	if not mapData then
+		print("Data for map: " .. mapName .. " not found.")
+		return nil
+	end
 
-    return mapData
+	return mapData
 end
 
 function fh.GetAllMapData()
-    if not file.Exists(filePath, "DATA") then
-        print("File " .. filePath .. " not found.")
-        return nil
-    end
+	if not file.Exists(filePath, "DATA") then
+		print("File " .. filePath .. " not found.")
+		return nil
+	end
 
-    local jsonData = file.Read(filePath, "DATA")
-    if not jsonData or jsonData == "" then
-        print("File is empty or couldn't read: " .. filePath)
-        return nil
-    end
+	local jsonData = file.Read(filePath, "DATA")
+	if not jsonData or jsonData == "" then
+		print("File is empty or couldn't read: " .. filePath)
+		return nil
+	end
 
-    local allMapData = util.JSONToTable(jsonData)
-    if not allMapData or type(allMapData) ~= "table" then
-        print("Error when reading JSON.")
-        return nil
-    end
+	local allMapData = util.JSONToTable(jsonData)
+	if not allMapData or type(allMapData) ~= "table" then
+		print("Error when reading JSON.")
+		return nil
+	end
 	
 	return allMapData
 end
 
+local function deliverMapData(ply)
+	local data = fh.GetAllMapData()
+	
+	net.Start("FH_AdminDeliverData")
+		net.WriteBit(true)
+		net.WriteString("MapData")
+		
+		net.WriteBit(true)
+		net.WriteInt(table.Count(data),8)
+		for map, d in pairs(data) do
+			
+			net.WriteString(map)
+			net.WriteInt(table.Count(d),8)
+			for v, k in pairs(d) do
+				net.WriteString(tostring(v))
+				net.WriteString(tostring(k))
+			end
+		end
+	net.Send(ply)
+end
+
+local function findAndDeliverMapData()
+	local sendto = {}
+	for _, ply in player.Iterator() do
+		if not ply:IsAdmin() then continue end
+		sendto[#sendto + 1] = ply
+	end
+	deliverMapData(sendto)
+end
+
 function AddOrUpdateMapData(mapName, dataTable)
-    if not istable(dataTable) then
-        print("Error: dataTable need to be a Table.")
-        return
-    end
+	if not istable(dataTable) then
+		print("Error: dataTable need to be a Table.")
+		return
+	end
 
+	mapName = mapName or game.GetMap()
+
+	local allMapData = {}
+
+	if file.Exists(filePath, "DATA") then
+		local jsonData = file.Read(filePath, "DATA")
+		if jsonData and jsonData ~= "" then
+			allMapData = util.JSONToTable(jsonData) or {}
+		end
+	end
+
+	allMapData[mapName] = dataTable
+
+	local newJson = util.TableToJSON(allMapData, true)
+	file.Write(filePath, newJson)
+	
+	findAndDeliverMapData()
+
+	print("Data for map: '" .. mapName .. "' updated or added.")
+end
+
+function fh.DeleteMapData(mapName)
     mapName = mapName or game.GetMap()
+	
+    if not file.Exists(filePath, "DATA") then return end
 
-    local allMapData = {}
+	local allMapData = {}
 
-    if file.Exists(filePath, "DATA") then
-        local jsonData = file.Read(filePath, "DATA")
-        if jsonData and jsonData ~= "" then
-            allMapData = util.JSONToTable(jsonData) or {}
-        end
-    end
+	local jsonData = file.Read(filePath, "DATA")
+	if jsonData and jsonData ~= "" then
+		allMapData = util.JSONToTable(jsonData) or {}
+	end
 
-    allMapData[mapName] = dataTable
+    allMapData[mapName] = nil
 
     local newJson = util.TableToJSON(allMapData, true)
     file.Write(filePath, newJson)
 
-    print("Data for map: '" .. mapName .. "' updated or added.")
+    print("Data for map: '" .. mapName .. "' deleted.")
 end
+
+util.AddNetworkString("FH_AdminDeleteMapData")
+util.AddNetworkString("FH_AdminUpdateMapData")
+net.Receive("FH_AdminDeleteMapData", function(len, ply)
+	if not ply:IsAdmin() then return end
+	local map = net.ReadString()
+	
+	fh.DeleteMapData(map)
+	
+	findAndDeliverMapData()
+end)
+
+net.Receive("FH_AdminUpdateMapData", function(len, ply)
+	if not ply:IsAdmin() then return end
+	local map = net.ReadString()
+	
+	auto_map_save(map)
+end)
+
+local PLAYER = FindMetaTable("Player")
+local PLAYER_SetUserGroup = FindMetaTable("Player").SetUserGroup
+
+function PLAYER:SetUserGroup(...)
+	hook.Run("OnPlayerUserGroupChanged", self, ...)
+	PLAYER_SetUserGroup(self, ...)
+end
+
+util.AddNetworkString("FH_AdminDeliverData")
+
+local rember = {}
+
+hook.Add("OnPlayerUserGroupChanged", "fh_admin", function(ply, group, ulx)
+	if rember[ply] then return end
+	if group ~= "admin" and group ~= "superadmin" then return end
+	
+	deliverMapData(ply)
+	
+	rember[ply] = true
+end)

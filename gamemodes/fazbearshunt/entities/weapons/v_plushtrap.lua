@@ -85,6 +85,9 @@ function SWEP:DealDamage()
 		filter = ply,
 		mask = MASK_SHOT_HULL
 	} )
+	if IsFirstTimePredicted() then
+		debugoverlay.Line(ply:EyePos(), tr.HitPos, 5, Color(255, 0, 0), true)
+	end
 	
 	if ( !IsValid( tr.Entity ) ) then
 		tr = util.TraceHull( {
@@ -95,9 +98,10 @@ function SWEP:DealDamage()
 			maxs = self.HitSize.Max,
 			mask = MASK_SHOT_HULL
 		} )
-		debugoverlay.Box(tr.HitPos, self.HitSize.Min, self.HitSize.Max, 5, Color(255, 0, 0))
+		if IsFirstTimePredicted() then
+			debugoverlay.Box(tr.HitPos, self.HitSize.Min, self.HitSize.Max, 5, Color(255, 0, 0, 25))
+		end
 	end
-	debugoverlay.Line(ply:EyePos(), tr.HitPos, 5, Color(255, 0, 0), true)
 	
 	local target = tr.Entity
 	
@@ -186,6 +190,10 @@ function SWEP:DealDamage()
 	
 	if target:IsPlayer() and !target:IsAnimatronic() or target:IsNPC() then
 		ply:EmitSound("fnaf3/plushtrap/plu_attack_hit.mp3")
+	end
+	
+	if (target:IsPlayer() or target:IsNPC()) and not target:Alive() then
+		playVoiceline("plushtrap", "kill", ply, .5)
 	end
 end
 

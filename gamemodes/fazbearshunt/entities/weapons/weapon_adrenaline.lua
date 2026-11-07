@@ -1,7 +1,7 @@
 AddCSLuaFile()
 
 SWEP.PrintName = "#weapon_adrenaline"
-SWEP.Author = "Valve"
+SWEP.Purpose = "#info_adrenaline"
 
 if CLIENT then
 	SWEP.WepSelectIcon = surface.GetTextureID( "weapons/adrenaline" )
@@ -13,7 +13,6 @@ SWEP.UseHands = true
 SWEP.ViewModelFOV = 56
 SWEP.HoldType = "slam"
 
-SWEP.DrawWeaponInfoBox	= false
 SWEP.BounceWeaponIcon	= false 
 SWEP.Spawnable = true
 
@@ -24,8 +23,6 @@ SWEP.SlotPos = 1
 SWEP.DrawCrosshair = false
 SWEP.DrawAmmo = false
 SWEP.Weight = 30
-SWEP.AutoSwitchTo = false
-SWEP.AutoSwitchFrom = true
 
 SWEP.Primary.ClipSize = 1
 SWEP.Primary.DefaultClip = 1
@@ -41,25 +38,29 @@ function SWEP:Initialize()
     self:SetHoldType(self.HoldType)
 end
 
+local trail_clr = Color(0, 169, 255, 200)
 function SWEP:PrimaryAttack()
-    if not IsFirstTimePredicted() then return end
-    if self:Clip1() <= 0 then return end
+	if self:Clip1() <= 0 then return end
 
-    local owner = self:GetOwner()
-    if not IsValid(owner) then return end
+	local owner = self:GetOwner()
+	if not IsValid(owner) then return end
 
-    self:SendWeaponAnim(ACT_VM_PRIMARYATTACK)
-    owner:SetAnimation(PLAYER_ATTACK1)
-    self:EmitSound(self.Primary.Sound)
+	self:SendWeaponAnim(ACT_VM_PRIMARYATTACK)
+	
+	if IsFirstTimePredicted() then
+		owner:SetAnimation(PLAYER_ATTACK1)
+		self:EmitSound(self.Primary.Sound)
+	end
 
-    self:SetNextPrimaryFire(CurTime() + 1)
-    self:SetClip1(self:Clip1() - 1)
+	self:SetNextPrimaryFire(CurTime() + 1)
+	self:SetClip1(self:Clip1() - 1)
 
-    if SERVER then
-        local heal = math.random(4,7)
-        local armor = 15
+	if SERVER then
+		local heal = math.random(4,7)
+		local armor = 15
 		
 		timer.Simple(0.59, function()
+			if not IsValid(self) then return end
 			
 			if IsValid(owner) and IsValid(self) then
 		
@@ -79,11 +80,11 @@ function SWEP:PrimaryAttack()
 					end) 
 				end
 				
-				owner:SetWalkSpeed(owner:GetWalkSpeed() * 1.2)
-				owner:SetRunSpeed(owner:GetRunSpeed() * 1.2)
+				owner:SetWalkSpeed(owner:GetWalkSpeed() * 1.25)
+				owner:SetRunSpeed(owner:GetRunSpeed() * 1.35)
 				owner:SetCrouchedWalkSpeed(owner:GetCrouchedWalkSpeed() * 1.4)
 				
-				local trail = owner._adrenTrail or util.SpriteTrail(owner, owner:LookupAttachment( "chest" ), Color(0, 169, 255, 200), true, 32, 0, 1, 1 / ( ( 32 + 0 ) * 0.5 ), "trails/physbeam")
+				local trail = owner._adrenTrail or util.SpriteTrail(owner, owner:LookupAttachment( "chest" ), trail_clr, true, 32, 0, 1, 1 / ( ( 32 + 0 ) * 0.5 ), "trails/physbeam")
 				
 				owner._adrenTrail = trail
 			end
@@ -96,9 +97,9 @@ function SWEP:PrimaryAttack()
 		end
 		
 		timer.Simple(8, function()
-			if IsValid(owner) then
-				owner:SetWalkSpeed(owner:GetWalkSpeed() / 1.2)
-				owner:SetRunSpeed(owner:GetRunSpeed() / 1.2)
+			if IsValid(owner) and not owner:GetPillCostume():IsValid() then
+				owner:SetWalkSpeed(owner:GetWalkSpeed() / 1.25)
+				owner:SetRunSpeed(owner:GetRunSpeed() / 1.35)
 				owner:SetCrouchedWalkSpeed(owner:GetCrouchedWalkSpeed() / 1.4)
 			end
 		end)
@@ -113,13 +114,13 @@ function SWEP:PrimaryAttack()
 				end
 			end
 		end)
-
-        timer.Simple(1, function()
-            if IsValid(owner) and IsValid(self) then
-                owner:StripWeapon(self:GetClass())
-            end
-        end)
-    end
+	
+		timer.Simple(1, function()
+			if IsValid(self) then
+				self:Remove()
+			end
+		end)
+	end
 end
 
 if SERVER then

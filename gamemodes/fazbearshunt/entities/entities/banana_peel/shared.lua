@@ -3,7 +3,7 @@ AddCSLuaFile()
 ENT.Type = "anim"
 ENT.Base = "base_anim"
 
-ENT.PrintName = "Banana Peel"
+ENT.PrintName = "#banana_peel"
 ENT.Category = "Banana Peel"
 ENT.Author = "Froze"
 
@@ -39,7 +39,7 @@ ENT.NoRagdollPills = {
 	
 if SERVER then
 	local zeroveloc = Vector(0,0,0)
-	local function createAnimatronicRagdoll(ply)
+	local function createAnimatronicRagdoll(self, ply)
 		local pill = pills.getMappedEnt(ply)
 						
 		if not IsValid(pill) then return NULL end
@@ -150,6 +150,7 @@ if SERVER then
 
 			ent:SetNWBool("banana_slipped", true)
 			ent:SetNWFloat("banana_slipped_time", CurTime())
+			ent._LastBanana = self
 
 			if ent:IsPlayer() then
 				stats.Add(ent, "slipped_on_banana", 1)
@@ -161,7 +162,7 @@ if SERVER then
 				
 				if conVars.fh_banana_ragdollize:GetBool() then
 					if ent:IsSprinting() and pills.hasMappedEnt(ent) then
-						createAnimatronicRagdoll(ent)
+						createAnimatronicRagdoll(self, ent)
 					end
 				end
 				
@@ -201,7 +202,7 @@ if SERVER then
 		if v:GetNWBool("banana_slipped", false) then
 			v:SetNWBool("banana_slipped", nil)
 			if not inwater then
-				v:TakeDamage(math.random(1,2), self, self)
+				v:TakeDamage(math.random(1,2), v._LastBanana, v._LastBanana)
 				v:EmitSound("slip_end.wav")
 			end
 		end
@@ -211,7 +212,7 @@ if SERVER then
 		if v:GetNWBool("banana_slipped", false) then
 			v:SetNWBool("banana_slipped", nil)
 			if not inwater then
-				v:TakeDamage(math.random(1,2), self, self)
+				v:TakeDamage(math.random(1,2), v._LastBanana, v._LastBanana)
 				v:EmitSound("slip_end.wav")
 			end
 		end
@@ -222,16 +223,26 @@ if SERVER then
 		local owner = self:GetOwner()
 		
 		if attacker:IsPlayer() and attacker:IsSurvivor() and attacker ~= owner then return 0 end
+		
+		local wep = dmginfo:GetInflictor()
+		local pos = self:GetPos()
+		
+		if wep:IsValid() and wep:IsWeapon() and wep:GetClass() == "v_clown" then
+			local posd = dmginfo:GetDamagePosition()
+			local dist = pos:Distance(posd)
+			
+			dmginfo:SetDamage(166 / dist)
+		end
 
 		self:TakePhysicsDamage(dmginfo)
 		
 		local health = self:Health()
 		health = health - dmginfo:GetDamage()
 		self:SetHealth(health)
+		
+		self:EmitSound(")physics/flesh/flesh_squishy_impact_hard" .. math.random(3) .. ".wav")
 
-		if health <= 0 then
-			local pos = self:GetPos()
-	
+		if health <= 1 then
 			local effectdata = EffectData()
 			effectdata:SetStart( pos )
 			effectdata:SetOrigin( pos )

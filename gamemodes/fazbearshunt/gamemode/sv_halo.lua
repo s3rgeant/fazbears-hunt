@@ -51,7 +51,7 @@ function highlight.ByDistance(ply, ent)
 						
 						local playerToDummyDist = dummyPos:Distance(playerPos)
 						
-						if isAffected and playerToDummyDist <= 300 then
+						if isAffected and playerToDummyDist <= 400 then
 							isAffected = false
 						end
 						

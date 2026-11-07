@@ -71,7 +71,7 @@ function ENT:CheckForPlayers()
 			table.insert(nearPlayers, ply)
 			table.insert(totalPlayers, ply)
 			
-            ply:SetRunSpeed(ply:GetRunSpeed() * 0.5)
+            ply:SetSpeedSlowdown(7)
 			ply._cupcakeAffected = true
 			stats.Add(ply, "got_slowed", 1)
 			
@@ -84,7 +84,6 @@ function ENT:CheckForPlayers()
             
             timer.Simple(7, function()
                 if IsValid(ply) then
-					ply:SetRunSpeed(ply:GetRunSpeed() / 0.5)
 					ply._cupcakeAffected = false
                 end
             end)

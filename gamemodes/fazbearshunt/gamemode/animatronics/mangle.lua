@@ -201,8 +201,8 @@ pills.register("pill_mangle",{
 			edata:SetEntity(victim)
 			util.Effect("BloodImpact", edata, true, true)
 			
-			victim:EmitSound("physics/body/body_medium_break3.wav")
-			victim:EmitSound("player/headshot1.wav")
+			victim:EmitSound(")physics/body/body_medium_break3.wav")
+			victim:EmitSound(")player/headshot1.wav")
 			
 			victim:TakeDamage(100, ply)
 			
@@ -211,9 +211,11 @@ pills.register("pill_mangle",{
 		
 		local longerStun = ply:GetNWString("_MangleHookReady") and ply:GetNWString("_MangleLastHookType") == ""
 		
-		if IsGoodLandConditions(ply, ent) then
+		if AreLandConditionsGood(ply, ent) then
 			ent:PillAnim(!longerStun and "land" or "land_hard",true)
 		end
+		
+		landTripCheck(ply, ent, "mangle")
 	end,
 	
 	startFunction=function(ply,ent)
@@ -528,7 +530,7 @@ hook.Add("FinishMove", "mangle_hook_ready", function( ply, mv )
 						end
 					end
 					
-					local newpos = tr.HitPos + -ply:GetViewOffset() + tr.HitNormal * 28
+					local newpos = vectoradd + tr.HitPos + -ply:GetViewOffset() + tr.HitNormal * 28
 				
 					local trace2 = { start = newpos, endpos = newpos, filter = ply }
 					local trr2 = util.TraceEntity( trace2, ply ) 
@@ -571,7 +573,7 @@ hook.Add("FinishMove", "mangle_hook_ready", function( ply, mv )
 				
 				if CLIENT then
 					ENDGOAL[ply] = pos
-					surface.PlaySound("grab_player.wav")
+					surface.PlaySound("animatronics/mangle/landwall.mp3")
 					ply:SetPos( pos )
 					ply:SetLocalVelocity(Vector(0,0,0))
 				end
@@ -582,7 +584,7 @@ hook.Add("FinishMove", "mangle_hook_ready", function( ply, mv )
 					local rf = RecipientFilter()
 					rf:AddAllPlayers()
 					rf:RemovePlayer(ply)
-					ply:EmitSound("grab_player.wav", nil, nil, nil, nil, nil, nil, rf)
+					ply:EmitSound("animatronics/mangle/landwall.mp3", nil, nil, nil, nil, nil, nil, rf)
 				
 					ent:SetForceAngles(forceangle)
 					ply:GetPill():PillGesture('hook', 1, 1, 0, 0.7)
@@ -625,8 +627,8 @@ hook.Add("FinishMove", "mangle_hook_ready", function( ply, mv )
 					edata:SetEntity(victim)
 					util.Effect("BloodImpact", edata, true, true)
 					
-					victim:EmitSound("physics/body/body_medium_break3.wav")
-					victim:EmitSound("player/headshot1.wav")
+					victim:EmitSound(")physics/body/body_medium_break3.wav")
+					victim:EmitSound(")player/headshot1.wav")
 					
 					local wep = ply:GetActiveWeapon()
 					if IsValid(wep) and wep:GetClass() == "v_mangle" then

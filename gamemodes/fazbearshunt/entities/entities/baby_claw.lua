@@ -20,7 +20,7 @@ function ENT:Initialize()
 	self:PhysicsInit( SOLID_VPHYSICS )
 	self:SetMoveType( MOVETYPE_VPHYSICS )
 	self:SetSolid( SOLID_BBOX )
-	self:SetCollisionGroup(COLLISION_GROUP_DEBRIS)
+	self:SetCollisionGroup(COLLISION_GROUP_HL2_SPIT)
 	self:SetModelScale(3, .000001)
 	self:SetTrigger(true)
 	--self:UseTriggerBounds(true, 0)
@@ -40,6 +40,23 @@ function ENT:Touch(ent)
 	if ent:IsPlayer() then
 		local owner = self:GetOwner()
 		if IsValid(owner) and ent == owner then
+			return
+		end
+		
+		local pos = self:GetPos()
+		local pos2 = ent:GetPos()
+		
+		local tr = util.TraceLine({
+			start = pos,
+			endpos = pos2,
+			filter = {self, ent}
+		})
+		
+		if tr.Hit then return end
+		
+		local handler = hook.Run("FH_ShouldSBabySnitchEntity", ent, self, owner, pos1, pos2)
+		
+		if handler == false then
 			return
 		end
 	
@@ -73,8 +90,10 @@ end
 function ENT:Think()
 	local ply = self:GetOwner()
 	
+	local validowner = IsValid(ply)
+	
 	if SERVER and not self:GetGoHome() then
-		if IsValid(ply) then
+		if validowner then
 			local phys = self:GetPhysicsObject()
 
 			if IsValid(phys) then
@@ -84,14 +103,16 @@ function ENT:Think()
 	end
 	
 	if CLIENT and (self:GetGoHome() or self:GetSucker():IsValid()) then
-		local direction = self:GetPos() - (ply:EyePos() - Vector(0,0,16))
-		direction:Normalize()
-		
-		self:SetAngles(direction:Angle())
+		if validowner then
+			local direction = self:GetPos() - (ply:EyePos() - Vector(0,0,16))
+			direction:Normalize()
+			
+			self:SetAngles(direction:Angle())
+		end
 	end
 	
 	if SERVER and self:GetGoHome() then
-		if IsValid(ply) then
+		if validowner then
 			local function checkDistance(pos)
 				if pos:Distance(self:GetPos()) < 100 then
 					if self:GetSucker():IsValid() then
@@ -113,7 +134,7 @@ function ENT:Think()
 			if not checkDistance(ply:EyePos()) then checkDistance(ply:GetPos()) end
 		end
 		if CurTime() > self:GetHopThink() and not self:GetSucker():IsValid() then
-			if IsValid(ply) then
+			if validowner then
 				local direction = self:GetPos() - (ply:EyePos() - Vector(0,0,16))
 				direction:Normalize()
 				
@@ -132,7 +153,7 @@ function ENT:Think()
 	end
 	
 	if false and SERVER then
-		if IsValid(ply) and self:GetVelocity():Length() >= 100 then
+		if validowner and self:GetVelocity():Length() >= 100 then
 			local tr = util.TraceLine({
 				start = ply:GetPos() + Vector(0,0,16),
 				endpos = self:GetPos(),
@@ -178,13 +199,18 @@ end
 function ENT:OnRemove()
 	local ply = self:GetOwner()
 	
+	if SERVER and self.LoopSoundBaby then
+		self.LoopSoundBaby:Stop()
+		self.LoopSoundBaby = nil
+	end
+	
 	if !IsValid(ply) then return end
 	
 	local wep = ply:GetActiveWeapon()
 	
 	if IsValid(wep) then
 		if wep.ClawBack then -- проверяю наличие одной функции и похуй
-			wep:ClawBack(true)
+			wep:ClawBack(self, true)
 		end
 	end
 end

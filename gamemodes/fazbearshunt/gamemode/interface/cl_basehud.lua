@@ -1,4 +1,7 @@
 local health_bar = Material("vgui/base/health_bar.png")
+--if true then hook.Remove( "PostDrawHUD", "fh_basehud") hook.Remove("HUDShouldDraw", "HideHUD") return end
+local ammo_bar = Material("vgui/base/ammo_bar.png")
+local ammo_bar_w, ammo_bar_h = ammo_bar:Width(), ammo_bar:Height()
 
 local weapon_bar = Material("vgui/base/weapon_bar.png")
 local big_weapon_bar = Material("vgui/base/big_weapon_bar.png")
@@ -14,6 +17,9 @@ surface.CreateFont("FHHealthL",
 surface.CreateFont("FHArmor", 
 	{ font = "Share Tech Mono", size = 24, extended = true, weight = 400, antialias = true, bold = true })
 
+surface.CreateFont("FHAmmo", 
+	{ font = "Share Tech Mono", size = 50, extended = true, weight = 400, antialias = true, bold = true })
+
 surface.CreateFont("FHWeaponSlot", 
 	{ font = "Share Tech Mono", size = ScreenScale(6), extended = true, weight = 400, antialias = true, bold = true })
 surface.CreateFont("FHWeaponLegacy", 
@@ -26,7 +32,9 @@ surface.CreateFont("FHCurrentWeapon",
 
 local hide = {
 	["CHudHealth"] = true,
-	["CHudBattery"] = true
+	["CHudBattery"] = true,
+	["CHudAmmo"] = true,
+	["CHudWeaponSelection"] = true,
 }
 
 -- КОСТЫЛЬ БЛЯЯЯ
@@ -79,6 +87,8 @@ local bw_w = 135
 local bw_h = 85
 local w_w = 84
 local w_h = 54
+
+local swepIcon = surface.GetTextureID( 'weapons/swep' )
 
 local drawhud = GetConVar("cl_drawhud")
 
@@ -236,12 +246,9 @@ hook.Add( "PostDrawHUD", "fh_basehud", function()
 			surface.SetDrawColor( surv_r, surv_g, surv_b, targetAlpha )
 			surface.DrawTexturedRect( Wx + curAddX, Wy+addY, w, h )
 			
-			local isMaterial = not wep.WepSelectIcon
-			
 			local class = wep:GetClass()
 			
-			if wep.WepSelectIcon then -- SCRIPTED WEAPONS 
-			
+			if wep.WepSelectIcon and not wep.FontIcon and not (wep.WepSelectIcon == swepIcon and wep.DrawWeaponSelection) then -- SCRIPTED WEAPONS 
 				local i_addX = (w + 14) * ci
 				local i_w = w * 1.35
 			
@@ -258,9 +265,25 @@ hook.Add( "PostDrawHUD", "fh_basehud", function()
 				surface.DrawTexturedRect( (Wx+curAddX) - i_w*.5 + w*.5, Wy + addY, w*1.35, h )
 				
 				render.SetScissorRect( 0, 0, 0, 0, false )
+			elseif WeaponIcons[class] or wep.FontIcon and WeaponIcons[wep.FontIcon] then -- HALF LIFE 2 ENGINE WEAPONS
+				local i_addX = (w + 14) * ci
+				local i_w = w * 1.35
 				
-			elseif WeaponIcons[class] then -- HALF LIFE 2 ENGINE WEAPONS
+				local icon = WeaponIcons[class] or (wep.FontIcon and WeaponIcons[wep.FontIcon])
 			
+				render.SetScissorRect(
+					Wx + curAddX, Wy,
+					Wx + curAddX + w, Wy + h,
+					true
+				)
+				
+				if targetAlpha > 0 then
+					draw.SimpleText( icon, IsSelected and "FHWeaponLegacyBig" or "FHWeaponLegacy", Wx+curAddX + w*.5, Wy+addY + h*.5, color_yellow_wpn, TEXT_ALIGN_CENTER, TEXT_ALIGN_CENTER )
+				end
+				
+				render.SetScissorRect( 0, 0, 0, 0, false )
+				
+			elseif wep.DrawWeaponSelection then
 				local i_addX = (w + 14) * ci
 				local i_w = w * 1.35
 			
@@ -272,16 +295,25 @@ hook.Add( "PostDrawHUD", "fh_basehud", function()
 					true
 				)
 				
-				if targetAlpha > 0 then
-					draw.SimpleText( WeaponIcons[class], IsSelected and "FHWeaponLegacyBig" or "FHWeaponLegacy", Wx+curAddX + w*.5, Wy+addY + h*.5, color_yellow_wpn, TEXT_ALIGN_CENTER, TEXT_ALIGN_CENTER )
-				end
+				wep:DrawWeaponSelection((Wx+curAddX) - i_w*.5 + w*.5, Wy + addY, w*1.35, h, targetAlpha)
 				
 				render.SetScissorRect( 0, 0, 0, 0, false )
 			
 			end
 			
-			if IsSelected and wep.Instructions then
-				--draw.SimpleText( wep.Instructions, "FHArmor", Wx+curAddX, Wy+addY + h*.5, color_yellow_wpn, TEXT_ALIGN_CENTER, TEXT_ALIGN_BOTTOM )
+			if not wep.DrawWeaponInfoBox == false and selecting and IsSelected and wep.Purpose and wep.Purpose:len() > 0 then
+				local purp_x = Wx+curAddX
+				local purp_y = Wy+addY - h*.5
+				
+				local text = wep.Purpose
+				
+				local purpw, purph = draw.SimpleText( text, "FHWeaponSlot", 0, 0, color_transparent )
+				
+				surface.SetFont("FHWeaponSlot")
+				surface.SetDrawColor(0,0,0,190)
+				surface.DrawRect(purp_x - 2, purp_y - 2, purpw + 4, purph + 4)
+				
+				draw.SimpleText( text, "FHWeaponSlot", purp_x, purp_y, color_yellow_wpn, TEXT_ALIGN_LEFT, TEXT_ALIGN_TOP )
 			end
 			
 			if not hidden and not usedSlots[slot] then
@@ -314,13 +346,63 @@ hook.Add( "PostDrawHUD", "fh_basehud", function()
 		local w = 200
 		local h = 34
 		
-		if selecting and IsValid(selectedWep) or not selecting and IsValid(curWep) then
+		local isvalidCurWep = IsValid(curWep)
+		
+		if selecting and IsValid(selectedWep) or not selecting and isvalidCurWep then
 			local wep = selecting and selectedWep or curWep
 			surface.SetMaterial( wep_info_bar )
 			surface.SetDrawColor( surv_r, surv_g, surv_b, targetAlpha )
 			surface.DrawTexturedRect( x, y - h - 6, w, h )
 			
 			draw.SimpleText( wep:GetPrintName(), "FHCurrentWeapon", x + w*.5, y - h*.5 - 6, color_white, TEXT_ALIGN_CENTER, TEXT_ALIGN_CENTER )
+		end
+		
+		if isvalidCurWep then
+			if curWep.DrawAmmo == false then cam.End2D() return end
+
+			x = sw - ammo_bar_w - 32
+			
+			if curWep.Primary and curWep.Primary.DefaultClip and curWep.Primary.DefaultClip < 0 then cam.End2D() return end
+
+			local clip1, clip2 = curWep:Clip1(), curWep:Clip2()
+			local type1, type2 = curWep:GetPrimaryAmmoType(), curWep:GetSecondaryAmmoType()
+
+			local main, reserve, alt
+
+			if clip1 >= 0 then
+				main = clip1
+				if type1 > 0 then
+					reserve = myself:GetAmmoCount( type1 )
+				end
+			elseif type1 > 0 then
+				main = myself:GetAmmoCount( type1 )
+			end
+
+			if clip2 >= 0 then
+				alt = clip2
+			elseif type2 > 0 then
+				alt = myself:GetAmmoCount( type2 )
+			end
+
+			if main or alt then
+				surface.SetMaterial( ammo_bar )
+				surface.SetDrawColor( surv_r, surv_g, surv_b, 255 )
+				surface.DrawTexturedRect( x, y, ammo_bar_w, ammo_bar_h )
+
+				draw.SimpleText( "#Valve_Hud_AMMO", "FHHealthL", x+27, y+38, color_gray, TEXT_ALIGN_CENTER, TEXT_ALIGN_CENTER )
+
+				if main then
+					draw.SimpleText( main, "FHAmmo", x+138, y+38, color_white, TEXT_ALIGN_RIGHT, TEXT_ALIGN_CENTER )
+				end
+				local small = {}
+				if reserve then small[#small + 1] = reserve end
+				--if alt then small[#small + 1] = alt end
+
+				local small_x, small_step = x + 210, 40
+				for i, v in ipairs( small ) do
+					draw.SimpleText( v, "FHArmor", small_x + (i - 1) * small_step, y+45, color_white, TEXT_ALIGN_RIGHT, TEXT_ALIGN_CENTER )
+				end
+			end
 		end
 		
 	cam.End2D()
@@ -399,7 +481,7 @@ hook.Add( "PlayerButtonDown", "fh_items_scroll", function( ply, button )
 			
 				if IsValid(selectedWep) then
 					input.SelectWeapon(selectedWep)
-					selectingTil = CurTime() + .5
+					selectingTil = CurTime() + 2.5
 					EmitSound("Player.WeaponSelectionClose", zero_vec)
 			
 					return
@@ -414,6 +496,8 @@ hook.Add( "PlayerBindPress", "fh_weapon_scroll", function( ply, bind, pressed )
 	if not pressed then return end
 	
 	local curtime = CurTime()
+	
+	local fastswitch = GetConVar("hud_fastswitch"):GetBool()
 	
 	if bind == "invnext" or bind == "invprev" then
 		if hook.Run("HandleInventoryScrolling", ply, bind, pressed) == false then return end
@@ -449,13 +533,13 @@ hook.Add( "PlayerBindPress", "fh_weapon_scroll", function( ply, bind, pressed )
 			end
 		end
 		
-		if GetConVar("hud_fastswitch"):GetBool() then
+		if fastswitch then
 			local weapons = GetSortedWeapons(ply)
 			local selectedWep = weapons[curSelected]
 		
 			if IsValid(selectedWep) then
 				input.SelectWeapon(selectedWep)
-				selectingTil = curtime + .5
+				selectingTil = curtime + 2.5
 				EmitSound("Player.WeaponSelectionClose", zero_vec)
 		
 				return
@@ -467,7 +551,7 @@ hook.Add( "PlayerBindPress", "fh_weapon_scroll", function( ply, bind, pressed )
 		selectingTil = curtime + 6
 	end
 	
-	if bind == "+attack" and selectingTil and curtime < selectingTil then
+	if not fastswitch and bind == "+attack" and selectingTil and curtime < selectingTil then
 		local weapons = GetSortedWeapons(ply)
 		local selectedWep = weapons[curSelected]
 	
@@ -481,6 +565,94 @@ hook.Add( "PlayerBindPress", "fh_weapon_scroll", function( ply, bind, pressed )
 	end
 end)
 
-hook.Add("HUDShouldDraw", "no_engine_selection", function(name)
-	if name == "CHudWeaponSelection" then return false end
+hook.Add( "PreRegisterSWEP", "fh_no_info", function( swep, class )
+	swep.PrintWeaponInfo = function() end
+end )
+
+-- PROGRESS BAR
+
+local CurrentProgs = {}
+
+function fh.AddProgress(wep, duration, think)
+	local ct = CurTime()
+
+	CurrentProgs[#CurrentProgs + 1] = {
+		wep = wep or nil,
+		startTime = ct,
+		endTime = duration and (ct + duration) or ct,
+		think = think or nil,
+	}
+end
+
+local progress_bar = Material("vgui/base/progress/progress_bar.png")
+local progress_bar_w = progress_bar:Width()
+local progress_bar_h = progress_bar:Height()
+
+hook.Add( "PostDrawHUD", "fh_basehud_progress", function()
+	local count = #CurrentProgs
+
+	if count <= 0 then return end
+
+	if not drawhud:GetBool() then return end
+	
+	local data = CurrentProgs[1]
+	
+	if not data then return end
+	
+	local startTime = data.startTime
+	local endTime = data.endTime
+	
+	local dur = endTime - startTime
+	
+	local think = data.think
+	local wep = data.wep
+	
+	local ct = CurTime()
+	
+	if ct > endTime then
+		CurrentProgs[count] = nil
+		return
+	end
+	
+	if wep then
+		if not IsValid(wep) then
+			CurrentProgs[count] = nil
+			return
+		end
+	end
+	
+	if think then 
+		local res = think(data)
+		
+		if res == true then
+			CurrentProgs[count] = nil
+			return
+		end
+	end
+	
+	local scrW = ScrW()
+	local scrH = ScrH()
+				
+	local halfW = scrW * .5
+	local halfH = scrH * .5
+	
+	local x = halfW - progress_bar_w * .5
+	local y = halfH + 86
+	
+	local alpha = 255
+	
+	surface.SetMaterial( progress_bar )
+	surface.SetDrawColor( surv_r, surv_g, surv_b, alpha )
+	surface.DrawTexturedRect( x, y, progress_bar_w, progress_bar_h )
+	
+	local progress = math.abs( 1 - (endTime - ct) / dur )
+	local timeLeft = endTime - ct
+		
+	surface.SetDrawColor( 0, 0, 0, alpha )
+	surface.DrawRect( x + 11, y + 9, (progress_bar_w - 22), 3 )
+		
+	surface.SetDrawColor( 255, 255, 255, alpha )
+	surface.DrawRect( x + 11, y + 9, (progress_bar_w - 22) * progress, 3 )
+	
+	draw.SimpleText(formatTime(timeLeft), "FHCurrentWeapon", halfW, y + 24, color_white, TEXT_ALIGN_CENTER, TEXT_ALIGN_CENTER)
 end)

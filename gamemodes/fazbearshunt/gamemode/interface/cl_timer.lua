@@ -2,8 +2,10 @@
 
 resource.AddFile("resource/fonts/sharetechmonoregular_0.ttf")
 
-local timerBg = Material("vgui/timer/timer_bg.png")
-local timerGlow = Material("vgui/timer/time_glow.png")
+local color_fazbearshunt = Color(238, 49, 49)
+
+local timerBg = Material("vgui/base/timer/timer.png")
+local timerBg_w, timerBg_h = timerBg:Width(), timerBg:Height()
 
 local fh_draw_timer = CreateClientConVar('fh_draw_timer', 1, true, false, 'Draw Timer?', 0, 1)
 
@@ -43,15 +45,17 @@ local function DrawTimer()
 
     local x = (ScrW() / 2) - (fh_timer_width / 2)
     local y = 8
-	local redline_w = 6
+	local redline_w = 3
 	
 	local main_y = y + redline_w + 10
 	
-    surface.SetDrawColor(255, 255, 255, 250)
-    surface.SetMaterial(timerBg)
-    surface.DrawTexturedRect(ScrW() / 2 - 200, main_y - 4, 400, 100)
+	local sw, sh = ScrW(), ScrH()
+	
+	surface.SetDrawColor(255, 255, 255, 250)
+	surface.SetMaterial(timerBg)
+	surface.DrawTexturedRect(sw * .5 - timerBg_w * .5, main_y - 4, timerBg_w, timerBg_h)
 
-    draw.RoundedBox(0, x, y, fh_timer_width, redline_w, Color(0, 0, 0, 250))
+	draw.RoundedBox(0, x, y, fh_timer_width, redline_w, Color(0, 0, 0, 250))
 
 	local progress
 
@@ -63,62 +67,58 @@ local function DrawTimer()
 		progress = math.Clamp(timeLeft / (timerEnd - timerStart), 0, 1)
 	end
 
-	draw.RoundedBox(0, x, y, fh_timer_width * progress, redline_w, Color(136, 0, 0, 255))
+	draw.RoundedBox(0, x, y, fh_timer_width * progress, redline_w, color_fazbearshunt)
 	
 	local timertext = timerTitle .. (timerMode ~= "paused" and "" or " (PAUSED)")
 
-    draw.SimpleText(timertext, "timerFontUpper", ScrW() / 2, main_y + 20, Color(255, 0, 0, 255), TEXT_ALIGN_CENTER, TEXT_ALIGN_CENTER)
+	draw.SimpleText(timertext, "timerFontUpper", ScrW() / 2, main_y + 16, color_fazbearshunt, TEXT_ALIGN_CENTER, TEXT_ALIGN_CENTER)
 	
 	local whatToShow = (timerMode ~= "paused") and formatTime(timeLeft) or timerSubtitle
     
-    draw.SimpleText("- " .. whatToShow .. " -", "timerFontBelow", ScrW() / 2, main_y + roundtimer_y, Color(255, 255, 255, roundtimer_alpha), TEXT_ALIGN_CENTER, TEXT_ALIGN_CENTER)
-	
-    surface.SetDrawColor(255, 255, 255, 25 * (roundtimer_alpha/255))
-    surface.SetMaterial(timerGlow)
-    surface.DrawTexturedRect(ScrW() / 2 - 114, main_y + roundtimer_y - 24, 227, 46)
+	draw.SimpleText("- " .. whatToShow .. " -", "timerFontBelow", ScrW() / 2, main_y + roundtimer_y, Color(255, 255, 255, roundtimer_alpha), TEXT_ALIGN_CENTER, TEXT_ALIGN_CENTER)
 
     draw.SimpleText(formatTime(timeStartupLeft), "timerFontSmall", ScrW() / 2, main_y + 79, Color(255, 174, 0, postlobbytimer_alpha), TEXT_ALIGN_CENTER, TEXT_ALIGN_CENTER)
 end
 
 hook.Add("Think", "fh_timer_think", function()
-    if timerMode == "game" and postlobbytimer_alpha > 0 then
-        postlobbytimer_alpha = postlobbytimer_alpha - 2
-    end
-	
-    local speed = FrameTime() * 2
-    roundtimer_y = Lerp(speed, roundtimer_y, roundtimer_y_target)
+	if timerMode == "game" and postlobbytimer_alpha > 0 then
+		postlobbytimer_alpha = postlobbytimer_alpha - 2
+	end
+
+	local speed = FrameTime() * 2
+	roundtimer_y = Lerp(speed, roundtimer_y, roundtimer_y_target)
 end)
 
 -- #### ТАЙМЕР!!!
 net.Receive("fh_start_lobby_timer", function()
-    timerStart = net.ReadFloat()
-    timerEnd = net.ReadFloat()
+	timerStart = net.ReadFloat()
+	timerEnd = net.ReadFloat()
     
-    timerTitle = language.GetPhrase("fazhunt.generic.startup")
-    timerMode = "lobby"
+	timerTitle = language.GetPhrase("fazhunt.generic.startup")
+	timerMode = "lobby"
 	
-    postlobbytimer_alpha = 0
-	roundtimer_y_target = 58
+	postlobbytimer_alpha = 0
+	roundtimer_y_target = 56
 	roundtimer_alpha = 255
 	
-    hook.Add("HUDPaint", "DrawGameTimer", DrawTimer)
+	hook.Add("HUDPaint", "DrawGameTimer", DrawTimer)
 end)
 
 net.Receive("fh_timer_cutback", function()
-    timerStart = net.ReadFloat()
-    timerEnd = net.ReadFloat()
+	timerStart = net.ReadFloat()
+	timerEnd = net.ReadFloat()
 	local soundtoplay = net.ReadString()
-    
-    timerMode = "game"
+
+	timerMode = "game"
 	
-    postlobbytimer_alpha = 0
-	roundtimer_y_target = 58
+	postlobbytimer_alpha = 0
+	roundtimer_y_target = 56
 	roundtimer_alpha = 255
 	
-    timerSetupEnd = timerStart
-    hook.Add("HUDPaint", "DrawGameTimer", DrawTimer)
+	timerSetupEnd = timerStart
+	hook.Add("HUDPaint", "DrawGameTimer", DrawTimer)
 	
-    surface.PlaySound(soundtoplay)
+	surface.PlaySound(soundtoplay)
 end)
 
 // "ambient/alarms/warningbell1.wav"
@@ -136,13 +136,13 @@ net.Receive("fh_start_game_timer", function()
 	timer.Create('fh_timer_round_start', startupDuration, 1, function()
 		timerMode = "game"
 		roundtimer_alpha = 255
-		roundtimer_y_target = 58
+		roundtimer_y_target = 56
 	end)
     
     timerMode = "postlobby"
     postlobbytimer_alpha = 255
 	roundtimer_alpha = 45
-	roundtimer_y_target = 50
+	roundtimer_y_target = 48
     
     hook.Add("HUDPaint", "DrawGameTimer", DrawTimer)
     

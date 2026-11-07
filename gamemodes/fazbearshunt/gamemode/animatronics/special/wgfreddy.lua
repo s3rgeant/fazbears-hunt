@@ -41,7 +41,7 @@ end
 function GoldensBullshit_Start(ply, ent, timerName, sex)
 	timer.Remove(timerName)
 	
-	giveKillerSilent(ply, "fh_wgfreddyhead", true)
+	GiveKillerSilent(ply, "fh_wgfreddyhead", true)
 	
 	local rf = RecipientFilter()
 	rf:AddAllPlayers()
@@ -92,6 +92,7 @@ pills.register("pill_wgfreddy2",{
 			inn="tonormal",
 			scare="sscare",
 			rage="rage",
+			stun="sstun",
 		},
 		gestures={
 			melee="melee",
@@ -360,7 +361,7 @@ hook.Add("fh_startgame", "spawn_wgfreddy", function(roundType)
 				
 				local chosenPlayer = players[1]
 		
-				giveKillerSilent(chosenPlayer, "pill_wgfreddy2", true)
+				GiveKillerSilent(chosenPlayer, "pill_wgfreddy2", true)
 				chosenPlayer:ReturnToSpawn()
 			end
 		end

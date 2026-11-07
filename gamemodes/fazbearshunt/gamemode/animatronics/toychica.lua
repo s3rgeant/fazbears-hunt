@@ -576,7 +576,11 @@ hook.Add( "fh_animatronic_post_break_prop", "fh_toychica_punch", function( ply, 
 			target:TakeDamageInfo( dmginfo )
 			SuppressHostEvents( ply )
 			if IsValid(wep) then
-			wep:HandleAnimation("attack", 0.8)
+				wep:HandleAnimation("attack", 0.8)
+			end
+			
+			if not target:Alive() then
+				playVoiceline("tchica", "kill", ply, .5)
 			end
 			
 			ent:PillGesture('melee', 2, 1, 0.1, 0.7)

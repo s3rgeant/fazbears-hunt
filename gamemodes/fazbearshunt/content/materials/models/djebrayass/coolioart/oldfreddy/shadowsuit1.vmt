@@ -2,20 +2,18 @@
 {
 	"$basetexture" "models\djebrayass\CoolioArt\OldFreddy\shadowsuit1"
 	"$bumpmap" "models\djebrayass\CoolioArt\shared\bump"
+	//$lightwarptexture "models\lightwarp\closed"
 	
 	$surfaceprop metal
 
  	"$phong" "1"
-	"$phongexponent" "8"
-	"$phongboost"	"0.002"
+	"$phongexponent" "1"
+	"$phongboost"	"0.001"
 	"$phongtint"	"[216 95 255]"
 	"$phongfresnelranges"	"[0.05 0.5 1]"
 	"$phongalbedotint" "1"
 	
 	"$rimlight" "1"
-	"$rimlightexponent" "50"
-	"$rimlightboost" ".02"	
-
-	$halflambert 0
-	$diffuseexp 1.5
+	"$rimlightexponent" "200"
+	"$rimlightboost" ".003"
 }

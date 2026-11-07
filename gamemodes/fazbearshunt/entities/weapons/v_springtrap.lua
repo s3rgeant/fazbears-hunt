@@ -25,8 +25,6 @@ SWEP.HitDelay = 1.4	-- через сколько удар будет произ�
 
 SWEP.Arm = "LEFT"
 
-SWEP.IsCharging = false -- переменная для отслеживания удержания ЛКМ
-
 SWEP.HitSize = {
 	Min = Vector( -24, -24, -16 ),
 	Max = Vector( 24, 24, 16 )
@@ -36,6 +34,8 @@ SWEP.NextArmHit = util.SharedRandom( "ST_Arm", 1, 2, 0 )
 
 function SWEP:SetupDataTables()
     self:NetworkVar("Float", 0, "NextMeleeAttack")
+    self:NetworkVar("Bool", "Charging")
+	self:NetworkVar("Int", 0, "NextArm")
     return self.BaseClass.SetupDataTables and self.BaseClass.SetupDataTables(self)
 end
 
@@ -50,7 +50,7 @@ function SWEP:PrimaryAttack()
 	local ply = self:GetOwner()
 	local ent = pills.getMappedEnt(ply)
 	if not IsValid(ent) then return end
-	if self.IsCharging or ply.tasered then return end
+	if self:GetCharging() or ply.tasered then return end
 	if ply:IsFrozen() then return end
 	
 	if SERVER then
@@ -60,14 +60,15 @@ function SWEP:PrimaryAttack()
 		ply:EmitSound("fnaf3/pre-hit.mp3")
 	end
 	
-	local name = (math.Round( self.NextArmHit ) == 1) and "preattack1" or "preattack2"
+	local now = CurTime()
+	self:SetNextArm((math.floor(now) % 2))
 	
-	if IsFirstTimePredicted() then
-		self:HandleAnimation(name, 2)
-	end
+	local name = self:GetNextArm() == 0 and "preattack1" or "preattack2"
 	
-	self.IsCharging = true
-	self:SetNextMeleeAttack(CurTime() + self.HitDelay)
+	self:HandleAnimation(name, 2)
+	
+	self:SetCharging( true )
+	self:SetNextMeleeAttack(now + self.HitDelay)
 end
 
 function SWEP:DealDamage(ply, ent)
@@ -76,18 +77,13 @@ function SWEP:DealDamage(ply, ent)
 	if not IsValid(ent) then return end
 	local shootpos = ply:GetShootPos()
 	
-	local name = (math.Round( self.NextArmHit ) == 1) and "attack1" or "attack2"
 	local now = CurTime()
+	local name = self:GetNextArm() == 0 and "attack1" or "attack2"
 	
-	if IsFirstTimePredicted() then
-		self:HandleAnimation(name, 0.6)
+	self:HandleAnimation(name, 0.6)
 	
-		self:SetLastAttack(now)
-		self:SetNextPrimaryFire(now + 1.5)
-		
-		self._ArmCounter = self._ArmCounter + 1
-		self.NextArmHit = util.SharedRandom( "ST_Arm", 1, 2, self._ArmCounter )
-	end
+	self:SetLastAttack(now)
+	self:SetNextPrimaryFire(now + 1.5)
 	
 	if SERVER then
 		ent:PillStopGesture('swing', 0.1)
@@ -188,6 +184,7 @@ function SWEP:DealDamage(ply, ent)
 	local dmginfo = DamageInfo()
 	dmginfo:SetAttacker(ply)
 	dmginfo:SetInflictor(self)
+	dmginfo:SetDamagePosition(tr.HitPos)
 	dmginfo:SetDamage(target:IsPlayer() and 60 or 160)
 	
 	SuppressHostEvents(NULL)
@@ -249,19 +246,19 @@ end
 function SWEP:Think()
 	local curtime = CurTime()
 	
-	if self.IsCharging and not self:GetOwner():KeyDown(IN_ATTACK) then
-        self.IsCharging = false
-        self:SetNextMeleeAttack(0)
-        self:DealDamage()
-        return
-    end
+	if self:GetCharging() and not self:GetOwner():KeyDown(IN_ATTACK) then
+		self:SetCharging(false)
+		self:SetNextMeleeAttack(0)
+		self:DealDamage()
+		return
+	end
 
 	local meleetime = self:GetNextMeleeAttack()
 	if ( meleetime > 0 and curtime > meleetime ) then
-        self.IsCharging = false
+		self:SetCharging(false)
 		self:DealDamage()
 		self:SetNextMeleeAttack( 0 )
 	end
 
-    return self.BaseClass.Think and self.BaseClass.Think(self)
+	return self.BaseClass.Think and self.BaseClass.Think(self)
 end

@@ -4,6 +4,50 @@ local lastSelectedTab = 1
 
 admin = admin or {}
 
+deliverData = deliverData or {}
+
+net.Receive("FH_AdminDeliverData", function()
+	local dType = net.ReadBit()
+	
+	if dType == 1 then
+		local dName = net.ReadString()
+		deliverData[dName] = {}
+		
+		local dNext = net.ReadBit()
+		
+		if dNext == 1 then
+			local num = net.ReadUInt(8)
+			
+			for i = 1, num do
+				local dName2 = net.ReadString()
+				deliverData[dName][dName2] = {}
+				
+				local num = net.ReadUInt(8)
+				for i = 1, num do
+					local key = net.ReadString()
+					local value = net.ReadString()
+					
+					deliverData[dName][dName2][key] = value
+				end
+			end
+		else
+			local num = net.ReadUInt(8)
+			for i = 1, num do
+				local key = net.ReadString()
+				local value = net.ReadString()
+				
+				deliverData[dName][key] = value
+			end
+		end
+	else
+		
+		local key = net.ReadString()
+		local value = net.ReadString()
+		
+		deliverData[dName][key] = value
+	end
+end)
+
 local errorClr = Color(255,0,0)
 
 local animSettings = {}
@@ -160,6 +204,26 @@ local playerActions = {
 	{text = "fazhunt.adminpanel.low_anim_chance", action = "set_low_anim", superadmin=true, icon="pill_delete"},
 }
 
+local clrred = Color(255,0,0)
+local function f_() end
+local function askServerDeleteMapData(map, line, m)
+	net.Start("FH_AdminDeleteMapData")
+		net.WriteString(map)
+	net.SendToServer()
+	
+	line.Paint = function(self,w,h) draw.RoundedBox( 0, 0, 0, w, h, clrred ) end
+	line.OnRightClick = f_
+	line.OnLeftClick = f_
+	line:SetSelectable(false)
+	m:UnselectAll()
+	if dermaActionMenu then dermaActionMenu:Hide() end
+end
+local function askServerUpdateMapData(map)
+	net.Start("FH_AdminUpdateMapData")
+		net.WriteString(map)
+	net.SendToServer()
+end
+
 local function GetSelectedPlayers()
     local selectedLines = PlayerList:GetSelected()
     local players = {}
@@ -171,7 +235,7 @@ local function GetSelectedPlayers()
     return players
 end
 
-local blackie = Color(0,0,0,120)
+local blackie = Color(0,0,0,240)
 
 local myself
 local silent_give_killer = false
@@ -199,7 +263,7 @@ local function OpenAdminPanel()
 	myself = myself or LocalPlayer()
 
     fh_admin_panel = vgui.Create("DFrame")
-    fh_admin_panel:SetSize(600, 500)
+    fh_admin_panel:SetSize(700, 500)
     fh_admin_panel:Center()
     fh_admin_panel:SetScreenLock(true)
     fh_admin_panel:SetTitle(language.GetPhrase("fazhunt.adminpanel"))
@@ -218,14 +282,14 @@ local function OpenAdminPanel()
 
     PlayerList = vgui.Create("DListView", panelPlayers)
     PlayerList:Dock(LEFT)
-    PlayerList:SetWidth(200)
+    PlayerList:SetWidth(250)
     PlayerList:AddColumn(language.GetPhrase("fazhunt.players"))
     PlayerList:AddColumn(language.GetPhrase("fazhunt.team"))
     PlayerList:SetMultiSelect(true)
     createListPlayers()
 
     AnimatronicList = vgui.Create("DListView", panelPlayers)
-    AnimatronicList:SetPos(210, 10)
+    AnimatronicList:SetPos(260, 10)
     AnimatronicList:SetSize(180, 320)
     AnimatronicList:AddColumn(language.GetPhrase("fazhunt.animatronics_team"))
     AnimatronicList:SetMultiSelect(false)
@@ -235,14 +299,14 @@ local function OpenAdminPanel()
     createListAnimatronics()
 	
     if myself:IsSuperAdmin() then 
-		AddNetActionButton(panelPlayers, 220, 340, 160, 30, language.GetPhrase("fazhunt.adminpanel.addplayable"), "addplayable", function()
+		AddNetActionButton(panelPlayers, 260, 340, 160, 30, language.GetPhrase("fazhunt.adminpanel.addplayable"), "addplayable", function()
 			net.Start("AdminAction")
 			net.WriteString("addplayable")
 			net.WriteString(selectedAnimatron or "")
 			net.SendToServer()
 		end)
 		
-		AddNetActionButton(panelPlayers, 220, 380, 160, 30, language.GetPhrase("fazhunt.adminpanel.removeplayable"), "removeplayable", function()
+		AddNetActionButton(panelPlayers, 260, 380, 160, 30, language.GetPhrase("fazhunt.adminpanel.removeplayable"), "removeplayable", function()
 			net.Start("AdminAction")
 			net.WriteString("removeplayable")
 			net.WriteString(selectedAnimatron or "")
@@ -261,12 +325,13 @@ local function OpenAdminPanel()
     }
 
     local y = 10
+	local x = 460
     for _, a in ipairs(actions) do
         if a.text then
             if a.superadmin and not myself:IsSuperAdmin() then continue end
 
             local phrase = language.GetPhrase(a.text)
-            AddNetActionButton(panelPlayers, 400, y, 180, 30, phrase, a.action, function()
+            AddNetActionButton(panelPlayers, x, y, 180, 30, phrase, a.action, function()
                 if a.action:find("playable") then
                     net.Start("AdminAction")
                     net.WriteString(a.action)
@@ -308,7 +373,7 @@ local function OpenAdminPanel()
     end
 	
     local checkbox = vgui.Create("DCheckBoxLabel", panelPlayers)
-	checkbox:SetPos(400, 45)
+	checkbox:SetPos(x, 45)
     checkbox:SetText(language.GetPhrase("fazhunt.adminpanel.give_killer_silent"))
     checkbox:SetDark(true)
     checkbox:SetChecked(silent_give_killer)
@@ -317,7 +382,7 @@ local function OpenAdminPanel()
     end
 	
     local checkbox = vgui.Create("DCheckBoxLabel", panelPlayers)
-	checkbox:SetPos(400, 65)
+	checkbox:SetPos(x, 65)
     checkbox:SetText(language.GetPhrase("fazhunt.adminpanel.give_killer_onplace"))
     checkbox:SetDark(true)
     checkbox:SetChecked(onplace_give_killer)
@@ -326,7 +391,7 @@ local function OpenAdminPanel()
     end
 	
     local checkbox = vgui.Create("DCheckBoxLabel", panelPlayers)
-	checkbox:SetPos(400, 85)
+	checkbox:SetPos(x, 85)
     checkbox:SetText(language.GetPhrase("fazhunt.adminpanel.give_killer_secretly"))
     checkbox:SetDark(true)
     checkbox:SetChecked(secretly_give_killer)
@@ -335,7 +400,7 @@ local function OpenAdminPanel()
     end
 	
 	local actionBox = vgui.Create( "DComboBox", panelPlayers )
-	actionBox:SetPos( 400, y )
+	actionBox:SetPos( x, y )
 	actionBox:SetSize( 180, 20 )
 	actionBox:SetValue( language.GetPhrase("fazhunt.adminpanel.more_actions") )
 	actionBox:SetSortItems( false )
@@ -364,7 +429,7 @@ local function OpenAdminPanel()
     y = y + 30
 	
     local lblExp = vgui.Create("DLabel", panelPlayers)
-	lblExp:SetPos( 400, y )
+	lblExp:SetPos( x, y )
 	lblExp:SetSize( 180, 15 )
     lblExp:SetText(language.GetPhrase("fazhunt.adminpanel.give_weaponry") .. ":")
     lblExp:SetDark(true)
@@ -374,7 +439,7 @@ local function OpenAdminPanel()
     y = y + 20
 	
 	local weaponryBox = vgui.Create( "DComboBox", panelPlayers )
-	weaponryBox:SetPos( 400, y )
+	weaponryBox:SetPos( x, y )
 	weaponryBox:SetSize( 180, 20 )
 	weaponryBox:SetValue( "..." )
 	
@@ -456,7 +521,7 @@ local function OpenAdminPanel()
 					or onlyLobby and GetGlobal2Bool("gameOn", false)
 					or onlyGameStart and GetGlobal2Bool("roundActive", false)
 					then
-						draw.RoundedBox( 4, 0, 0, w, h, blackie )
+						draw.RoundedBox( 0, 0, 0, w, h, blackie )
 					end
 				end
 			end
@@ -492,16 +557,74 @@ local function OpenAdminPanel()
 			{"highlight.radius", "set_highlight_distance", 100, 4000, GetConVar("halo_radius"):GetInt()},
 			{"adminpanel.max_cupcakes", "fh_max_cupcakes", 3, 10, conVars.fh_max_cupcakes:GetInt()},
 		}
+		
+		local btns = {}
 
 		local ry = 10
 		for _, s in ipairs(sliders) do
-			AddSlider(highlightPanel, 10, ry, language.GetPhrase("fazhunt." .. s[1]), s[3], s[4], s[5], 0, s[2])
+			local sldr = AddSlider(highlightPanel, 10, ry, language.GetPhrase("fazhunt." .. s[1]), s[3], s[4], s[5], 0, s[2])
+			btns[s[1]] = sldr
 			ry = ry + 25
 		end
+		
+		local function accordMapData(d)
+			local s1 = btns["highlight.cooldown"]
+			local s2 = btns["highlight.time"]
+			local s3 = btns["highlight.radius"]
+			local s4 = btns["adminpanel.max_cupcakes"]
+			
+			local d1 = d["halo_cooldown"]
+			local d2 = d["halo_time"]
+			local d3 = d["halo_radius"]
+			local d4 = d["fh_max_cupcakes"]
+			
+			s1:SetValue(d1)
+			s2:SetValue(d2)
+			s3:SetValue(d3)
+			s4:SetValue(d4)
+		end
+		local function openMapMenu(map, line, mapList)
+			local menu = DermaMenu()
+			
+			menu:AddOption( "#spawnmenu.menu.copy_dnd", function() accordMapData( deliverData["MapData"][map] ) end ):SetIcon( "icon16/page_copy.png" )
+			menu:AddOption( "#spawnmenu.savechanges", function() askServerUpdateMapData(map) end ):SetIcon( "icon16/page_save.png" )
+			menu:AddOption( "#spawnmenu.menu.delete", function() askServerDeleteMapData(map, line, mapList) end ):SetIcon( "icon16/page_delete.png" )
+			menu:Open()
+			dermaActionMenu = menu
+		end
+		
+		local curMap = game.GetMap()
 
 		AddNetActionButton(highlightPanel, 10, ry + 10, 150, 40, language.GetPhrase("fazhunt.adminpanel.save_settings"), "fh_auto_map_save")
 		AddCheckbox(highlightPanel, 170, ry + 35, language.GetPhrase("fazhunt.adminpanel.auto_hl"), conVars.fh_automatic_highlight, "fh_automatic_highlight")
-		AddNetActionButton(highlightPanel, 10, ry + 60, 150, 40, language.GetPhrase("fazhunt.adminpanel.use_map_settings"), "fh_auto_map_hl")
+		--AddNetActionButton(highlightPanel, 10, ry + 60, 150, 40, language.GetPhrase("fazhunt.adminpanel.use_map_settings"), "fh_auto_map_hl")
+
+		local mapData = table.Copy(deliverData["MapData"])
+		if mapData then
+			local mapList = vgui.Create( "DListView", highlightPanel )
+			mapList:Dock( RIGHT )
+			mapList:SetWidth(250)
+			mapList:SetMultiSelect( false )
+			mapList:SetSortable( false )
+			mapList:AddColumn( "#map" )
+			
+			if mapData[curMap] then
+				local line = mapList:AddLine( curMap, mapData )
+				mapList:SelectItem(line)
+				
+				line.OnRightClick = function() openMapMenu(curMap, line, mapList) end
+				line.OnSelect = function() openMapMenu(curMap, line, mapList) end
+				local l = mapList:AddLine( "" ) l.Paint = function(w,h) end
+				mapData[curMap] = nil
+			end
+
+			for map, d in pairs(mapData) do
+				local line = mapList:AddLine( map, d )
+				
+				line.OnRightClick = function() openMapMenu(map, line, mapList) end
+				line.OnSelect = function() openMapMenu(map, line, mapList) end
+			end
+		end
 		
 		sheet:AddSheet(language.GetPhrase("fazhunt.adminpanel.round"), roundPanel, "icon16/joystick.png")
 
@@ -527,11 +650,11 @@ local function OpenAdminPanel()
 	DermaList:SetPos( 10, justget(15) )
 	DermaList:SetBackgroundColor( Color(50,50,80) )
 	DermaList:SetDrawBackground( true )
-	DermaList:SetSize( 570, 220 )
+	DermaList:SetSize( 640, 220 )
 
     local lblExp = vgui.Create("DLabel")
 	lblExp:SetPos( 10, 5 )
-	lblExp:SetSize( 550, 5 )
+	lblExp:SetSize( 620, 5 )
     lblExp:SetText(language.GetPhrase("fazhunt.adminpanel.experiments_description01") .. "\n\n" .. language.GetPhrase("fazhunt.adminpanel.experiments_description02"))
     --lblExp:SetDark(true)
     lblExp:SetAutoStretchVertical(true)
@@ -594,18 +717,18 @@ local function OpenAdminPanel()
 	CatList:SetPos(w - 230, 20)
 	
 	local background = vgui.Create( "DCategoryList", animPanel )
-	background:SetSize(210, h - 120)
+	background:SetSize(300, h - 120)
 	background:SetPos(150, 20)
 	
 	local animSetList = vgui.Create( "DScrollPanel", animPanel )
-	animSetList:SetSize(210, h - 120)
+	animSetList:SetSize(300, h - 120)
 	animSetList:SetPos(150, 20)
 	
 	--[[
 		категории для ёбанных аниматроников
 	]]
 	local entiretyOfPills = pills.getAllPills()
-	local registeredPills = killers.getAll()
+	local registeredPills = killers.GetAll()
 	
 	local list = {}
 	local categories = {}
@@ -796,23 +919,23 @@ end
 
 -- Selected
 local clrs = {
-	[0] = Color(255,0,155,200), -- Unpreferred
+	[0] = Color(70,0,0,200), -- Unpreferred
 	[1] = Color(0,125,155,200), -- Preferred
 	[2] = Color(190,92,0,200), -- Preferred Secondary
 }
 
 -- UnSelected
 local clrs_d = {
-	[0] = Color(255,0,0,100), -- Unpreferred
-	[1] = Color(0,255,0,100), -- Preferred
-	[2] = Color(229,220,0,200), -- Preferred Secondary
+	[0] = Color(238,49,49,40), -- Unpreferred
+	[1] = Color(20,238,90,50), -- Preferred
+	[2] = Color(210,130,0,200), -- Preferred Secondary
 }
 
 function createListAnimatronics()
     if !IsValid(AnimatronicList) then return end
     AnimatronicList:Clear()
-    local killers_ = killers.getAll()
-    local preferred = table.GetKeys(killers.getAllPreferables(true))
+    local killers_ = killers.GetAll()
+    local preferred = table.GetKeys(killers.GetAllPreferables(true))
 
     for k, v in pairs(killers_) do
         local line = AnimatronicList:AddLine(language.GetPhrase(v.fullname), k, v.category or "")

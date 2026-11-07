@@ -11,7 +11,7 @@ pills.register("pill_wchica2",{
 	printName="Withered Chica",
 	model="models/fh/animatronics/UFMP/WitheredChica.mdl",
 	modelScale="1.4",
-		
+	--[[	
 	options=function() return {
 		["default"] = {
 			-- ничего
@@ -24,7 +24,7 @@ pills.register("pill_wchica2",{
 		},
 	} end,
 	option=IsHalloween() and "halloween" or IsChristmas() and "christmas" or "default",
-	
+	]]--
 	anims={
 		default={
 			idle="idle",
@@ -124,7 +124,7 @@ pills.register("pill_wchica2",{
 	end,
 	
 	land=function(ply,ent)
-		if IsGoodLandConditions(ply, ent) then
+		if AreLandConditionsGood(ply, ent) then
 			ent:PillAnim("land",true)
 		end
 		

@@ -1,0 +1,15 @@
+"VertexlitGeneric"
+{
+	"$basetexture" "models\tetTris\FNaF\SD\ClownSpringtrap\Weapon_D2"
+	"$bumpmap" "models\tetTris\FNaF\SD\ClownSpringtrap\Weapon_N2"
+
+	"$maskmap2" 	"models\tetTris\FNaF\SD\ClownSpringtrap\Weapon_CH"
+	"$phongexponenttexture" "models\tetTris\FNaF\SD\ClownSpringtrap\Weapon_Exponent"
+	
+	"$phong" "1"
+	"$phongboost"	"19.986979"
+
+	"$maskenvbymetalness" "0"
+
+	"$metalnessblendtofull"	"1"
+}

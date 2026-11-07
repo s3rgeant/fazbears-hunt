@@ -1,6 +1,7 @@
 AddCSLuaFile()
 
 SWEP.PrintName = "#weapon_medkit"
+SWEP.Purpose = "#info_medkit"
 
 SWEP.Slot = 2
 SWEP.SlotPos = 2
@@ -35,9 +36,9 @@ SWEP.HealSound = Sound("HealthKit.Touch")
 SWEP.DenySound = Sound("WallHealth.Deny")
 
 SWEP.HealCooldown = 1
-SWEP.DenyCooldown = 1
+SWEP.DenyCooldown = .5
 SWEP.HealAmount = 10
-SWEP.HealRange = 64
+SWEP.HealRange = 76
 
 if SERVER then
 	resource.AddFile( "materials/weapons/medkit.vmt" )
@@ -105,8 +106,10 @@ function SWEP:DoHeal(ent)
 
     local healamount = math.min(maxhealth - health, math.min(self.HealAmount, ammo))
 
-    self:SetClip1(ammo - healamount)
-    ent:SetHealth(health + healamount)
+	if IsFirstTimePredicted() then
+		self:SetClip1(ammo - healamount)
+		ent:SetHealth(health + healamount)
+	end
 
     self:HealSuccess()
     return true
@@ -155,6 +158,7 @@ if CLIENT then
         if not IsValid(wep) or wep:GetClass() ~= "weapon_fh_medkit" then return end
 
         for _, v in player.Iterator() do
+			if v:IsDormant() then continue end
             if v ~= ply and v:IsSurvivor() and v:Alive() and !v:IsInvisible() and !v:GetNW2Bool("_OUTWORLD_target") and v:Health() > 0 then
 			
 				local tr = util.QuickTrace( ply:EyePos(), v:WorldSpaceCenter() - ply:EyePos(), {ply, v} )
@@ -189,6 +193,7 @@ if CLIENT then
 		local ent = tr.Entity
 			
 		if not IsValid(ent) then return nil end
+		if ent:IsDormant() then return nil end
 		if not ent:IsPlayer() then return nil end
 		if not ent:IsSurvivor() then return nil end
 		if ent:GetNW2Bool("_OUTWORLD_target") then return nil end

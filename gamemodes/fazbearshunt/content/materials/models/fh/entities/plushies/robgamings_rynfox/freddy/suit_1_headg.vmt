@@ -1,0 +1,19 @@
+"VertexlitGeneric"
+{
+$basetexture "models/fh/entities/plushies/RobGamings_RynFox/freddy/Suit_1Golden"
+$bumpmap "models/fh/entities/plushies/RobGamings_RynFox/Bump"
+$phongexponenttexture "models/fh/entities/plushies/RobGamings_RynFox/SpecularMap"
+$phongwarptexture "models/fh/entities/plushies/RobGamings_RynFox/Freddy/Suit_1Goldencolor"
+$surfaceprop metal
+$phong "1"
+$phongexponent "2"
+$phongboost "0.25"
+$phongfresnelranges "[0.05 0.5 1]"
+$phongalbedotint "1"
+$halflambert "1"
+$nodecal "1"
+$model "1"
+$diffuseexp "1.5"
+$normalmapalphaenvmapmask   "1"
+$nocull 1
+}

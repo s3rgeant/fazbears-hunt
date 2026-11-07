@@ -1,3 +1,5 @@
+AddCSLuaFile()
+
 ENT.Type = "anim"
 ENT.Base = "base_anim"
 
@@ -91,9 +93,9 @@ if SERVER then
 		self.Finished = false
 	end
 	
-	function ENT:UpdateTransmitState()
-		return TRANSMIT_NEVER
-	end
+	--function ENT:UpdateTransmitState()
+		--return TRANSMIT_NEVER
+	--end
 
 	function ENT:SetGoalArea(goalArea)
 		if not IsValid(goalArea) then return 0 end
@@ -122,7 +124,7 @@ if SERVER then
 			self.TargetPoint = goalArea:GetClosestPointOnArea(self:GetPos())
 		end
 		
-		self.Speed = self.Speed + ((#path-45) * 16)
+		self.Speed = 1000
 
 		return #path
 	end

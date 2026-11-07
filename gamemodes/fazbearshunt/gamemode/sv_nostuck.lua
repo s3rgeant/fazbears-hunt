@@ -1,10 +1,5 @@
 fhspawns = fhspawns or {}
 
-local spawnOffset = 70
-local maxAttempts = 20
-local hullMin = Vector(-16, -16, 0)
-local hullMax = Vector(16, 16, 72)
-
 hook.Add("PlayerSelectSpawn", "PreventPlayerStuckSpawn", function(ply)
 	if game.SinglePlayer() then
 		return
@@ -185,7 +180,7 @@ local function FindSafePosition(ply, startPos)
             local checkPos = startPos + dir * i
             local tr = util.TraceHull({
                 start = checkPos,
-                endpos = checkPos,
+                endpos = startPos,
                 mins = Hull_OBBmins,
                 maxs = Hull_OBBMaxs,
                 filter = ply
@@ -320,7 +315,7 @@ function ENTITY:RepeatRestoreCollision(duration, oldColl, ignoreWorld)
 	
 	if timer.Exists(timerName) then return end
 	timer.Create(timerName, duration, 0, function()
-		if not IsValid(self) then timer.Remove(timerName) end
+		if not IsValid(self) then timer.Remove(timerName) return end
 		
 		local stuck, ent = QuickIsStuckHull(self, oldColl, ignoreWorld)
 		if !stuck then

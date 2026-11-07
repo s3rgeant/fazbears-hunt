@@ -8,7 +8,7 @@ fh.RegisterRoundType("springtrap", 1, function()
 	if players then
 		local chosenPlayer = players[1]
 		
-		giveKiller(chosenPlayer, "pill_springtrap", true)
+		GiveKiller(chosenPlayer, "pill_springtrap", true)
 		
 		chosenPlayer.lobbyFreeze = true
 		chosenPlayer:ReturnToSpawn()

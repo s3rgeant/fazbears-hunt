@@ -16,29 +16,29 @@ game.AddAmmoType({
 if CLIENT then
 	SWEP.Icon = surface.GetTextureID("weapons/bananaicon");
 end
-SWEP.PrintName			= "Banana Peel";
-SWEP.Author				= "GHXX";
+SWEP.PrintName			= "#banana_peel"
+SWEP.Purpose			= "#info_banana_peel"
+SWEP.Author				= "GHXX"
 SWEP.Slot				= 3
 SWEP.SlotPos			= 1
 SWEP.Icon = "weapons/bananaicon"
 if CLIENT then
-	SWEP.WepSelectIcon = surface.GetTextureID("weapons/bananaicon");
+	SWEP.WepSelectIcon = surface.GetTextureID("weapons/bananaicon")
 end
 SWEP.HoldType = "grenade"
-SWEP.DrawAmmo = true
 
 SWEP.Gifted = true
 
-SWEP.Spawnable				= true;
-SWEP.AdminSpawnable			= false;
+SWEP.Spawnable				= true
+SWEP.AdminSpawnable			= false
 
 SWEP.UseHands = true
-SWEP.ViewModel				= "models/weapons/v_banana.mdl";
-SWEP.WorldModel				= "models/weapons/w_banana.mdl";
+SWEP.ViewModel				= "models/weapons/v_banana.mdl"
+SWEP.WorldModel				= "models/weapons/w_banana.mdl"
 
-SWEP.Weight					= 25;
-SWEP.AutoSwitchTo			= false;
-SWEP.AutoSwitchFrom			= false;
+SWEP.Weight					= 25
+SWEP.AutoSwitchTo			= false
+SWEP.AutoSwitchFrom			= false
 
 SWEP.Primary.ClipSize			= -1
 SWEP.Primary.DefaultClip		= 1
@@ -46,8 +46,8 @@ SWEP.Primary.Automatic   		= false
 SWEP.Primary.Ammo         		= "ammo_banana"
 SWEP.Primary.Delay 				= 1
 
-SWEP.Secondary.ClipSize			= 0
-SWEP.Secondary.DefaultClip		= 0
+SWEP.Secondary.ClipSize			= -1
+SWEP.Secondary.DefaultClip		= -1
 SWEP.Secondary.Automatic   		= false
 SWEP.Secondary.Ammo         	= "none"
 

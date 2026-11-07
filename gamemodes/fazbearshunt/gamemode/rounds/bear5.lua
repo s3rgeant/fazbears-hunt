@@ -8,7 +8,7 @@ fh.RegisterRoundType("bear5", 3, function()
 	if players then
 		local chosenPlayer = players[1]
 		
-		giveKiller(chosenPlayer, "bear5_main", true)
+		GiveKiller(chosenPlayer, "bear5_main", true)
 		
 		chosenPlayer.lobbyFreeze = true
 		chosenPlayer:ReturnToSpawn()
@@ -32,7 +32,7 @@ hook.Add( "EntityTakeDamage", "fh_bear_kill", function( ply, dmginfo )
 		if not attacker:IsPlayer() then return end
 		if not attacker:IsAnimatronic() then return end
 		
-		local ent = attacker:GetPill()
+		local ent = attacker:GetPillCostume()
 		
 		if not IsValid(ent) then return end
 		
@@ -47,17 +47,17 @@ hook.Add( "EntityTakeDamage", "fh_bear_kill", function( ply, dmginfo )
 			
 			if damageDealt >= ply:Health() then
 				inventory_backup.SaveCurrentInventory(ply)
-				giveKillerSilent(ply, "bear5_clone", true)
+				GiveKillerSilent(ply, "bear5_clone", true)
 				
 				ply:NoPlayerCollide(0.25)
 				
-				hook.Run("SendDeathNotice", attacker, attacker:GetActiveWeapon():GetClass(), ply, 1)
+				hook.Run("SendDeathNotice", attacker, attacker:GetActiveWeapon():GetClass(), ply, 0)
 				
 				if table.Count(survivors) == 1 then
 					hook.Run("FH_LastManStanding")
 				end
 				
-				winConditions()
+				WinConditions()
 			end
 		end
 	end

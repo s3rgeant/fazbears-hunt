@@ -1,0 +1,18 @@
+"VertexlitGeneric"
+{
+$basetexture "models/fh/entities/plushies/RobGamings_RynFox/black"
+$bumpmap "models/fh/entities/plushies/RobGamings_RynFox/Flat"
+$phongexponenttexture "models/fh/entities/plushies/RobGamings_RynFox/BlackSpecular"
+$phongwarptexture "models/fh/entities/plushies/RobGamings_RynFox/BlackSPECcolor"
+$surfaceprop glass
+$phong "1"
+$phongexponent "5.5"
+$phongboost "1"
+$phongfresnelranges "[0.05 0.5 1]"
+$phongalbedotint "1"
+$halflambert "1"
+$nodecal "1"
+$model "1"
+$diffuseexp "1.5"
+$normalmapalphaenvmapmask   "1"
+}

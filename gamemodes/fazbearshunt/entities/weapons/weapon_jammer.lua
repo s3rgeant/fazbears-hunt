@@ -1,7 +1,7 @@
 AddCSLuaFile()
 
 SWEP.PrintName = "#weapon_jammer"
-SWEP.DrawWeaponInfoBox = false
+SWEP.Purpose = "#info_jammer"
 
 SWEP.Slot = 4
 SWEP.SlotPos = 0
@@ -9,6 +9,7 @@ SWEP.SlotPos = 0
 SWEP.Spawnable = true
 
 SWEP.Gifted = true
+SWEP.DrawAmmo = false	
 
 SWEP.ViewModel = Model( "models/fh/weapons/c_jammer.mdl" )
 SWEP.WorldModel = Model( "models/fh/weapons/w_jammer.mdl" )
@@ -76,11 +77,13 @@ function SWEP:Throw()
 	
 	self:SendWeaponAnim(ACT_VM_SECONDARYATTACK)
 	
+	self:SetThrew(true)
+	
 	owner:DoAnimationEvent(ACT_HL2MP_GESTURE_RANGE_ATTACK_GRENADE)
 	
-	self:SpawnJammer(owner)
+	if CLIENT then return end
 	
-	self:SetThrew(true)
+	self:SpawnJammer(owner)
 	timer.Create("JammerRemove" .. self:EntIndex(), 1.2, 1, function()
 		if SERVER and IsValid(self) and IsValid(self:GetOwner()) then
 			self:Remove()
@@ -138,7 +141,7 @@ end
 
 function SWEP:Think()
 	local owner = self:GetOwner()
-    if SERVER and self:GetAim() and not self:GetThrew() and not owner:KeyDown(IN_ATTACK) and CurTime() >= self:GetNextThrow() then
+    if self:GetAim() and not self:GetThrew() and not owner:KeyDown(IN_ATTACK) and CurTime() >= self:GetNextThrow() then
         self:Throw()
     end
 	

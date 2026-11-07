@@ -92,14 +92,15 @@ function SWEP:DealDamage()
 	ply:ViewPunch( clownVP )
 	
 	if SERVER and props then
-		local dmgInfo = DamageInfo()
-		dmgInfo:SetDamage(150)
-		dmgInfo:SetAttacker(IsValid(ply) and ply or game.GetWorld())
-		dmgInfo:SetInflictor(self)
+		local dmginfo = DamageInfo()
+		dmginfo:SetDamage(150)
+		dmginfo:SetAttacker(IsValid(ply) and ply or game.GetWorld())
+		dmginfo:SetInflictor(self)
+		dmginfo:SetDamagePosition(hitpos)
 		
 		for _, prop in ipairs(props) do
 			SuppressHostEvents( NULL )
-			prop:TakeDamageInfo(dmgInfo)
+			prop:TakeDamageInfo(dmginfo)
 			SuppressHostEvents( ply )
 			local phys = prop:GetPhysicsObject()
 			
@@ -185,6 +186,7 @@ function SWEP:DealDamage()
 		local dmginfo = DamageInfo()
 		dmginfo:SetAttacker(ply)
 		dmginfo:SetInflictor(self)
+		dmginfo:SetDamagePosition(hitpos)
 		dmginfo:SetDamage(distance < 90 and best_damage or min_damage)
 
 		SuppressHostEvents(NULL)
@@ -193,6 +195,17 @@ function SWEP:DealDamage()
 	
 		target:SetVelocity(target:GetUp() * 249) -- чтоб он нахуй улетел
 	end
+	
+	timer.Simple(0, function()
+		for _, target in ipairs(targets) do
+			if not IsValid(target) then continue end
+			
+			if not target:Alive() then
+				playVoiceline("clown", "kill", ply, .5)
+				break
+			end
+		end
+	end)
 end
 
 function SWEP:Think()

@@ -61,6 +61,7 @@ end
 
 function SWEP:Initialize()
 	self.Animations = {}
+	self.AnimsInstalled = false
 end
 
 function SWEP:PrimaryAttack()
@@ -105,6 +106,10 @@ function SWEP:HandleGroundAnim()
 end
 
 function SWEP:Think()
+	if not AnimsInstalled then
+		self:AutoAddedAnimations()
+	end
+
     if SERVER then
 		local curtime = CurTime()
         local ply = self:GetOwner()
@@ -173,8 +178,8 @@ end
 function SWEP:SetupAnimations()
 end
 
-function SWEP:Deploy()
-    self.CurAnim = "deploy"
+function SWEP:AutoAddedAnimations()
+	if self.AnimsInstalled then return end
 	
 	self:AddAnimation("idle", nil, nil, true)
 	self:AddAnimation("walk", nil, nil, true)
@@ -186,6 +191,14 @@ function SWEP:Deploy()
 	self:AddAnimation("crouchmove", nil, nil, true)
 	
 	self:SetupAnimations()
+	
+	self.AnimsInstalled = true
+end
+
+function SWEP:Deploy()
+    self.CurAnim = "deploy"
+	
+	self:AutoAddedAnimations()
 end
 
 function SWEP:OnRemove()

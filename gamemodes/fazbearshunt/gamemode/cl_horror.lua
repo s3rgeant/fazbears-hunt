@@ -6,7 +6,7 @@ local soundCooldown = 10
 local function fh_default_check_scarysound()
     myself = myself or LocalPlayer()
 	
-    if !IsValid(myself) or IsValid(pills.getMappedEnt(myself)) then return end
+    if !myself:IsValid() or myself:GetPillCostume():IsValid() then return end
 	
 	if !myself:Alive() or myself:Team() == TEAM_SPECTATOR then return end
 
@@ -18,8 +18,8 @@ local function fh_default_check_scarysound()
 
     for _, ply in player.Iterator() do
         if ply ~= myself and ply:Alive() and ply:GetMoveType() ~= MOVETYPE_NOCLIP then
-            if IsValid(pills.getMappedEnt(ply)) then
-				local ent = pills.getMappedEnt(ply)
+            if IsValid(ply:GetPillCostume()) then
+				local ent = ply:GetPillCostume()
 				
 				if IsValid(ent) then
 					if !ent.IsDrawn or ent:GetMaterial() == "models/null" then return end

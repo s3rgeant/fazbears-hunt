@@ -70,20 +70,20 @@ sound.Add({
 	channel = 		CHAN_STATIC,
 	level = 		60,
 	volume = 		1.0,
-	sound = 			{"fnaf3/plushtrap/ptrun1.wav"
-						,"fnaf3/plushtrap/ptrun2.wav"
-						,"fnaf3/plushtrap/ptrun3.wav"
-						,"fnaf3/plushtrap/ptrun4.wav"}
+	sound = 			{")fnaf3/plushtrap/ptrun1.wav"
+						,")fnaf3/plushtrap/ptrun2.wav"
+						,")fnaf3/plushtrap/ptrun3.wav"
+						,")fnaf3/plushtrap/ptrun4.wav"}
 })
 sound.Add({
 	name = 			"plushtrap.crouch1",
 	channel = 		CHAN_STATIC,
 	level = 		60,
 	volume = 		1.0,
-	sound = 			{"fnaf3/plushtrap/ptcrawl1.wav"
-						,"fnaf3/plushtrap/ptcrawl2.wav"
-						,"fnaf3/plushtrap/ptcrawl3.wav"
-						,"fnaf3/plushtrap/ptcrawl4.wav"}
+	sound = 			{")fnaf3/plushtrap/ptcrawl1.wav"
+						,")fnaf3/plushtrap/ptcrawl2.wav"
+						,")fnaf3/plushtrap/ptcrawl3.wav"
+						,")fnaf3/plushtrap/ptcrawl4.wav"}
 })
 
 sound.Add({
@@ -132,11 +132,11 @@ sound.Add({
 	name = 			"glitching",
 	channel = 		CHAN_VOICE,
 	volume = 		1.0,
-	sound = 			{"ambient/energy/newspark10.wav"
-						,"ambient/energy/newspark11.wav"
-						,"ambient/energy/newspark08.wav"
-						,"ambient/energy/newspark07.wav"
-						,"ambient/energy/newspark05.wav"
+	sound = 			{")ambient/energy/newspark10.wav"
+						,")ambient/energy/newspark11.wav"
+						,")ambient/energy/newspark08.wav"
+						,")ambient/energy/newspark07.wav"
+						,")ambient/energy/newspark05.wav"
 						}
 })
 
@@ -163,4 +163,20 @@ sound.Add({
 	level = 		60,
 	volume = 		1.0,
 	sound = 			{"weapons/killermask_unlock.wav"}
+})
+
+sound.Add({
+	name = 			"scrapbaby.hooked",
+	channel = 		CHAN_VOICE,
+	level = 		90,
+	volume = 		1.0,
+	sound = 			{"animatronics/scrapbaby/baby_hook_success.mp3"}
+})
+
+sound.Add({
+	name = 			"scrapbaby.nothooked",
+	channel = 		CHAN_VOICE,
+	level = 		90,
+	volume = 		1.0,
+	sound = 			{"animatronics/scrapbaby/baby_hook_enviroment.mp3"}
 })

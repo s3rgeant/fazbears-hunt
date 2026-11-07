@@ -7,7 +7,16 @@ function killermask.IsGiftingAllowed()
 end
 
 hook.Add("fh_startgame", "killermask_hook", function()
-	ALLOW_KILLMASK_GIFT=true
+	local noMask = true
+	for _, ply in player.Iterator() do
+		if ply:HasWeapon("weapon_killmask") then
+			noMask = false
+		end
+	end
+	
+	if noMask then
+		ALLOW_KILLMASK_GIFT=true
+	end
 end)
 hook.Add("FH_KillerObsessed", "killermask_hook", function()
 	ALLOW_KILLMASK_GIFT=false

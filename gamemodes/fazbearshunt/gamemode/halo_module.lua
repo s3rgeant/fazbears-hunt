@@ -1,6 +1,7 @@
 OUTLINE = OUTLINE or {}
 
 local HighlightSystem = OUTLINE
+
 local FlatHighlightMaterial = Material("models/debug/debugwhite")
 
 HighlightSystem.State = HighlightSystem.State or {}
@@ -37,7 +38,7 @@ OUTLINE_QUALITY_DEFAULT = 0
 OUTLINE_QUALITY_AUTO = 1
 OUTLINE_QUALITY_LOW = 2
 
-local HighlightQualityConVar = GetConVar("fh_highlight_quality") or CreateClientConVar("fh_highlight_quality", "0", true, false, "Highlight Quality: 0 - default, 1 - automatic, 2 - low.", 0, 2)
+local higlight_quality = GetConVar("fh_highlight_quality") or CreateClientConVar("fh_highlight_quality", "0", true, false, "Highlight Quality: 0 - default, 1 - automatic, 2 - low.", 0, 2)
 local FPSMaximumConVar = GetConVar("fps_max")
 
 HighlightSystem.QualityState = HighlightSystem.QualityState or {}
@@ -64,6 +65,9 @@ InitQuality.auto_low_culprit_objects = istable(InitQuality.auto_low_culprit_obje
 InitQuality.auto_low_culprit_rule_counts = istable(InitQuality.auto_low_culprit_rule_counts) and InitQuality.auto_low_culprit_rule_counts or {}
 
 local AUTO_LOW_MIN_RULE_CONTRIBUTION_FRACTION = 0.1
+
+local scrw = ScrW()
+local scrh = ScrH()
 
 local function ClearSequentialTable(sequence)
 	for sequenceIndex = #sequence, 1, -1 do
@@ -360,7 +364,7 @@ end
 
 local function UpdateHighlightQualityState()
     local qualityState = HighlightSystem.QualityState
-    local qualityMode = math.Clamp(HighlightQualityConVar:GetInt(), OUTLINE_QUALITY_DEFAULT, OUTLINE_QUALITY_LOW)
+    local qualityMode = math.Clamp(higlight_quality:GetInt(), OUTLINE_QUALITY_DEFAULT, OUTLINE_QUALITY_LOW)
 
     qualityState.mode = qualityMode
 
@@ -405,8 +409,8 @@ local function UpdateHighlightQualityState()
 
     qualityState.target_fps = GetAutomaticQualityTargetFPS()
 
-    local enterLowFPS = math.max(20, qualityState.target_fps * 0.65)
-    local recoverFPS = math.max(28, qualityState.target_fps * 0.85)
+    local enterLowFPS = math.max(30, qualityState.target_fps * 0.78)
+    local recoverFPS = math.max(36, qualityState.target_fps * 0.90)
 
     if not qualityState.initialized then
         qualityState.initialized = true
@@ -453,33 +457,33 @@ local function UpdateHighlightQualityState()
             qualityState.recovered_since = 0
         end
 
-        return qualityState
-    end
+		return qualityState
+	end
 
-    qualityState.recovered_since = 0
+	qualityState.recovered_since = 0
 
-    local healthyForBaseline = qualityState.below_since == 0 and currentFPS >= recoverFPS and qualityState.smoothed_fps >= recoverFPS
+	local healthyForBaseline = qualityState.below_since == 0 and currentFPS >= recoverFPS and qualityState.smoothed_fps >= recoverFPS
 
-    if healthyForBaseline then
-        UpdateHealthyRuleObjectBaseline(qualityState)
-    end
+	if healthyForBaseline then
+		UpdateHealthyRuleObjectBaseline(qualityState)
+	end
 
-    if qualityState.smoothed_fps <= enterLowFPS then
-        if qualityState.below_since == 0 then
-            qualityState.below_since = currentTime
-        elseif currentTime >= qualityState.next_change_time and currentTime - qualityState.below_since >= 2 then
-            qualityState.auto_low = true
-            qualityState.below_since = 0
-            qualityState.recovered_since = 0
-            qualityState.next_change_time = currentTime + 3
+	if qualityState.smoothed_fps <= enterLowFPS then
+		if qualityState.below_since == 0 then
+			qualityState.below_since = currentTime
+		elseif currentTime >= qualityState.next_change_time and currentTime - qualityState.below_since >= 1.25 then
+			qualityState.auto_low = true
+			qualityState.below_since = 0
+			qualityState.recovered_since = 0
+			qualityState.next_change_time = currentTime + 3
 
-            CaptureAutoLowCulpritObjects(qualityState)
-        end
-    else
-        qualityState.below_since = 0
-    end
+			CaptureAutoLowCulpritObjects(qualityState)
+		end
+	else
+		qualityState.below_since = 0
+	end
 
-    return qualityState
+	return qualityState
 end
 
 local function NormalizeQualityProfile(profileData, defaultBuiltInState)
@@ -533,9 +537,7 @@ local function NormalizeQualityConfiguration(qualityData)
 		}
 	end
 
-	if not istable(qualityData) then
-		return nil
-	end
+	if not istable(qualityData) then return nil end
 
 	local alwaysApply = qualityData.always_apply
 
@@ -956,6 +958,43 @@ local function GetEntityDistanceSquaredFromView(viewOrigin, highlightedEntity)
 	return nearestEntityPoint:DistToSqr(viewOrigin)
 end
 
+local function IsEntityInsideHighlightViewport(viewOrigin, highlightedEntity, screenWidth, screenHeight)
+	if highlightedEntity:IsDormant() then
+		return false
+	end
+
+	local worldCenter
+
+	if highlightedEntity.WorldSpaceCenter then
+		worldCenter = highlightedEntity:WorldSpaceCenter()
+	else
+		worldCenter = highlightedEntity:LocalToWorld(highlightedEntity:OBBCenter())
+	end
+
+	local boundingRadius = math.max(8, tonumber(highlightedEntity:BoundingRadius()) or 8)
+	local centerDistanceSquared = worldCenter:DistToSqr(viewOrigin)
+
+	local nearCameraDistance = boundingRadius * 1.5
+
+	if centerDistanceSquared <= nearCameraDistance * nearCameraDistance then
+		return true
+	end
+
+	local screenPosition = worldCenter:ToScreen()
+
+	if not screenPosition.visible then
+		return false
+	end
+
+	local projectedDiameter = render.ComputePixelDiameterOfSphere(worldCenter, boundingRadius)
+	local projectedRadius = math.max(24, (tonumber(projectedDiameter) or 0) * 0.5)
+
+	return screenPosition.x >= -projectedRadius
+		and screenPosition.x <= screenWidth + projectedRadius
+		and screenPosition.y >= -projectedRadius
+		and screenPosition.y <= screenHeight + projectedRadius
+end
+
 local function GetHighlightConflictKey(highlightedEntity)
 	if highlightedEntity:IsPlayer() then
 		return highlightedEntity
@@ -1143,17 +1182,17 @@ function HighlightSystem.NormalizeEntry(rule, rawEntry, normalizedEntry)
 	local visibleOutlineWidth = math.max(0, ResolveLayerNumberSetting(entrySettings, "outline_visible_width", "outline_width", rule, "outline_visible_width", "outline_width", 0) or 0)
 	local occludedOutlineWidth = math.max(0, ResolveLayerNumberSetting(entrySettings, "outline_occluded_width", "outline_width", rule, "outline_occluded_width", "outline_width", 0) or 0)
 	
-	local visibleOutlineMinimumDistance = math.max(0, ResolveLayerNumberSetting(entrySettings, "outline_visible_min_dist", "outline_min_dist", rule, "outline_visible_min_dist", "outline_min_dist", 0) or 0)
-	local visibleOutlineMaximumDistance = math.max(0, ResolveLayerNumberSetting(entrySettings, "outline_visible_max_dist", "outline_max_dist", rule, "outline_visible_max_dist", "outline_max_dist", 0) or 0)
+	local visibleOutlineMinDistance = math.max(0, ResolveLayerNumberSetting(entrySettings, "outline_visible_min_dist", "outline_min_dist", rule, "outline_visible_min_dist", "outline_min_dist", 0) or 0)
+	local visibleOutlineMaxDistance = math.max(0, ResolveLayerNumberSetting(entrySettings, "outline_visible_max_dist", "outline_max_dist", rule, "outline_visible_max_dist", "outline_max_dist", 0) or 0)
 	
-	local occludedOutlineMinimumDistance = math.max(0, ResolveLayerNumberSetting(entrySettings, "outline_occluded_min_dist", "outline_min_dist", rule, "outline_occluded_min_dist", "outline_min_dist", 0) or 0)
-	local occludedOutlineMaximumDistance = math.max(0, ResolveLayerNumberSetting(entrySettings, "outline_occluded_max_dist", "outline_max_dist", rule, "outline_occluded_max_dist", "outline_max_dist", 0) or 0)
+	local occludedOutlineMinDistance = math.max(0, ResolveLayerNumberSetting(entrySettings, "outline_occluded_min_dist", "outline_min_dist", rule, "outline_occluded_min_dist", "outline_min_dist", 0) or 0)
+	local occludedOutlineMaxDistance = math.max(0, ResolveLayerNumberSetting(entrySettings, "outline_occluded_max_dist", "outline_max_dist", rule, "outline_occluded_max_dist", "outline_max_dist", 0) or 0)
 	
-	local visibleFillMinimumDistance = math.max(0, ResolveLayerNumberSetting(entrySettings, "fill_visible_min_dist", "fill_min_dist", rule, "fill_visible_min_dist", "fill_min_dist", 0) or 0)
-	local visibleFillMaximumDistance = math.max(0, ResolveLayerNumberSetting(entrySettings, "fill_visible_max_dist", "fill_max_dist", rule, "fill_visible_max_dist", "fill_max_dist", 0) or 0)
+	local visibleFillMinDistance = math.max(0, ResolveLayerNumberSetting(entrySettings, "fill_visible_min_dist", "fill_min_dist", rule, "fill_visible_min_dist", "fill_min_dist", 0) or 0)
+	local visibleFillMaxDistance = math.max(0, ResolveLayerNumberSetting(entrySettings, "fill_visible_max_dist", "fill_max_dist", rule, "fill_visible_max_dist", "fill_max_dist", 0) or 0)
 	
-	local occludedFillMinimumDistance = math.max(0, ResolveLayerNumberSetting(entrySettings, "fill_occluded_min_dist", "fill_min_dist", rule, "fill_occluded_min_dist", "fill_min_dist", 0) or 0)
-	local occludedFillMaximumDistance = math.max(0, ResolveLayerNumberSetting(entrySettings, "fill_occluded_max_dist", "fill_max_dist", rule, "fill_occluded_max_dist", "fill_max_dist", 0) or 0)
+	local occludedFillMinDistance = math.max(0, ResolveLayerNumberSetting(entrySettings, "fill_occluded_min_dist", "fill_min_dist", rule, "fill_occluded_min_dist", "fill_min_dist", 0) or 0)
+	local occludedFillMaxDistance = math.max(0, ResolveLayerNumberSetting(entrySettings, "fill_occluded_max_dist", "fill_max_dist", rule, "fill_occluded_max_dist", "fill_max_dist", 0) or 0)
 	
 	local visibleFillAmount = ResolveLayerNumberSetting(entrySettings, "fill_visible_amount", "fill_amount", rule, "fill_visible_amount", "fill_amount", nil)
 	local occludedFillAmount = ResolveLayerNumberSetting(entrySettings, "fill_occluded_amount", "fill_amount", rule, "fill_occluded_amount", "fill_amount", nil)
@@ -1187,15 +1226,15 @@ function HighlightSystem.NormalizeEntry(rule, rawEntry, normalizedEntry)
 	normalizedEntry.outline_visible_width = visibleOutlineWidth
 	normalizedEntry.outline_occluded_width = occludedOutlineWidth
 	
-	normalizedEntry.outline_visible_min_dist = visibleOutlineMinimumDistance
-	normalizedEntry.outline_visible_max_dist = visibleOutlineMaximumDistance
-	normalizedEntry.outline_occluded_min_dist = occludedOutlineMinimumDistance
-	normalizedEntry.outline_occluded_max_dist = occludedOutlineMaximumDistance
+	normalizedEntry.outline_visible_min_dist = visibleOutlineMinDistance
+	normalizedEntry.outline_visible_max_dist = visibleOutlineMaxDistance
+	normalizedEntry.outline_occluded_min_dist = occludedOutlineMinDistance
+	normalizedEntry.outline_occluded_max_dist = occludedOutlineMaxDistance
 	
-	normalizedEntry.fill_visible_min_dist = visibleFillMinimumDistance
-	normalizedEntry.fill_visible_max_dist = visibleFillMaximumDistance
-	normalizedEntry.fill_occluded_min_dist = occludedFillMinimumDistance
-	normalizedEntry.fill_occluded_max_dist = occludedFillMaximumDistance
+	normalizedEntry.fill_visible_min_dist = visibleFillMinDistance
+	normalizedEntry.fill_visible_max_dist = visibleFillMaxDistance
+	normalizedEntry.fill_occluded_min_dist = occludedFillMinDistance
+	normalizedEntry.fill_occluded_max_dist = occludedFillMaxDistance
 	
 	normalizedEntry.fill_visible_amount = visibleFillAmount
 	normalizedEntry.fill_occluded_amount = occludedFillAmount
@@ -1434,9 +1473,12 @@ local OutlineRenderer = HighlightSystem.Outline or {}
 
 HighlightSystem.Outline = OutlineRenderer
 
-OutlineRenderer.List = {}
 OutlineRenderer.ListSize = 0
 OutlineRenderer.RenderEnt = NULL
+
+OutlineRenderer.ThicknessBuckets = OutlineRenderer.ThicknessBuckets or {}
+OutlineRenderer.ActiveThicknesses = OutlineRenderer.ActiveThicknesses or {}
+
 OutlineRenderer.StoreTexture = OutlineRenderer.StoreTexture or render.GetScreenEffectTexture(0)
 OutlineRenderer.DrawTexture = OutlineRenderer.DrawTexture or render.GetScreenEffectTexture(1)
 OutlineRenderer.CopyMat = OutlineRenderer.CopyMat or Material("pp/copy")
@@ -1452,6 +1494,91 @@ local STENCIL_PRIORITY_BODY_MASK = 0x40
 local STENCIL_HIGHLIGHT_MASK = 0x7F
 local STENCIL_VIEWMODEL_MASK = 0x80
 local STENCIL_FULL_MASK = 0xFF
+local STENCIL_FILL_MASK = STENCIL_OUTLINE_MASK
+local STENCIL_FILL_AND_VIEWMODEL_MASK = STENCIL_FILL_MASK + STENCIL_VIEWMODEL_MASK
+
+local nextFillStencilReference = 1
+
+local OUTLINE_VISIBILITY_CODES = {
+	["both"] = 0,
+	["visible"] = 1,
+	["occluded"] = 2
+}
+
+local function ClampColorByte(value)
+	return math.Clamp(math.floor(tonumber(value) or 255), 0, 255)
+end
+
+local function BuildOutlineStyleKey(outlineColor, visibilityType)
+	local red = ClampColorByte(outlineColor.r)
+	local green = ClampColorByte(outlineColor.g)
+	local blue = ClampColorByte(outlineColor.b)
+	local alpha = ClampColorByte(outlineColor.a)
+
+	local packedColor =
+		red
+		+ green * 256
+		+ blue * 65536
+		+ alpha * 16777216
+
+	local visibilityCode = OUTLINE_VISIBILITY_CODES[visibilityType] or 0
+
+	return packedColor + visibilityCode * 4294967296
+end
+
+local function GetOrCreateOutlineThicknessBucket(outlineThickness)
+	local thicknessBucket = OutlineRenderer.ThicknessBuckets[outlineThickness]
+
+	if not thicknessBucket then
+		thicknessBucket = {
+			thickness = outlineThickness,
+			style_groups = {},
+			style_group_lookup = {},
+			style_group_count = 0,
+			active = false
+		}
+
+		OutlineRenderer.ThicknessBuckets[outlineThickness] = thicknessBucket
+	end
+
+	if not thicknessBucket.active then
+		thicknessBucket.active = true
+		OutlineRenderer.ActiveThicknesses[#OutlineRenderer.ActiveThicknesses + 1] = outlineThickness
+	end
+
+	return thicknessBucket
+end
+
+local function GetOrCreateOutlineStyleGroup(thicknessBucket, outlineColor, visibilityType)
+	local styleKey = BuildOutlineStyleKey(outlineColor, visibilityType)
+	local styleGroupIndex = thicknessBucket.style_group_lookup[styleKey]
+
+	if styleGroupIndex then
+		return thicknessBucket.style_groups[styleGroupIndex]
+	end
+
+	styleGroupIndex = thicknessBucket.style_group_count + 1
+
+	local styleGroup = thicknessBucket.style_groups[styleGroupIndex]
+
+	if not styleGroup then
+		styleGroup = {
+			entities = {}
+		}
+
+		thicknessBucket.style_groups[styleGroupIndex] = styleGroup
+	end
+
+	styleGroup.key = styleKey
+	styleGroup.color = outlineColor
+	styleGroup.visibility = visibilityType
+	styleGroup.entity_count = 0
+
+	thicknessBucket.style_group_lookup[styleKey] = styleGroupIndex
+	thicknessBucket.style_group_count = styleGroupIndex
+
+	return styleGroup
+end
 
 local function ClearStencilBits(stencilWriteMask)
 	render.SetStencilEnable(true)
@@ -1544,39 +1671,71 @@ local function ResetRenderState()
 end
 
 local function ResetOutlineQueue()
-	for outlineIndex = 1, OutlineRenderer.ListSize do
-		local outlinePass = OutlineRenderer.List[outlineIndex]
-	
-		if outlinePass then
-			outlinePass.entity = nil
-			outlinePass.color = nil
-			outlinePass.thickness = 0
-			outlinePass.visibility = nil
+	local activeThicknesses = OutlineRenderer.ActiveThicknesses
+	local thicknessBuckets = OutlineRenderer.ThicknessBuckets
+
+	for activeIndex = #activeThicknesses, 1, -1 do
+		local outlineThickness = activeThicknesses[activeIndex]
+		local thicknessBucket = thicknessBuckets[outlineThickness]
+
+		if thicknessBucket then
+			for styleGroupIndex = 1, thicknessBucket.style_group_count do
+				local styleGroup = thicknessBucket.style_groups[styleGroupIndex]
+
+				if styleGroup then
+					for entityIndex = styleGroup.entity_count, 1, -1 do
+						styleGroup.entities[entityIndex] = nil
+					end
+
+					if styleGroup.key ~= nil then
+						thicknessBucket.style_group_lookup[styleGroup.key] = nil
+					end
+
+					styleGroup.key = nil
+					styleGroup.color = nil
+					styleGroup.visibility = nil
+					styleGroup.entity_count = 0
+				end
+			end
+
+			thicknessBucket.style_group_count = 0
+			thicknessBucket.active = false
 		end
+
+		activeThicknesses[activeIndex] = nil
 	end
 
 	OutlineRenderer.ListSize = 0
 end
 
 local function AddOutlinePass(highlightedEntity, outlineColor, outlineThickness, visibilityType)
-	if OutlineRenderer.ListSize >= 255 or not IsValid(highlightedEntity) or outlineThickness <= 0 or (outlineColor.a or 255) <= 0 then
+	if OutlineRenderer.ListSize >= 255 then
 		return
 	end
 
-	local outlineIndex = OutlineRenderer.ListSize + 1
-	local outlinePass = OutlineRenderer.List[outlineIndex]
-
-	if not outlinePass then
-		outlinePass = {}
-		OutlineRenderer.List[outlineIndex] = outlinePass
+	if not IsValid(highlightedEntity) then
+		return
 	end
 
-	outlinePass.entity = highlightedEntity
-	outlinePass.color = outlineColor
-	outlinePass.thickness = outlineThickness
-	outlinePass.visibility = visibilityType
+	if not outlineColor or (outlineColor.a or 255) <= 0 then
+		return
+	end
 
-	OutlineRenderer.ListSize = outlineIndex
+	outlineThickness = math.max(0, math.floor((tonumber(outlineThickness) or 0) + 0.5))
+
+	if outlineThickness <= 0 then
+		return
+	end
+
+	local thicknessBucket = GetOrCreateOutlineThicknessBucket(outlineThickness)
+	local styleGroup = GetOrCreateOutlineStyleGroup(thicknessBucket, outlineColor, visibilityType)
+
+	local entityIndex = styleGroup.entity_count + 1
+
+	styleGroup.entities[entityIndex] = highlightedEntity
+	styleGroup.entity_count = entityIndex
+
+	OutlineRenderer.ListSize = OutlineRenderer.ListSize + 1
 end
 
 local function GetOutlineThicknessForDistance(highlightEntry, distance, visibilityType)
@@ -1663,6 +1822,18 @@ local function DrawOutlineEntity(highlightedEntity)
 	OutlineRenderer.RenderEnt = NULL
 end
 
+local function DrawOutlineStyleGroup(styleGroup)
+	local entities = styleGroup.entities
+
+	for entityIndex = 1, styleGroup.entity_count do
+		local highlightedEntity = entities[entityIndex]
+
+		if IsValid(highlightedEntity) then
+			DrawOutlineEntity(highlightedEntity)
+		end
+	end
+end
+
 local function BuildPriorityOutlineOcclusionMask(entries)
 	ClearStencilBits(STENCIL_PRIORITY_BODY_MASK)
 
@@ -1720,58 +1891,62 @@ local function BuildPriorityOutlineOcclusionMask(entries)
 	render.SetStencilTestMask(STENCIL_FULL_MASK)
 end
 
-local function BuildOutlineStencilMask(outlinePass)
-	local highlightedEntity = outlinePass.entity
-	local visibilityType = outlinePass.visibility
-	
+local function BuildOutlineStencilMask(styleGroup)
+	local visibilityType = styleGroup.visibility
+
 	ClearStencilBits(STENCIL_OUTLINE_MASK)
-	
+
 	render.SetStencilEnable(true)
 	render.SetStencilWriteMask(STENCIL_OUTLINE_MASK)
 	render.SetStencilTestMask(STENCIL_OUTLINE_MASK)
+
 	render.OverrideColorWriteEnable(true, false)
 	render.OverrideDepthEnable(true, false)
-	
+
 	if render.OverrideAlphaWriteEnable then
 		render.OverrideAlphaWriteEnable(true, false)
 	end
-	
+
 	render.SuppressEngineLighting(true)
 	render.SetBlend(1)
-	
+
 	cam.Start3D()
 		cam.IgnoreZ(false)
-	
+
 		if visibilityType == "occluded" then
 			render.SetStencilReferenceValue(1)
 			render.SetStencilCompareFunction(STENCIL_ALWAYS)
 			render.SetStencilFailOperation(STENCIL_KEEP)
 			render.SetStencilZFailOperation(STENCIL_REPLACE)
 			render.SetStencilPassOperation(STENCIL_KEEP)
-			DrawOutlineEntity(highlightedEntity)
-	
+
+			DrawOutlineStyleGroup(styleGroup)
+
 			render.SetStencilReferenceValue(2)
 			render.SetStencilCompareFunction(STENCIL_ALWAYS)
 			render.SetStencilFailOperation(STENCIL_KEEP)
 			render.SetStencilZFailOperation(STENCIL_KEEP)
 			render.SetStencilPassOperation(STENCIL_REPLACE)
-			DrawOutlineEntity(highlightedEntity)
+
+			DrawOutlineStyleGroup(styleGroup)
 		elseif visibilityType == "visible" then
 			render.SetStencilReferenceValue(1)
 			render.SetStencilCompareFunction(STENCIL_ALWAYS)
 			render.SetStencilFailOperation(STENCIL_KEEP)
 			render.SetStencilZFailOperation(STENCIL_KEEP)
 			render.SetStencilPassOperation(STENCIL_REPLACE)
-			DrawOutlineEntity(highlightedEntity)
+
+			DrawOutlineStyleGroup(styleGroup)
 		else
 			render.SetStencilReferenceValue(1)
 			render.SetStencilCompareFunction(STENCIL_ALWAYS)
 			render.SetStencilFailOperation(STENCIL_KEEP)
 			render.SetStencilZFailOperation(STENCIL_REPLACE)
 			render.SetStencilPassOperation(STENCIL_REPLACE)
-			DrawOutlineEntity(highlightedEntity)
+
+			DrawOutlineStyleGroup(styleGroup)
 		end
-	
+
 		cam.IgnoreZ(false)
 	cam.End3D()
 
@@ -1784,6 +1959,7 @@ local function BuildOutlineStencilMask(outlinePass)
 
 	render.SuppressEngineLighting(false)
 	render.SetBlend(1)
+
 	render.SetStencilWriteMask(STENCIL_FULL_MASK)
 	render.SetStencilTestMask(STENCIL_FULL_MASK)
 
@@ -1795,47 +1971,73 @@ local function RenderOutlineQueue(priorityEntries)
 		return
 	end
 
+	local activeThicknesses = OutlineRenderer.ActiveThicknesses
+
+	if #activeThicknesses == 0 then
+		ResetOutlineQueue()
+		return
+	end
+
 	BuildPriorityOutlineOcclusionMask(priorityEntries)
 
-	local activeRenderTarget = render.GetRenderTarget()
-	local screenWidth = ScrW()
-	local screenHeight = ScrH()
+	if #activeThicknesses > 1 then
+		table.sort(activeThicknesses)
+	end
 
-	for outlineIndex = 1, OutlineRenderer.ListSize do
-		local outlinePass = OutlineRenderer.List[outlineIndex]
-	
-		if not IsValid(outlinePass.entity) then
+	local activeRenderTarget = render.GetRenderTarget()
+
+	for activeThicknessIndex = 1, #activeThicknesses do
+		local outlineThickness = activeThicknesses[activeThicknessIndex]
+		local thicknessBucket = OutlineRenderer.ThicknessBuckets[outlineThickness]
+
+		if not thicknessBucket or thicknessBucket.style_group_count <= 0 then
 			continue
 		end
-	
+
 		render.CopyRenderTargetToTexture(OutlineRenderer.StoreTexture)
-	
-		local stencilReference = BuildOutlineStencilMask(outlinePass)
-	
-		render.SetStencilEnable(true)
-		render.SetStencilWriteMask(0)
-		render.SetStencilTestMask(STENCIL_OUTLINE_MASK)
-		render.SetStencilReferenceValue(stencilReference)
-		render.SetStencilCompareFunction(STENCIL_EQUAL)
-		render.SetStencilFailOperation(STENCIL_KEEP)
-		render.SetStencilZFailOperation(STENCIL_KEEP)
-		render.SetStencilPassOperation(STENCIL_KEEP)
-	
+
 		render.Clear(0, 0, 0, 0, false, false)
-	
-		local outlineColor = outlinePass.color or color_white
-	
-		render.ClearBuffersObeyStencil(outlineColor.r, outlineColor.g, outlineColor.b, outlineColor.a or 255, false)
-		render.SetStencilEnable(false)
+
+		for styleGroupIndex = 1, thicknessBucket.style_group_count do
+			local styleGroup = thicknessBucket.style_groups[styleGroupIndex]
+
+			if not styleGroup or styleGroup.entity_count <= 0 then
+				continue
+			end
+
+			local stencilReference = BuildOutlineStencilMask(styleGroup)
+
+			render.SetStencilEnable(true)
+			render.SetStencilWriteMask(0)
+			render.SetStencilTestMask(STENCIL_OUTLINE_MASK)
+			render.SetStencilReferenceValue(stencilReference)
+			render.SetStencilCompareFunction(STENCIL_EQUAL)
+			render.SetStencilFailOperation(STENCIL_KEEP)
+			render.SetStencilZFailOperation(STENCIL_KEEP)
+			render.SetStencilPassOperation(STENCIL_KEEP)
+
+			local outlineColor = styleGroup.color or color_white
+
+			render.ClearBuffersObeyStencil(
+				outlineColor.r,
+				outlineColor.g,
+				outlineColor.b,
+				outlineColor.a or 255,
+				false
+			)
+
+			render.SetStencilEnable(false)
+		end
+
 		render.CopyRenderTargetToTexture(OutlineRenderer.DrawTexture)
 		render.SetRenderTarget(activeRenderTarget)
-	
+
 		OutlineRenderer.CopyMat:SetTexture("$basetexture", OutlineRenderer.StoreTexture)
-	
+
 		render.SetMaterial(OutlineRenderer.CopyMat)
 		render.SetBlend(1)
 		render.DrawScreenQuad()
-	
+
 		render.SetStencilEnable(true)
 		render.SetStencilWriteMask(0)
 		render.SetStencilTestMask(STENCIL_FULL_MASK)
@@ -1844,25 +2046,22 @@ local function RenderOutlineQueue(priorityEntries)
 		render.SetStencilFailOperation(STENCIL_KEEP)
 		render.SetStencilZFailOperation(STENCIL_KEEP)
 		render.SetStencilPassOperation(STENCIL_KEEP)
-	
+
 		OutlineRenderer.OutlineMat:SetTexture("$basetexture", OutlineRenderer.DrawTexture)
-	
+
 		render.SetMaterial(OutlineRenderer.OutlineMat)
 		render.SetBlend(1)
-	
-		local outlineThickness = outlinePass.thickness
-	
-		render.DrawScreenQuadEx(-outlineThickness, 0, screenWidth, screenHeight)
-		render.DrawScreenQuadEx(outlineThickness, 0, screenWidth, screenHeight)
-		render.DrawScreenQuadEx(0, -outlineThickness, screenWidth, screenHeight)
-		render.DrawScreenQuadEx(0, outlineThickness, screenWidth, screenHeight)
-	
+
+		render.DrawScreenQuadEx(-outlineThickness, 0, scrw, scrh)
+		render.DrawScreenQuadEx(outlineThickness, 0, scrw, scrh)
+		render.DrawScreenQuadEx(0, -outlineThickness, scrw, scrh)
+		render.DrawScreenQuadEx(0, outlineThickness, scrw, scrh)
+
 		ResetRenderState()
 	end
 
 	render.SetRenderTarget(activeRenderTarget)
 
-	ClearStencilBits(STENCIL_HIGHLIGHT_MASK)
 	ResetRenderState()
 	ResetOutlineQueue()
 end
@@ -1916,45 +2115,45 @@ local function DrawFillEntity(highlightedEntity)
 	OutlineRenderer.RenderEnt = NULL
 end
 
-local function ApplyFillColor(fillColor, fillAmount)
-	render.SetBlend(fillAmount * ((fillColor.a or 255) / 255))
-	render.SetColorModulation(fillColor.r / 255, fillColor.g / 255, fillColor.b / 255)
+local function GetFillAlpha(fillColor, fillAmount)
+	local colorAlpha = fillColor.a or 255
+	local normalizedAmount = math.Clamp(fillAmount, 0, 1)
+
+	return math.Clamp(math.floor(colorAlpha * normalizedAmount + 0.5), 0, 255)
 end
 
 local function IsFillFullyOpaque(fillColor, fillAmount)
 	return fillAmount >= 1 and (fillColor.a or 255) >= 255
 end
 
-local function DrawVisibleFill(highlightedEntity, fillColor, fillAmount)
-	cam.IgnoreZ(false)
-	EnableViewModelExclusion()
-	ApplyFillColor(fillColor, fillAmount)
-	DrawFillEntity(highlightedEntity)
-
-	render.SetStencilEnable(false)
-	render.SetStencilWriteMask(STENCIL_FULL_MASK)
-	render.SetStencilTestMask(STENCIL_FULL_MASK)
+local function BeginFillStencilBatch()
+	ClearStencilBits(STENCIL_FILL_MASK)
+	nextFillStencilReference = 1
 end
 
-local function DrawCompleteFill(highlightedEntity, fillColor, fillAmount)
-	cam.IgnoreZ(true)
-	EnableViewModelExclusion()
-	ApplyFillColor(fillColor, fillAmount)
-	DrawFillEntity(highlightedEntity)
+local function AcquireFillStencilReference()
+	if nextFillStencilReference > STENCIL_FILL_MASK then
+		ClearStencilBits(STENCIL_FILL_MASK)
+		nextFillStencilReference = 1
+	end
 
-	render.SetStencilEnable(false)
-	render.SetStencilWriteMask(STENCIL_FULL_MASK)
-	render.SetStencilTestMask(STENCIL_FULL_MASK)
+	local stencilReference = nextFillStencilReference
+	nextFillStencilReference = nextFillStencilReference + 1
 
-	cam.IgnoreZ(false)
+	return stencilReference
 end
 
-local function DrawOccludedFill(highlightedEntity, fillColor, fillAmount)
-	ClearStencilBits(STENCIL_HIGHLIGHT_MASK)
-
+local function BeginFillMask(stencilReference)
 	render.SetStencilEnable(true)
-	render.SetStencilWriteMask(STENCIL_HIGHLIGHT_MASK)
-	render.SetStencilTestMask(STENCIL_HIGHLIGHT_MASK)
+	render.SetStencilWriteMask(STENCIL_FILL_MASK)
+	render.SetStencilTestMask(STENCIL_FILL_MASK)
+
+	render.SetStencilReferenceValue(stencilReference)
+	render.SetStencilCompareFunction(STENCIL_ALWAYS)
+	render.SetStencilFailOperation(STENCIL_KEEP)
+	render.SetStencilZFailOperation(STENCIL_KEEP)
+	render.SetStencilPassOperation(STENCIL_REPLACE)
+
 	render.OverrideColorWriteEnable(true, false)
 	render.OverrideDepthEnable(true, false)
 
@@ -1962,23 +2161,15 @@ local function DrawOccludedFill(highlightedEntity, fillColor, fillAmount)
 		render.OverrideAlphaWriteEnable(true, false)
 	end
 
-	render.SetStencilReferenceValue(1)
-	render.SetStencilCompareFunction(STENCIL_ALWAYS)
-	render.SetStencilFailOperation(STENCIL_KEEP)
-	render.SetStencilZFailOperation(STENCIL_REPLACE)
-	render.SetStencilPassOperation(STENCIL_REPLACE)
+	render.SuppressEngineLighting(true)
+	render.MaterialOverride(FlatHighlightMaterial)
 
-	cam.IgnoreZ(true)
-	DrawFillEntity(highlightedEntity)
+	render.SetColorModulation(1, 1, 1)
+	render.SetBlend(1)
+end
 
-	render.SetStencilReferenceValue(0)
-	render.SetStencilCompareFunction(STENCIL_ALWAYS)
-	render.SetStencilFailOperation(STENCIL_KEEP)
-	render.SetStencilZFailOperation(STENCIL_KEEP)
-	render.SetStencilPassOperation(STENCIL_ZERO)
-
+local function FinishFillMask()
 	cam.IgnoreZ(false)
-	DrawFillEntity(highlightedEntity)
 
 	render.OverrideColorWriteEnable(false, false)
 	render.OverrideDepthEnable(false, false)
@@ -1987,91 +2178,172 @@ local function DrawOccludedFill(highlightedEntity, fillColor, fillAmount)
 		render.OverrideAlphaWriteEnable(false, false)
 	end
 
-	render.SetStencilWriteMask(0)
+	render.MaterialOverride(nil)
+	render.SuppressEngineLighting(false)
+
+	render.SetColorModulation(1, 1, 1)
+	render.SetBlend(1)
+end
+
+local function DrawFillColorFromStencil(stencilReference, fillColor, fillAmount)
+	if fillAmount <= 0 then return end
+
+	local fillAlpha = GetFillAlpha(fillColor, fillAmount)
+	if fillAlpha <= 0 then return end
+
+	render.SetBlend(1)
+	render.SetColorModulation(1, 1, 1)
+
+	cam.Start2D()
+		render.SetStencilEnable(true)
+		render.SetStencilWriteMask(0)
+		render.SetStencilTestMask(STENCIL_FILL_AND_VIEWMODEL_MASK)
+		render.SetStencilReferenceValue(stencilReference)
+		render.SetStencilCompareFunction(STENCIL_EQUAL)
+		render.SetStencilFailOperation(STENCIL_KEEP)
+		render.SetStencilZFailOperation(STENCIL_KEEP)
+		render.SetStencilPassOperation(STENCIL_KEEP)
+
+		surface.SetAlphaMultiplier(1)
+		surface.SetDrawColor(fillColor.r, fillColor.g, fillColor.b, fillAlpha)
+		surface.DrawRect(0, 0, scrw, scrh)
+
+		render.SetStencilEnable(false)
+	cam.End2D()
+
+	surface.SetAlphaMultiplier(1)
+	surface.SetDrawColor(255, 255, 255, 255)
+
+	render.SetStencilWriteMask(STENCIL_FULL_MASK)
 	render.SetStencilTestMask(STENCIL_FULL_MASK)
-	render.SetStencilReferenceValue(1)
-	render.SetStencilCompareFunction(STENCIL_EQUAL)
+	render.SetStencilReferenceValue(0)
+	render.SetStencilCompareFunction(STENCIL_ALWAYS)
 	render.SetStencilFailOperation(STENCIL_KEEP)
 	render.SetStencilZFailOperation(STENCIL_KEEP)
 	render.SetStencilPassOperation(STENCIL_KEEP)
+end
 
-	cam.IgnoreZ(true)
-	ApplyFillColor(fillColor, fillAmount)
-	DrawFillEntity(highlightedEntity)
-	cam.IgnoreZ(false)
+local function DrawVisibleFill(highlightedEntity, fillColor, fillAmount)
+	local stencilReference = AcquireFillStencilReference()
 
-	render.SetStencilEnable(false)
-	render.SetStencilWriteMask(STENCIL_FULL_MASK)
-	render.SetStencilTestMask(STENCIL_FULL_MASK)
+	BeginFillMask(stencilReference)
+
+	cam.Start3D()
+		cam.IgnoreZ(false)
+		DrawFillEntity(highlightedEntity)
+	cam.End3D()
+
+	FinishFillMask()
+	DrawFillColorFromStencil(stencilReference, fillColor, fillAmount)
+end
+
+local function DrawCompleteFill(highlightedEntity, fillColor, fillAmount)
+	local stencilReference = AcquireFillStencilReference()
+
+	BeginFillMask(stencilReference)
+
+	cam.Start3D()
+		cam.IgnoreZ(true)
+		DrawFillEntity(highlightedEntity)
+	cam.End3D()
+
+	FinishFillMask()
+	DrawFillColorFromStencil(stencilReference, fillColor, fillAmount)
+end
+
+local function DrawOccludedFill(highlightedEntity, fillColor, fillAmount)
+	local stencilReference = AcquireFillStencilReference()
+
+	BeginFillMask(stencilReference)
+
+	cam.Start3D()
+		cam.IgnoreZ(true)
+		DrawFillEntity(highlightedEntity)
+		cam.IgnoreZ(false)
+		render.SetStencilReferenceValue(0)
+		render.SetStencilCompareFunction(STENCIL_ALWAYS)
+		render.SetStencilFailOperation(STENCIL_KEEP)
+		render.SetStencilZFailOperation(STENCIL_KEEP)
+		render.SetStencilPassOperation(STENCIL_REPLACE)
+		DrawFillEntity(highlightedEntity)
+	cam.End3D()
+
+	FinishFillMask()
+	DrawFillColorFromStencil(stencilReference, fillColor, fillAmount)
 end
 
 local function DrawFillEntries(entries)
 	if not entries or #entries == 0 then
 		return
 	end
-	
-	local previousFogMode = render.GetFogMode and render.GetFogMode() or 0
-	
-	cam.Start3D()
-		render.FogMode(0)
-		render.SuppressEngineLighting(true)
-		render.MaterialOverride(FlatHighlightMaterial)
-	
-		if render.ResetModelLighting then
-			render.ResetModelLighting(1, 1, 1)
+
+	BeginFillStencilBatch()
+
+	for entryIndex = 1, #entries do
+		local highlightEntry = entries[entryIndex]
+
+		highlightEntry.suppress_visible_outline = false
+		highlightEntry.suppress_occluded_outline = false
+
+		local highlightedEntity = highlightEntry.ent
+
+		if not IsValid(highlightedEntity) then
+			continue
 		end
-	
-		for entryIndex = 1, #entries do
-			local highlightEntry = entries[entryIndex]
-	
-			highlightEntry.suppress_visible_outline = false
-			highlightEntry.suppress_occluded_outline = false
-	
-			local highlightedEntity = highlightEntry.ent
-	
-			if not IsValid(highlightedEntity) then
-				continue
+
+		local distance = highlightEntry.distance or 0
+
+		local visibleFillAmount = highlightEntry.fill_visible
+			and GetFillAmountForDistance(highlightEntry, distance, "visible")
+			or 0
+
+		local occludedFillAmount = highlightEntry.fill_occluded
+			and GetFillAmountForDistance(highlightEntry, distance, "occluded")
+			or 0
+
+		if highlightEntry.fill_visible
+			and highlightEntry.fill_occluded
+			and visibleFillAmount > 0
+			and math.abs(visibleFillAmount - occludedFillAmount) <= 0.001
+			and highlightEntry.fill_visible_color == highlightEntry.fill_occluded_color then
+
+			local completeFillColor = highlightEntry.fill_visible_color or color_white
+
+			if IsFillFullyOpaque(completeFillColor, visibleFillAmount) then
+				highlightEntry.suppress_visible_outline = true
+				highlightEntry.suppress_occluded_outline = true
 			end
-	
-			local distance = highlightEntry.distance or 0
-			local visibleFillAmount = highlightEntry.fill_visible and GetFillAmountForDistance(highlightEntry, distance, "visible") or 0
-			local occludedFillAmount = highlightEntry.fill_occluded and GetFillAmountForDistance(highlightEntry, distance, "occluded") or 0
-	
-			if highlightEntry.fill_visible and highlightEntry.fill_occluded and visibleFillAmount > 0 and math.abs(visibleFillAmount - occludedFillAmount) <= 0.001 and highlightEntry.fill_visible_color == highlightEntry.fill_occluded_color then
-				local completeFillColor = highlightEntry.fill_visible_color or color_white
-	
-				if IsFillFullyOpaque(completeFillColor, visibleFillAmount) then
-					highlightEntry.suppress_visible_outline = true
-					highlightEntry.suppress_occluded_outline = true
-				end
-	
-				DrawCompleteFill(highlightedEntity, completeFillColor, visibleFillAmount)
-				continue
-			end
-	
-			if visibleFillAmount > 0 then
-				local visibleFillColor = highlightEntry.fill_visible_color or color_white
-	
-				if IsFillFullyOpaque(visibleFillColor, visibleFillAmount) then
-					highlightEntry.suppress_visible_outline = true
-				end
-	
-				DrawVisibleFill(highlightedEntity, visibleFillColor, visibleFillAmount)
-			end
-	
-			if occludedFillAmount > 0 then
-				DrawOccludedFill(highlightedEntity, highlightEntry.fill_occluded_color or color_white, occludedFillAmount)
-			end
+
+			DrawCompleteFill(highlightedEntity, completeFillColor, visibleFillAmount)
+			continue
 		end
-	cam.End3D()
-	
-	render.FogMode(previousFogMode)
+
+		if visibleFillAmount > 0 then
+			local visibleFillColor = highlightEntry.fill_visible_color or color_white
+
+			if IsFillFullyOpaque(visibleFillColor, visibleFillAmount) then
+				highlightEntry.suppress_visible_outline = true
+			end
+
+			DrawVisibleFill(highlightedEntity, visibleFillColor, visibleFillAmount)
+		end
+
+		if occludedFillAmount > 0 then
+			local occludedFillColor = highlightEntry.fill_occluded_color or color_white
+			DrawOccludedFill(highlightedEntity, occludedFillColor, occludedFillAmount)
+		end
+	end
+
 	ResetRenderState()
 end
 
 local function BuildPriorityBuckets(localPlayer, viewOrigin, globalQualityState)
 	local priorityBuckets = HighlightSystem.PriorityBuckets
 	local priorityBucketSizes = HighlightSystem.PriorityBucketSizes
+
+	local activeRenderTarget = render.GetRenderTarget()
+	local shouldCullOutsideViewport = activeRenderTarget == nil
+
 	local activePriorities = HighlightSystem.ActivePriorities
 	local dynamicPriorities = HighlightSystem.DynamicPriorities
 	local dynamicPrioritySet = HighlightSystem.DynamicPrioritySet
@@ -2096,21 +2368,21 @@ local function BuildPriorityBuckets(localPlayer, viewOrigin, globalQualityState)
 		priorityBucketSizes[priority] = 0
 		activePriorities[activeIndex] = nil
 	end
-	
+
 	for dynamicIndex = #dynamicPriorities, 1, -1 do
 		local priority = dynamicPriorities[dynamicIndex]
 	
 		dynamicPrioritySet[priority] = nil
 		dynamicPriorities[dynamicIndex] = nil
 	end
-	
+
 	ClearWinningEntryState()
-	
+
 	HighlightSystem.NormalizedEntryPoolSize = 0
-	
+
 	local orderedRules = HighlightSystem.OrderedRules
 	local normalizedEntryPool = HighlightSystem.NormalizedEntryPool
-	
+
 	local winningRawEntriesByKey = HighlightSystem.WinningRawEntriesByKey
 	local winningRulesByKey = HighlightSystem.WinningRulesByKey
 	local winningDistanceSquaredByKey = HighlightSystem.WinningDistanceSquaredByKey
@@ -2171,7 +2443,11 @@ local function BuildPriorityBuckets(localPlayer, viewOrigin, globalQualityState)
 			if distanceSquared > maximumRenderDistanceSquared then
 				continue
 			end
-	
+
+			if shouldCullOutsideViewport and not IsEntityInsideHighlightViewport(viewOrigin, rawEntity, scrw, scrh) then
+				continue
+			end
+
 			candidateOrder = candidateOrder + 1
 	
 			local candidatePriority = istable(rawEntry) and tonumber(rawEntry.priority) or nil
@@ -2356,6 +2632,17 @@ hook.Add("PostDrawEffects", "HighlightDraw", function()
 	if not IsValid(cachedLocalPlayer) then
 		return
 	end
+	
+	local activeRenderTarget = render.GetRenderTarget()
+	
+	if not activeRenderTarget then
+		scrw = ScrW()
+		scrh = ScrH()
+	end
+
+	ResetRenderState()
+	hook.Run("FH_PreHighlightRender", cachedLocalPlayer, activeRenderTarget)
+	ResetRenderState()
 
 	local globalQualityState = UpdateHighlightQualityState()
 	local viewOrigin = GetHighlightViewOrigin(cachedLocalPlayer)
@@ -2372,6 +2659,7 @@ hook.Add("PostDrawEffects", "HighlightDraw", function()
 		end
 	end
 
+	ClearStencilBits(STENCIL_HIGHLIGHT_MASK)
 	ResetRenderState()
 end)
 

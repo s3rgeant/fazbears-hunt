@@ -86,6 +86,12 @@ function ENT:Initialize()
 	
 	self:ResetAngle()
 	if SERVER then
+		if self.formTable.class then
+			player_manager.SetPlayerClass(ply, self.formTable.class)
+		else
+			player_manager.SetPlayerClass(ply, "player_fh")
+		end
+		
 		self:SetModel("models/Combine_Helicopter/helicopter_bomb01.mdl")
 		self:SetPos(ply:GetPos())
 		self:SetRenderMode(RENDERMODE_NORMAL)
@@ -355,6 +361,22 @@ end
 function ENT:OnRemove()
 	local ply = self:GetPillUser()
 	
+	if not IsValid(ply) then
+		local lastPly = self:GetPrevPillUser()
+		
+		if lastPly:IsValid() then
+			ply = lastPly
+			--pills.mapEnt(ply, self)
+			if SERVER then
+				self:AttachPlayer(ply)
+				
+				if self.formTable.restore then
+					self.formTable.restore(ply, self, self.formTable)
+				end
+			end
+		end
+	end
+	
 	-- compatibility
 	if self.formTable.onRemove then
 		if CLIENT and ply == LocalPlayer() then
@@ -500,7 +522,7 @@ function ENT:Think()
 				local moveY = right:Dot(velocity)
 	
 				local maxSpeed = math.max(pillspeed.maxwalk or 80, ply:GetWalkSpeed())
-					--maxSpeed = ply:GetRunSpeed()
+				--	maxSpeed = ply:GetRunSpeed()
 				if ply:Crouching() then maxSpeed = maxSpeed * 0.5 end
 	
 				moveX = moveX / maxSpeed
@@ -527,9 +549,9 @@ function ENT:Think()
 				local ftr
 				
 				if not ply:OnGround() then
-					ftr = ft * 8
+					ftr = ft * 10
 				else
-					ftr = .5
+					ftr = ( ply:IsSprinting() and ( ply:KeyDown(IN_MOVELEFT) or ply:KeyDown(IN_MOVERIGHT) ) ) and .3 or .5
 				end
 					
 				targetX = Lerp(ftr, prevX, targetX)
@@ -672,8 +694,9 @@ if SERVER then
 		
 		ply.lastFhMappedEnt = self
 		
-		pills.unmapEnt(ply, self)
+		pills.unmapEnt(ply, self, true)
 	end
+	
 	function ENT:AttachPlayer(ply)
 		ply = ply or self:GetPrevPillUser()
 	
@@ -745,7 +768,7 @@ if SERVER then
 	end
 	
 	function ENT:PillDie()
-		local ply = self:GetPillUser() or self:GetPrevPillUser()
+		local ply = self:GetPillUser():IsValid() and self:GetPillUser() or self:GetPrevPillUser()
 	
 		if self.formTable.die then
 			self.formTable.die(ply, self)

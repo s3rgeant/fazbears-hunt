@@ -187,8 +187,16 @@ net.Receive("fox_request_complete", function(len, ply)
 	local foxPly = net.ReadPlayer()
 	
 	if IsValid(foxPly) and !IsValid(foxPlayerReq) then
-		giveKiller(foxPly, "fox4", true)
-		foxPlayerReq = foxPly
+		if foxPly:Alive() then
+			giveKiller(foxPly, "fox4", true)
+			foxPlayerReq = foxPly
+		else
+			net.Start("fh_play_sound")
+			net.WriteString('ability_failed.wav')
+			net.Send(ply)
+		
+			cooldown.SetSend(ply, "death", 1)
+		end
 	end
 	
 	bearRequester = nil
@@ -270,6 +278,7 @@ pills.register("bear5_clone",{
 	end,
 	
 	restore=function(ply,ent, formtable)
+		if CLIENT then return end
 		ply:SetCollisionGroup(COLLISION_GROUP_NONE)
 	end,
 })
@@ -308,7 +317,7 @@ pills.register("fox4",{
 	sounds={
 		jump="jump.mp3",
 		land="land.mp3",
-		melee="bear/fox4_jumpscare.wav",
+		melee=")bear/fox4_jumpscare.wav",
 	},
 	
 	moveSpeed={
@@ -357,7 +366,7 @@ pills.register("fox4",{
 		end
     },
 	
-	onRemove=function(ply, ent)
+	restore=function(ply, ent)
 		if CLIENT then return end
 		net.Start("player_renderer_clear_e")
 		net.Send(ply)

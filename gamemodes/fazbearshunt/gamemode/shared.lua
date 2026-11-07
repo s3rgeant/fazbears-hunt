@@ -75,7 +75,7 @@ local colors = {
     Freddy = !IsHalloween() and Color(114, 51, 5) or Color(67, 83, 50),
     Bonnie = !IsHalloween() and Color(50, 40, 255) or Color(79, 54, 104),
     Endo = Color(255, 255, 255),
-    Chica = !IsHalloween() and Color(255, 201, 53) or Color(50, 62, 36),
+    Chica = --[[ !IsHalloween() and --]] Color(255, 201, 53) --[[ or Color(50, 62, 36)- -]] ,
     Foxy = !IsHalloween() and Color(255, 0, 0) or Color(57, 30, 11),
     Shadow = !IsHalloween() and Color(105, 0, 255) or Color(70, 100, 62), 
     Clown = Color(216, 93, 244),
@@ -110,69 +110,69 @@ local killerData = {
 
 killerAbilities = {
 	freddy = {
-		[1] = { name = 'kill', key = 'LMB', hidden = true },
-		[2] = { name = 'blindrage', key = 'RMB' },
-		[3] = { name = 'highlight', key = 'R' }
+		[1] = { name = 'blindrage', key = 'RMB', notify = true },
+		[2] = { name = 'highlight', key = 'R' },
+		[3] = { name = 'kill', key = 'LMB', hidden = true },
 	},
 	bonnie = {
-		[1] = { name = 'kill', key = 'LMB', hidden = true },
-		[2] = { name = 'yoursmine', key = 'RMB' },
-		[3] = { name = 'highlight', key = 'R' }
+		[1] = { name = 'yoursmine', key = 'RMB', notify = true },
+		[2] = { name = 'highlight', key = 'R' },
+		[3] = { name = 'kill', key = 'LMB', hidden = true },
 	},
 	chica = {
-		[1] = { name = 'kill', key = 'LMB', hidden = true },
-		[2] = { name = 'mine', key = 'RMB' },
-		[3] = { name = 'highlight', key = 'R' }
+		[1] = { name = 'mine', key = 'RMB', notify = true },
+		[2] = { name = 'highlight', key = 'R' },
+		[3] = { name = 'kill', key = 'LMB', hidden = true },
 	},
 	foxy = {
-		[1] = { name = 'kill', key = 'LMB', hidden = true },
-		[2] = { name = 'charge', key = 'RMB', tokens = 5,
+		[1] = { name = 'charge', key = 'RMB', tokens = 5,
 		condition = function()
 			return foxyChargeCondition()
 		end},
-		[3] = { name = 'highlight', key = 'R' }
+		[2] = { name = 'highlight', key = 'R' },
+		[3] = { name = 'kill', key = 'LMB', hidden = true },
 	},
 	sfreddy = {
-		[1] = { name = 'kill', key = 'LMB', hidden = true },
-		[2] = { name = 'submerge', key = 'RMB', condition = function()
+		[1] = { name = 'submerge', key = 'RMB', notify = true, condition = function()
 			return isNotStuck()
 		end },
-		[3] = { name = 'highlight', key = 'R' }
+		[2] = { name = 'highlight', key = 'R' },
+		[3] = { name = 'kill', key = 'LMB', hidden = true },
 	},
 	endo = {
-		[1] = { name = 'kill', key = 'LMB', hidden = true },
-		[2] = { name = 'pretense', key = 'RMB' },
-		[3] = { name = 'highlight', key = 'R' }
+		[1] = { name = 'pretense', key = 'RMB', notify = true },
+		[2] = { name = 'highlight', key = 'R' },
+		[3] = { name = 'kill', key = 'LMB', hidden = true },
 	},
 	clown = {
 		[1] = { name = 'attack', key = 'LMB' },
-		[2] = { name = 'highlight', key = 'R' }
+		[2] = { name = 'highlight', key = 'R' },
 	},
 	plushtrap = {
 		[1] = { name = 'attack', key = 'LMB' },
 		[2] = { name = 'lifetime', hidden = true },
-		[2] = { name = 'hitch', key = "RMB" }
+		[3] = { name = 'hitch', key = "RMB", notify = true },
 	},
 	springtrap = {
 		[1] = { name = 'attack', key = 'LMB' },
-		[2] = { name = 'summon', key = 'RMB' },
+		[2] = { name = 'summon', key = 'RMB', notify = true },
 		[3] = { name = 'highlight', key = 'R' },
 	},
 	gfreddy = {
-		[1] = { name = 'submerge', key = 'RMB' },
-		[2] = { name = 'choose_target', key = 'R' }
+		[1] = { name = 'submerge', key = 'RMB', notify = true },
+		[2] = { name = 'choose_target', key = 'R' },
 	},
 	mangle = {
-		[1] = { name = 'kill', key = 'LMB', hidden = true },
-		[2] = { name = 'lunge', key = 'RMB', condition = function()
+		[1] = { name = 'lunge', key = 'RMB', condition = function()
 			return CanMangleLunge()
 		end },
-		[3] = { name = 'highlight', key = 'R'}
+		[2] = { name = 'highlight', key = 'R'},
+		[3] = { name = 'kill', key = 'LMB', hidden = true },
 	},
 	tchica = {
-		[1] = { name = 'kill', key = 'LMB', hidden = true },
-		[2] = { name = 'hold', key = 'RMB' },
-		[3] = { name = 'highlight', key = 'R' }
+		[1] = { name = 'hold', key = 'RMB', notify = true },
+		[2] = { name = 'highlight', key = 'R' },
+		[3] = { name = 'kill', key = 'LMB', hidden = true },
 	},
 }
 
@@ -284,10 +284,27 @@ local function IsNavmesh()
 end
 
 function killers.getAll()
+	ErrorNoHaltWithStack("killers.getAll is DEPRECATED! Use killers.GetAll instead.\n")
+	return table.Copy(killerData)
+end
+
+function killers.GetAll()
 	return table.Copy(killerData)
 end
 
 function killers.getAllSolos()
+	ErrorNoHaltWithStack("killers.getAllSolos is DEPRECATED! Use killers.GetAllSolos instead.\n")
+	
+	local tablo = {}
+	for k, v in pairs( killerData ) do
+		if !killerData[k].secondary then
+			tablo[k] = v
+		end
+	end
+	return tablo
+end
+
+function killers.GetAllSolos()
 	local tablo = {}
 	for k, v in pairs( killerData ) do
 		if !killerData[k].secondary then
@@ -298,6 +315,21 @@ function killers.getAllSolos()
 end
 
 function killers.getAllPreferables(secondaries)
+	ErrorNoHaltWithStack("killers.getAllPreferables is DEPRECATED! Use killers.GetAllPreferables instead.\n")
+	
+	secondaries = secondaries or false
+	local tablo = {}
+	for k, v in pairs( killerData ) do
+		if !secondaries and killerData[k].secondary then continue end
+		if killerData[k].navmesh and !IsNavmesh() then continue end -- золотой фредде)
+		if killerData[k].preferable then
+			tablo[k] = v
+		end
+	end
+	return tablo
+end
+
+function killers.GetAllPreferables(secondaries)
 	secondaries = secondaries or false
 	local tablo = {}
 	for k, v in pairs( killerData ) do
@@ -311,6 +343,18 @@ function killers.getAllPreferables(secondaries)
 end
 
 function killers.getAllNonPreferables()
+	ErrorNoHaltWithStack("killers.getAllNonPreferables is DEPRECATED! Use killers.GetAllNonPreferables instead.\n")
+	
+	local tablo = {}
+	for k, v in pairs( killerData ) do
+		if !killerData[k].preferable then
+			tablo[k] = v
+		end
+	end
+	return tablo
+end
+
+function killers.GetAllNonPreferables()
 	local tablo = {}
 	for k, v in pairs( killerData ) do
 		if !killerData[k].preferable then
@@ -429,6 +473,7 @@ pill_makePreferable( dontPrefer )
 
 hook.Add("Initialize", "fh_dontprefer", function()
 	hook.Remove("PlayerTick", "TickWidgets") -- вроде слегка оптимизирует игру. спиздил с zombie-survival
+	if not file.Exists("fazbearshunt", "DATA") then file.CreateDir("fazbearshunt") end
 	if CLIENT then return end
 	
 	-- СОВМЕСТИМОСТЬ СО СТАРЫМИ ВЕРСИЯМИ ФХ
@@ -473,6 +518,7 @@ hook.Add("Initialize", "fh_dontprefer", function()
 end)
 
 function killers.getAllSecondaries()
+	ErrorNoHaltWithStack("killers.getAllSecondaries is DEPRECATED! Use killers.GetAllSecondaries instead.\n")
 	local tablo = {}
 	for k, v in pairs( killerData ) do
 		if killerData[k].secondary then
@@ -483,6 +529,17 @@ function killers.getAllSecondaries()
 end
 
 function killers.getAllDamageOnly()
+	ErrorNoHaltWithStack("killers.getAllDamageOnly is DEPRECATED! Use killers.GetAllDamageOnly instead.\n")
+	local tablo = {}
+	for k, v in pairs( killerData ) do
+		if killerData[k].damageAttack and !killerData[k].instakill then
+			tablo[k] = v
+		end
+	end
+	return tablo
+end
+
+function killers.GetAllDamageOnly()
 	local tablo = {}
 	for k, v in pairs( killerData ) do
 		if killerData[k].damageAttack and !killerData[k].instakill then
@@ -493,6 +550,16 @@ function killers.getAllDamageOnly()
 end
 
 function killers.getColor(killer)
+	ErrorNoHaltWithStack("killers.getColor is DEPRECATED! Use killers.GetColor instead.\n")
+	local color = Color(255,255,255)
+	local data = killerData[killer]
+	if data and data.color then
+		return data.color
+	end
+	return color
+end
+
+function killers.GetColor(killer)
 	local color = Color(255,255,255)
 	local data = killerData[killer]
 	if data and data.color then
@@ -509,7 +576,7 @@ function formatTime(secs)
 end
 
 teamColors = {
-	[2701] = Color(255, 25, 25),
+	[TEAM_PILLS] = Color(255, 25, 25),
 	[27] = Color(255, 25, 25),
 	[TEAM_SPECTATOR] = Color(117, 117, 130),
 	[TEAM_SURVIVOR] = Color(84, 163, 255)

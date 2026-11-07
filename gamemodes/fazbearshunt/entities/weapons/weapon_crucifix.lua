@@ -2,7 +2,7 @@
 AddCSLuaFile()
 
 SWEP.PrintName = "#weapon_crucifix"
-SWEP.DrawWeaponInfoBox = false
+SWEP.Purpose = "#info_crucifix"
 
 SWEP.Slot = 2
 SWEP.SlotPos = 0
@@ -16,8 +16,8 @@ SWEP.UseHands = true
 
 SWEP.Gifted = true
 
-SWEP.Primary.ClipSize = 15
-SWEP.Primary.DefaultClip = SWEP.Primary.ClipSize
+SWEP.Primary.ClipSize = -1
+SWEP.Primary.DefaultClip = -1
 SWEP.Primary.Automatic = false
 SWEP.Primary.Ammo = ""
 
@@ -25,8 +25,6 @@ SWEP.Secondary.ClipSize = -1
 SWEP.Secondary.DefaultClip = -1
 SWEP.Secondary.Automatic = false
 SWEP.Secondary.Ammo = ""
-
-SWEP.HoldType = ""
 
 SWEP.LerpFOV = 0
 
@@ -79,7 +77,7 @@ function SWEP:Defend()
 	
 	local owner = self:GetOwner()
 	self:SendWeaponAnim(ACT_VM_SECONDARYATTACK)
-				
+	
 	owner:GodEnable()
 	owner:GodEffects()
 	self:SetDefended(true)

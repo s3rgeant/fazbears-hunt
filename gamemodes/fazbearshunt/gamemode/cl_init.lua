@@ -1,8 +1,28 @@
 fh = fh or {}
 
+do
+    local old_upper = string.upper
+
+    local utf8_lc_uc = {
+        ["а"]="А", ["б"]="Б", ["в"]="В", ["г"]="Г", ["д"]="Д", ["е"]="Е", ["ё"]="Ё",
+        ["ж"]="Ж", ["з"]="З", ["и"]="И", ["й"]="Й", ["к"]="К", ["л"]="Л", ["м"]="М",
+        ["н"]="Н", ["о"]="О", ["п"]="П", ["р"]="Р", ["с"]="С", ["т"]="Т", ["у"]="У",
+        ["ф"]="Ф", ["х"]="Х", ["ц"]="Ц", ["ч"]="Ч", ["ш"]="Ш", ["щ"]="Щ", ["ъ"]="Ъ",
+        ["ы"]="Ы", ["ь"]="Ь", ["э"]="Э", ["ю"]="Ю", ["я"]="Я",
+    }
+
+    string.upper = function(str)
+        return (str:gsub("[%z\1-\127\194-\244][\128-\191]*", function(c)
+            return utf8_lc_uc[c] or old_upper(c)
+        end))
+    end
+end
+
 include( "shared.lua" )
 
 pcall(require,"pills")
+
+local fh_dark_blindness = CreateClientConVar('fh_dark_blindness', 0, true, true, 'Change all white blind mechanics to be black instead', 0, 1)
 
 local function recursive_include(path)
 	local files, folders = file.Find(path .. "*", "LUA")
@@ -112,24 +132,6 @@ function GM:CalcViewModelView( wep, vm, oldEyePos, oldEyeAng, eyePos, eyeAng )
 	return vm_origin, vm_angles
 end
 
-do
-    local old_upper = string.upper
-
-    local utf8_lc_uc = {
-        ["а"]="А", ["б"]="Б", ["в"]="В", ["г"]="Г", ["д"]="Д", ["е"]="Е", ["ё"]="Ё",
-        ["ж"]="Ж", ["з"]="З", ["и"]="И", ["й"]="Й", ["к"]="К", ["л"]="Л", ["м"]="М",
-        ["н"]="Н", ["о"]="О", ["п"]="П", ["р"]="Р", ["с"]="С", ["т"]="Т", ["у"]="У",
-        ["ф"]="Ф", ["х"]="Х", ["ц"]="Ц", ["ч"]="Ч", ["ш"]="Ш", ["щ"]="Щ", ["ъ"]="Ъ",
-        ["ы"]="Ы", ["ь"]="Ь", ["э"]="Э", ["ю"]="Ю", ["я"]="Я",
-    }
-
-    string.upper = function(str)
-        return (str:gsub("[%z\1-\127\194-\244][\128-\191]*", function(c)
-            return utf8_lc_uc[c] or old_upper(c)
-        end))
-    end
-end
-
 hook.Add("HUDDrawTargetID", "HidePlayerNames", function()
 	local lp = LocalPlayer()
 	
@@ -209,6 +211,8 @@ hook.Add( "OnEntityCreated", "fh_RagdollColor", function( ent )
 		if IsValid(ply) and ply:IsPlayer() then
 			local color = ply:GetPlayerColor()
 			ent.GetPlayerColor = function() return color end
+			
+			ent:SnatchModelInstance(ply)
 		end
 	end
 end )
@@ -326,7 +330,7 @@ local halloweenColorCorrection = {
 	["$pp_colour_addb"] = 0,
 	["$pp_colour_brightness"] = -0.15,
 	["$pp_colour_contrast"] = 1.01,
-	["$pp_colour_colour"] = 1.0,
+	["$pp_colour_colour"] = .5,
 	["$pp_colour_mulr"] = 0,
 	["$pp_colour_mulg"] = 0,
 	["$pp_colour_mulb"] = 0
@@ -334,9 +338,11 @@ local halloweenColorCorrection = {
 
 local fh_halloween_cc = CreateClientConVar("fh_halloween_cc", "1", true, true, "Toggle Halloween Themed Color Correction", 0, 1)
 
-hook.Add("RenderScreenspaceEffects", "Halloween_Effect", function()
+hook.Add("RenderScreenspaceEffects", "fh_bloom", function()
 	if fh_halloween_cc:GetBool() and IsHalloween() then
+		DrawBloom(.3, .6, .5, 4, 0, .8, 1, .51, 0)
 		DrawColorModify(halloweenColorCorrection)
+		return
 	end
 end)
 
@@ -383,13 +389,18 @@ hook.Add("PreDrawViewModel", "fix_flying_viewmodels", function(vm, ply, weapon)
 	
 	-- если я наблюдатель
 	if mode ~= OBS_MODE_NONE then
-		if ply ~= myself then
+		if mode ~= OBS_MODE_IN_EYE then
 			return true
 		end
 	-- если я живот
 	elseif mode == OBS_MODE_NONE then
-		if ply ~= myself then
+	
+		local owner = weapon:GetOwner()
+		
+		if owner ~= myself then
 			return true
 		end
 	end
 end)
+
+function GM:ForceDermaSkin() return "FazbearsHunt" end

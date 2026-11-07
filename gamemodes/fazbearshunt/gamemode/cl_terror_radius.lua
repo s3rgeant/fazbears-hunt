@@ -404,7 +404,7 @@ timer.Simple(0, initializeTerrorMusic)
 cvars.AddChangeCallback("fh_terror_volume", function(convarName, oldValue, newValue)
     if not lastTheme or not lastTerror then return end
 
-    changeAllTerrorVolumes(lastTheme, activeTerrorLayerWeights, tonumber(newValue) or 0, volumeChangeDuration)
+    changeAllTerrorVolumes(lastTheme, activeTerrorLayerWeights, (tonumber(newValue) or 0) * GetConVar("snd_musicvolume"):GetFloat(), volumeChangeDuration)
 end, "FH.TerrorRadius.Volume")
 
 hook.Add("Think", "tr_update_music_channels", function()
@@ -414,21 +414,27 @@ hook.Add("Think", "tr_update_music_channels", function()
         for layerName, musicEntry in pairs(themeMusic) do
             local audioChannel = musicEntry.channel
 
-            if not isValidAudioChannel(audioChannel) then
-                musicEntry.channel = nil
-                musicEntry.ready = false
+            local currentVolume = getInterpolatedMusicVolume(musicEntry, currentTime)
 
-                if not musicEntry.loading then
-                    startMusicEntryLoading(themeName, layerName, musicEntry)
-                end
+            if not isValidAudioChannel(audioChannel) then
+				if currentVolume > 0 then
+					musicEntry.channel = nil
+					musicEntry.ready = false
+
+					if not musicEntry.loading then
+						startMusicEntryLoading(themeName, layerName, musicEntry)
+					end
+				end
 
                 continue
             end
 
-            local currentVolume = getInterpolatedMusicVolume(musicEntry, currentTime)
-
             musicEntry.currentVolume = currentVolume
             audioChannel:SetVolume(currentVolume)
+			
+			if currentVolume <= 0 then -- фикс земеновской штуки
+				audioChannel:Stop()
+			end
         end
     end
 end)
@@ -675,7 +681,7 @@ timer.Create("tr_update", 0.5, 0, function()
 				end
 				
 				local forceLayer, forceNotFound = nil, nil
-				forceLayer, forceNotFound = hook.Run("FH_HandleKillerTerrorLayers", killer, theme, layer, ent)
+				forceLayer, forceNotFound = hook.Run("FH_HandleKillerTerrorLayers", myself, killer, theme, layer, ent)
 				
 				if forceLayer then
 					layer = forceLayer
@@ -715,7 +721,7 @@ timer.Create("tr_update", 0.5, 0, function()
 		return 
 	end
 
-	local terrorVolume = fh_terror_volume:GetFloat()
+	local terrorVolume = fh_terror_volume:GetFloat() * GetConVar("snd_musicvolume"):GetFloat()
 	local isChaseLayer = imChasing or layer == "chase" or layer == "chase_low" or layer == "chase_rage"
 
 	if isChaseLayer then

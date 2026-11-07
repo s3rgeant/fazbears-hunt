@@ -1,23 +1,23 @@
 if CLIENT then return end
 
 local PushSound = {
-	"physics/body/body_medium_impact_hard1.wav",
-	"physics/body/body_medium_impact_hard2.wav",
-	"physics/body/body_medium_impact_hard3.wav",
-	"physics/body/body_medium_impact_hard5.wav",
-	"physics/body/body_medium_impact_hard6.wav",
-	"physics/body/body_medium_impact_soft5.wav",
-	"physics/body/body_medium_impact_soft6.wav",
-	"physics/body/body_medium_impact_soft7.wav",
+	")physics/body/body_medium_impact_hard1.wav",
+	")physics/body/body_medium_impact_hard2.wav",
+	")physics/body/body_medium_impact_hard3.wav",
+	")physics/body/body_medium_impact_hard5.wav",
+	")physics/body/body_medium_impact_hard6.wav",
+	")physics/body/body_medium_impact_soft5.wav",
+	")physics/body/body_medium_impact_soft6.wav",
+	")physics/body/body_medium_impact_soft7.wav",
 }
 
 local PushSound_pills = {
-	"physics/metal/metal_solid_impact_hard1.wav",
-	"physics/metal/metal_solid_impact_hard4.wav",
-	"physics/metal/metal_solid_impact_hard5.wav",
-	"physics/metal/metal_solid_impact_soft1.wav",
-	"physics/metal/metal_solid_impact_soft2.wav",
-	"physics/metal/metal_solid_impact_soft3.wav",
+	")physics/metal/metal_solid_impact_hard1.wav",
+	")physics/metal/metal_solid_impact_hard4.wav",
+	")physics/metal/metal_solid_impact_hard5.wav",
+	")physics/metal/metal_solid_impact_soft1.wav",
+	")physics/metal/metal_solid_impact_soft2.wav",
+	")physics/metal/metal_solid_impact_soft3.wav",
 }
 
 local push = {}
@@ -48,7 +48,7 @@ hook.Add( "PlayerSpawn", "reset_push_onspawn", function(ply)
 end)
 
 local crzy = 5
-hook.Add("KeyPress", "PushInteraction", function(ply, key)
+hook.Add("KeyPress", "fh_push", function(ply, key)
 	if ply:IsPushBlocked() then return end
 
 	if key == IN_USE and not push[ply:UserID()] then
@@ -62,6 +62,10 @@ hook.Add("KeyPress", "PushInteraction", function(ply, key)
 		local ent = ply:GetEyeTrace().Entity
 		if IsValid(ply) and IsValid(ent) then
 			if ply:IsPlayer() and ply:Team() ~= TEAM_SPECTATOR and ent:IsPlayer() and not ent:IsPushImmune() then
+				local vel = ent:GetVelocity():Length()
+				
+				if vel > 200 then ply:LagCompensation(false) return end
+				
 				local allowed = hook.Run("ShouldPlayerPush", ply, ent)
 
 				if allowed ~= false then
@@ -71,7 +75,7 @@ hook.Add("KeyPress", "PushInteraction", function(ply, key)
 						if ent:Alive() and ent:GetMoveType() == MOVETYPE_WALK and not ent:IsFlagSet(FL_FROZEN) then
 							local power = hook.Run("PlayerPush", ply, ent)
 							
-							ply:EmitSound(pushSounds[math.random(#pushSounds)], 100, 100)
+							ply:EmitSound( pushSounds[ math.random(#pushSounds) ] , 100, 100)
 							local velAng = ply:EyeAngles():Forward()
 							velAng.z = math.Clamp(velAng.z, -0.1, 0.2)
 
@@ -94,7 +98,7 @@ hook.Add("KeyPress", "PushInteraction", function(ply, key)
 	end
 end)
 
-hook.Add("PlayerDeath", "PushDeath", function(ply)
+hook.Add("PlayerDeath", "fh_push", function(ply)
 	ply:SetPushBlocked(false)
 	ply:SetPushImmune(false)
 end)

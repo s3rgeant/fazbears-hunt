@@ -52,12 +52,17 @@ if SERVER then
 
     function ENT:Touch(ent)
         if self.IsUsed then return end
-        if CurTime() - self.SpawnTime > 1.5 and (ent:IsPlayer() and !ent:IsBot()) and ent:IsSurvivor() then
-			if hook.Run("FH_HandleGiftPickup", self, ent) == false then return end
-			
-            self.IsUsed = true
-            self:ApplyEffect(ent, self:GetBoosted() and 2 or 1)
-            self:Remove()
+		local isOwner = ent == self:GetOwner()
+		local curtime = CurTime()
+		
+        if isOwner and curtime - self.SpawnTime >= 1.3 or curtime - self.SpawnTime >= 2 then 
+			if (ent:IsPlayer() and !ent:IsBot()) and ent:IsSurvivor() then
+				if hook.Run("FH_HandleGiftPickup", self, ent) == false then return end
+				
+				self.IsUsed = true
+				self:ApplyEffect(ent, self:GetBoosted() and 2 or 1)
+				self:Remove()
+			end
         end
     end
 	
@@ -160,7 +165,7 @@ local positiveEffects = {
 				return true
 			end
 		
-			local damageOnlyAnims = killers.getAllDamageOnly()
+			local damageOnlyAnims = killers.GetAllDamageOnly()
 			
 			for k, v in pairs(damageOnlyAnims) do
 				if fh.GetActiveUsedKiller(k) then
@@ -235,6 +240,21 @@ local positiveEffects = {
 			return !ply:HasWeapon("weapon_adrenaline")
 		end
 	},
+	["fanta"] = {
+        name = "fanta",
+		desc = "fazhunt.gifts.fanta",
+        func = function(ply)
+            ply:Give("weapon_fanta")
+        end,
+        req = function(ply)
+			if !ply:HasWeapon("weapon_fanta") then
+				if fh.GetActiveUsedKiller("pill_wfoxy2") or fh.GetActiveUsedKiller("pill_sfreddy2") or fh.GetActiveUsedKiller("pill_mangle") or fh.GetActiveUsedKiller("pill_clown") then
+					return true
+				end
+			end
+			return false
+        end
+    },
 	["killer_mask"] = {
 		name = "killer_mask",
 		desc = "fazhunt.gifts.killer_mask",
@@ -242,6 +262,10 @@ local positiveEffects = {
 			ply:Give("weapon_killmask")
 		end,
 		req = function(ply)
+			if not killermask.IsGiftingAllowed() then
+				return false
+			end
+			
 			local fuck = false
 			for _, ply in player.Iterator() do
 				if ply:HasWeapon("weapon_killmask") or ply:HasWeapon("weapon_killer_axe") then
@@ -250,9 +274,6 @@ local positiveEffects = {
 				end
 			end
 			
-			if not killermask.IsGiftingAllowed() then
-				return false
-			end
 			
 			if fuck then
 				return false
@@ -364,7 +385,7 @@ local negativeEffects = {
             local carHeight = carMaxs.z - carMins.z
         
             local startPos = playerPos + Vector(0, 0, playerHeight + (carHeight / 2) + 10)
-            local endPos = startPos + Vector(0, 0, 500)
+            local endPos = startPos + Vector(0, 0, 400)
         
             local tr = util.TraceHull({
                 start = startPos,
@@ -570,6 +591,12 @@ if SERVER then
 		}
 	end
 	
+	function gifts.SetBlockPositiveEffect(name, bool)
+		if positiveEffects[name] then
+			positiveEffects[name].blocked = bool
+		end
+	end
+	
 	function gifts.AddNegativeEffect(name, desc, num, func, req)
 		negativeEffects[name] = {
 			desc = desc or "",
@@ -601,6 +628,7 @@ function ENT:ApplyEffect(player, amount)
 	
 	if isPositive then
 		for name, effect in pairs(positiveEffects) do
+			if effect.blocked then continue end
 			if effect.req and effect.req(player, self, isOwner) then
 				effects[name] = effect
 			elseif !effect.req then
@@ -658,9 +686,9 @@ function ENT:ApplyEffect(player, amount)
 end
 
 if CLIENT then
-	local gift_bar = Material("vgui/base/gift_bar.png")
-	local gift_bar_w = gift_bar:Width()
-	local gift_bar_h = gift_bar:Height()
+	--local gift_bar = Material("vgui/base/gift_bar.png")
+	--local gift_bar_w = gift_bar:Width()
+	--local gift_bar_h = gift_bar:Height()
 	
 	local gift_status_bar = Material("vgui/base/gift_status_bar.png")
 	local gift_status_bar_w = gift_status_bar:Width()

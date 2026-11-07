@@ -22,13 +22,18 @@ end
 
 local SPRINGTRAP_RAGE_HL_COLOR = Color(66,150,0)
 
-local plushtrap_summon_cd = 120
+local ptrap_life_time = 90
+local ptrap_summon_cd = 45
 	
 local pt_request_springtrap_ply = nil
 local request_plushtrap = nil
 
 local spring_default_movement = {210, 500, 50, 250} -- обычное передвижение
 local spring_rage_movement = {210, 600, 70, 255} -- дохуя скромник
+
+hook.Add("fh_postendgame", "springtrap_reset", function()
+	request_plushtrap = nil
+end)
 
 pills.register("pill_springtrap",{
 	printName="Springtrap",
@@ -170,8 +175,6 @@ pills.register("pill_springtrap",{
 					local agr = ent.Enragies[target] or 0
 					ent.Enragies[target] = agr + 1 -- прибавка секунды агра
 					
-					print( ply:Nick() .. " agr == ", agr + 1)
-					
 					local lastTarget = ent.LastEnragie
 					local tName = IsValid(lastTarget) and "SpringtrapLostEnragie" .. lastTarget:EntIndex() or nil
 					if ent.Enragies[lastTarget] and IsValid(lastTarget) and lastTarget:Alive() and lastTarget:IsSurvivor() then
@@ -192,9 +195,11 @@ pills.register("pill_springtrap",{
 						if tiName and timer.Exists(tName) then timer.Remove(tName) end
 					end
 					
-					--if ent.Enragies[target] % 5 == 0 then
-					--
-					--end
+					if ent.Enragies[target] % 5 == 0 then
+					
+						print( ply:Nick() .. " is playing Springtrap. His rage progress towards " .. target:Nick() .. ": ", agr + 1 .. " / 20")
+					
+					end
 					
 					ent.LastEnragie = target
 					break
@@ -311,7 +316,7 @@ pills.register("pill_springtrap",{
 				
 				ply:SendLua( "LocalPlayer():ChatPrint( language.GetPhrase('fazhunt.springtrap.plushunable') )" )
 				
-				cooldown.Set(ply, "summon", plushtrap_summon_cd)
+				cooldown.Set(ply, "summon", ptrap_life_time + ptrap_summon_cd)
 				cooldown.Send(ply, "summon")
 		
 				net.Start("dead_pt_request_start")
@@ -319,7 +324,7 @@ pills.register("pill_springtrap",{
 		
 				pt_request_springtrap_ply = ply
 				
-				timer.Create("pt_kill_timer" .. ply:EntIndex(), 60, 1, function()
+				timer.Create("pt_kill_timer" .. ply:EntIndex(), ptrap_life_time, 1, function()
 					if !IsValid(request_plushtrap) then
 						pt_request_springtrap_ply = nil
 						
@@ -348,7 +353,7 @@ pills.register("pill_springtrap",{
 	spawnPlustrapBot=function(ply, ent)
 		pt_request_springtrap_ply = ply
 	
-		cooldown.Set(ply, "summon", plushtrap_summon_cd)
+		cooldown.Set(ply, "summon", ptrap_life_time + ptrap_summon_cd)
 		cooldown.Send(ply, "summon")
 		
 		local plushtrap = ents.Create("plushtrap")
@@ -364,10 +369,10 @@ pills.register("pill_springtrap",{
 		net.Start("ApplyKillerCompanion")
 		net.WriteString("plushtrap")
 		net.WriteColor( Color(130, 119, 48) )
-		net.WriteFloat( CurTime() + 60 )
+		net.WriteFloat( CurTime() + ptrap_life_time )
 		net.Send(ply)
 		
-		timer.Create("pt_kill_timer" .. ply:EntIndex(), 60, 1, function()
+		timer.Create("pt_kill_timer" .. ply:EntIndex(), ptrap_life_time, 1, function()
 			if IsValid(plushtrap) then
 				plushtrap:Remove()
 			end
@@ -397,7 +402,7 @@ pills.register("pill_springtrap",{
 	land=function(ply,ent)
 		if ply.tasered then return end
 		
-		if IsGoodLandConditions(ply, ent) then
+		if AreLandConditionsGood(ply, ent) then
 			ent:PillAnim("land",true)
 		end
 	end,
@@ -662,7 +667,7 @@ pills.register("pill_plushtrap",{
 			cooldown.SetSend(ply, "hitch", 3)
 		end
 		ent.AttackJump = nil
-		if IsGoodLandConditions(ply, ent) then
+		if AreLandConditionsGood(ply, ent) then
 			ent:PillGesture('land', 1, 1, 0.1, 0.5, 0.1)
 			
 			local timerName = "pt_jump_timer" .. ply:EntIndex()
@@ -727,6 +732,8 @@ pills.register("pill_plushtrap",{
 					if IsValid(target) then
 						dir = target:GetAimVector()
 					end
+					
+					cooldown.SetSend(ply, "hitch", 8)
 				
 					ply:SetLocalVelocity(-dir * 125 + Vector(0,0,300))
 					
@@ -759,6 +766,11 @@ net.Receive("pt_request", function(len, ply)
 	net.Send(pt_request_springtrap_ply)
 end)
 
+net.Receive("pt_request_complete", function(len, springtrap)
+	local ply = net.ReadPlayer()
+	plushtrap_request_complete(springtrap, ply)
+end)
+
 function plushtrap_request_complete(springtrap, ply)
 	if IsValid(request_plushtrap) or !IsValid(pt_request_springtrap_ply) then return end
 	
@@ -786,7 +798,7 @@ function plushtrap_request_complete(springtrap, ply)
 		break
 	end
 	
-	giveKillerSilent(ply, "pill_plushtrap", true)
+	GiveKillerSilent(ply, "pill_plushtrap", true)
 	
 	timer.Simple(1, function()
 		local tName = "pt_kill_timer" .. springtrap:EntIndex()
@@ -802,16 +814,16 @@ function plushtrap_request_complete(springtrap, ply)
 	request_plushtrap = ply
 	
 	if !pt_found then -- на случай, если навмешей нет, и пш не заспавнился, мы создаём таймеры, которые не создались.
-		cooldown.Set(springtrap, "summon", plushtrap_summon_cd)
+		cooldown.Set(springtrap, "summon", ptrap_life_time + ptrap_summon_cd)
 		cooldown.Send(springtrap, "summon")
 		
 		net.Start("ApplyKillerCompanion")
 		net.WriteString("plushtrap")
 		net.WriteColor( Color(130, 119, 48) )
-		net.WriteFloat( CurTime() + 60 )
+		net.WriteFloat( CurTime() + ptrap_life_time )
 		net.Send(springtrap)
 			
-		timer.Create("pt_kill_timer" .. springtrap:EntIndex(), 60, 1, function()
+		timer.Create("pt_kill_timer" .. springtrap:EntIndex(), ptrap_life_time, 1, function()
 			KillPlushtrap(springtrap, ent, request_plushtrap)
 			pt_request_springtrap_ply = nil
 			springtrap:SendLua( "LocalPlayer():ChatPrint( language.GetPhrase('fazhunt.springtrap.plushdead') )" )
@@ -830,7 +842,6 @@ end
 
 
 concommand.Add( "dev_spawn_plushtrap", function( ply, cmd, args )
-		print("SPERMA")
 	if !ply:IsSuperAdmin() then return end
 	
 	local ent = pills.getMappedEnt(ply)

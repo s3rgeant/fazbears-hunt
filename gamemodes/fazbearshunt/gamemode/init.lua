@@ -20,7 +20,6 @@ local function recursive_include(path)
 		elseif file_name:StartWith("sh_") then
 			AddCSLuaFile(full_path)
 			include(full_path)
-			print(file_name)
 	
 		elseif file_name:StartWith("cl_") then
 			AddCSLuaFile(full_path)
@@ -164,7 +163,7 @@ function AssignKillers()
 	
 	if totalPlayers == 0 or !players then return end
 	
-    local availableKillers = table.GetKeys(killers.getAllPreferables(curMaxKillers > 1))
+    local availableKillers = table.GetKeys(killers.GetAllPreferables(curMaxKillers > 1))
 	
     for i = 1, curMaxKillers do
 		local killers = fh.GetEarnedKillers(players)
@@ -181,7 +180,7 @@ function AssignKillers()
 		curKillers[chosenPlayer] = true
 		
 		if chosenPlayer:IsBot() then
-			giveRandomKiller(chosenPlayer, true)
+			GiveRandomKiller(chosenPlayer, true)
 		end
     end
 	
@@ -198,7 +197,7 @@ hook.Add("Think", "fh_disallow_killers_choose", function()
 	if forceAnimSelectTime > 0 and CurTime() >= forceAnimSelectTime and isGameOn then
 		for ply, _ in pairs(animatronics) do
 			if IsValid(ply) and not IsValid(ply:GetPillCostume()) then
-				giveRandomKiller(ply, true)
+				GiveRandomKiller(ply, true)
 			end
 		end
 		forceAnimSelectTime = 0
@@ -236,8 +235,9 @@ hook.Add("ShouldPlayerPush", "fh_push_management", function(pusher, victim)
 	end
 end)
 
-local function giveKillerShared(ply, killer, force, silent)
-	local killers_ = killers.getAll()
+local clrred = Color(255,0,0)
+local function GiveKillerShared(ply, killer, force, silent)
+	local killers_ = killers.GetAll()
 	
 	local killerData = {}
 	local killerName
@@ -272,12 +272,13 @@ local function giveKillerShared(ply, killer, force, silent)
 		ply.lobbyFreeze = true
 	end
 	
+	local animClr = clrred
 	if !killerData then
-		print(ply:Nick() .. " is " .. killerName.." now.")
+		MsgC(clrred, ply:Nick(), color_white, " is ", animClr, killerName, color_white, " now.\n")
 	elseif killerData.name then
-		print(ply:Nick() .. " is " .. killerData.name.." now.")
+		MsgC(clrred, ply:Nick(), color_white, " is ", animClr, killerData.name, color_white, " now.\n")
 	else
-		print(ply:Nick() .. " is " .. killer.." now.")
+		MsgC(clrred, ply:Nick(), color_white, " is ", animClr, killer, color_white, " now.\n")
 	end
 	
 	killerData.ogName = killerName
@@ -285,10 +286,10 @@ local function giveKillerShared(ply, killer, force, silent)
 	return killerData
 end
 
-function giveKiller(ply, killer, force, tpSpawn)
+function GiveKiller(ply, killer, force, tpSpawn)
 	force = force or false
 	
-	local killerData = giveKillerShared(ply, killer, force)
+	local killerData = GiveKillerShared(ply, killer, force)
 	
 	if !killerData then return end
 	
@@ -320,10 +321,20 @@ function giveKiller(ply, killer, force, tpSpawn)
     net.Broadcast()
 end
 
-function giveKillerSilent(ply, killer, force)
+function giveKiller(...)
+	ErrorNoHaltWithStack("giveKiller is DEPRECATED! Use GiveKiller instead.\n")
+	GiveKiller(...)
+end
+
+function GiveKillerSilent(ply, killer, force)
 	force = force or false
 	
-	giveKillerShared(ply, killer, force, true)
+	GiveKillerShared(ply, killer, force, true)
+end
+
+function giveKillerSilent(...)
+	ErrorNoHaltWithStack("giveKillerSilent is DEPRECATED! Use GiveKillerSilent instead.\n")
+	GiveKillerSilent(...)
 end
 
 function setupPlayerVars(ply)
@@ -356,7 +367,7 @@ hook.Add("PlayerCanSeePlayersChat", "fh_chat", function(text, teamOnly, listener
 	end
 end)
 
-function endRound(killerVictory, duration)
+function EndRound(killerVictory, duration)
 	killerVictory = killerVictory or false
 	duration = duration or 10
 
@@ -396,7 +407,7 @@ function endGame()
 	
 	for _, ply in player.Iterator() do
 		ply:SetTeam(TEAM_SURVIVOR)
-		if ply:GetPillCostume():IsValid() then
+		if ply:GetActualPillCostume():IsValid() then
 			pills.restore(ply:Nick(), true)
 		end
 		ply:Spawn()
@@ -729,6 +740,92 @@ hook.Add( "PlayerCanPickupWeapon", "no_double_pickup", function( ply, weapon )
 	end
 end)
 
+function ReplaceKiller(ply, ent, pos, angle, health, pillName)
+	ply:SendLua( "surface.PlaySound( 'killer_replaced.wav' )" )
+			
+	if !ply:Alive() then
+		ply:UnSpectate()
+		ply:Spawn()
+		
+		if ply.DeathRagdoll then
+			if ply.DeathRagdoll:IsValid() then
+				ply.DeathRagdoll:Remove()
+			end
+		end
+	end
+	if pillName then
+		GiveKiller(ply, pillName, true)
+	else
+		GiveRandomKiller(ply, true)
+	end
+	ply:SetPos(pos)
+	ply:SetEyeAngles(angle)
+	ply:SetHealth(health)
+	
+	timer.Simple(0.5, function()
+		if IsValid(ply) and ply:Alive() and ply:IsStuck() then
+			ply:Unstuck()
+		end
+	end)
+	
+	timer.Simple(1, function()
+		if IsValid(ply) and ply:Alive() and ply:IsStuck() then
+			TeleportToNearestTeammate(ply)
+		end
+	end)
+end
+
+local function tryReplaceKiller(leaver, ent)
+	local pos = leaver:GetPos()
+	local angle = leaver:GetLocalAngles()
+	local health = leaver:Health()
+	
+	local uspel = IsValid(ent) -- выдав себе TEAM_PILLS анимов, ливнув с севрера на твоё место поставят рандомного анима НАХУЙ
+	
+	local pillName = uspel and ent:Get("name") or nil
+	
+	local replaced = false
+	
+	if fh.GetRoundType() == 3 and pillName == "bear5_main" then
+		if team.NumPlayers( TEAM_PILLS ) > 0 then
+			for _, ply in ipairs( team.GetPlayers( TEAM_PILLS ) ) do
+				if ply == leaver then continue end
+			
+				ReplaceKiller(ply, ent, pos, angle, health, pillName)
+				replaced = true
+				break
+			end
+			if replaced then
+				return
+			end
+		end
+	end
+
+	if team.NumPlayers( TEAM_SPECTATOR ) > 0 then
+		for _, ply in ipairs( team.GetPlayers( TEAM_SPECTATOR ) ) do
+			ReplaceKiller(ply, ent, pos, angle, health, pillName)
+			replaced = true
+			break
+		end
+		if replaced then
+			return
+		end
+	end
+	
+	if pillName == "bear5_clone" then return end
+
+	if team.NumPlayers( TEAM_SURVIVOR ) > 0 then
+		local players = team.GetPlayers( TEAM_SURVIVOR )
+		local killers = fh.GetEarnedKillers(players)
+		
+		local ply = killers[1]
+		
+		if ply and IsValid(ply) then
+			ReplaceKiller(ply, ent, pos, angle, health, pillName)
+		end
+	end
+end
+
 hook.Add("PlayerDisconnected", "fh_playerleft", function(ply)
 	survivors[ply] = nil
 	if animatronics[ply] then
@@ -736,18 +833,24 @@ hook.Add("PlayerDisconnected", "fh_playerleft", function(ply)
 		if isGameOn and !roundEnding then
 			local str = ply:Nick()
 			local ent = ply:GetPill()
+			
 			if IsValid(ent) then
 				if ent.formTable.printName then
 					str = str .. " ( " .. ent.formTable.printName .. " )"
 				end
 			end
+			
 			net.Start("fh_animatronic_left_chatmessage")
 			net.WriteString(str)
 			net.Broadcast()
+			
+			if fh.timer.GetTimeLeft() >= 15 then
+				tryReplaceKiller(ply, ent)
+			end
 		end
 	end
 	
-	winConditions(ply)
+	WinConditions(ply)
 	
     if player.GetCount() == 1 and isGameOn then
         fh.timer.RemoveTimer()
@@ -781,6 +884,7 @@ function FixSetModel()
 end
 
 hook.Add("PlayerSpawn", "fh_spawn", function( ply, transiton )
+	player_manager.RunClass( ply, "Spawn" )
 	player_manager.SetPlayerClass( ply, "player_fh" )
 	ply:SetShouldServerRagdoll(true)
 
@@ -1006,7 +1110,7 @@ end
 hook.Add("PlayerDeath", "fh_deaths", fh_death_hook)
 hook.Add("PlayerSilentDeath", "fh_deaths_silent", fh_death_hook)
 hook.Add("PostPlayerDeath", "fh_deaths_post", function(victim)
-	winConditions(victim)
+	WinConditions(victim)
 	
 	if isGameOn then
 		victim:Spectate(OBS_MODE_CHASE)
@@ -1038,7 +1142,7 @@ local function animatronicsVictory(ply)
 	net.WriteInt(fh.GetGameDuration() - timeleft, 16)
 	net.Broadcast()
 	
-	endRound(true)
+	EndRound(true)
 	
 	animatronics_win_count = animatronics_win_count + 1
 end
@@ -1050,20 +1154,21 @@ function survivorsWin()
 		table.insert(plys, ply:Nick())
 	end
 	
-	net.Start('fh_net_scarysound')
-	net.WriteBool(false)
-	net.Broadcast()
-	
 	net.Start("SurvivorsWin")
 	net.WriteTable(plys)
 	net.Broadcast()
 		
 	survivors_win_count = survivors_win_count + 1
 		
-	endRound()
+	EndRound()
 end
 
-function winConditions(ply)
+function winConditions(...)
+	ErrorNoHaltWithStack("winConditions is DEPRECATED! Use WinConditions instead.\n")
+	WinConditions(...)
+end
+
+function WinConditions(ply)
 	if isGameOn and !roundEnding then
 		if table.IsEmpty(survivors) then
 			animatronicsVictory(ply)
@@ -1144,7 +1249,7 @@ function GM:GetFallDamage( ply, speed )
 	if hasArmor then
 		ply:SetArmor(0)
 	end
-	return math.min( damage, hasArmor and 90 or 100 )
+	return math.Round(math.min( damage, hasArmor and 90 or 100 ))
 end
 
 net.Receive("fh_selected_killer", function(len, ply)
@@ -1153,7 +1258,7 @@ net.Receive("fh_selected_killer", function(len, ply)
 			local killer = net.ReadString()
 			
 			if !usedKillers[killer] then
-				giveKiller(ply, killer, nil, true)
+				GiveKiller(ply, killer, nil, true)
 				
 				for v, _ in pairs(animatronics) do
 					net.Start("fh_update_killer_selector")
@@ -1166,10 +1271,15 @@ net.Receive("fh_selected_killer", function(len, ply)
 	end
 end)
 
-function giveRandomKiller(ply, update)
+function giveRandomKiller(...)
+	ErrorNoHaltWithStack("giveRandomKiller is DEPRECATED! Use GiveRandomKiller instead.\n")
+	GiveRandomKiller(...)
+end
+
+function GiveRandomKiller(ply, update)
 	update = update or false
 	
-    local availableKillers = table.GetKeys(killers.getAllPreferables(curMaxKillers > 1))
+    local availableKillers = table.GetKeys(killers.GetAllPreferables(curMaxKillers > 1))
 	
 	for k, v in pairs(usedKillers) do
 		if table.HasValue(availableKillers, k) then
@@ -1179,7 +1289,7 @@ function giveRandomKiller(ply, update)
 	
 	local killer = fh.randomChoice(availableKillers)
 	
-	giveKiller(ply, killer, nil, true)
+	GiveKiller(ply, killer, nil, true)
 	
 	if update then
 		for v, _ in pairs(animatronics) do
@@ -1204,13 +1314,15 @@ net.Receive("fh_initpostentity", function(len, ply)
 	end
 	
 	net.Start("fh_share_notprefered")
-	net.WriteTable(killers.getAllPreferables(true))
+	net.WriteTable(killers.GetAllPreferables(true))
 	net.Send(ply)
+	
+	hook.Run("InitPostPlayer", ply)
 end)
 
 hook.Add("OnReloaded", "fh_syncronise_preferables", function()
 	net.Start("fh_share_notprefered")
-	net.WriteTable(killers.getAllPreferables(true))
+	net.WriteTable(killers.GetAllPreferables(true))
 	net.Broadcast()
 end)
 
@@ -1441,7 +1553,7 @@ recursive_include("fazbearshunt/gamemode/rounds/")
 
 if DEVELOPER_MODE then
 	concommand.Add("dev_selector", function(ply, _, args)
-		local availableKillers = table.GetKeys(killers.getAllPreferables(true))
+		local availableKillers = table.GetKeys(killers.GetAllPreferables(true))
 		
 		net.Start("fh_let_killers_choose")
 		net.WriteTable(availableKillers)

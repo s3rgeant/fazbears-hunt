@@ -1,7 +1,5 @@
 local PLAYER = FindMetaTable("Player")
 
-if not PLAYER then return end
-
 function PLAYER:SetAssistant(attacker)
 	self._Assistant = attacker
 	self._AssistantTime = CurTime()
@@ -35,12 +33,10 @@ function GM:PlayerDeath( ply, inflictor, attacker )
 
 end
 
-hook.Add( "PostEntityTakeDamage", "FH_LastAssistantSet", function( ent, dmgInfo, wasDamageTaken )
-	if ( ent:IsPlayer() --[[ or ent:IsNPC() --]] ) and wasDamageTaken then
-		local attacker = dmgInfo:GetAttacker()
-		
-		if ent ~= attacker and not attacker:IsWeapon() then
-			ent:SetAssistant(attacker)
+hook.Add( "PlayerHurt", "FH_LastAssistantSet", function( victim, attacker, hR, damageTaken )
+	if ( victim:IsPlayer() --[[ or victim:IsNPC() --]] ) and damageTaken then
+		if victim ~= attacker and not attacker:IsWeapon() and not attacker:IsWorld() then
+			victim:SetAssistant(attacker)
 		end
 	end
 end)

@@ -42,26 +42,25 @@ function SWEP:SetupAnimations()
 end
 
 function SWEP:PrimaryAttack()
-    local ply = self:GetOwner()
-    local ent = pills.getMappedEnt(ply)
-    if not IsValid(ent) then return end
-    if self:GetIsCharging() or ply.tasered then return end
-    if ply:IsFrozen() then return end
+	local ply = self:GetOwner()
+	local ent = pills.getMappedEnt(ply)
+	if not IsValid(ent) then return end
+	
+	if self:GetIsCharging() or ply.tasered then return end
+	if ply:IsFrozen() then return end
 
-    if SERVER then
+	if SERVER then
 		if !ply:Crouching() then
 			ent:PillGesture('swing', 2, 1, 0.1, 0.3)
 		end
-        ply:EmitSound("fnaf3/pre-hit.mp3")
-    end
+		ply:EmitSound("fnaf3/pre-hit.mp3")
+	end
 
-    if IsFirstTimePredicted() then
-        self:HandleAnimation("premelee", 2)
-    end
+	self:HandleAnimation("premelee", 2)
 
-    self:SetIsCharging(true)
-    self.ChargeStartTime = CurTime()
-    self:SetNextMeleeAttack(CurTime() + self.HitDelay)
+	self:SetIsCharging(true)
+	self.ChargeStartTime = CurTime()
+	self:SetNextMeleeAttack(CurTime() + self.HitDelay)
 end
 
 function SWEP:DealDamage()
@@ -71,12 +70,9 @@ function SWEP:DealDamage()
 	
 	local now = CurTime()
 
-    if IsFirstTimePredicted() then
-        self:HandleAnimation("melee", 0.8)
-	
-		self:SetNextPrimaryFire(now + 1.5)
-		self:SetLastAttack(now)
-    end
+	self:HandleAnimation("melee", 0.8)
+	self:SetNextPrimaryFire(now + 1.5)
+	self:SetLastAttack(now)
 
     if SERVER then
         timer.Simple(0.05, function()

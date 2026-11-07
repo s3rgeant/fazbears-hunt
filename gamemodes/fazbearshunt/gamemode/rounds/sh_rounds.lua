@@ -71,8 +71,10 @@ local forceAuto = {
 	"fh_force_roundtype 3",
 }
 
+if CLIENT then function registerNewRound() end end
+
 concommand.Add( "fh_force_roundtype", function( ply, cmd, args )
-	if !ply:IsSuperAdmin() then return end
+	if IsValid(ply) and !ply:IsSuperAdmin() then return end
 	local round = tonumber(args[1]) or 0
 	registerNewRound(round)
 end,

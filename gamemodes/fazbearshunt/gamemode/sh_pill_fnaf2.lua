@@ -122,7 +122,7 @@ function GetPillTemplate()
 	return table.Copy(PILL)
 end
 
-function IsGoodLandConditions(ply, ent, waterlevel, velocity, posdistance)
+function AreLandConditionsGood(ply, ent, waterlevel, velocity, posdistance)
 	if ply._skipLandAnim then
 		ply._skipLandAnim = nil
 		return false
@@ -245,7 +245,9 @@ function fh_get_nearest_props(origin, radius)
     local props = {}
 
     for _, v in ipairs( ents.FindInSphere( origin, radius ) ) do
-        if v:GetClass():match("physics") or v:GetClass() == 'prop_dynamic' or v:GetClass() == 'func_breakable_surf' or v:GetClass() == 'func_breakable' then
+		if v:IsPlayer() then continue end
+		if v:IsNPC() then continue end
+        if IsValid(v:GetPhysicsObject()) and v:Health() > 0 or v:GetClass():match("physics") or v:GetClass() == 'prop_dynamic' or v:GetClass() == 'func_breakable_surf' or v:GetClass() == 'func_breakable' then
 			table.insert(props, v)
         end
     end
@@ -325,6 +327,18 @@ function ENTITY:IsJumpscared()
 	return self:GetNW2Bool("_FH_Jumpscared")
 end
 
+local trh = {}
+trh.mask = MASK_PLAYERSOLID
+local function fastTraceHull(pos, mins, maxs, filter)
+	trh.start = pos
+	trh.endpos = pos
+	trh.mins = mins
+	trh.maxs = maxs
+	trh.filter = filter
+	
+	return util.TraceHull( trh )
+end
+
 function jumpscareEvent(ply, ent, target, dist)
 	if CLIENT then return end
 	if not IsValid(target) then return end
@@ -336,26 +350,11 @@ function jumpscareEvent(ply, ent, target, dist)
 	local forwardPos = attackerPos + attackerForward * distance
 	local backwardPos = attackerPos - attackerForward * distance
 
-	local plyMins, plyMaxs = ply:OBBMins(), ply:OBBMaxs()
-	local targetMins, targetMaxs = target:OBBMins(), target:OBBMaxs()
+	local targetMins, targetMaxs = target:GetHullDuck()
+	local filter = {ply, target}
 
-	local forwardTr = util.TraceHull({
-		start = forwardPos,
-		endpos = forwardPos,
-		mins = targetMins,
-		maxs = targetMaxs,
-		mask = MASK_PLAYERSOLID,
-		filter = { ply, target }
-	})
-
-	local backwardTr = util.TraceHull({
-		start = backwardPos,
-		endpos = backwardPos,
-		mins = targetMins,
-		maxs = targetMaxs,
-		mask = MASK_PLAYERSOLID,
-		filter = { ply, target }
-	})
+	local forwardTr = fastTraceHull(forwardPos, targetMins, targetMaxs, filter)
+	local backwardTr = fastTraceHull(backwardPos, targetMins, targetMaxs, filter)
 
 	local canTeleportForward = not forwardTr.Hit
 	local canTeleportBackward = not backwardTr.Hit
@@ -373,10 +372,7 @@ function jumpscareEvent(ply, ent, target, dist)
 
 	hook.Run("FH_JumpscareEvent", ply, ent, target, dist)
 
-	if target:IsPlayer() then
-		net.Start("JumpscareLight")
-		net.Send(target)
-	end
+	if target:IsPlayer() then net.Start("JumpscareLight") net.Send(target) end
 
 	target:DropToFloor()
 	ply:DropToFloor()
@@ -387,22 +383,28 @@ function jumpscareEvent(ply, ent, target, dist)
 	ply:Freeze(true)
 
 	local target_phys = target:GetPhysicsObject()
-	if IsValid(target_phys) then
-		target_phys:SetVelocityInstantaneous(Vector(0, 0, 0))
-	end
+	if IsValid(target_phys) then target_phys:SetVelocityInstantaneous(Vector(0, 0, 0)) end
 	target:SetVelocity(-target:GetVelocity())
 
 	local ply_phys = ply:GetPhysicsObject()
-	if IsValid(ply_phys) then
-		ply_phys:SetVelocityInstantaneous(Vector(0, 0, 0))
-	end
+	if IsValid(ply_phys) then ply_phys:SetVelocityInstantaneous(Vector(0, 0, 0)) end
 	ply:SetVelocity(-ply:GetVelocity())
 
 	util.ScreenShake(target:GetPos(), 5, 5, 2, 500)
-
+	
 	if teleportPlyPos and teleportTargetPos then
+	
 		ply:SetPos(teleportPlyPos)
+		if not target:Crouching() then
+			local targetStandMins, targetStandMaxs = target:GetCollisionBounds()
+			local tr = fastTraceHull(teleportTargetPos, targetStandMins, targetStandMaxs, filter)
+			if tr.Hit then
+				target:Crouch()
+			end
+		end
+		
 		target:SetPos(teleportTargetPos)
+		
 	end
 	
 	if target:IsNPC() then -- я хз чё тут делать

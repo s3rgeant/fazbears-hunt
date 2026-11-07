@@ -2,7 +2,7 @@
 AddCSLuaFile()
 
 SWEP.PrintName = "#weapon_killmask"
-SWEP.DrawWeaponInfoBox = false
+SWEP.Purpose = "#info_killmask"
 if CLIENT then
 	SWEP.WepSelectIcon = surface.GetTextureID( "weapons/killermask" )
 end
@@ -19,8 +19,8 @@ SWEP.UseHands = true
 SWEP.DrawCrosshair = false
 SWEP.Spawnable = true
 
-SWEP.Primary.ClipSize = 15
-SWEP.Primary.DefaultClip = SWEP.Primary.ClipSize
+SWEP.Primary.ClipSize = -1
+SWEP.Primary.DefaultClip = -1
 SWEP.Primary.Automatic = false
 SWEP.Primary.Ammo = ""
 
@@ -101,12 +101,14 @@ local dropWeaponry = {
 	["weapon_pistol"] = true,
 	["weapon_mask"] = true,
 	["weapon_adrenaline"] = true,
---	["weapon_defibrillator"] = true,
+	["weapon_defibrillator"] = true,
 	["weapon_fanta"] = true,
 	["weapon_fh_medkit"] = true,
 	["weapon_taser"] = true,
 }
 
+local clrR = Color(255,0,0,255)
+local clrDR = Color(100,0,0,255)
 function SWEP:SpringLock()
 	local ply = self:GetOwner()
 	
@@ -120,12 +122,15 @@ function SWEP:SpringLock()
 		surface.PlaySound("weapons/killermask_equip.wav")
 		
 		timer.Simple(8.5, function()
+			local clr = ply:GetInfoNum("fh_dark_blindness", 1) == 1 and clrDR or clrR
+			
 			if !IsValid(ply) or !ply:Alive() or !IsValid(self) then return end
-			ply:ScreenFade( SCREENFADE.OUT, Color( 255, 0, 0, 255 ), 0.1, 4 )
+			ply:ScreenFade( SCREENFADE.OUT, clr, 0.1, 4 )
 			util.ScreenShake( Vector(0, 0, 0), 2, 40, 1, 2 )
 			timer.Simple(3.8, function()
 				if !IsValid(ply) or !ply:Alive() then return end
-				ply:ScreenFade( SCREENFADE.IN, Color( 255, 0, 0, 255 ), 5, 0.5 )
+				
+				ply:ScreenFade( SCREENFADE.IN, clr, 5, 0.5 )
 			end)
 		end)
 	end
@@ -235,6 +240,7 @@ model.RenderOverride = function(self, flags)
 	
 	if not IsValid( parent ) or parent:IsDormant() or (parent == myself and not myself:ShouldDrawLocalPlayer()) then return end
 	if IsValid( parent ) and not self:GetParent():GetNW2Bool("KillerMaskEquiped") then self:SetParent() return end
+	if myself:GetObserverMode() == OBS_MODE_IN_EYE and myself:GetObserverTarget() == parent then return end
 	self:DrawModel()
 end
 

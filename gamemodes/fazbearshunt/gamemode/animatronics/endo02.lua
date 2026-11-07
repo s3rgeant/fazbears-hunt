@@ -80,7 +80,7 @@ end
 local function endoStopAbility(ply, ent, curAbility)
 	local curData = endoAbilities[curAbility]
 	
-	net.Start("fh_AbilitiesRemove") net.WriteString(curAbility) net.Send(ply)
+	if curAbility ~= "pretense" then net.Start("fh_AbilitiesRemove") net.WriteString(curAbility) net.Send(ply) end
 	
 	if curData then
 		local endFunc = curData.endFunc
@@ -88,14 +88,15 @@ local function endoStopAbility(ply, ent, curAbility)
 	end
 end
 
-local function endoPretenseBackTimer(ply, ent)
+local function endoPretenseBackTimer(ply, ent, dur)
 	local tName = "FH_EndoPretenseBackup" .. ent:EntIndex()
-	timer.Create(tName, 90, 1, function()
+	timer.Create(tName, dur, 1, function()
 		if not IsValid(ply) then timer.Remove(tName) return end
 		if not IsValid(ent) then timer.Remove(tName) return end
 		
 		endo.ApplyAbility(ply, ent, "pretense")
 	end)
+	cooldown.SetSend(ply, "pretense", dur)
 end
 
 function endo.ApplyAbility(ply, ent, ability, duration)
@@ -112,7 +113,9 @@ function endo.ApplyAbility(ply, ent, ability, duration)
 		endoStopAbility(ply, ent, curAbility)
 	end
 	
-	net.Start("fh_AbilitiesAdd") net.WriteString(ability) net.WriteString(data.killer) net.WriteBit(false) net.Send(ply)
+	if ability ~= "pretense" then 
+		net.Start("fh_AbilitiesAdd") net.WriteString(ability) net.WriteString(data.killer) net.WriteBit(false) net.Send(ply)
+	end
 	
 	local attack = data.attack
 	local attack2 = data.attack2
@@ -186,7 +189,6 @@ net.Receive("fh_endo_AbilitySelected", function(len, ply)
 	end
 	
 	endo.ApplyAbility(ply, ent, ability, 90)
-	cooldown.SetSend(ply, "pretense", 5)
 end)
 
 if SERVER then
@@ -295,6 +297,13 @@ pills.register(ENDO_PILL, {
 		ent:SetNW2String("ENDO_CurrentAbility", "pretense")
 	end,
 	
+	restore=function(ply, ent)
+		cooldown.Set(ply, "pretense", 1)
+		if SERVER then
+			ply:SprintEnable()
+		end
+	end,
+	
 	--[[die=function(ply, ent)
 		ragdoll = ents.Create("prop_ragdoll")
 		
@@ -346,7 +355,7 @@ pills.register(ENDO_PILL, {
 	},
 	
 	land=function(ply,ent)
-		if IsGoodLandConditions(ply, ent) then
+		if AreLandConditionsGood(ply, ent) then
 			if ent:Func("landCondition", ply, ent) ~= false then 
 				ent:PillAnim("land",true)
 			end
@@ -362,7 +371,16 @@ pills.register(ENDO_PILL, {
 	end,
 	jump=function(ply,ent)
 		ent:PillSound("jump",false)
-	end
+	end,
+	
+	killerAxeAttacker = function(ply, ent, k_axer, tr)
+		if ply._endoHoldingPlayer == k_axer then
+			endo.releasePlayer(ply, true)
+
+			cooldown.Set(ply, 'grab', 6)
+			cooldown.Send(ply, "grab")
+		end
+	end,
 })
 
 local playersHoldingRightClick = {}
@@ -692,11 +710,6 @@ hook.Add("FH_AnimatronicsLoaded", "endo02_abilities", function()
 			if IsValid(ply:GetEntityInUse()) then return end
 			local target = FindNearestPlayer(ply:EyePos(), 125, ply, 36)
 			
-			if freddy.GetBlindRageTarget(ply) and !freddy.IsBlindRageTargeted(target) then 
-				AnimatronicBreakProp(ply, ent)
-				return 
-			end
-			
 			local jumpscare = performJumpscare(ply, ent, target, 1.6, "endo", 52, "v_endo")
 			
 			if !IsValid(target) or !jumpscare then 
@@ -725,6 +738,8 @@ hook.Add("FH_AnimatronicsLoaded", "endo02_abilities", function()
 			ent:PillGesture("equip_rightarm", 3, 1, .15, .3)
 
 			ply:SprintDisable()
+			
+			ent:SetNWInt("RushTokens", FOXY_MAX_RUSH_TOKENS)
 
 			local wep = ply:GetActiveWeapon()
 			if IsValid(wep) and wep.HandleAnimation then
@@ -805,7 +820,6 @@ hook.Add("FH_AnimatronicsLoaded", "endo02_abilities", function()
 			timer.Simple(.6, function()
 				if not IsValid(ent) then return end
 				ent:SetBodygroup(16, 1)
-				ent:SetBodygroup(8, 1)
 				ply:SprintEnable()
 			end)
 		end,
@@ -814,7 +828,6 @@ hook.Add("FH_AnimatronicsLoaded", "endo02_abilities", function()
 		function(ply, ent)
 			ent.formTable.landCondition = nil
 			ent:SetBodygroup(16, 0)
-			ent:SetBodygroup(8, 0)
 		end
 	)
 	
@@ -933,15 +946,25 @@ hook.Add("FH_AnimatronicsLoaded", "endo02_abilities", function()
 			
 			timer.Simple(.6, function()
 				if not IsValid(ent) then return end
-				--ent:SetBodygroup(15, 1)
+				ent:SetBodygroup(18, 1)
 				ply:SprintEnable()
+			
+				local vm = ply:GetViewModel()
+				if IsValid(vm) then
+					vm:SetBodygroup(4, 1)
+				end
 			end)
 		end,
 		
 		-- endFunc
 		function(ply, ent)
 			ent.formTable.landCondition = nil
-			--ent:SetBodygroup(15, 0)
+			ent:SetBodygroup(18, 0)
+			
+			local vm = ply:GetViewModel()
+			if IsValid(vm) then
+				vm:SetBodygroup(4, 0)
+			end
 			
 			if ent.cloaked then
 				if ply:IsStuck() then
@@ -950,6 +973,37 @@ hook.Add("FH_AnimatronicsLoaded", "endo02_abilities", function()
 				if ply:IsStuck() then
 					if not TeleportToNearestTeammate(ply) then
 						ply:ReturnToSpawn()
+						if ply:IsStuck() then
+							ply:SetPos(ply:GetPos() + Vector(0,0,.01))
+						end
+						
+						if ply:IsStuck() then
+							ply:SetCollisionGroup(COLLISION_GROUP_PLAYER)
+							ply:NoPlayerCollide(0.25)
+
+							local wep = ply:GetActiveWeapon()
+							if IsValid(wep) and wep.HandleAnimation then
+								wep:HandleAnimation("draw", 0.5)
+							end
+							
+							ply:DrawViewModel(true)
+							ply:SetPushBlocked(false)
+							ply:EmitSound("sfreddyout.mp3")
+							
+							ent.cloaked=false
+							ent:ToggleCloak()
+	
+							hook.Run("FH_SFreddySubmergeOut", ply, ent)
+								
+							timer.Remove("ext" .. ply:EntIndex())
+									
+							ply:SetMoveType( MOVETYPE_WALK )
+							
+							ent:SetMaterial()
+							ent:DrawShadow(true)
+							
+							MsgC( Color( 255, 0, 0 ), "Endo somehow got stuck -" .. ply:Nick() .. " (Shadow Freddy Submerge, " .. game.GetMap() .. tostring(ply:GetPos()) ")", "\n" ) 
+						end
 					end
 				end
 				ShadowFreddySubmerge_Force(ply, ent)
@@ -962,4 +1016,99 @@ hook.Add("FH_AnimatronicsLoaded", "endo02_abilities", function()
 		uncloak="disappear",
 		cloak="appear",
 	})
+	
+	endo.RegisterAbility("charge", "pill_wfoxy2", 
+	
+		-- attack
+		function(ply, ent)
+			if cooldown.Exists(ply, "kill") then return end
+			
+			if IsValid(ply:GetEntityInUse()) then return end
+			
+			if ply:GetNWBool("isBlightRushing") or ply:GetNWBool("isBlightBouncing") or ply:GetNWBool("blightRushing") then return end
+			
+			local target = FindNearestPlayer(ply:EyePos(), 125, ply, 36)
+			
+			local jumpscare = performJumpscare(ply, ent, target, 1.6, "foxy", 75, "v_foxy")
+			
+			if !IsValid(target) or !jumpscare then 
+				if not AnimatronicBreakProp(ply, ent) then cooldown.SetSend(ply, "kill", 0.9) end
+				return 
+			end
+		end, 
+		
+		-- attack2
+		function(...) end, 
+		
+		-- reload
+		function(...)
+			highlight.ByDistance(...)
+		end, 
+		
+		-- startFunc
+		function(ply, ent)
+			player_manager.SetPlayerClass(ply, "player_foxy")
+			ply:SetFoxyTokens(FOXY_MAX_RUSH_TOKENS)
+		
+			ent:PillGesture("equip_rightarm", 3, 1, .15, .3)
+			
+			local fwep = ents.Create("v_foxy")
+			fwep.ViewModel = "models/fh/animatronics/thudner_mountroid/vm/endo02.mdl"
+			fwep:Spawn()
+			
+			ply:SetSuppressPickupNotices(true)
+			ply:PickupWeapon(fwep)
+			ply:SelectWeapon("v_foxy")
+			ply:SetSuppressPickupNotices(false)
+
+			ply:SprintDisable()
+
+			local wep = ply:GetActiveWeapon()
+			if IsValid(wep) and wep.HandleAnimation then
+				wep:HandleAnimation("holster", 1.2)
+			end
+			
+			timer.Simple(.6, function()
+				if not IsValid(ent) then return end
+				ent:SetBodygroup(14, 1)
+				ent:SetBodygroup(5, 1)
+				ply:SprintEnable()
+			
+				local vm = ply:GetViewModel()
+				if IsValid(vm) then
+					vm:SetBodygroup(1, 1)
+					vm:SetBodygroup(3, 1)
+				end
+			end)
+		end,
+		
+		-- endFunc
+		function(ply, ent)
+			player_manager.SetPlayerClass(ply, "player_fh")
+			
+			ent:SetBodygroup(14, 0)
+			ent:SetBodygroup(5, 0)
+			
+			local vm = ply:GetViewModel()
+			if IsValid(vm) then
+				vm:SetBodygroup(1, 0)
+				vm:SetBodygroup(3, 0)
+			end
+			
+			if ply:HasWeapon("v_endo") then
+				ply:SelectWeapon("v_endo")
+			end
+			ply:StripWeapon("v_foxy")
+		end
+	)
 end)
+
+if CLIENT then
+	hook.Add("FH_HandleKillerTerrorLayers", "endo_sfreddy_handle", function(myself, killer, theme, layer, ent)
+		if ent and ent:IsValid() and ent:GetNW2String("ENDO_CurrentAbility") == "submerge" then
+			if killer:GetMoveType() == MOVETYPE_NOCLIP then
+				return "first_layer"
+			end
+		end
+	end)
+end

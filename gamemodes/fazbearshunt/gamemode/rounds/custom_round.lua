@@ -12,7 +12,7 @@ fh.RegisterRoundType("custom_round", -10, function()
 		setup, 
 		"ambient/alarms/warningbell1.wav", 
 		tostring( "CUSTOM" ), 
-		endRound
+		EndRound
 	)
 end, 2)
 

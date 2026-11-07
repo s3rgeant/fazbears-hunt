@@ -42,6 +42,10 @@ pills.register("fh_wgfreddyhead",{
 		},
 	},
 	
+	viewmodel={
+		weapon="v_gfreddyhead"
+	},
+	
 	moveSpeed={
 		walk=140,
 		run=200,
@@ -73,6 +77,7 @@ pills.register("fh_wgfreddyhead",{
 	},
 	
 	initialize=function(ply,ent)
+		ply:SetCollisionGroup(COLLISION_GROUP_PASSABLE_DOOR)
 		ent:SetFlexWeight( 0, 1 )
 		ent:ResetSequence("appear")
 		ent:PillAnim("appear", true)
@@ -108,6 +113,14 @@ pills.register("fh_wgfreddyhead",{
 			ent.RageSound:Stop()
 			ent.RageSound = nil
 		end
+		
+		if IsValid(ent.HeadRamSound) then
+			ent.HeadRamSound:Stop()
+			ent.HeadRamSound = nil
+		end
+		
+		if CLIENT then return end
+		ply:SetCollisionGroup(COLLISION_GROUP_NONE)
 	end,
 	
 	postThink = function(ply, ent, speed)
@@ -128,11 +141,24 @@ pills.register("fh_wgfreddyhead",{
 				
 				local distance = myself:GetPos():Distance(gfreddyPos) * .05
 				util.ScreenShake( gfreddyPos, 500 / distance, 15, FrameTime() * 2, 1500 )
+				return
+			end
+			
+			local sName = ent:GetSequenceName(ent:GetSequence())
+			
+			if sName == "appear" then
+				local normal = ent:GetUp()
+				local position = normal:Dot( ent:GetPos() )
+				ent:SetRenderClipPlaneEnabled( true )
+				ent:SetRenderClipPlane( normal, position )
+			else
+				ent:SetRenderClipPlaneEnabled( false )
 			end
 		end
 	end,
 	
 	startCommand = function(ply, ent, cmd)
+		if ply:GetMoveType() == MOVETYPE_LADDER then return end
 		cmd:RemoveKey(IN_LEFT)
 		cmd:RemoveKey(IN_RIGHT)
 		cmd:RemoveKey(IN_SPEED)
@@ -140,45 +166,67 @@ pills.register("fh_wgfreddyhead",{
 	end,
 
 	move = function(ply, ent, mv)
-		local agent = ply._TravelAgent
-		local validAgent = IsValid(agent)
+		if SERVER and mv:GetVelocity():Length() > 10 then
+			local mins = ply:OBBMins()
+			mins.x = mins.x * 2
+			mins.y = mins.y * 2
 
-		if validAgent then
-			local target = agent.TargetPoint
+			local maxs = ply:OBBMaxs()
+			maxs.x = maxs.x * 2
+			maxs.y = maxs.y * 2
 
-			if not target then
-				mv:SetVelocity(vector_origin)
-				return
+			local startpos = ply:GetPos()
+
+			local tr = util.TraceHull({
+				start = startpos,
+				endpos = startpos,
+				maxs = maxs,
+				mins = mins,
+				filter = ply,
+				ignoreworld = true
+			})
+
+			local target = tr.Entity
+
+			if IsValid(target) then
+				if target:IsPlayer() and target:IsSurvivor() and not target:HasGodMode() then
+					local dmginfo = DamageInfo()
+					dmginfo:SetAttacker(ply)
+					dmginfo:SetDamage(9999)
+
+					if target:PassesDamageFilter(dmginfo) then target:SetLocalVelocity(ply:GetVelocity()) end
+					target:TakeDamageInfo(dmginfo)
+					return
+				end
+
+				local class = target:GetClass()
+
+				if class == "prop_door_rotating" then
+					breakBustDoor(ply, target, 90)
+					return
+				elseif class == "func_door_rotating" or class == "func_door" then
+					if ent:HasSpawnFlags(8192) or ent:HasSpawnFlags(256) then return end
+					breakBustFuncDoor(ply, target, 90)
+					return
+				end
+
+				local phys = target:GetPhysicsObject()
+
+				if IsValid(phys) then
+					SuppressHostEvents(NULL)
+					target:TakeDamage(9999, ply)
+					SuppressHostEvents(ply)
+				end
 			end
-
-			local pos = mv:GetOrigin()
-			local direction = target - pos
-			local distance = direction:Length()
-			local speed = agent.Speed or 1000
-			local step = speed * engine.TickInterval()
-
-			if distance <= step then
-				mv:SetOrigin(target)
-				mv:SetVelocity(vector_origin)
-			else
-				direction:Normalize()
-				mv:SetOrigin(pos + direction * step)
-				ply:SetPos(pos + direction * 5)
-				mv:SetVelocity(direction * speed * 5)
-			end
-
-			if direction:LengthSqr() > 0 then
-				local lerpAngle = LerpAngle(0.1, ply:EyeAngles(), direction:Angle())
-				lerpAngle.r = 0
-				ply:SetEyeAngles(lerpAngle)
-			end
-			
-			--if ply:IsStuck() then ply:Unstuck() end
-
-			--return
 		end
-
-		if not validAgent then
+		
+		local wep = ply:GetActiveWeapon()
+		
+		if IsValid(wep) and wep.GetDashing and wep:GetDashing() then
+			return
+		end
+	
+		if ply:GetMoveType() ~= MOVETYPE_LADDER then
 			local dt = engine.TickInterval()
 			local ang = mv:GetAngles()
 			local vel = mv:GetVelocity()
@@ -205,229 +253,6 @@ pills.register("fh_wgfreddyhead",{
 
 			mv:SetVelocity(newVel)
 		end
-
-		if SERVER and mv:GetVelocity():Length() > 10 then
-			local mins = ply:OBBMins()
-			mins.x = mins.x * 2
-			mins.y = mins.y * 2
-
-			local maxs = ply:OBBMaxs()
-			maxs.x = maxs.x * 2
-			maxs.y = maxs.y * 2
-
-			local startpos = ply:GetPos()
-
-			local tr = util.TraceHull({
-				start = startpos,
-				endpos = startpos,
-				maxs = maxs,
-				mins = mins,
-				collisiongroup = ply:GetCollisionGroup(),
-				filter = ply,
-				ignoreworld = true
-			})
-
-			local target = tr.Entity
-
-			if IsValid(target) then
-				if target:IsPlayer() and target:IsSurvivor() and not target:HasGodMode() then
-					local dmginfo = DamageInfo()
-					dmginfo:SetAttacker(ply)
-					dmginfo:SetDamage(9999)
-
-					if target:PassesDamageFilter(dmginfo) then target:SetLocalVelocity(ply:GetVelocity()) end
-					target:TakeDamageInfo(dmginfo)
-					return
-				end
-
-				local class = target:GetClass()
-
-				if class == "prop_door_rotating" then
-					breakBustDoor(ply, target, 90)
-					return
-				elseif class == "func_door_rotating" or class == "func_door" then
-					breakBustFuncDoor(ply, target, 90)
-					return
-				end
-
-				local phys = target:GetPhysicsObject()
-
-				if IsValid(phys) then
-					SuppressHostEvents(NULL)
-					target:TakeDamage(9999, ply)
-					SuppressHostEvents(ply)
-				end
-			end
-		end
-	end,
-	
-	attack={
-		mode="trigger",
-		func=function(ply,ent)
-			local target = FindNearestPlayer(ent:GetPos(), 130, ply, 75)
-			if !IsValid(target) then return end
-			target:TakeDamage(target:Health() + target:Armor(), ply)
-			ent:PillSound("melee",false)
-		end
-    },
-
-	attack2={
-		mode="trigger",
-		func = function(ply,ent)
-			if !ply:OnGround() then return end
-			
-			if cooldown.Exists(ply, "recklessram") then return end
-			
-			if !navmesh.IsLoaded() or navmesh.GetNavAreaCount() < 5 then 
-				ply:ChatPrint("No navmesh!")
-				return 
-			end
-			
-			local plyShootPos = ply:GetShootPos()
-			local farAwayPos = plyShootPos + ply:GetAimVector() * 10000
-			
-			local finalSearchPos
-			
-			local tr = util.TraceLine( {
-				start = farAwayPos,
-				endpos = farAwayPos,
-				mask = MASK_SOLID_BRUSHONLY,
-				--ignoreworld = true,
-			})
-			
-			local area = navmesh.GetNearestNavArea( tr.HitPos, nil, 10000 )
-			
-			if not IsValid(area) then
-				if tr.Hit then -- Точка взгляда внутри мира
-					local tr = util.TraceLine( {
-						start = farAwayPos,
-						endpos = farAwayPos + Vector(0,0,500),
-						mask = MASK_SOLID_BRUSHONLY,
-					})
-					
-					if tr.Hit then
-						local tr = util.TraceLine( {
-							start = farAwayPos,
-							endpos = plyShootPos,
-							mask = MASK_SOLID_BRUSHONLY,
-						})
-						
-						finalSearchPos = tr.HitPos
-					else
-						local tr = util.TraceLine( {
-							start = farAwayPos,
-							endpos = plyShootPos,
-							mask = MASK_SOLID_BRUSHONLY,
-						})
-						
-						finalSearchPos = tr.HitPos
-					end
-				else -- Точка взгляда не в мире
-					local tr = util.TraceLine( {
-						start = farAwayPos,
-						endpos = farAwayPos - Vector(0,0,500),
-						mask = MASK_SOLID_BRUSHONLY,
-					})
-					
-					if tr.Hit then
-						finalSearchPos = tr.HitPos
-					end
-				end
-				
-				if not finalSearchPos then
-					net.Start("fh_play_sound")
-						net.WriteString('ability_failed.wav')
-					net.Send(ply)
-					
-					cooldown.Set(ply, "recklessram", .5)
-					cooldown.Send(ply, "recklessram")
-					return
-				end
-				
-				area = navmesh.GetNearestNavArea( finalSearchPos, nil, 10000 )
-			end
-			
-			if IsValid(area) then
-				local agent = ents.Create("fh_travel_agent")
-
-				if IsValid(agent) then
-					agent:Spawn()
-					agent:Activate()
-					agent:SetPos(ply:GetPos())
-					local pathsCount = agent:SetGoalArea(area)
-
-					if pathsCount < 16 then
-						agent:Remove()
-						
-						print('Failed ' .. pathsCount .. " paths only")
-						debugoverlay.Axis( area:GetCenter(), Angle(0,0,0), 100, 11, true )
-
-						net.Start("fh_play_sound")
-							net.WriteString("ability_failed.wav")
-						net.Send(ply)
-
-						cooldown.Set(ply, "recklessram", 1)
-						cooldown.Send(ply, "recklessram")
-
-						return
-					end
-					
-					agent:SetOwner(ply)
-					ply._TravelAgent = agent
-					ent:SetNWBool("RecklessRam", true)
-					
-					agent:CallOnRemove( "ResetPlayer_TravelAgent", function( ent ) 
-						if IsValid(ply) then 
-							ply._TravelAgent = nil 
-						end
-						if IsValid(ent) then 
-							ent:SetNWBool("RecklessRam", false)
-						end
-					end )
-					
-					ply:SetMoveType(MOVETYPE_CUSTOM)
-					--ply:SetMoveType(MOVETYPE_NOCLIP)
-					
-					if ent.HeadRamSound then
-						ent.HeadRamSound:Stop()
-						ent.HeadRamSound = nil
-					end
-					if not ent.HeadRamSound then
-						local rf = RecipientFilter()
-						rf:AddAllPlayers()
-						
-						ent.HeadRamSound = CreateSound(ent, "gfreddy_head.ram", rf)
-					end
-					ent.HeadRamSound:PlayEx(0, 95)
-					ent.HeadRamSound:ChangeVolume(1, 1)
-					ent.HeadRamSound:ChangePitch(108, 10)
-					ent.HeadRamSound:SetSoundLevel(0)
-				end
-			else
-				net.Start("fh_play_sound")
-					net.WriteString('ability_failed.wav')
-				net.Send(ply)
-				
-				cooldown.Set(ply, "recklessram", 1)
-				cooldown.Send(ply, "recklessram")
-			end
-		end
-	},
-	
-	travelAgentEnded=function(ply,ent)
-		if ent.HeadRamSound then
-			if ent.HeadRamSound:IsPlaying() and ent.HeadRamSound:GetVolume() > 0 then
-				ent.HeadRamSound:FadeOut( .5 )
-			end
-		end
-		ply:SetMoveType(MOVETYPE_WALK)
-		ent:SetNWBool("RecklessRam", false)
-		
-		cooldown.SetSend(ply, "recklessram", 35)
-		
-		if ply:IsStuck() then
-			ply:Unstuck()
-		end
 	end,
 	
 	jump=function(ply,ent)
@@ -442,6 +267,14 @@ killers.SetAbilities("gfreddy_head", {
 	{ name = 'recklessram', key = 'RMB' },
 })
 
+hook.Add("FH_ShouldSBabySnitchEntity", "wgoldenfreddy_head", function(target)
+	local ent = target:GetPillCostume()
+	
+	if ent.GetPillName and ent:GetPillName() == "fh_wgfreddyhead" then
+		return false
+	end
+end)
+
 if SERVER then return end
 
 local currentRender = nil
@@ -450,15 +283,6 @@ local ent = ClientsideModel(MODEL_PATH, RENDERGROUP_VIEWMODEL)
 ent:SetNoDraw(true)
 
 local mat_Grayscale = Material( "effects/shaders/merc_grayscale" )
-local function grayscale()
-	needsDepth = true
-	render.UpdateScreenEffectTexture()
-	mat_Grayscale:SetFloat("$c0_x", -0.8 )
-	mat_Grayscale:SetFloat("$c0_y", 0.5 )
-	render.SetMaterial(mat_Grayscale)
-	render.DrawScreenQuad()
-	needsDepth = false
-end
 
 local function BlendGlobalOutworldEffects()
 	mat_Grayscale:SetFloat("$c0_x", 0 )
@@ -608,6 +432,7 @@ net.Receive("fh_gfreddyhead_jumpscare", function()
 			render.SetStencilPassOperation(STENCIL_KEEP)
 
 			render.SetBlend(alphaFraction)
+			render.SetAmbientLight(255,255,255)
 				ent:DrawModel()
 			render.SetBlend(1)
 

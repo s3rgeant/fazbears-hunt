@@ -2,7 +2,9 @@ hook.Add("PlayerSwitchFlashlight", "fh_toggle_flashlights", function(ply, enable
 	local state = ply:Alive() and not ply:GetNW2Bool("FH_Flashlight", false) or false
 	ply:SetNW2Bool("FH_Flashlight", state)
 	
-	ply:EmitSound("items/flashlight1.wav")
+	if ply:Alive() then
+		ply:EmitSound("items/flashlight1.wav")
+	end
 	
 	return false
 end)

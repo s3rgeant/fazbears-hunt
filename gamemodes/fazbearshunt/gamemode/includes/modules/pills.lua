@@ -188,24 +188,6 @@ if SERVER then
     end)
 end
 
--- NW Strings
-if SERVER then
-    util.AddNetworkString("pk_pill_morphsound")
-else
-    local snd_pillSet = Sound("Friends/friend_online.wav")
-    local snd_pillFail = Sound("buttons/button2.wav")
-
-    net.Receive("pk_pill_morphsound", function(len, pl)
-        local success = net.ReadBit()
-
-        if success == 1 then
-            surface.PlaySound(snd_pillSet)
-        else
-            surface.PlaySound(snd_pillFail)
-        end
-    end)
-end
-
 -- Apply/Restore
 if SERVER then
     --[[
@@ -245,6 +227,13 @@ if SERVER then
         end
 
         local old = getMappedEnt(ply)
+		
+		if not old then
+			if ply.lastFhMappedEnt then
+				old = ply.lastFhMappedEnt
+				mapEnt(ply, old)
+			end
+		end
 
         --restriction logic
         if mode == "user" then
@@ -295,10 +284,7 @@ if SERVER then
     end
 end
 
---set breakout to true to break out of any locks
---returns true if the player was using a pill
---shared because it goes in the noclip function, I guess
-function restore(ply, breakout)
+function restore(ply)
 		
 	local found = false
 	for _, plyr in player.Iterator() do
@@ -311,15 +297,22 @@ function restore(ply, breakout)
 	if not found then return end
 		
     local ent = getMappedEnt(ply)
+	
+	if ply.lastFhMappedEnt then
+		ent = ply.lastFhMappedEnt
+		pills.mapEnt(ply, ent)
+	end
 
     if IsValid(ent) then
-		unmapEnt(ply, ent)
-		
         if SERVER then			
 			if ent.formTable.restore then
 				ent.formTable.restore(ply, ent, ent.formTable)
 			end
-
+		end
+		
+		unmapEnt(ply, ent)
+		
+        if SERVER then
 			ent.notDead = true
 			ent:Remove()
 			
@@ -362,12 +355,6 @@ function restore(ply, breakout)
 						end
 					end)
 				end
-            end
-
-            if not breakout then
-                net.Start("pk_pill_morphsound")
-                net.WriteBit(ent.notDead)
-                net.Send(ply)
             end
         end
 
@@ -503,10 +490,10 @@ if SERVER then
 			if ent.formTable.noFallDamage then return true end
 		end
 	end)
-
+	
 	hook.Add("DoAnimationEvent", "pk_pill_triggerAnims", function(ply, event, data)
 		local ent = getMappedEnt(ply)
-		if IsValid(ent) and ent.formTable.type == "ply" then
+		if IsValid(ent) then
 			if event == PLAYERANIMEVENT_JUMP and !ent.animFreeze and ply:GetJumpPower() > 0 then
 				if ply:GetJumpPower() > 0 then
 					ent:SetNextAnimThink(0)
@@ -532,12 +519,16 @@ if SERVER then
 	end)
 
     hook.Add("DoPlayerDeath", "pk_pill_death", function(ply)
+		if ply.lastFhMappedEnt then
+			local ent = ply.lastFhMappedEnt
+			mapEnt(ply, ent)
+		end
+		
         if hasMappedEnt(ply) then
-            if SERVER then
-				ply:SuppressRagdollSpawn()
-                getMappedEnt(ply):PillDie()
-            end
-        end
+			ply:SuppressRagdollSpawn()
+			getMappedEnt(ply):PillDie()
+			return
+		end
     end)
 
     hook.Add("PlayerSilentDeath", "pk_pill_death", function(ply)
@@ -613,6 +604,34 @@ else -- CLIENT HOOKS
 		if ply == myself then 
 			hook.Remove("HUDShouldDraw", "pk_pill_noselection") 
 			hook.Remove("HandleInventoryScrolling", "pk_pill_noselection") 
+		end
+	end)
+
+	hook.Add("OnPlayerHitGround", "pk_pill_hitground", function(ply, iW, oF, speed)
+		local ent = getMappedEnt(ply)
+		
+		if IsValid(ent) then
+			if ent.formTable.land_cl and !ply:IsFlagSet(FL_FROZEN) then
+				ent.formTable.land_cl(ply, ent)
+				ent:SetNextAnimThink(0)
+			end
+			
+			ply._wereJumpingPill = nil
+			ply._jumpPosPill = nil
+			
+			hook.Run("OnPillHitGround", ply, ent, iW, oF, speed)
+			
+			if ent.formTable.noFallDamage then return true end
+		end
+	end)
+	
+	hook.Add("DoAnimationEvent", "pk_pill_triggerAnims", function(ply, event, data)
+		local ent = getMappedEnt(ply)
+		if IsValid(ent) then
+			if event == PLAYERANIMEVENT_JUMP and !ent.animFreeze and ply:GetJumpPower() > 0 then
+				ply._wereJumpingPill = true
+				ply._jumpPosPill = ply:GetPos()
+			end
 		end
 	end)
 end

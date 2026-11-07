@@ -3,22 +3,20 @@
 	"$basetexture" "models/realistic_police/taser/taser"
 	"$bumpmap" 	   "models/realistic_police/taser/taser_n"
 
-
-	"$halflambert" "1"
 	"$phong" "1"
 	"$phongboost" "1"
-	"$phongexponent" "7"
-	"$phongfresnelranges" "[1 2 7]"
+	"$phongexponent" "15"
+	"$phongfresnelranges" "[.2 4 2]"
 	
 	
 	"$envmap" "env_cubemap"
-	"$envmapsaturation" ".5"
+	"$envmapsaturation" ".1"
 	"$envmapcontrast" "1"
-	"$envmapfresnel" ".25"
+	"$envmapfresnel" "1"
 	"$normalmapalphaenvmapmask" "1"
 	"$envmaptint" "[.05 .05 .05]"		
 
 	"$rimlight" "1"
-	"$rimlightexponent" "10"
-	"$rimlightboost" ".25"	
+	"$rimlightexponent" "25"
+	"$rimlightboost" ".2"	
 }

@@ -189,7 +189,7 @@ concommand.Add("endoui_test", function()
     if LocalPlayer():IsSuperAdmin() then
 		draw_endoui()
 		
-		availableKillers = table.GetKeys(killers.getAll())
+		availableKillers = table.GetKeys(killers.GetAll())
 		
 		timer.Simple(2, function()
 			curSelected=1

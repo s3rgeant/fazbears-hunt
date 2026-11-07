@@ -25,7 +25,6 @@ SWEP.CalcMinimalViewModelView = Vector(4,0,-8)
 
 SWEP.HitDelay = 1	-- через сколько удар будет произвёден насильно после замаха, если ты долго держишь лкм
 
-SWEP.IsCharging = false -- переменная для отслеживания удержания ЛКМ
 SWEP.ChargeStartTime = 0 -- время начала удержания ЛКМ
 
 SWEP.HitSize = {
@@ -35,30 +34,43 @@ SWEP.HitSize = {
 
 function SWEP:SetupDataTables()
 	self:NetworkVar( "Float", 0, "NextMeleeAttack" )
+	self:NetworkVar( "Bool", "Charging" )
     return self.BaseClass.SetupDataTables and self.BaseClass.SetupDataTables(self)
 end
 
 function SWEP:SetupAnimations()
 	self:AddAnimation("scare")
-	self:AddAnimation("deploy")
+	self:AddAnimation("holster")
 	self:AddAnimation("draw")
 	self:AddAnimation("preattack")
 	self:AddAnimation("attack")
 	self:AddAnimation("laugh")
 end
 
+function SWEP:Initialize()
+	local owner = self:GetOwner()
+	if not IsValid(owner) then return end
+	
+	local ent = owner:GetPillCostume()
+	if not IsValid(ent) then return end
+	
+	if ent:GetPillName() == "pill_endo02" then
+		self.ViewModelFOV = GetConVar("cl_fov_endo"):GetFloat() or 100
+	end
+end
+
 function SWEP:PrimaryAttack()
-	local ply = self.Owner
+	local ply = self:GetOwner()
 	local ent = pills.getMappedEnt(ply)
 	local ct = CurTime()
 	
-	if !ply:GetNWBool("isBlightRushing") then return end
+	if not ply.GetFoxyRushing or !ply:GetFoxyRushing() then return end
 	
-	ply:SetNWFloat("RushEndTime", ct + 1)
+	ply:SetFoxyRushEnd(ct + 1)
 	
 	if !IsValid(ent) then return end
 	
-	if self.IsCharging or ply.tasered then return end
+	if self:GetCharging() or ply.tasered then return end
 	
 	if ply:IsFrozen() then return end
 	
@@ -66,16 +78,22 @@ function SWEP:PrimaryAttack()
 		--ent:PillGesture('swing', 2, 1, 0.1, 0.3)
 	end
 	
-    if IsFirstTimePredicted() then
-		self:HandleAnimation("preattack", 2)
-    end
+	self:HandleAnimation("preattack", 2)
 	
 	self:SetPlaybackRate(1)
 	
-    self.IsCharging = true
+    self:SetCharging( true )
     self.ChargeStartTime = ct
 	
 	self:SetNextMeleeAttack( ct + self.HitDelay )
+end
+
+function SWEP:SecondaryAttack()
+	local ply = self:GetOwner()
+	local ent = pills.getMappedEnt(ply)
+	
+	if not IsValid(ent) then return end
+	FoxyCharge(ply, ent)
 end
 
 function SWEP:DealDamage()
@@ -101,13 +119,13 @@ function SWEP:DealDamage()
 		cooldown.Set(ply, "kill", 2)
 		cooldown.Send(ply, "kill")
 		
-		EndRush(ply)
+		foxy.EndCharge(ply)
 		
-		foxyStun(ply)
+		foxy.Stun(ply)
 
 		timer.Simple(5, function()
 			if IsValid(ply) then
-				receiveTokensBack(ply)
+				receiveTokensBack(ply, ent)
 			end
 		end)
 	end
@@ -201,25 +219,24 @@ function SWEP:DealDamage()
 	end
 	
 	if (target:IsPlayer() and target:IsSurvivor()) or target:IsNPC() then
-		ply:EmitSound("fnaf3/spr_punch_hit.wav")
+		ply:EmitSound(")fnaf3/spr_punch_hit.wav")
 	end
 end
 
 SWEP.run_string = "run"
 SWEP.run_act = ACT_VM_SPRINT_IDLE
 function SWEP:Think()
+	local ply = self:GetOwner()
 	local curtime = CurTime()
 	
-	if self.IsCharging and not self.Owner:KeyDown(IN_ATTACK) then
-        self.IsCharging = false
+	if self:GetCharging() and not ply:KeyDown(IN_ATTACK) then
+        self:SetCharging(false)
         self:SetNextMeleeAttack(0)
         self:DealDamage()
         return
     end
 
-	if self.IsCharging then
-		local ply = self.Owner
-		
+	if self:GetCharging() then
 		ply:LagCompensation(true)
 		
 		local forward = ply:GetAimVector()
@@ -243,7 +260,7 @@ function SWEP:Think()
 		ply:LagCompensation(false)
 
 		if IsValid(hitEnt) and hitEnt:IsPlayer() and hitEnt:IsSurvivor() then
-			self.IsCharging = false
+			self:SetCharging(false)
 			self:SetNextMeleeAttack(0)
 			self:DealDamage()
 			return
@@ -252,7 +269,7 @@ function SWEP:Think()
 
 	local meleetime = self:GetNextMeleeAttack()
 	if ( meleetime > 0 and curtime > meleetime ) then
-        self.IsCharging = false
+        self:SetCharging(false)
 		self:DealDamage()
 		self:SetNextMeleeAttack( 0 )
 	end

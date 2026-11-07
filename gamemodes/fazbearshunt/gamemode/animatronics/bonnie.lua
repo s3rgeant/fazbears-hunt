@@ -109,15 +109,17 @@ pills.register("pill_wbonnie2",{
 
 	noFallDamage=true,
 	
-	startFunction=function(ply,ent)
+	initialize=function(ply,ent)
 		chaseVoicelineChecker(ply, ent, "bonnie")
 	end,
 	
-	onRemove=function(ply, ent)
+	restore=function(ply, ent)
 		if CLIENT then return end
-		cooldown.Set(ply, "yoursmine", 1)
+		cooldown.SetSend(ply, "yoursmine", 1)
 		
-		YoursMine_ForceStop(ply)
+		if ply.fh_target_player then
+			YoursMine_ForceStop(ply)
+		end
 	end,
 	
 	killCondition=function(ply,ent)
@@ -178,7 +180,7 @@ pills.register("pill_wbonnie2",{
 	end,
 	
 	land=function(ply,ent)
-		if ent.anim ~= 'yoursmine' and IsGoodLandConditions(ply, ent) then
+		if ent.anim ~= 'yoursmine' and AreLandConditionsGood(ply, ent) then
 			ent:PillAnim("land",true)
 		end
 		
@@ -255,10 +257,10 @@ function YoursMine_Start(ply, target)
 			ent.anim = nil
 			return
 		end
-	
-		hook.Run("FH_YoursMineSpectating", ply, ent, target)
 		
 		if IsValid(ply) and IsValid(target) and IsValid(ent) then
+			hook.Run("FH_YoursMineSpectating", ply, ent, target)
+			
 			ply:Freeze(false)
 			
 			ent:DetachPlayer()
@@ -335,7 +337,7 @@ function YoursMine_ForceStop(ply, target, ent, cd)
 	if !bonnieSaveStats[ply] then return end
 
 	target = target or ply.fh_target_player
-	ent = ent or ply:GetPill()
+	ent = ent or ply:GetPillCostume()
 	
 	hook.Run("FH_YoursMineEnd", ply, ent, target)
 			
@@ -459,34 +461,34 @@ hook.Add("FH_HandlePlayerGrab", "yoursmine_targets", function(ply, target)
 end)
 
 hook.Add("PlayerSpawn", "yoursmine_targets", function(ply)
+	--[[
 	if ply.fh_target_player then
 		if ply.lastFhMappedEnt then
 			pills.mapEnt(ply, ply.lastFhMappedEnt)
 		end
 		YoursMine_ForceStop(ply)
 	end
-end)
-
-hook.Add("DoPlayerDeath", "yoursmine_targets", function(ply)
-	if ply.fh_target_player then
-		if ply.lastFhMappedEnt then
-			pills.mapEnt(ply, ply.lastFhMappedEnt)
-		end
-		YoursMine_ForceStop(ply)
-	end
+	]]--
 end)
 
 hook.Add("PlayerDisconnected", "yoursmine_targets", function(ply)
+	if ply.lastFhMappedEnt then
+		pills.mapEnt(ply, ply.lastFhMappedEnt)
+	end
+	
 	if ply.fh_target_player then
-		if ply.lastFhMappedEnt then
-			pills.mapEnt(ply, ply.lastFhMappedEnt)
-		end
 		YoursMine_ForceStop(ply)
 	end
 end)
 
 hook.Add("ShouldPlayerPush", "yoursmine_targets", function(ply, target)
 	if target.fh_target_player then
+		return false
+	end
+end)
+
+hook.Add("PlayerCanPickupWeapon", "yoursmine_targets", function(ply, wep)
+	if ply.fh_target_player then
 		return false
 	end
 end)

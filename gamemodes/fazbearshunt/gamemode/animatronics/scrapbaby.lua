@@ -28,8 +28,9 @@ sound.Add({
 						}
 })
 
-local BABY_MISS_CD = 7 --7
-local BABY_HIT_CD = 10 --10
+local BABY_MISS_CD = 7
+local BABY_HIT_CD = 10
+local BABY_HIT_TEAMMATE_CD = 4 
 
 local BABY = GetPillTemplate()
 local babyOrange = Color(255,110,0)
@@ -53,6 +54,8 @@ BABY.anims={
 	gestures={
 		melee="melee",
 		
+		jammerstun="jammerstun",
+		
 		aim="aim",
 		aimL="aim-loop",
 		shoot="shoot",
@@ -61,6 +64,13 @@ BABY.anims={
 		shake="shake",
 	},
 }
+BABY.options=function() 
+	return {
+		["default"] = {
+			skin = 1,
+		},
+	} 
+end
 BABY.moveSpeed={
 	maxwalk=150,
 	walk=220,
@@ -82,7 +92,7 @@ BABY.sounds={
 }
 BABY.chaseTheme="scrapbaby"
 BABY.startFunction=function(ply,ent)
-	--chaseVoicelineChecker(ply, ent, "endo")
+	chaseVoicelineChecker(ply, ent, "scrapbaby")
 end
 BABY.killCondition=function(ply,ent)
 	local wep = ply:GetActiveWeapon()
@@ -124,10 +134,21 @@ BABY.clawPlayerHit=function(ply, ent, claw, target)
 	
 	target:SetNW2Bool("_SBBlockInteract", true)
 	
-	cooldown.Set(ply, "snatch", BABY_HIT_CD)
+	local snatchCD = target:IsSurvivor() and BABY_HIT_CD or BABY_HIT_TEAMMATE_CD
+	
+	cooldown.Set(ply, "snatch", snatchCD)
 	cooldown.Send(ply, "snatch")
 	
 	if target:IsAnimatronic() then return end
+	
+	--local dist = ply:GetPos():Distance(target:GetPos())
+	
+	local rf = RecipientFilter()
+	rf:AddPlayer(ply)
+	
+	target:EmitSound("scrapbaby.hooked", 90, nil, 1, nil, nil, 1, rf)
+		
+	smoothLookAt(target, ply)
 	
 	local plyIndex = target:EntIndex()
 	local timerName = "scrapbaby_clawhitDamage" .. plyIndex
@@ -140,12 +161,16 @@ BABY.clawPlayerHit=function(ply, ent, claw, target)
 			if IsValid(claw) then
 				claw:SetParent()
 				claw:SetSucker()
+				claw:SetNotSolid(true)
 			end
 			timer.Remove(timerName)
 			return
 		end
 		if not IsValid(ent) then timer.Remove(timerName) return end
 		if not IsValid(ply) or not ply:Alive() then timer.Remove(timerName) return end
+		
+		if not IsValid(target:GetNWEntity("_ScrapBabyHooker")) then timer.Remove(timerName) return end
+		
 		target:TakeDamage( 4.5, ply, claw )
 		
 		local edata = EffectData()
@@ -158,6 +183,13 @@ end
 BABY.clawEnvironmentHit=function(ply, ent, target)
 	cooldown.Set(ply, "snatch", BABY_MISS_CD)
 	cooldown.Send(ply, "snatch")
+	
+	local rf = RecipientFilter()
+	rf:AddPlayer(ply)
+	
+	if IsValid(claw) then
+		claw:EmitSound("scrapbaby.nothooked", 90, nil, 1, nil, nil, 1, rf)
+	end
 end
 
 BABY.playerCatch=function(ply, ent, claw, target)
@@ -172,13 +204,14 @@ BABY.playerCatch=function(ply, ent, claw, target)
 		target._skipLandAnim = true
 		target:NoPlayerCollide(0.2)
 		
-		timer.Simple(0, function()
-			if IsValid(target) and target:IsStuck() then
-				target:Unstuck()
-			end
-		end)
 		return 
 	end
+	
+	timer.Simple(0, function()
+		if IsValid(target) and target:IsStuck() then
+			target:Unstuck()
+		end
+	end)
 	
 	ent:PillAnim("clawscare", true, .5)
 	--ent:PillSound("melee",false)
@@ -208,6 +241,7 @@ BABY.playerCatch=function(ply, ent, claw, target)
 			
 			if target:Alive() then
 				ply:SetSpeedSlowdown(2.5)
+				ply:NoPlayerCollide(.6)
 			end
 			
 			target:SetJumpscared(false)
@@ -232,7 +266,7 @@ BABY.playerCatch=function(ply, ent, claw, target)
 end
 
 BABY.land=function(ply,ent)
-	if IsGoodLandConditions(ply, ent) then
+	if AreLandConditionsGood(ply, ent) then
 		local wep = ply:GetActiveWeapon()
 		if IsValid(wep) and wep.CanLand then
 			if wep:CanLand() then 
@@ -250,9 +284,9 @@ end
 pills.register("fh_scrapbaby", BABY)
 
 killers.SetAbilities("scrapbaby", {
-	{ name = 'kill', key = 'LMB', hidden = true },
-	{ name = 'snatch', key = 'RMB' },
-	{ name = 'highlight', key = 'R' },
+	[1] = { name = 'snatch', key = 'RMB' },
+	[2] = { name = 'highlight', key = 'R' },
+	[3] = { name = 'kill', key = 'LMB', hidden = true },
 })
 
 local function resetSBB_NW(ply)
@@ -263,3 +297,29 @@ end
 
 hook.Add("PlayerDeath", "scrapbaby_reset_NW", resetSBB_NW)
 hook.Add("PlayerSilentDeath", "scrapbaby_reset_NW", resetSBB_NW)
+
+hook.Add( "EntityTakeDamage", "scrapbaby_hook", function( target, dmginfo )
+	if dmginfo:IsFallDamage() and target:IsPlayer() and target:IsSurvivor() then
+		local suka = target:GetNWEntity("_ScrapBabyHooker")
+		if suka:IsValid() then -- fall damage is cool and all but players hate dying of it while hooked by scrap baby
+			dmginfo:SetDamage(1)
+			dmginfo:SetAttacker(suka)
+		end
+	end
+end )
+
+hook.Add( "FH_ShouldSBabySnitchEntity", "scrapbaby_hook", function( target )
+	if target:IsPlayer() then
+		if target.fh_target_player then
+			return false
+		end
+		
+		if outworld_victims[target] or wgfreddy_targets[target] then
+			return false
+		end
+		
+		if target:GetNWString("_MangleHookReady") or target:GetNWString("_MangleHooked") then
+			return false
+		end
+	end
+end )

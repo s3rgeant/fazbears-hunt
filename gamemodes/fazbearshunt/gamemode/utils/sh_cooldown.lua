@@ -41,10 +41,13 @@ function cooldown.Set(ply, name, duration)
 	hook.Run("FH_CooldownReceive", name, duration)
 end
 
-if SERVER then
+function cooldown.SetSend(ply, name, duration)
+	if SERVER then
+		if not IsValid(ply) then return end
 
-	function cooldown.Send(ply, name)
-		if !IsValid(ply) then return end
+		our_cooldowns[ply] = our_cooldowns[ply] or {}
+		our_cooldowns[ply][name] = CurTime() + duration
+		
 		local cd = cooldown.Get(ply, name)
 		
 		if cd > 0 then
@@ -53,13 +56,20 @@ if SERVER then
 			net.WriteFloat(cd)
 			net.Send(ply)
 		end
-	end
-	function cooldown.SetSend(ply, name, duration)
+	else
 		if not IsValid(ply) then return end
 
 		our_cooldowns[ply] = our_cooldowns[ply] or {}
 		our_cooldowns[ply][name] = CurTime() + duration
-		
+			
+		hook.Run("FH_CooldownReceive", name, duration)
+	end
+end
+
+if SERVER then
+
+	function cooldown.Send(ply, name)
+		if !IsValid(ply) then return end
 		local cd = cooldown.Get(ply, name)
 		
 		if cd > 0 then

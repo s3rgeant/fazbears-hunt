@@ -126,6 +126,13 @@ local function StopHoldingProp(ply, ent)
     FinalizeStopHoldingProp(ply, ent)
 end
 
+hook.Add("PlayerUse", "AntiPropPickup", function(ply, ent) -- хук снизу почему то блять не работает
+    if not IsTrackedProp(ent) then return end
+    if IsOnPickupCooldown(ent) then
+        return false
+    end
+end)
+
 hook.Add("AllowPlayerPickup", "AntiPropPickup_BlockHandsPickupOnCooldown", function(ply, ent)
     if not IsTrackedProp(ent) then return end
     if IsOnPickupCooldown(ent) then

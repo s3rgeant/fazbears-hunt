@@ -1,43 +1,37 @@
+AddCSLuaFile()
+
 if CLIENT then
-	--SWEP.WepSelectIcon = surface.GetTextureID( "vgui/hud/weapon_l4d2_pumpshotgun" )
-	SWEP.DrawWeaponInfoBox	= false
-	SWEP.BounceWeaponIcon = false
-	killicon.Add( "weapon_oldshotgun", "vgui/killicons/weapon_shotgun", Color( 255, 0, 0, 255 ) )
+    SWEP.BounceWeaponIcon = false
+    killicon.Add( "weapon_oldshotgun", "vgui/killicons/weapon_shotgun", Color( 255, 0, 0, 255 ) )
 end
 
-sound.Add(
-{
-	name = "Weapon.Swing",
-	channel = CHAN_ITEM,
-	volume = 0.7,
-	pitch = 95, 105,
-	soundlevel = SNDLVL_NORM,
-	sound = ")player/survivor/swing/Swish_WeaponSwing_Swipe5.wav"
+sound.Add({
+    name = "Weapon.Swing",
+    channel = CHAN_ITEM,
+    volume = 0.7,
+    pitch = {95, 105},
+    soundlevel = SNDLVL_NORM,
+    sound = ")player/survivor/swing/Swish_WeaponSwing_Swipe5.wav"
 })
-sound.Add(
-{
-	name = "Weapon.HitWorld",
-	channel = CHAN_STATIC,
-	volume = 1.0,
-	pitch = 95, 105,
-	soundlevel = SNDLVL_90dB,
-	sound = ")player/survivor/hit/rifle_swing_hit_world.wav"
+sound.Add({
+    name = "Weapon.HitWorld",
+    channel = CHAN_STATIC,
+    volume = 1.0,
+    pitch = {95, 105},
+    soundlevel = SNDLVL_90dB,
+    sound = ")player/survivor/hit/rifle_swing_hit_world.wav"
 })
-sound.Add(
-{
-	name = "Weapon.HitInfected",
-	channel = CHAN_STATIC,
-	volume = 0.8,
-	soundlevel = SNDLVL_70dB,
-	sound = ")player/survivor/hit/rifle_swing_hit_infected7.wav"
+sound.Add({
+    name = "Weapon.HitInfected",
+    channel = CHAN_STATIC,
+    volume = 0.8,
+    soundlevel = SNDLVL_70dB,
+    sound = ")player/survivor/hit/rifle_swing_hit_infected7.wav"
 })
 
 SWEP.PrintName = "#weapon_oldshotgun"
-
-SWEP.Spawnable= true
-SWEP.AdminSpawnable= true
-SWEP.AdminOnly = false
-
+SWEP.Purpose = "#info_oldshotgun"
+SWEP.Spawnable = true
 SWEP.Gifted = true
 
 SWEP.ViewModelFOV = 60
@@ -49,26 +43,14 @@ SWEP.SwayScale = 0.5
 SWEP.BobScale = 0.5
 SWEP.m_WeaponDeploySpeed = 1
 
-SWEP.AutoSwitchTo = false
-SWEP.AutoSwitchFrom = false
 SWEP.Weight = 20
 
 SWEP.Slot = 3
 SWEP.SlotPos = 0
 
 SWEP.UseHands = true
-SWEP.HoldType = "shotgun"
 SWEP.FiresUnderwater = false
-SWEP.DrawCrosshair = true
-SWEP.DrawAmmo = true
 SWEP.CSMuzzleFlashes = 1
-SWEP.Base = "weapon_base"
-
-SWEP.Idle = 0
-SWEP.IdleTimer = CurTime()
-
-SWEP.ShotgunReload = 0
-SWEP.ShotgunReloadTimer = CurTime()
 
 SWEP.Primary.Sound = Sound( "Shotgun.Fire" )
 SWEP.Primary.ClipSize = 6
@@ -93,269 +75,306 @@ SWEP.Secondary.Delay = 0.73
 SWEP.Secondary.Force = 1
 
 if SERVER then
-	resource.AddFile( "materials/weapons/pumpshotgun.vmt" )
+    resource.AddFile( "materials/weapons/pumpshotgun.vmt" )
 else
-	SWEP.WepSelectIcon = surface.GetTextureID( "weapons/pumpshotgun" )
-	SWEP.BounceWeaponIcon = false
+    SWEP.WepSelectIcon = surface.GetTextureID( "weapons/pumpshotgun" )
+    SWEP.BounceWeaponIcon = false
+end
+
+-- Регистрация NetworkVar'ов
+function SWEP:SetupDataTables()
+    self:NetworkVar( "Int",   0, "ShotgunReload" )    -- 0: не перезаряжается, 1: начало, 2: дозарядка
+    self:NetworkVar( "Float", 0, "ShotgunReloadTimer" )
+    self:NetworkVar( "Float", 1, "IdleTimer" )
+    self:NetworkVar( "Int",   1, "IsIdle" )           -- 0: нужно играть idle, 1: уже сыгран
 end
 
 function SWEP:Initialize()
-	self:SetWeaponHoldType( self.HoldType )
-	self.Idle = 0
-	self.IdleTimer = CurTime() + 1
+    self:SetHoldType( "shotgun" )
 end
 
 function SWEP:Deploy()
-	timer.Simple(0.1, function()
-		if IsValid(self) then self:EmitSound(")weapons/shotgun/gunother/shotgun_pump_1.wav") end
-	end)
-	self.ShotgunReload = 0
-	self.ShotgunReloadTimer = CurTime()
-	self.Idle = 0
-	self.IdleTimer = CurTime() + 1
-end
+    self:SetHoldType( "shotgun" )
+    self:SendWeaponAnim( ACT_VM_DRAW )
+    
+    local vm = self:GetOwner():GetViewModel()
+    if IsValid(vm) then
+        self:SetNextPrimaryFire( CurTime() + vm:SequenceDuration() )
+        self:SetNextSecondaryFire( CurTime() + vm:SequenceDuration() )
+        self:SetIdleTimer( CurTime() + vm:SequenceDuration() )
+    end
 
-function SWEP:Holster()
-	self.ShotgunReload = 0
-	self.ShotgunReloadTimer = CurTime()
-	self.Idle = 0
-	self.IdleTimer = CurTime()
-	return true
+    self:SetShotgunReload( 0 )
+    self:SetShotgunReloadTimer( CurTime() )
+    self:SetIsIdle( 1 )
+
+    timer.Simple( 0.1, function()
+        if IsValid( self ) then 
+            self:EmitSound( ")weapons/shotgun/gunother/shotgun_pump_1.wav" ) 
+        end
+    end)
+    
+    return true
 end
 
 function SWEP:PrimaryAttack()
-	local owner = self:GetOwner()
-	
-	if !( self.ShotgunReload == 0 ) then return end
-	if self:Clip1() <= 0 and self:Ammo1() <= 0 and !( owner:WaterLevel() == 3 and self.FireUnderwater == false ) then
-		self:EmitSound( "Default.ClipEmpty_Rifle" )
-		self:SetNextPrimaryFire( CurTime() + 0.2 )
-	end
-	if self.FiresUnderwater == false and owner:WaterLevel() == 3 then
-		self:EmitSound( "Default.ClipEmpty_Rifle" )
-		self:SetNextPrimaryFire( CurTime() + 0.2 )
-	end
-	if self:Clip1() <= 0 and self:Ammo1() > 0 then
-		self:Reload()
-		return
-	end
-	if self:Clip1() <= 0 then return end
-	if self.FiresUnderwater == false and owner:WaterLevel() == 3 then return end
-	owner:LagCompensation( true )
-	local bullet = {}
-	
-	bullet.Attacker = owner
-	bullet.Inflictor = self
-	bullet.Num = self.Primary.NumberofShots
-	bullet.Src = owner:GetShootPos()
-	bullet.Dir = owner:GetAimVector()
-	bullet.Spread = Vector( 0.01 * self.Primary.Spread, 0.01 * self.Primary.Spread, 0 )
-	bullet.Tracer = 1
-	bullet.Force = self.Primary.Force
-	bullet.Damage = self.Primary.Damage
-	bullet.AmmoType = self.Primary.Ammo
-	
-	if CLIENT then
-		local light = DynamicLight(self:EntIndex())
-		if light then
-			light.pos = owner:EyePos() + owner:GetForward() * 100
-			light.r = 180
-			light.g = 120
-			light.b = 0
-			light.brightness = 2
-			light.Decay = 1000
-			light.Size = 150
-			light.DieTime = CurTime() + .2
-		end
-	end
-	
-	owner:SetAnimation( PLAYER_ATTACK1 )
-	owner:FireBullets( bullet )
-	owner:EmitSound( self.Primary.Sound )
-	owner:MuzzleFlash()
-	owner:ViewPunchReset()
-	owner:ViewPunch( Angle( -1 * self.Primary.Recoil, 0, 0 ) )
-	owner:LagCompensation( false )
-	self:TakePrimaryAmmo( 1 )
-	self:SetNextPrimaryFire( CurTime() + self.Primary.Delay )
-	self:SetNextSecondaryFire( CurTime() + self.Primary.Delay )
-	self.Idle = 0
-	self.IdleTimer = CurTime() + 1.1
-	self.ShotgunReloadTimer = CurTime() + 0.8
-	
-	if self:Clip1() <= 0 and self:Ammo1() <= 0 then
-		self:SendWeaponAnim( ACT_VM_PRIMARYATTACK_SILENCED )
-		self.IdleTimer = CurTime() + 5
-		self.ShotgunReloadTimer = CurTime() + 5
-		
-		timer.Simple(1.1, function()
-			if SERVER and IsValid(self) then self:Remove() end
-		end)
-		return
-	else
-		self:SendWeaponAnim( ACT_VM_PRIMARYATTACK )
-	end
-	
-	timer.Simple(0.15, function() 
-		if IsValid(self) then
-			self:EmitSound(")weapons/shotgun/gunother/shotgun_pump_1.wav", nil, nil, .3, CHAN_AUTO)
-		end
-	end)
+    local owner = self:GetOwner()
+    local iftp = IsFirstTimePredicted()
+    
+    if iftp then 
+        if self:GetShotgunReload() ~= 0 then return end
+        
+        if (self:Clip1() <= 0 and self:Ammo1() <= 0) or (not self.FiresUnderwater and owner:WaterLevel() == 3) then
+            self:EmitSound( "Default.ClipEmpty_Rifle" )
+            self:SetNextPrimaryFire( CurTime() + 0.2 )
+            return
+        end
+    end
+    
+    if self:Clip1() <= 0 and self:Ammo1() > 0 then
+        self:Reload()
+        return
+    end
+    
+    if self:Clip1() <= 0 then return end
+    if not self.FiresUnderwater and owner:WaterLevel() == 3 then return end
+
+    owner:LagCompensation( true )
+    local bullet = {
+        Attacker = owner,
+        Inflictor = self,
+        Num = self.Primary.NumberofShots,
+        Src = owner:GetShootPos(),
+        Dir = owner:GetAimVector(),
+        Spread = Vector( 0.01 * self.Primary.Spread, 0.01 * self.Primary.Spread, 0 ),
+        Tracer = 1,
+        Force = self.Primary.Force,
+        Damage = self.Primary.Damage,
+        AmmoType = self.Primary.Ammo
+    }
+    
+    if CLIENT and iftp then
+        local light = DynamicLight( self:EntIndex() )
+        if light then
+            light.pos = owner:EyePos() + owner:GetForward() * 100
+            light.r = 180
+            light.g = 120
+            light.b = 0
+            light.brightness = 2
+            light.Decay = 1000
+            light.Size = 150
+            light.DieTime = CurTime() + 0.2
+        end
+    end
+    
+    self:EmitSound( self.Primary.Sound )
+    if iftp then 
+        owner:SetAnimation( PLAYER_ATTACK1 )
+        owner:FireBullets( bullet )
+        owner:MuzzleFlash()
+        owner:ViewPunchReset()
+    end
+    
+    owner:ViewPunch( Angle( -1 * self.Primary.Recoil, 0, 0 ) )
+    owner:LagCompensation( false )
+    
+    self:TakePrimaryAmmo( 1 )
+    self:SetNextPrimaryFire( CurTime() + self.Primary.Delay )
+    self:SetNextSecondaryFire( CurTime() + self.Primary.Delay )
+    self:SetIsIdle( 0 )
+    self:SetIdleTimer( CurTime() + 1.1 )
+    self:SetShotgunReloadTimer( CurTime() + 0.8 )
+    
+    if self:Clip1() <= 0 and self:Ammo1() <= 0 then
+        self:SendWeaponAnim( ACT_VM_PRIMARYATTACK_SILENCED )
+        self:SetIdleTimer( CurTime() + 5 )
+        self:SetShotgunReloadTimer( CurTime() + 5 )
+        
+        timer.Simple( 1.1, function()
+            if SERVER and IsValid( self ) then self:Remove() end
+        end)
+        return
+    else
+        self:SendWeaponAnim( ACT_VM_PRIMARYATTACK )
+    end
+    
+    timer.Simple( 0.15, function() 
+        if IsValid( self ) then
+            self:EmitSound( ")weapons/shotgun/gunother/shotgun_pump_1.wav", nil, nil, 0.3, CHAN_AUTO )
+        end
+    end)
 end
 
 function SWEP:SecondaryAttack()
-	local owner = self:GetOwner()
-	
-	if !( self.ShotgunReload == 0 ) then return end
-	
-	local curtime = CurTime()
-	
-	self.ShotgunReloadTimer = curtime + 0.5
-	
-	owner:EmitSound( self.Secondary.Sound )
-	owner:LagCompensation( true )
-	local tr = util.TraceLine( {
-		start = owner:GetShootPos(),
-		endpos = owner:GetShootPos() + owner:GetAimVector() * 75,
-		filter = owner,
-		mask = MASK_SHOT_HULL,
-	} )
-	if !IsValid( tr.Entity ) then
-		tr = util.TraceHull( {
-			start = owner:GetShootPos(),
-			endpos = owner:GetShootPos() + owner:GetAimVector() * 75,
-			filter = owner,
-			mins = Vector( -16, -16, 0 ),
-			maxs = Vector( 16, 16, 0 ),
-			mask = MASK_SHOT_HULL,
-		} )
-	end
-	
-	local target = tr.Entity
-	
-	if SERVER and tr.Hit and !( target:IsNPC() || target:IsPlayer() || target:Health() > 0 ) then
-		owner:EmitSound( "Weapon.HitWorld" )
-	end
-	if SERVER and IsValid( target ) then
-		local dmginfo = DamageInfo()
-		local attacker = owner
-		if !IsValid( attacker ) then
-			attacker = self
-		end
-		dmginfo:SetAttacker( attacker )
-		dmginfo:SetInflictor( self )
-		dmginfo:SetDamage( self.Secondary.Damage )
-		dmginfo:SetDamageForce( owner:GetForward() * self.Secondary.Force )
-		target:TakeDamageInfo( dmginfo )
-		if tr.Hit then
-			if target:IsNPC() || target:IsPlayer() || target:Health() > 0 then
-				local pill = target:IsPlayer() and target:GetPillCostume() or nil
-				if IsValid(pill) and not pill:IsInvisible() and not pill.cloaked then
-					owner:EmitSound( "Weapon.HitWorld" )
-				else
-					owner:EmitSound( "Weapon.HitInfected" )
-				end
-			end
-			if !( target:IsNPC() || target:IsPlayer() || target:Health() > 0 ) then
-				owner:EmitSound( "Weapon.HitWorld" )
-			end
-		end
-	end
-	owner:LagCompensation( false )
-	self:SendWeaponAnim( ACT_VM_SECONDARYATTACK )
-	owner:DoAnimationEvent( ACT_GMOD_GESTURE_MELEE_SHOVE_2HAND )
-	self:SetNextPrimaryFire( curtime + self.Secondary.Delay )
-	self:SetNextSecondaryFire( curtime + self.Secondary.Delay )
-	self.Idle = 0
-	self.IdleTimer = curtime + owner:GetViewModel():SequenceDuration()
+    local owner = self:GetOwner()
+    if self:GetShotgunReload() ~= 0 then return end
+    
+    local curtime = CurTime()
+    self:SetShotgunReloadTimer( curtime + 0.5 )
+    
+    self:EmitSound( self.Secondary.Sound )
+    owner:LagCompensation( true )
+    
+    local tr = util.TraceLine( {
+        start = owner:GetShootPos(),
+        endpos = owner:GetShootPos() + owner:GetAimVector() * 75,
+        filter = owner,
+        mask = MASK_SHOT_HULL,
+    } )
+    
+    if not IsValid( tr.Entity ) then
+        tr = util.TraceHull( {
+            start = owner:GetShootPos(),
+            endpos = owner:GetShootPos() + owner:GetAimVector() * 75,
+            filter = owner,
+            mins = Vector( -16, -16, 0 ),
+            maxs = Vector( 16, 16, 0 ),
+            mask = MASK_SHOT_HULL,
+        } )
+    end
+    
+    local target = tr.Entity
+    if SERVER and tr.Hit and not ( IsValid( target ) and ( target:IsNPC() or target:IsPlayer() or target:Health() > 0 ) ) then
+        owner:EmitSound( "Weapon.HitWorld" )
+    end
+    
+    if SERVER and IsValid( target ) then
+        local dmginfo = DamageInfo()
+        dmginfo:SetAttacker( IsValid( owner ) and owner or self )
+        dmginfo:SetInflictor( self )
+        dmginfo:SetDamage( self.Secondary.Damage )
+        dmginfo:SetDamageForce( owner:GetForward() * self.Secondary.Force )
+        target:TakeDamageInfo( dmginfo )
+        
+        if tr.Hit then
+            if target:IsNPC() or target:IsPlayer() or target:Health() > 0 then
+                local pill = target:IsPlayer() and target:GetPillCostume() or nil
+                if IsValid( pill ) and not pill:IsInvisible() and not pill.cloaked then
+                    owner:EmitSound( "Weapon.HitWorld" )
+                else
+                    owner:EmitSound( "Weapon.HitInfected" )
+                end
+            else
+                owner:EmitSound( "Weapon.HitWorld" )
+            end
+        end
+    end
+    
+    owner:LagCompensation( false )
+    self:SendWeaponAnim( ACT_VM_SECONDARYATTACK )
+    owner:DoAnimationEvent( ACT_GMOD_GESTURE_MELEE_SHOVE_2HAND )
+    self:SetNextPrimaryFire( curtime + self.Secondary.Delay )
+    self:SetNextSecondaryFire( curtime + self.Secondary.Delay )
+    self:SetIsIdle( 0 )
+    self:SetIdleTimer( curtime + owner:GetViewModel():SequenceDuration() )
 end
 
 function SWEP:Reload()
-	local owner = self:GetOwner()
-	
-	if self:Clip1() < self.Primary.ClipSize and self:Ammo1() > 0 and self.ShotgunReload == 0 and self.ShotgunReloadTimer <= CurTime() then
-		self:EmitSound(")weapons/shotgun/gunother/shotgun_load_shell_2.wav")
-		
-		self:SendWeaponAnim( ACT_VM_RELOAD )
-		owner:SetAnimation( PLAYER_RELOAD )
-		self:SetNextPrimaryFire( CurTime() + owner:GetViewModel():SequenceDuration() )
-		self:SetNextSecondaryFire( CurTime() + owner:GetViewModel():SequenceDuration() )
-		self.ShotgunReload = 1
-		self.ShotgunReloadTimer = CurTime() + 0.5
-		self.Idle = 0
-		self.IdleTimer = CurTime() + 0.6
-		self:SetClip1( self:Clip1() + 1 )
-	end
+    local owner = self:GetOwner()
+    
+    if self:Clip1() < self.Primary.ClipSize and self:Ammo1() > 0 and self:GetShotgunReload() == 0 and self:GetShotgunReloadTimer() <= CurTime() then
+        self:EmitSound( ")weapons/shotgun/gunother/shotgun_load_shell_2.wav" )
+        
+        self:SendWeaponAnim( ACT_VM_RELOAD )
+        owner:SetAnimation( PLAYER_RELOAD )
+        
+        local seqDur = owner:GetViewModel():SequenceDuration()
+        self:SetNextPrimaryFire( CurTime() + seqDur )
+        self:SetNextSecondaryFire( CurTime() + seqDur )
+        
+        self:SetShotgunReload( 1 )
+        self:SetShotgunReloadTimer( CurTime() + 0.5 )
+        self:SetIsIdle( 0 )
+        self:SetIdleTimer( CurTime() + 0.6 )
+        self:SetClip1( self:Clip1() + 1 )
+    end
 end
 
 function SWEP:Think()
-	local owner = self:GetOwner()
-	
-	self:StopSound( "Weapon_Shotgun.Special1" )
-	if self.ShotgunReload == 1 and self.ShotgunReloadTimer <= CurTime() then
-		self:SendWeaponAnim( ACT_VM_RELOAD_IDLE )
-		owner:RemoveAmmo( 1, self.Primary.Ammo, false )
-		self.ShotgunReload = 2
-		self.Idle = 0
-		self.IdleTimer = CurTime() + 0.6
-	end
-	if self.ShotgunReload == 2 and self.ShotgunReloadTimer <= CurTime() and self:Clip1() < self.Primary.ClipSize and self:Ammo1() > 0 then
-		self:EmitSound(")weapons/shotgun/gunother/shotgun_load_shell_2.wav")
-
-		self:SetClip1( self:Clip1() + 1 )
-		owner:RemoveAmmo( 1, self.Primary.Ammo, false )
-		self.ShotgunReload = 2
-		self.ShotgunReloadTimer = CurTime() + 0.42
-		self.Idle = 0
-		self.IdleTimer = CurTime() + 0.7
-	end
-	if !( self.ShotgunReload == 0 ) and self.ShotgunReloadTimer <= CurTime() and self:Clip1() == self.Primary.ClipSize then
-		self:SendWeaponAnim( ACT_SHOTGUN_RELOAD_FINISH )
-		self:SetNextPrimaryFire( CurTime() + owner:GetViewModel():SequenceDuration() )
-		self:SetNextSecondaryFire( CurTime() + owner:GetViewModel():SequenceDuration() )
-		self.ShotgunReload = 0
-		self.ShotgunReloadTimer = CurTime() + owner:GetViewModel():SequenceDuration()
-		self.Idle = 0
-		self.IdleTimer = CurTime() + owner:GetViewModel():SequenceDuration()
-	end
-	if !( self.ShotgunReload == 0 ) and self.ShotgunReloadTimer <= CurTime() and self:Clip1() > 0 and self:Ammo1() <= 0 then
-		self:SendWeaponAnim( ACT_SHOTGUN_RELOAD_FINISH )
-		self:SetNextPrimaryFire( CurTime() + owner:GetViewModel():SequenceDuration() )
-		self:SetNextSecondaryFire( CurTime() + owner:GetViewModel():SequenceDuration() )
-		self.ShotgunReload = 0
-		self.ShotgunReloadTimer = CurTime() + owner:GetViewModel():SequenceDuration()
-		self.Idle = 0
-		self.IdleTimer = CurTime() + owner:GetViewModel():SequenceDuration()
-	end
-	if self.Idle == 0 and self.IdleTimer > CurTime() and self.IdleTimer < CurTime() + 0.1 then
-		self:SendWeaponAnim( ACT_VM_IDLE )
-		self.Idle = 1
-	end
-	if self:Ammo1() > self.Primary.MaxAmmo then
-		owner:SetAmmo( self.Primary.MaxAmmo, self.Primary.Ammo )
-	end
+    local owner = self:GetOwner()
+    local curTime = CurTime()
+    
+    self:StopSound( "Weapon_Shotgun.Special1" )
+    
+    local reloadState = self:GetShotgunReload()
+    local reloadTimer = self:GetShotgunReloadTimer()
+    
+    if reloadState == 1 and reloadTimer <= curTime then
+        owner:RemoveAmmo( 1, self.Primary.Ammo, false )
+        
+        if self:Clip1() >= self.Primary.ClipSize or self:Ammo1() <= 0 then
+            self:SendWeaponAnim( ACT_SHOTGUN_RELOAD_FINISH )
+            local vm = owner:GetViewModel()
+            local seqDur = IsValid( vm ) and vm:SequenceDuration() or 0.5
+		
+            self:SetNextPrimaryFire( curTime + seqDur )
+            self:SetNextSecondaryFire( curTime + seqDur )
+            self:SetShotgunReload( 0 )
+            self:SetShotgunReloadTimer( curTime + seqDur )
+        else
+            self:EmitSound( ")weapons/shotgun/gunother/shotgun_load_shell_2.wav" )
+            self:SendWeaponAnim( ACT_VM_RELOAD_IDLE )
+            self:SetClip1( self:Clip1() + 1 )
+            self:SetShotgunReload( 2 )
+            self:SetShotgunReloadTimer( curTime + 0.42 )
+        end
+        
+        self:SetIsIdle( 0 )
+        self:SetIdleTimer( curTime + 0.6 )
+    end
+    
+    if reloadState == 2 and reloadTimer <= curTime then
+        owner:RemoveAmmo( 1, self.Primary.Ammo, false )
+        
+        if self:Clip1() >= self.Primary.ClipSize or self:Ammo1() <= 0 then
+            self:SendWeaponAnim( ACT_SHOTGUN_RELOAD_FINISH )
+            local vm = owner:GetViewModel()
+            local seqDur = IsValid( vm ) and vm:SequenceDuration() or 0.5
+            
+            self:SetNextPrimaryFire( curTime + seqDur )
+            self:SetNextSecondaryFire( curTime + seqDur )
+            self:SetShotgunReload( 0 )
+            self:SetShotgunReloadTimer( curTime + seqDur )
+        else
+            self:EmitSound( ")weapons/shotgun/gunother/shotgun_load_shell_2.wav" )
+            self:SendWeaponAnim( ACT_VM_RELOAD_IDLE )
+            self:SetClip1( self:Clip1() + 1 )
+            self:SetShotgunReload( 2 )
+            self:SetShotgunReloadTimer( curTime + 0.42 )
+        end
+        
+        self:SetIsIdle( 0 )
+        self:SetIdleTimer( curTime + 0.7 )
+    end
+    
+    if self:GetIsIdle() == 0 and self:GetIdleTimer() > curTime and self:GetIdleTimer() < curTime + 0.1 then
+        self:SendWeaponAnim( ACT_VM_IDLE )
+        self:SetIsIdle( 1 )
+    end
+    
+    if self:Ammo1() > self.Primary.MaxAmmo then
+        owner:SetAmmo( self.Primary.MaxAmmo, self.Primary.Ammo )
+    end
 end
 
 function SWEP:FireAnimationEvent( pos, ang, event, options )
-	if ( !self.CSMuzzleFlashes ) then return end
-	
-	--print(event, options)
+    if not self.CSMuzzleFlashes then return end
+    
+    if event == 21 then
+        local data = EffectData()
+        data:SetFlags( 0 )
+        data:SetEntity( self:GetOwner():GetViewModel() )
+        data:SetAttachment( 5 )
+        data:SetScale( 2 )
 
-	if ( event == 21 ) then
-		local data = EffectData()
-		data:SetFlags( 0 )
-		data:SetEntity( self:GetOwner():GetViewModel() )
-		data:SetAttachment( 5 )
-		data:SetScale( 2 )
-
-		if ( self.CSMuzzleX ) then
-			util.Effect( "CS_MuzzleFlash_X", data )
-		else
-			util.Effect( "CS_MuzzleFlash", data )
-		end
-	
-		return true
-	end
+        if self.CSMuzzleX then
+            util.Effect( "CS_MuzzleFlash_X", data )
+        else
+            util.Effect( "CS_MuzzleFlash", data )
+        end
+    
+        return true
+    end
 end
 
 if SERVER then

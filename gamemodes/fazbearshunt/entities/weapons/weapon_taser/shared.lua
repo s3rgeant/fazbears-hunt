@@ -1,16 +1,4 @@
 AddCSLuaFile()
-	
-game.AddAmmoType( {
-	name = "TASER_AMMO",
-	dmgtype = DMG_SHOCK, 
-	tracer = TRACER_LINE_AND_WHIZ,
-	plydmg = 0, -- This can either be a number or a ConVar name.
-	npcdmg = 0, -- Ditto.
-	force = 2000,
-	maxcarry = 1, -- Ditto.
-	minsplash = 10,
-	maxsplash = 5
-} )
 
 SWEP.PrintName = "#weapon_taser"
 if CLIENT then
@@ -27,16 +15,16 @@ SWEP.SlotPos = 2
 SWEP.Primary.ClipSize = -1
 SWEP.Primary.DefaultClip = 1
 SWEP.Primary.Automatic = false
-SWEP.Primary.Ammo = "TASER_AMMO"
+SWEP.Primary.Ammo = ""
 
-SWEP.Secondary.ClipSize = 0
-SWEP.Secondary.DefaultClip = 0
+SWEP.Secondary.ClipSize = -1
+SWEP.Secondary.DefaultClip = -1
 SWEP.Secondary.Automatic = false
-SWEP.Secondary.Ammo = "none"
+SWEP.Secondary.Ammo = ""
 
 SWEP.UseHands = true
 SWEP.ViewModel	= "models/fh/weapons/c_taser.mdl"
-SWEP.ViewModelFOV = 70
+SWEP.ViewModelFOV = 65
 SWEP.WorldModel = "models/realistic_police/taser/w_taser.mdl"
 
 function SWEP:SetupDataTables()
@@ -45,7 +33,7 @@ end
 
 function SWEP:Think()
     if self:GetNextIdle() > 0 and CurTime() >= self:GetNextIdle() then
-        self:SendWeaponAnim(ACT_SPRINT)
+        self:SendWeaponAnim(ACT_VM_IDLE)
         self:SetNextIdle(0)
     end
 	
@@ -169,37 +157,21 @@ function SWEP:PrimaryAttack()
 end
 
 function SWEP:SecondaryAttack()
-end
-
-local red = Color(255,0,0,255)
-local green = Color(0,255,0,255)
-
-function SWEP:PostDrawViewModel(vm, weapon, ply)
-	local bone = vm:LookupBone("t.base")
-	if not bone then return end
+	self:SendWeaponAnim(ACT_VM_SECONDARYATTACK)
 	
-	local pos, ang = vm:GetBonePosition(bone)
-	if not pos then return end
+    local vm = self:GetOwner():GetViewModel()
+    if IsValid(vm) then
+        local seq = vm:SelectWeightedSequence(ACT_VM_SECONDARYATTACK)
+        local dur = vm:SequenceDuration(seq)
 
-	ang:RotateAroundAxis(ang:Right(), 90)
-	ang:RotateAroundAxis(ang:Up(), 90)
-	ang:RotateAroundAxis(-ang:Right(), 90)
-	
-	local progress = math.max( 3, self:Clip1() )
-	local targetColor = progress < 100 and red or green
-
-	cam.Start3D2D(pos + ang:Up() * -0.7 + ang:Forward() * 2.46, ang, 0.02)
-		surface.SetDrawColor(targetColor)
-		surface.DrawRect(25, 20, 15, -progress /2.38)
-	cam.End3D2D()
+        self:SetNextIdle(CurTime() + dur)
+		self:SetNextSecondaryFire(CurTime() + dur)
+    end
 end
-
-net.Receive("StunEffect_Shake", function()
-    local ply = LocalPlayer()
-    util.ScreenShake(ply:GetPos(), 15, 5, 5, 500)
-end)
 
 local data = {}
+local clrW = Color(255,255,255,128)
+local clrB = Color(0,0,0,250)
 function TaseAnimatronic(ply, taserer)
 	local ent = pills.getMappedEnt(ply)
 	
@@ -256,8 +228,10 @@ function TaseAnimatronic(ply, taserer)
 	
 		net.Start("StunEffect_Shake")
 		net.Send(ply)
-	
-		ply:ScreenFade(SCREENFADE.IN, Color(255, 255, 255, 128), 2, 2)
+		
+		local clr = ply:GetInfoNum("fh_dark_blindness", 1) == 1 and clrB or clrW
+		
+		ply:ScreenFade(SCREENFADE.IN, clr, 2, 2)
 	end
 	
 	if !IsValid(ent) then
@@ -286,3 +260,48 @@ hook.Add( "DoPlayerDeath", "fh_taser_drop", function( ply, attacker )
 		ply:SetActiveWeapon(nil)
 	end
 end )
+
+if SERVER then return end
+
+local red = Color(255,0,0,255)
+local green = Color(0,255,0,255)
+local tlines = Material("models/fh/weapons/taser_lines.vtf")
+
+function SWEP:CalcViewModelView(vm, weapon, ply)
+	--return Vector(0,0,0), Angle(0,0,0)
+end
+
+function SWEP:PostDrawViewModel(vm, weapon, ply)
+	local bone = vm:LookupBone("t.base")
+	if not bone then return end
+	
+	local pos, ang = vm:GetBonePosition(bone)
+	if not pos then return end
+
+	ang:RotateAroundAxis(ang:Right(), 90)
+	ang:RotateAroundAxis(ang:Up(), 90)
+	ang:RotateAroundAxis(-ang:Right(), 90)
+	
+	local progress = math.max( 3, self:Clip1() )
+	local targetColor = progress < 100 and red or green
+	local cheeseClr = progress < 100 and color_black or color_white
+
+	cam.Start3D2D(pos + ang:Up() * -0.69 + ang:Forward() * 2.46, ang, 0.02)
+		surface.SetDrawColor(targetColor.r, targetColor.g, targetColor.b, 255)
+		surface.DrawRect(25, 20, 15, -progress /2.38)
+		
+		surface.SetDrawColor(cheeseClr.r, cheeseClr.g, cheeseClr.b, math.abs(math.cos(CurTime() * 2)) * 100)
+		surface.DrawRect(25, 20, 15, -progress /2.38)
+	cam.End3D2D()
+
+	cam.Start3D2D(pos + ang:Up() * -0.7 + ang:Forward() * 2.46, ang, 0.02)
+		surface.SetMaterial(tlines)
+		surface.SetDrawColor(color_white)
+		surface.DrawTexturedRect(25, 20, 18, -45)
+	cam.End3D2D()
+end
+
+net.Receive("StunEffect_Shake", function()
+    local ply = LocalPlayer()
+    util.ScreenShake(ply:GetPos(), 15, 5, 5, 500)
+end)

@@ -1,9 +1,10 @@
 "UnlitGeneric"
 {
-"$spriteorientation" "vp_parallel"
-"$spriteorigin" "[ 0.50 0.50 ]"
-"$basetexture" "vgui\killicons\weapon_shotgun"
-"$translucent" "1"
-"$ignorez" "1"
-"$additive" "1"
+	"$basetexture" "vgui\killicons\weapon_shotgun"
+	"$spriteorientation" "vp_parallel"
+	"$spriteorigin" "[ 0.50 0.50 ]"
+	"$translucent" "1"
+	"$ignorez" "1"
+	"$additive" "1"
+	"$vertexcolor" 1
 }

@@ -2,9 +2,10 @@ local game = game
 local math = math
 
 SWEP.PrintName		= "#weapon_tablet"
+SWEP.Purpose		= "#info_tablet"
 
-SWEP.ViewModel		= "models/weapons/vondaram/c_tablet.mdl"
-SWEP.WorldModel		= "models/weapons/vondaram/w_tablet.mdl"
+SWEP.ViewModel		= "models/fh/weapons/vondaram/c_tablet.mdl"
+SWEP.WorldModel		= "models/fh/weapons/vondaram/w_tablet.mdl"
 
 SWEP.UseHands		= true
 SWEP.ViewModelFOV = 90
@@ -145,7 +146,7 @@ end
 
 
 function SWEP:GetHolsterTime()
-	// эта функция нужна просто для того, чтобы один из аддонов на смену оружия игнорировал его и не ломал анимацию
+	-- эта функция нужна просто для того, чтобы один из аддонов на смену оружия игнорировал его и не ломал анимацию
 end
 
 function SWEP:PrimaryAttack()
@@ -236,7 +237,7 @@ function SWEP:Think()
 	
 	self:DrainEnergy()
 	
-    if self:GetIsIdle() == false and self:GetIdleTimer() <= CurTime() and !self:GetIsHolstering() and !self:GetIsFullView() then -- Idle Sequence
+    if self:GetIsIdle() == false and self:GetIdleTimer() <= CurTime() and !self:GetIsHolstering() and !self:GetIsFullView() then
 		self:SendWeaponAnim(ACT_VM_IDLE)  
 		self:SetIsIdle(true)
     end
@@ -255,11 +256,11 @@ hook.Add( "StartCommand", "CA_HolsterWorkout", function( ply, cmd )
 
 	local curWep = ply:GetActiveWeapon()
 
-	if !IsValid(curWep) or curWep:GetClass() != "weapon_tablet" or (CLIENT and curWep:GetOwner() != ply) or !curWep.m_bInitialized then return end
+	if !IsValid(curWep) or curWep:GetClass() != "weapon_tablet" or (CLIENT and curWep:GetOwner() ~= ply) or !curWep.m_bInitialized then return end
 
 	if curWep:GetIsHolstering() && curWep:GetHolsterTimer() <= CurTime() then
 		local nextWep = curWep:GetHolsterEntity()
-		if IsValid(nextWep) && ply:HasWeapon(nextWep:GetClass()) then
+		if IsValid(nextWep) && ply:HasWeapon( nextWep:GetClass() ) then
 			cmd:SelectWeapon(nextWep)
 		else
 			curWep:deployInternal()
@@ -280,7 +281,7 @@ if CLIENT then
 		return lerpedFOV
 	end
 
-	// оффсет камеры под кость
+	-- оффсет камеры под кость
 	function SWEP:CalcView(ply,pos,ang,fov)
 		local offAng = self.StoredVMAngles or ANG_ZERO
 		ang = ang + offAng

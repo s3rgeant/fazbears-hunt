@@ -21,7 +21,6 @@ SWEP.LandHold = 0.2
 SWEP.HandleMinViewModel = true
 SWEP.CalcMinimalViewModelView = Vector(6,0,-10)
 
-SWEP.LoopSoundBaby = nil
 SWEP.LoopSoundClaw = nil
 
 SWEP.Primary.Automatic = false
@@ -69,10 +68,13 @@ function SWEP:SecondaryAttack()
 	
 	if cooldown.Exists(ply, "snatch") then return end
 	
-    if ply:IsFrozen() then return end
+    if ply:IsFrozen() or ply.tasered then return end
 	if IsValid(self:GetClaw()) then return end
 	if self:GetClawWait() or self:GetClawFlying() or self:GetClawFlyingHome() then return end
-    if self:GetCharging() or ply.tasered then return end
+
+    if self:GetCharging() then return end
+	
+    self:HandleAnimation("aim", 99999)
 
     if SERVER then
 		ent:PillGesture('aim', 2, 1, 0.1, 0.3)
@@ -87,10 +89,6 @@ function SWEP:SecondaryAttack()
 			ent:PillGestureSwap("aim", "aimL", 1, 1, "InCubic", "OutCubic")
 		end)
         ply:EmitSound("animatronics/scrapbaby/baby_hook_ready.mp3", 90)
-    end
-
-    if IsFirstTimePredicted() then
-        self:HandleAnimation("aim", 99999)
     end
 
     self:SetCharging(true)
@@ -163,17 +161,17 @@ function SWEP:ThrowHook()
 	claw:Activate()
 	
 	if SERVER then
-		if self.LoopSoundBaby then
-			self.LoopSoundBaby:Stop()
-			self.LoopSoundBaby = nil
+		if claw.LoopSoundBaby then
+			claw.LoopSoundBaby:Stop()
+			claw.LoopSoundBaby = nil
 		end
-		if not self.LoopSoundBaby then
+		if not claw.LoopSoundBaby then
 			local rf = RecipientFilter()
 			rf:AddAllPlayers()
 			
-			self.LoopSoundBaby = CreateSound(claw, ")animatronics/scrapbaby/hook_loop.wav", rf)
+			claw.LoopSoundBaby = CreateSound(claw, ")animatronics/scrapbaby/hook_loop.wav", rf)
 		end
-		self.LoopSoundBaby:Play()
+		claw.LoopSoundBaby:Play()
 	end
 	
 	self:SetClaw(claw)
@@ -195,7 +193,7 @@ if CLIENT then
 			
 			if IsValid(owner) then
 				local ent = ent
-				local ent2 = owner:GetPill()
+				local ent2 = owner:GetPillCostume()
 				
 				if not IsValid(ent2) then return end
 				
@@ -227,8 +225,6 @@ function SWEP:ClawHit(target)
 		target:SetNWEntity("_ScrapBabyHooker", ply)
 		validTarget = true
 		
-		smoothLookAt(target, ply)
-		
 		if IsValid(ent) then
 			if ent.formTable.clawPlayerHit then
 				ent.formTable.clawPlayerHit(ply, ent, claw, target)
@@ -257,7 +253,7 @@ function SWEP:ClawHit(target)
 		
 		if IsValid(ent) then
 			if ent.formTable.clawEnvironmentHit then
-				ent.formTable.clawEnvironmentHit(ply, ent, target)
+				ent.formTable.clawEnvironmentHit(ply, ent, target, claw)
 			end
 		end
 	end
@@ -269,21 +265,23 @@ function SWEP:ClawHit(target)
 		end)
 	end
 	
-	if SERVER and self.LoopSoundBaby then
-		self.LoopSoundBaby:ChangePitch(77, 0.1)
-		self.LoopSoundBaby:ChangeVolume(0, 0.1)
+	if IsValid(claw) then
+		if SERVER and claw.LoopSoundBaby then
+			claw.LoopSoundBaby:ChangePitch(77, 0.1)
+			claw.LoopSoundBaby:ChangeVolume(0, 0.1)
+		end
 	end
 	
 	timer.Simple(0.1, function()
 		self:SetClawWait(false)
 		self:SetClawFlyingHome(true)
-	
-		if SERVER and self.LoopSoundBaby then
-			self.LoopSoundBaby:ChangePitch(100, 1.5)
-			self.LoopSoundBaby:ChangeVolume(1, .1)
-		end
 		
 		if IsValid(claw) then
+	
+			if SERVER and claw.LoopSoundBaby then
+				claw.LoopSoundBaby:ChangePitch(100, 1.5)
+				claw.LoopSoundBaby:ChangeVolume(1, .1)
+			end
 			self:HandleAnimation("pull", 25)
 			claw:SetGoHome(true)
 			
@@ -303,7 +301,7 @@ function SWEP:ClawHit(target)
 	end)
 end
 
-function SWEP:ClawBack(shake)
+function SWEP:ClawBack(claw, shake)
     self:HandleAnimation("return", -1, true)
 	
 	self.ProcessedHit = false
@@ -313,11 +311,6 @@ function SWEP:ClawBack(shake)
 	self:SetClawFlyingHome(false)
 	
 	self:SetClaw(NULL)
-	
-	if SERVER and self.LoopSoundBaby then
-		self.LoopSoundBaby:Stop()
-		self.LoopSoundBaby = nil
-	end
 	
     local ply = self:GetOwner()
 	
@@ -377,13 +370,13 @@ function SWEP:AskClawBack()
 	timer.Simple(0.1, function()
 		self:SetClawWait(false)
 		self:SetClawFlyingHome(true)
-	
-		if SERVER and self.LoopSoundBaby then
-			self.LoopSoundBaby:ChangePitch(100, 1.5)
-			self.LoopSoundBaby:ChangeVolume(1, .1)
-		end
 		
 		if IsValid(claw) then
+			if SERVER and claw.LoopSoundBaby then
+				claw.LoopSoundBaby:ChangePitch(100, 1.5)
+				claw.LoopSoundBaby:ChangeVolume(1, .1)
+			end
+			
 			self:HandleAnimation("pull", 25)
 			claw:SetGoHome(true)
 			
@@ -479,6 +472,28 @@ up_tr.collisiongroup = COLLISION_GROUP_PLAYER
 down_tr.mins = mins
 down_tr.maxs = maxs
 down_tr.collisiongroup = COLLISION_GROUP_PLAYER
+
+hook.Add( "PlayerSpawn", "reset_scrapbaby", function(ply)
+	ply:SetNW2Bool("_SBBlockInteract", false)
+	local suka = ply:GetNWEntity("_ScrapBabyHooker")
+	
+	timer.Remove("SmoothLookAt_"..ply:EntIndex())
+	
+	if IsValid(suka) then
+		ply:SetNWEntity("_ScrapBabyHooker", NULL)
+		
+		local wep = suka:GetActiveWeapon()
+		
+		if not IsValid(wep) then return end
+		if not wep.GetClaw then return end
+		
+		local claw = wep:GetClaw()
+		
+		if not IsValid(claw) then return end
+		
+		claw:Remove()
+	end
+end)
 
 hook.Add( "Move", "scrapbaby_move", function( ply, mv )
 	local suka = ply:GetNWEntity("_ScrapBabyHooker")

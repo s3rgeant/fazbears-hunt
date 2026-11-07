@@ -2,6 +2,7 @@
 {
 	"$basetexture" "models\djebrayass\CoolioArt\OldFreddy\shadowsuit2"
 	"$bumpmap" "models\djebrayass\CoolioArt\shared\bump"
+	//$lightwarptexture "models\lightwarp\closed"
 	
 	$surfaceprop metal
 
@@ -14,8 +15,5 @@
 	
 	"$rimlight" "1"
 	"$rimlightexponent" "50"
-	"$rimlightboost" ".05"	
-
-$halflambert 0
-$diffuseexp 1.5
+	"$rimlightboost" ".01"	
 }

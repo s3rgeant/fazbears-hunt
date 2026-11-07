@@ -81,8 +81,6 @@ function ENT:PhysicsCollide( data, physobj )
 		elseif data.HitNormal.x > 0 or data.HitNormal.x < 0 or data.HitNormal.y > 0 or data.HitNormal.y < 0 or data.HitNormal.z > 0 or data.HitNormal.z then
 			self:Remove()
 		end
-	elseif data.Speed > 400 then
-		self:Remove()
 	end
 end
 
@@ -106,6 +104,8 @@ if CLIENT then
 end
 
 local data = {}
+local clrW = Color(255,255,255,20)
+local clrB = Color(0,0,0,160)
 function JammerStunAnimatronic(ply, ent, attacker, jammer)
 	if !IsValid(ent) then return end
 	
@@ -150,7 +150,8 @@ function JammerStunAnimatronic(ply, ent, attacker, jammer)
 		net.Start("StunEffect_Shake")
 		net.Send(ply)
 	
-		ply:ScreenFade(SCREENFADE.IN, Color(255, 255, 255, 20), 2, 2)
+		local clr = ply:GetInfoNum("fh_dark_blindness", 1) == 1 and clrB or clrW
+		ply:ScreenFade(SCREENFADE.IN, clr, 2, 2)
 	end
 	
 	if !IsValid(ent) then

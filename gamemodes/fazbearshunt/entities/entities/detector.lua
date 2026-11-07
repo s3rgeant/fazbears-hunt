@@ -7,6 +7,9 @@ ENT.Spawnable = true
 ENT.AdminOnly = false
 
 ENT.List = {}
+ENT.WhiteList = {
+	["pill_wgfreddy2"] = true,
+}
 
 local LASER_SPRITE = "sprites/laserbeam.vmt"
 
@@ -94,23 +97,12 @@ function ENT:MakeBeam()
 		start = self:GetPos(),
 		endpos = self.m_vecEnd,
 		filter = self,
-		mask = MASK_SHOT
+		mask = MASK_SHOT,
+		collisiongroup = COLLISION_GROUP_PASSABLE_DOOR,
 	})
 	
 	self.m_flBeamLength = tr.Fraction
 	local drawLength = tr.Fraction
-	
-	local target = tr.Entity
-	
-	if IsValid(target) and target:IsPlayer() and target:IsAnimatronic() then
-		local tr2 = util.TraceLine({
-			start = self:GetPos(),
-			endpos = self.m_vecEnd,
-			filter = {self, target},
-			mask = MASK_SHOT
-		})
-		self.m_flBeamLength = tr2.Fraction
-	end
 	
 	local vecTmpEnd = self:GetPos() + self.m_vecDir * (2048 * drawLength)
 
@@ -136,7 +128,7 @@ function ENT:MakeBeam()
 
 	beam:SetKeyValue("texture", "sprites/laserbeam.vmt")
 	beam:SetKeyValue("rendercolor", "255 55 52")
-	beam:SetKeyValue("renderamt", "5")
+	beam:SetKeyValue("renderamt", "10")
 
 	beam:SetKeyValue("BoltWidth", "0.6")
 	beam:SetKeyValue("NoiseAmplitude", "0")
@@ -209,7 +201,7 @@ function ENT:BeamBreakThink()
 
     local isCharacter = IsValid(target) and target:IsPlayer() and target:IsAnimatronic()
 
-    if isCharacter and math.abs(self.m_flBeamLength - tr.Fraction) > 0.001 then
+    if isCharacter and not PlayerInOutworld(target) and math.abs(self.m_flBeamLength - tr.Fraction) > 0.001 then
 		if self.List[target] and CurTime() < self.List[target] then
 			self:NextThink(CurTime() + 0)
 			return
@@ -222,6 +214,13 @@ end
 
 function ENT:OnTakeDamage(dmginfo)
     if self:Health() <= 0 then return end
+	
+	local attacker = dmginfo:GetAttacker()
+	local owner = self:GetOwner()
+	
+	local isOwner = attacker == owner
+	
+	if attacker:IsPlayer() and attacker:IsSurvivor() and attacker ~= owner then return 0 end
 
     self:SetHealth(0)
     self:Event_Killed(dmginfo)

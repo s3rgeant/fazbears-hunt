@@ -2,7 +2,7 @@
 
 if DEVELOPER_MODE then return end
 
-local allowed_langs = {"ru", "en", "hu"}
+local allowed_langs = {"ru", "en"}
 
 local localized_voicelines_path = ""
 
@@ -122,6 +122,14 @@ local voicelines = {
         grab = generateVoicelines("tchica_grab", 4),
         release = generateVoicelines("tchica_release", 3),
         tasered = generateVoicelines("tchica_tasered", 4),
+    },
+	scrapbaby = {
+        kill = generateVoicelines("scrapbaby_kill", 5),
+        chase = generateVoicelines("scrapbaby_chase", 5),
+        negative = generateVoicelines("scrapbaby_negative", 3),
+        positive = generateVoicelines("scrapbaby_positive", 1),
+        tasered = generateVoicelines("scrapbaby_tasered", 4),
+        trip = generateVoicelines("scrapbaby_trip", 2),
     },
 }
 

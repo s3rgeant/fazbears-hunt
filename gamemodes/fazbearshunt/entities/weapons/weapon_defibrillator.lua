@@ -4,7 +4,6 @@ if SERVER then
 	util.AddNetworkString( "DefibrilatorMelee_NW" )
     util.AddNetworkString("DefibrilatorEffect")
 else -- CLIENT
-	SWEP.DrawWeaponInfoBox	= false
 	SWEP.BounceWeaponIcon	= false 
 
 	SWEP.WepSelectIcon = surface.GetTextureID( "weapons/defibrillator" )
@@ -18,15 +17,17 @@ else -- CLIENT
 end
 
 SWEP.PrintName = "#weapon_defibrillator"
+SWEP.Purpose = "#info_defibrillator"
 SWEP.Spawnable = true
-
-SWEP.Instructions = "Найди один из подсвеченных трупов, и возроди мёртвого."
 
 SWEP.Gifted = true
 
+local paddle_WM = "models/weapons/defib/w_eq_defibrillator_paddles.mdl"
+local def_WM = "models/weapons/defib/w_eq_defibrillator.mdl"
+
 --SWEP.ViewModelFOV = 75
 SWEP.ViewModel = "models/weapons/defib/v_defibrillator.mdl"
-SWEP.WorldModel = "models/weapons/defib/w_eq_defibrillator.mdl"
+SWEP.WorldModel = def_WM
 SWEP.ViewModelFlip = false
 SWEP.BobScale = 1
 SWEP.SwayScale = 1
@@ -41,37 +42,92 @@ SWEP.HoldType = "duel"
 SWEP.FiresUnderwater = true
 SWEP.DrawCrosshair = true
 SWEP.DrawAmmo = true
-SWEP.CSMuzzleFlashes = 1
-SWEP.Base = "weapon_base"
-SWEP.ShowViewModel = true
-SWEP.ShowWorldModel = false
 
-SWEP.Primary.ClipSize = 100
-SWEP.Primary.DefaultClip = 100
+SWEP.Primary.ClipSize = -1
+SWEP.Primary.DefaultClip = -1
 SWEP.Primary.Automatic = false
-SWEP.Primary.Ammo = "none"
+SWEP.Primary.Ammo = ""
 SWEP.Primary.Delay = 0.2
 
 SWEP.Secondary.ClipSize = -1
 SWEP.Secondary.DefaultClip = -1
 SWEP.Secondary.Automatic = true
-SWEP.Secondary.Ammo = "none"
+SWEP.Secondary.Ammo = ""
 SWEP.Secondary.Delay = 1
 
 SWEP.CalcMinimalViewModelView = Vector(10,0,-5)
 
+function SWEP:SetupDataTables()
+
+	self:NetworkVar( "Float", 1, "NextIdle" )
+	self:NetworkVar( "Bool", "Reviving" )
+	
+	if CLIENT then
+		self:NetworkVarNotify("Reviving", function(ent, name, old, new)
+			if new then
+				local owner = self:GetOwner()
+				local myself = LocalPlayer()
+				
+				if not IsValid(myself) then return end
+				
+				local obsTarget = myself:GetObserverTarget()
+				
+				if owner == myself or owner == obsTarget then
+				
+					fh.AddProgress(self, 5, function()
+						if not self:GetReviving() then
+							return true
+						end
+						
+						if owner ~= myself and (not IsValid(obsTarget) or obsTarget ~= myself:GetObserverTarget()) then
+							return true
+						end
+					end)
+					
+				end
+			end
+		end)
+	end
+	
+end
+
 function SWEP:Initialize()
-	self:SetWeaponHoldType( self.HoldType )
 	self:SetHoldType( self.HoldType )
 	self.Incm = 75
-	if !IsValid(self.Owner) then
-		self.WorldModel = "models/weapons/defib/w_eq_defibrillator.mdl"
+	
+	if !IsValid( self:GetOwner() ) then
+		self.WorldModel = def_WM
 	else
-		self.WorldModel = "models/weapons/defib/w_eq_defibrillator_paddles.mdl"
+		self.WorldModel = paddle_WM
 	end
 	
 	self.Idle = 0
 	self.IdleTimer = CurTime() + 1
+end
+
+function SWEP:OwnerChanged()
+    local owner = self:GetOwner()
+    
+    if !IsValid( owner ) then
+        self.WorldModel = def_WM
+        self:SetModel( def_WM )
+        
+        self:PhysicsInit( SOLID_VPHYSICS )
+        self:SetSolid( SOLID_VPHYSICS )
+        self:SetMoveType( MOVETYPE_VPHYSICS )
+        
+        self:SetParent( nil )
+        
+        local phys = self:GetPhysicsObject()
+        if IsValid( phys ) then
+            phys:Wake()
+        end
+        
+        self:SetCollisionGroup( COLLISION_GROUP_WEAPON )
+    else
+        self.WorldModel = paddle_WM
+        self:SetModel( paddle_WM )
+    end
 end
 
 local BeingRevived = {}
@@ -95,9 +151,9 @@ function SWEP:Think()
 		end
 		self.Idle = 1
 	end
-    if self.Reviving then
+    if self:GetReviving() then
         if !IsValid(self.ReviveTarget) or (IsValid(self.ReviveTarget) and IsValid(self.ReviveTarget:GetOwner()) and self.ReviveTarget:GetOwner():Alive()) or !owner:KeyDown(IN_ATTACK) or owner:GetPos():Distance(self.ReviveTarget:GetPos()) > 77 then
-            self.Reviving = false
+            self:SetReviving(false)
             self.ReviveStartTime = 0
             self.ReviveTarget = nil
             self.OldPos = nil
@@ -142,7 +198,7 @@ function SWEP:Think()
                     self.ReviveSound:Stop()
                 end
 
-                owner:EmitSound("defibl/charged.wav", 75, 100)
+                owner:EmitSound(")defibl/charged.wav", 75, 100)
                 self:SetClip1(100)
 
                 local ply = v:GetCreator()
@@ -152,6 +208,15 @@ function SWEP:Think()
 					ply:RemoveRagdoll()
                     ply:SetPos(oldpos)	
 					ply:SetTeam(TEAM_SURVIVOR)
+					
+					ply:GodEnable()
+					ply:GodEffects()
+					
+					timer.Simple(3, function()
+						if IsValid(ply) then
+							ply:GodDisable()
+						end
+					end)
 					
 					if ply.CrouchedBeforeDeath then
 						ply:Crouch()
@@ -181,7 +246,7 @@ function SWEP:Think()
                 end)
             end
 
-            self.Reviving = false
+            self:SetReviving(false)
             self.ReviveStartTime = 0
             self.ReviveTarget = nil
             self.OldPos = nil
@@ -201,12 +266,11 @@ function SWEP:Think()
     end
 end
 
-SWEP.Reviving = false
 SWEP.ReviveStartTime = 0
 SWEP.ReviveTarget = nil
 SWEP.ReviveSound = nil
 function SWEP:PrimaryAttack()
-	if self.Reviving then return end
+	if self:GetReviving() then return end
 	
 	local owner = self:GetOwner()
 	
@@ -233,7 +297,7 @@ function SWEP:PrimaryAttack()
 	if IsValid(tr.Entity) then
 		for k, v in pairs(ents.FindInSphere(owner:GetShootPos(), 70)) do
 			if v:GetClass() == 'prop_ragdoll' and IsValid(v:GetOwner()) and !v:GetOwner():Alive() then
-				self.Reviving = true
+				self:SetReviving(true)
 				self.ReviveStartTime = CurTime()
 				self.ReviveTarget = v
 				self.OldPos = v:GetPos()
@@ -252,7 +316,7 @@ function SWEP:PrimaryAttack()
 				spark:Fire("kill", "", 0.1)
 	
 				if not self.ReviveSound then
-					self.ReviveSound = CreateSound(owner, "defibl/defibrillator_use_start.wav")
+					self.ReviveSound = CreateSound(owner, ")defibl/defibrillator_use_start.wav")
 				end
 				self.ReviveSound:Play()
 	
@@ -308,14 +372,14 @@ function SWEP:SecondaryAttack()
 		dmginfo:SetDamage(5)
 			
 		if tr.Hit and (tr.Entity:IsPlayer() || tr.Entity:IsNPC() || tr.Entity:GetClass() == "prop_ragdoll") then
-			self.Owner:EmitSound( "player/survivor/hit/rifle_swing_hit_infected" .. math.random(7, 12) .. ".wav")
+			self.Owner:EmitSound( ")player/survivor/hit/rifle_swing_hit_infected" .. math.random(7, 12) .. ".wav")
 			dmginfo:SetDamageForce(force)
 			SuppressHostEvents( NULL )
 			tr.Entity:TakeDamageInfo( dmginfo )
 			SuppressHostEvents( self.Owner )
 			tr.Entity:SetVelocity(Vector(force.x,force.y,10))
 		elseif tr.Hit then
-			self.Owner:EmitSound( "player/survivor/hit/rifle_swing_hit_world.wav")
+			self.Owner:EmitSound( ")player/survivor/hit/rifle_swing_hit_world.wav")
 			if IsValid(tr.Entity) then
 				dmginfo:SetDamageForce(force/100)
 				SuppressHostEvents( NULL )
@@ -323,7 +387,7 @@ function SWEP:SecondaryAttack()
 				SuppressHostEvents( self.Owner )
 			end
 		else
-			self.Owner:EmitSound( "weapons/bat/bat_swing_miss" .. math.random(1, 2) .. ".wav")
+			self.Owner:EmitSound( ")weapons/bat/bat_swing_miss" .. math.random(1, 2) .. ".wav")
 		end
 		net.Start( "DefibrilatorMelee_NW" )
 		net.WriteEntity( self.Owner )
@@ -357,7 +421,7 @@ function SWEP:Deploy()
 	self.WorldModel = "models/weapons/defib/w_eq_defibrillator_paddles.mdl"
 	self:SetModel("models/weapons/defib/w_eq_defibrillator_paddles.mdl")
 	self.Incm = 75
-	self:EmitSound("defibl/deploy.wav",60)
+	self:EmitSound(")defibl/deploy.wav",60)
 	self:SendWeaponAnim(ACT_VM_DEPLOY)
 	
 	self.Idle = 0

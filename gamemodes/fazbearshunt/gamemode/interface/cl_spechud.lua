@@ -1,4 +1,5 @@
 local playerSpecName
+local specbar = Material("vgui/base/specbar.png")
 
 local function DrawDeadHUD()
 	if not GetConVar("cl_drawhud"):GetBool() then return end
@@ -34,8 +35,8 @@ local function DrawDeadHUD()
     local x = (ScrW() / 2) - (330 / 2)
     local y = ScrH() - (100 / 2) - 78
 	
-	surface.SetDrawColor(255, 255, 255, 250)
-	surface.SetMaterial(Material("vgui/spectator/window.png"))
+	surface.SetDrawColor(255, 255, 255, 255)
+	surface.SetMaterial(specbar)
 	surface.DrawTexturedRect(ScrW() / 2 - 200, ScrH() - (100 * 1.2), 400, 100)
 	
     draw.SimpleText(language.SafeGetPhrase("fazhunt.spectating") .. ":", "timerFontUpper", ScrW() / 2, y + 29, Color(202, 125, 0), TEXT_ALIGN_CENTER, TEXT_ALIGN_CENTER)
@@ -80,6 +81,7 @@ end
 
 net.Receive("DeadHUDEnable", function()
 	hook.Add("HUDPaint", "DrawDead", DrawDeadHUD)
+	hook.Add("FH_PreDrawHud", "spec_disable", function() return true end)
 	hook.Remove("HUDPaint", "fh_pt_draw_affected")
 end)
 
@@ -108,6 +110,7 @@ end)
 
 net.Receive("DeadHUDDisable", function()
 	hook.Remove("HUDPaint", "DrawDead")
+	hook.Remove("FH_PreDrawHud", "spec_disable")
 	hook.Remove("HUDPaint", "hud_fh_request")
 	playerSpecName = nil
 	

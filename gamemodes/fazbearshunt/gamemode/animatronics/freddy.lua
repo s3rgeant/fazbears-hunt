@@ -196,11 +196,6 @@ FREDDY.attack={
 		if IsValid(ply:GetEntityInUse()) then return end
 		local target = FindNearestPlayer(ply:EyePos(), 125, ply, 36)
 		
-		if stalkers[ply] and !stalkTargets[target] then 
-			AnimatronicBreakProp(ply, ent)
-			return 
-		end
-		
 		local jumpscare = performJumpscare(ply, ent, target, 1.6, "freddy", 50, "v_freddy")
 		
 		if !IsValid(target) or !jumpscare then 
@@ -226,7 +221,7 @@ FREDDY.reload=function(ply,ent)
 end
 
 FREDDY.land=function(ply,ent)
-	if ent.anim ~= 'stalk' and IsGoodLandConditions(ply, ent) then
+	if ent.anim ~= 'stalk' and AreLandConditionsGood(ply, ent) then
 		ent:PillAnim("land",true)
 	end
 	landTripCheck(ply, ent, "freddy")
@@ -391,7 +386,7 @@ function startBlindRage(ply, ent, succFunc, endFunc)
 						stats.Add(target, "evaded_blind_rage", 1)
 					end
 
-					cooldown.Set(ply, "blindrage", 40)
+					cooldown.Set(ply, "blindrage", 30)
 					cooldown.Send(ply, "blindrage")
 					
 					hook.Run("FH_BlindRageFailed", ply, ent, target)
@@ -585,6 +580,13 @@ hook.Add("PlayerUse", "AccurateBlockedDoorUse", function(ply, ent)
     return false
 end)
 
+hook.Add( "FH_PlayerShouldJumpscare", "blindrage", function(ply, ent, target)
+	local brTarget = stalkers[ply]
+	if brTarget and brTarget ~= target then
+		return false
+	end
+end)
+
 hook.Add( "AcceptInput", "fh_door_input", function( ent, name, activator, caller, data )
 	local class = ent:GetClass()
 	if class == "func_door" or class == "func_door_rotating" or class == "prop_door_rotating" then
@@ -762,6 +764,12 @@ if SERVER then
 	hook.Add("FH_OutworldStart", "cancel_freddy_rage", function(wgfreddy, victim)
 		if stalkTargets[victim] then
 			noMoreStalk(stalkTargets[victim])
+		end
+	end)
+	
+	hook.Add("PillApply", "cancel_freddy_rage", function(ply, ent)
+		if stalkTargets[ply] then
+			noMoreStalk(stalkTargets[ply])
 		end
 	end)
 	

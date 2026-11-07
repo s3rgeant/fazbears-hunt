@@ -2,7 +2,7 @@
 AddCSLuaFile()
 
 SWEP.PrintName = "#weapon_detector"
-SWEP.DrawWeaponInfoBox = false
+SWEP.Purpose = "#info_detector"
 
 SWEP.Slot = 3
 SWEP.SlotPos = 3
@@ -16,8 +16,8 @@ SWEP.WorldModel = Model( "models/fh/weapons/w_detector.mdl" )
 SWEP.ViewModelFOV = 54
 SWEP.UseHands = true
 
-SWEP.Primary.ClipSize = 15
-SWEP.Primary.DefaultClip = SWEP.Primary.ClipSize
+SWEP.Primary.ClipSize = -1
+SWEP.Primary.DefaultClip = -1
 SWEP.Primary.Automatic = false
 SWEP.Primary.Ammo = ""
 
