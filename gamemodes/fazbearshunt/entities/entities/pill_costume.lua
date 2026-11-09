@@ -1196,6 +1196,8 @@ if SERVER then return end
 
 ENT.IsDrawn = true
 
+--local black = Material("black_outline")
+--local overlayMat = Material("models/fh/unknown/unknown_effect")
 function ENT:Draw()
 	local ply = self:GetPillUser()
 	

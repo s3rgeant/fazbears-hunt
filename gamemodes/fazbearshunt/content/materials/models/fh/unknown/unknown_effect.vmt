@@ -1,0 +1,19 @@
+"UnlitTwoTexture"
+{
+	"$basetexture" "models/fh/unknown/unknown"
+	"$texture2" "models/fh/unknown/unknown_veins"
+ 	"$model" 1
+	"$nocull" "1"
+	"$additive" "1"
+	"Proxies"
+	{
+
+		"TextureScroll"
+		{
+			"texturescrollvar" "$texture2transform"
+			"texturescrollrate" -.2
+			"texturescrollangle" 60
+		}
+	}
+
+}

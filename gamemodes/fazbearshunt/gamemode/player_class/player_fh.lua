@@ -75,7 +75,14 @@ end
 function PLAYER:SetModel()
 	local ply = self.Player
 	local cl_playermodel = ply:GetInfo( "cl_playermodel" )
+	
+	if not player_editor.PassesModelStriction(cl_playermodel, ply) then
+		cl_playermodel = ""
+	end
+	
 	local modelname = player_manager.TranslatePlayerModel( cl_playermodel )
+	
+	
 	util.PrecacheModel( modelname )
 	ply:SetModel( modelname )
 

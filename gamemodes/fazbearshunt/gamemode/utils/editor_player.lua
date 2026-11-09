@@ -1,3 +1,57 @@
+player_editor = player_editor or {}
+
+local strictedModels = {}
+
+local strictedByUserGroup = {}
+local strictedBySteamID64 = {}
+
+-- getters
+function player_editor.PassesModelStriction(model, ply)
+	if not strictedModels[model] then return true end
+	
+	if strictedByUserGroup[model] and strictedByUserGroup[model][ply:GetUserGroup()] then return true end
+	if strictedBySteamID64[model] and strictedBySteamID64[model][ply:SteamID64()] then return true end
+	return false
+end
+
+function player_editor.PassesModelStrictionByUserGroup(model, ply)
+	if not strictedModels[model] then return true end
+	
+	local group = ply:GetUserGroup()
+	
+	if strictedByUserGroup[model][group] then return true end
+	return false
+end
+
+function player_editor.PassesModelStrictionBySteamID64(model, ply)
+	if not strictedModels[model] then return true end
+	
+	local id = ply:SteamID64()
+	
+	if strictedBySteamID64[model][id] then return true end
+	return false
+end
+
+
+-- setters
+function player_editor.StrictModelByUserGroup(model, usergroup)
+	if not strictedModels[model] then strictedModels[model] = {} end
+	if not strictedByUserGroup[model] then strictedByUserGroup[model] = {} end
+	strictedModels[model][usergroup] = true
+	strictedByUserGroup[model][usergroup] = true
+end
+
+function player_editor.StrictModelBySteamID64(model, id)
+	if not strictedModels[model] then strictedModels[model] = {} end
+	if not strictedBySteamID64[model] then strictedBySteamID64[model] = {} end
+	strictedModels[model] = true
+	strictedBySteamID64[model][id] = true
+end
+
+function player_editor.UnstrictModel(model)
+	strictedModels[model] = nil
+	strictedBySteamID64[model] = nil
+end
 
 if ( SERVER ) then 
 	AddCSLuaFile() 
@@ -18,12 +72,14 @@ if ( SERVER ) then
 		waitboys[ply] = CurTime()
 		
 		if isstring(mdlName) and mdlName:len() > 0 then
-			if !ply:IsAnimatronic() then
-				local modelPath = player_manager.TranslatePlayerModel(mdlName)
-			
-				ply:SetModel(modelPath)
-				ply:SetPlayerColor(clr)
-				ply:SetupHands()
+			if player_editor.PassesModelStriction(mdlName, ply) then
+				if !ply:IsAnimatronic() then
+					local modelPath = player_manager.TranslatePlayerModel(mdlName)
+				
+					ply:SetModel(modelPath)
+					ply:SetPlayerColor(clr)
+					ply:SetupHands()
+				end
 			end
 		end
 	end)
@@ -127,6 +183,7 @@ list.Set( "DesktopWindows", "PlayerEditor", {
 			table.insert( cateorized[ catName ], { title = language.GetPhrase( info.title ), model = info.model, name = name } )
 		end
 
+		local myself = LocalPlayer()
 		for catName, items in SortedPairs( cateorized ) do
 
 			local label = vgui.Create( "DLabel" )
@@ -141,11 +198,17 @@ list.Set( "DesktopWindows", "PlayerEditor", {
 
 			for _, info in SortedPairsByMemberValue( items, "title" ) do
 
+				local name = info.name
+				local sID64 = myself:SteamID64()
+				local isBlocked = strictedBySteamID64[name] and !strictedBySteamID64[name][sID64] or strictedByUserGroup[name] and !strictedByUserGroup[name][myself:GetUserGroup()]
+
+				if isBlocked then continue end
+
 				local icon = vgui.Create( "SpawnIcon" )
 				icon:SetModel( info.model )
 				icon:SetSize( 64, 64 )
 				icon:SetTooltip( info.title )
-				icon.playermodel = info.name
+				icon.playermodel = name
 				icon.model_path = info.model
 				icon.OpenMenu = function( button )
 					local menu = DermaMenu()
@@ -153,7 +216,7 @@ list.Set( "DesktopWindows", "PlayerEditor", {
 					menu:Open()
 				end
 
-				PanelSelect:AddPanel( icon, { cl_playermodel = info.name } )
+				PanelSelect:AddPanel( icon, { cl_playermodel = name } )
 
 			end
 

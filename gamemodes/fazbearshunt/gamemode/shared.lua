@@ -7,13 +7,14 @@ GM.Author = "sergeant"
 GM.Email = "N/A"
 GM.Website = "N/A"
 
+local color_fazbearshunt = Color(238, 49, 49)
 local fh_version = "5.0.0"
 
 function fh.GetVersion()
     return fh_version
 end
 
-DEVELOPER_MODE = false
+DEVELOPER_MODE = true
 
 --DeriveGamemode("sandbox")
 

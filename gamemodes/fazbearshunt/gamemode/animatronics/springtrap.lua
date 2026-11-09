@@ -22,8 +22,8 @@ end
 
 local SPRINGTRAP_RAGE_HL_COLOR = Color(66,150,0)
 
-local ptrap_life_time = 90
-local ptrap_summon_cd = 45
+local ptrap_life_time = 80
+local ptrap_summon_cd = 40
 	
 local pt_request_springtrap_ply = nil
 local request_plushtrap = nil
@@ -246,9 +246,9 @@ pills.register("pill_springtrap",{
 		net.Start("fh_play_sound")
 		net.WriteString("fnaf3/spr_rage_affected.wav")
 		net.Send(target)
-			
+		
 		net.Start("fh_play_sound")
-		net.WriteString('fnaf3/springtrap_rage_warning.mp3')
+		net.WriteString("fnaf3/springtrap_rage_global.mp3")
 		net.SendOmit({ply, target})
 		
 		timer.Create(tName, 20, 1, function()
@@ -303,7 +303,7 @@ pills.register("pill_springtrap",{
 		
 			if !ply:OnGround() or IsValid(pt_request_springtrap_ply) or IsValid(request_plushtrap) then return end
 	
-			if cooldown.Exists("summon") then return end
+			if cooldown.Exists(ply, "summon") then return end
 			
 			local spectators = team.GetPlayers(TEAM_SPECTATOR)
 			local noSpecs = table.Count(spectators) <= 0

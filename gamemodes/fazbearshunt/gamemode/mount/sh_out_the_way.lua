@@ -19,7 +19,7 @@ hook.Add("SetupMove", "fh_outtheway", function(ply, mv, cmd)
 
 	local vel = mv:GetVelocity()
 	local vellen = vel:Length()
-	if vellen > ply:GetRunSpeed() * .85 and vel.z > -300 or (ply:IsSprinting() and not ply:Crouching()) then
+	if (vellen > ply:GetRunSpeed() * .85 or (ply:IsSprinting() and not ply:Crouching())) and vel.z > -300 then
 		local origin = mv:GetOrigin()
 		
 		local dir = vel:GetNormalized()
@@ -69,7 +69,7 @@ hook.Add("SetupMove", "fh_outtheway", function(ply, mv, cmd)
 				local dir = (target:EyePos() - ply:EyePos()):Angle()
 				
 				local diff = math.AngleDifference(dir.y, ply:EyeAngles().y)
-				diff = math.Clamp(diff, .2, -.2)
+				diff = math.Clamp(diff, .5, -.5)
 				ply:ViewPunch(Angle(0, diff, 0))
 			end
 		end

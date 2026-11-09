@@ -188,7 +188,7 @@ net.Receive("fox_request_complete", function(len, ply)
 	
 	if IsValid(foxPly) and !IsValid(foxPlayerReq) then
 		if foxPly:Alive() then
-			giveKiller(foxPly, "fox4", true)
+			GiveKiller(foxPly, "fox4", true)
 			foxPlayerReq = foxPly
 		else
 			net.Start("fh_play_sound")

@@ -191,7 +191,7 @@ function DrawKillerInterface()
 				
 					surface.SetMaterial(gradient)
 					surface.SetDrawColor(color)
-					surface.DrawTexturedRect(abilityX, abilityY, abil_bg_width, grad_h)
+					surface.DrawTexturedRect(abilityX, abilityY, abil_bg_width, grad_h * uiScale)
 				end
 			end
 
@@ -790,7 +790,7 @@ net.Receive("fh_net_thinkfast", function()
 	
 	timer.Simple(1.2, function() 
 		local myself = LocalPlayer()
-		myself:ScreenFade( SCREENFADE.IN, Color( 255, 255, 255, 255 ), 2, 2 )
+		myself:ScreenFade( SCREENFADE.IN, GetConVar("fh_dark_blindness"):GetBool() and color_black or color_white, 2, 2 )
 		myself:SetDSP(35, false)
 		
 		hook.Remove("HUDPaint", "fh_thinkfast")

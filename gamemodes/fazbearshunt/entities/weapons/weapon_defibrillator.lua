@@ -209,14 +209,16 @@ function SWEP:Think()
                     ply:SetPos(oldpos)	
 					ply:SetTeam(TEAM_SURVIVOR)
 					
-					ply:GodEnable()
-					ply:GodEffects()
-					
-					timer.Simple(3, function()
-						if IsValid(ply) then
-							ply:GodDisable()
-						end
-					end)
+					if isGameOn and not roundEnding then
+						ply:GodEnable()
+						ply:GodEffects()
+						
+						timer.Simple(3, function()
+							if IsValid(ply) then
+								ply:GodDisable()
+							end
+						end)
+					end
 					
 					if ply.CrouchedBeforeDeath then
 						ply:Crouch()

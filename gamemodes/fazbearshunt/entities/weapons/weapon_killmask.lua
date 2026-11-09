@@ -241,6 +241,8 @@ model.RenderOverride = function(self, flags)
 	if not IsValid( parent ) or parent:IsDormant() or (parent == myself and not myself:ShouldDrawLocalPlayer()) then return end
 	if IsValid( parent ) and not self:GetParent():GetNW2Bool("KillerMaskEquiped") then self:SetParent() return end
 	if myself:GetObserverMode() == OBS_MODE_IN_EYE and myself:GetObserverTarget() == parent then return end
+	if parent.LastRender ~= FrameNumber() then return end
+	
 	self:DrawModel()
 end
 
@@ -277,6 +279,7 @@ hook.Add("PostPlayerDraw", "fh_draw_killmask", function(ply)
 	model:SetRenderAngles(ang)
 	model:SetupBones()
 	model:DrawModel()
+	ply.LastRender = FrameNumber()
 end)
 
 function SWEP:DrawWorldModel( flags )
@@ -290,7 +293,7 @@ function SWEP:TranslateActivity( act )
 	local ply = self:GetOwner()
 
 	if ply:IsNPC() then
-		if ( self.ActivityTranslateAI[ act ] ) then
+		if self.ActivityTranslateAI[ act ] then
 			return self.ActivityTranslateAI[ act ]
 		end
 		return -1
@@ -304,7 +307,7 @@ function SWEP:TranslateActivity( act )
 		end
 	end
 
-	if ( self.ActivityTranslate[ act ] != nil ) then
+	if self.ActivityTranslate[ act ] != nil then
 		return self.ActivityTranslate[ act ]
 	end
 

@@ -976,37 +976,37 @@ hook.Add("FH_AnimatronicsLoaded", "endo02_abilities", function()
 						if ply:IsStuck() then
 							ply:SetPos(ply:GetPos() + Vector(0,0,.01))
 						end
-						
-						if ply:IsStuck() then
-							ply:SetCollisionGroup(COLLISION_GROUP_PLAYER)
-							ply:NoPlayerCollide(0.25)
-
-							local wep = ply:GetActiveWeapon()
-							if IsValid(wep) and wep.HandleAnimation then
-								wep:HandleAnimation("draw", 0.5)
-							end
-							
-							ply:DrawViewModel(true)
-							ply:SetPushBlocked(false)
-							ply:EmitSound("sfreddyout.mp3")
-							
-							ent.cloaked=false
-							ent:ToggleCloak()
-	
-							hook.Run("FH_SFreddySubmergeOut", ply, ent)
-								
-							timer.Remove("ext" .. ply:EntIndex())
-									
-							ply:SetMoveType( MOVETYPE_WALK )
-							
-							ent:SetMaterial()
-							ent:DrawShadow(true)
-							
-							MsgC( Color( 255, 0, 0 ), "Endo somehow got stuck -" .. ply:Nick() .. " (Shadow Freddy Submerge, " .. game.GetMap() .. tostring(ply:GetPos()) ")", "\n" ) 
-						end
 					end
 				end
 				ShadowFreddySubmerge_Force(ply, ent)
+				
+				if ent.cloaked then
+					ply:SetCollisionGroup(COLLISION_GROUP_PLAYER)
+					ply:NoPlayerCollide(0.25)
+
+					local wep = ply:GetActiveWeapon()
+					if IsValid(wep) and wep.HandleAnimation then
+						wep:HandleAnimation("draw", 0.5)
+					end
+					
+					ply:DrawViewModel(true)
+					ply:SetPushBlocked(false)
+					ply:EmitSound("sfreddyout.mp3")
+					
+					ent.cloaked=false
+					ent:ToggleCloak()
+
+					hook.Run("FH_SFreddySubmergeOut", ply, ent)
+						
+					timer.Remove("ext" .. ply:EntIndex())
+							
+					ply:SetMoveType( MOVETYPE_WALK )
+					
+					ent:SetMaterial()
+					ent:DrawShadow(true)
+					
+					MsgC( Color( 255, 0, 0 ), "Endo somehow got stuck -" .. ply:Nick() .. " (Shadow Freddy Submerge, " .. game.GetMap() .. tostring(ply:GetPos()) ")", "\n" )
+				end
 			end
 			ent:SetDefaultSpeed()
 		end
@@ -1084,6 +1084,10 @@ hook.Add("FH_AnimatronicsLoaded", "endo02_abilities", function()
 		
 		-- endFunc
 		function(ply, ent)
+			ply:SetFoxyRushing(false)
+			ply:SetFoxyBouncing(false)
+			ply:SetFoxyBlockM1(false)
+			
 			player_manager.SetPlayerClass(ply, "player_fh")
 			
 			ent:SetBodygroup(14, 0)
@@ -1101,6 +1105,72 @@ hook.Add("FH_AnimatronicsLoaded", "endo02_abilities", function()
 			ply:StripWeapon("v_foxy")
 		end
 	)
+	
+	--[[
+	endo.RegisterAbility("", "pill_clown", 
+		function(...) end, 
+		
+		-- attack2
+		function(...) end, 
+		
+		-- reload
+		function(...)
+			highlight.ByDistance(...)
+		end, 
+		
+		-- startFunc
+		function(ply, ent)
+			--ent:PillGesture("equip_rightarm", 3, 1, .15, .3)
+			
+			local fwep = ents.Create("v_clown")
+			fwep.ViewModel = "models/fh/animatronics/thudner_mountroid/vm/endo02.mdl"
+			fwep:Spawn()
+			
+			ply:SetSuppressPickupNotices(true)
+			ply:PickupWeapon(fwep)
+			ply:SelectWeapon("v_clown")
+			ply:SetSuppressPickupNotices(false)
+
+			ply:SprintDisable()
+
+			local wep = ply:GetActiveWeapon()
+			if IsValid(wep) and wep.HandleAnimation then
+				wep:HandleAnimation("holster", 1.2)
+			end
+			
+			timer.Simple(.6, function()
+				if not IsValid(ent) then return end
+				ent:SetBodygroup(14, 1)
+				ent:SetBodygroup(5, 1)
+				ply:SprintEnable()
+			
+				local vm = ply:GetViewModel()
+				if IsValid(vm) then
+					vm:SetBodygroup(1, 1)
+					vm:SetBodygroup(3, 1)
+				end
+			end)
+		end,
+		
+		-- endFunc
+		function(ply, ent)
+			
+			ent:SetBodygroup(14, 0)
+			ent:SetBodygroup(5, 0)
+			
+			local vm = ply:GetViewModel()
+			if IsValid(vm) then
+				vm:SetBodygroup(1, 0)
+				vm:SetBodygroup(3, 0)
+			end
+			
+			if ply:HasWeapon("v_endo") then
+				ply:SelectWeapon("v_endo")
+			end
+			ply:StripWeapon("v_clown")
+		end
+	)
+	]]--
 end)
 
 if CLIENT then

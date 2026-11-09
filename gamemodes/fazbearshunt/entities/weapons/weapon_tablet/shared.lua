@@ -199,11 +199,7 @@ function SWEP:DrainEnergy()
 				self:SetEnergy( 0 )
 				self:SetNextEnergyDrain(0)
 				
-				if self:GetIsFullView() then
-					self:SendWeaponAnim( ACT_VM_HOLSTER_EMPTY )
-				else 
-					self:SendWeaponAnim( ACT_VM_HOLSTER )
-				end
+				self:SendWeaponAnim( ACT_VM_HOLSTER )
 
 				self:EmitSoundPredicted("weapons/ca_tablet/holster.wav",75,100,0.8)
 

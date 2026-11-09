@@ -209,7 +209,7 @@ end
 highlight.AddVisionSounds("pill_springtrap", "fnaf3/spr_vision_affected.wav", "fnaf3/spr_vision_unaffected.wav")
 highlight.AddVisionSounds("pill_sfreddy2", "shadow_affected_vision.wav", "vision_unaffected.wav")
 
-function highlight.GetVisionSound(ent)
+function highlight.GetVisionSounds(ent)
 	if IsValid(ent) then 
 		local name = ent.formTable.name
 		
@@ -221,7 +221,7 @@ function highlight.GetVisionSound(ent)
 end
 
 function highlight.NotifyTarget(target, ent, isAffected)
-	local sound_to_play = highlight.GetVisionSound(ent)
+	local sound_to_play = highlight.GetVisionSounds(ent)
 	if !conVars.fh_silent_highlight:GetBool() then
 		net.Start("PlayHighlightSounds") -- всем остальным кидаем звук прикольный
 		net.WriteBool( isAffected )

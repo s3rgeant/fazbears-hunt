@@ -472,7 +472,7 @@ function successStalk(ply, ent, target)
 			net.Start("notify_freddys_victim")
 			net.Send(target)
 		end
-			
+		
 		net.Start("fh_play_sound")
 		net.WriteString('freddy_rage_warning.wav')
 		net.SendOmit({ply, target})
@@ -758,6 +758,12 @@ if SERVER then
 	hook.Add( "OnNPCKilled", "npc_death_blindrage", function( npc, attacker, inflictor )
 		if stalkTargets[npc] then
 			noMoreStalk(stalkTargets[npc])
+		end
+	end)
+	
+	hook.Add("CanPlayerSuicide", "freddy_rage", function(ply)
+		if stalkTargets[ply] then
+			return false
 		end
 	end)
 	

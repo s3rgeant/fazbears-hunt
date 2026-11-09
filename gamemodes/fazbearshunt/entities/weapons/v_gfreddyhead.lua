@@ -205,8 +205,8 @@ function SWEP:DashMove(ply, mv)
 			mv:SetVelocity(normal * 450)
 			self:StopDash(ply)
 	
-			cooldown.SetSend(ply, "recklessram", 35)
-			self:SetNextSecondaryFire(CurTime() + 35)
+			cooldown.SetSend(ply, "recklessram", 30)
+			self:SetNextSecondaryFire(CurTime() + 30)
 			return
 		end
 	end

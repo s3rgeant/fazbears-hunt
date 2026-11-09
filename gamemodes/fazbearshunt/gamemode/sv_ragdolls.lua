@@ -27,8 +27,6 @@ function meta:CreateRagdoll()
 	local ply_col = self:GetColor()
 	local ply_mat = self:GetMaterial()
 	
-	print(self:LastHitGroup())
-	
 	local playerModelIsRagdoll = self:GetBoneCount() > 1
 
 	local ent

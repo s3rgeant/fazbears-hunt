@@ -914,6 +914,7 @@ if PLAYER then
 	end
 end
 
+--[[
 hook.Add("PostPlayerDeath", "fh_killmask_outworld", function()
 	if isGameOn and !roundEnding and table.Count(survivors) == 1 and table.Count(animatronics) == 1 then
 		local goldenfreddy = fh.GetActiveUsedKiller("pill_wgfreddy2")
@@ -936,6 +937,7 @@ hook.Add("PostPlayerDeath", "fh_killmask_outworld", function()
 		end
 	end
 end)
+]]--
 
 hook.Add("EntityTakeDamage", "fh_anti_animatronic_death", function(target, dmginfo)
 	if conVars.fh_respawn_dead_animatronics:GetBool() then

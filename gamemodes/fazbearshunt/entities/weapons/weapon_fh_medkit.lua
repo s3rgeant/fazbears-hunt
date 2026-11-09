@@ -7,7 +7,6 @@ SWEP.Slot = 2
 SWEP.SlotPos = 2
 
 if CLIENT then
-	SWEP.DrawWeaponInfoBox	= false
 	SWEP.BounceWeaponIcon	= false 
 end
 

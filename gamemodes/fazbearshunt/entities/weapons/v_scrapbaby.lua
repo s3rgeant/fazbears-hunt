@@ -342,6 +342,8 @@ function SWEP:Think()
         self:ClawBack()
 		local ent = self:GetPillCostume()
 		
+		self:SetNextSecondaryFire(curtime + 0.3)
+		
 		if SERVER and IsValid(ent) then
 			ent:PillStopGesture("aim", .3, "InOutSine")
 			ent:PillStopGesture("aimL", .3, "InOutSine")
@@ -366,6 +368,13 @@ function SWEP:AskClawBack()
 	end
 	
 	local claw = self:GetClaw()
+	
+	if IsValid(claw) then
+		if SERVER and claw.LoopSoundBaby then
+			claw.LoopSoundBaby:ChangePitch(77, 0)
+			claw.LoopSoundBaby:ChangeVolume(0, 0)
+		end
+	end
 	
 	timer.Simple(0.1, function()
 		self:SetClawWait(false)

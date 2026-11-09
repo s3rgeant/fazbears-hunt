@@ -33,6 +33,7 @@ if SERVER then
 	
 	util.AddNetworkString("cl_target_wgfreddy_scared")
 	util.AddNetworkString("wgfreddy_second_ambience")
+	util.AddNetworkString("wgfreddy_plushie_hint")
 	
 	util.PrecacheModel("models/speps/pill/oldgoldenfreddy.mdl")
 	util.PrecacheModel("models/speps/pill/oldgoldenfreddyhead.mdl")
@@ -737,10 +738,18 @@ local function cancel_outworld_wgfreddy(ply)
 	net.Start("fh_wgfreddy_outworld_stop")
 	net.Send(ply)
 	
-	ply:SetNWBool("wgfreddy_enraged", false)
+	local wasRaged = ply:GetNWBool("wgfreddy_enraged")
+	
+	if wasRaged then
+		ply:SetNWBool("wgfreddy_enraged", false)
+	end
 
 	local ent = pills.getMappedEnt(ply)
 	if !IsValid(ent) or !ply:Alive() then return end
+	
+	if wasRaged then
+		ent.anim = nil
+	end
 		
 	net.Start("fh_wgfreddy_selecting_halo")
 	net.Send(ply)
@@ -909,8 +918,7 @@ function start_outworld(ply, ent, target)
 		end
 	
 		if allFar and IsValid(closestPlushie) then
-			net.Start("fh_pos_sound_play")
-			net.WriteString("fnaf2/gfreddy/plushie_hint.mp3")
+			net.Start("wgfreddy_plushie_hint")
 			net.WriteVector(closestPlushie:GetPos())
 			net.Send(target)
 		end

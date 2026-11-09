@@ -155,6 +155,45 @@ net.Receive("wgfreddy_second_ambience", function()
 	end)
 end)
 
+local melody = Material("vgui/melody.png", "smooth")
+net.Receive("wgfreddy_plushie_hint", function()
+	local hPos = net.ReadVector()
+	local dur = 4
+	local endTime = CurTime() + dur
+	
+	--if not IsInOutworld() then return end
+	
+	sound.PlayFile("sound/fnaf2/gfreddy/plushie_hint.mp3", "noplay 3d", function(chan, errID, errStr)
+		if IsValid(chan) then
+			chan:SetPos(hPos)
+			chan:Play()
+		end
+	end)
+	
+	local size = ScreenScale(8)
+	
+	local y = 0
+	local hName = "gfreddy_plushie_hint"
+	hook.Add("HUDPaint", hName, function()
+		--if not IsInOutworld() then hook.Remove("HUDPaint", hName) return end
+		
+		local ct = CurTime()
+		if ct > endTime then hook.Remove("HUDPaint", hName) return end
+		
+		local fraction = (endTime - ct) / dur
+		local alpha = 255 * fraction
+		
+		local pos = hPos:ToScreen()
+
+		if pos.visible then
+			surface.SetDrawColor( 255, 255, 255, alpha )
+			surface.SetMaterial( melody )
+			surface.DrawTexturedRect( pos.x + (math.sin(CurTime()*5) * 5 ), pos.y + y + (math.cos(CurTime()*5) * 5 ), size, size )
+			y = y - FrameTime() * 33
+		end
+	end)
+end)
+
 local ourTarget
 local GFREDDY_COLOR   = Color(255, 200, 0, 255)
 local function getGFreddyTarget(lp, rule)
@@ -343,6 +382,12 @@ net.Receive("fh_wgfreddy_target_outworld_start", function()
 		render.FogColor(150, 150, 150)
 		return true
 	end)
+	hook.Add("PostDraw2DSkyBox", "fh_wgfreddy_skybox", function()
+		cam.Start2D()
+			surface.SetDrawColor(150, 150, 150)
+			surface.DrawRect(0, 0, ScrW(), ScrH())
+		cam.End2D()
+	end)
 	hook.Add("FH_PreDrawHud", "gfreddy_hud", function()
 		return true
 	end)
@@ -354,7 +399,7 @@ net.Receive("fh_wgfreddy_target_outworld_start", function()
 		local hp = myself:Health()
 
 		cam.Start2D()
-			draw.SimpleText( hp .. " HP", "OutworldHealth", w/2, h - 32, healthColor, TEXT_ALIGN_CENTER, TEXT_ALIGN_CENTER )
+			draw.SimpleText( hp .. " HP", "OutworldHealth", w*.5, h - 32, healthColor, TEXT_ALIGN_CENTER, TEXT_ALIGN_CENTER )
 		cam.End2D()
 	end)
 
@@ -437,6 +482,7 @@ net.Receive("fh_wgfreddy_target_outworld_end", function()
 	hook.Remove("CreateMove", "fh_limit_camera_outworld")
 	hook.Remove("FH_PreDrawHud", "gfreddy_hud")
 	hook.Remove("PreDrawEffects", "gfreddy_hud")
+	hook.Remove("PostDraw2DSkyBox", "fh_wgfreddy_skybox")
 	ourTarget = nil
 end)
 
@@ -505,6 +551,7 @@ hook.Add( "PostCleanupMap", "fh_pill_wgfreddy_reset", function( name )
 	hook.Remove("SetupSkyboxFog", "WhiteFogEffectSkybox")
 	hook.Remove("RenderScreenspaceEffects", "merc_videoglitch_hook")
 	hook.Remove("CreateMove", "fh_limit_camera_outworld")
+	hook.Remove("PostDraw2DSkyBox", "fh_wgfreddy_skybox")
 	
 	-- victim
 	hook.Remove("FH_PreDrawHud", "gfreddy_hud")

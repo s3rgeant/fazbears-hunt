@@ -652,7 +652,7 @@ function PillPanel:PerformLayout(w, h)
 		
 		local ply = self.ply
 		if IsValid(ply) then
-			local ent = ply:GetPillCostume()
+			local ent = ply:GetActualPillCostume()
 			
 			if IsValid(ent) and ent.GetPillName then
 				local pillName = ent:GetPillName()

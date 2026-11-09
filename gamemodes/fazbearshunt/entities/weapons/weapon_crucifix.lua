@@ -191,7 +191,7 @@ hook.Add("FH_PlayerShouldJumpscare", "crucifix_save", function(ply, ent, target)
 			dir.z = 0
 			ply:SetVelocity(dir * 1500)
 			
-			ply.SpeedSlowEnd = CurTime() + 1
+			ply:SetSpeedSlowdown(1.5)
 			
 			wep:Defend()
 			target:ScreenFade( SCREENFADE.IN, Color( 255, 210, 25, 25 ), .8, 0 )

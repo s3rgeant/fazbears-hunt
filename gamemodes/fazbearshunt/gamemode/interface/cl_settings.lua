@@ -354,8 +354,8 @@ function TOGGLE:Paint(w, h)
 	surface.DrawTexturedRect( x, y, toggleW, toggleH)
 	
 	local h_h = h*.5
-	draw.SimpleText("ВКЛ", lFont, x + toggleW * .25, h_h, l_txtClr, TEXT_ALIGN_CENTER, TEXT_ALIGN_CENTER)
-	draw.SimpleText("ВЫКЛ", rFont, x + toggleW * .75, h_h, r_txtClr, TEXT_ALIGN_CENTER, TEXT_ALIGN_CENTER)
+	draw.SimpleText("#fazhunt.on", lFont, x + toggleW * .25, h_h, l_txtClr, TEXT_ALIGN_CENTER, TEXT_ALIGN_CENTER)
+	draw.SimpleText("#fazhunt.off", rFont, x + toggleW * .75, h_h, r_txtClr, TEXT_ALIGN_CENTER, TEXT_ALIGN_CENTER)
 end
 vgui.Register("FHSettingsToggle", TOGGLE, "DButton")
 
@@ -601,12 +601,12 @@ function settings.Close()
 end
 
 local function loadSettings()
-	settings.RegisterCategory("gameplay", "Геймплей")
-	settings.RegisterCategory("audio", "Аудио")
-	settings.RegisterCategory("interface", "Интерфейс")
-	settings.RegisterCategory("performance", "Производительность")
+	settings.RegisterCategory("gameplay", "#fazhunt.gameplay")
+	settings.RegisterCategory("audio", "#fazhunt.audio")
+	settings.RegisterCategory("interface", "#fazhunt.interface")
+	settings.RegisterCategory("performance", "#fazhunt.performance")
 
-	settings.RegisterSetting("gameplay", {type = "toggle", label = "Третье лицо", convar = "fh_thirdperson", default = GetConVarNumber("fh_thirdperson")})
+	settings.RegisterSetting("gameplay", {type = "toggle", label = "#fazhunt.thirperson", convar = "fh_thirdperson", default = GetConVarNumber("fh_thirdperson")})
 	settings.RegisterSetting("gameplay", {type = "toggle", label = "#fazhunt.opt_out", convar = "fh_opt_out_anim", default = GetConVarNumber("fh_opt_out_anim")})
 
 	settings.RegisterSetting("audio", {type = "toggle", label = "#fazhunt.mute_spectators", convar = "proximity_hear_spectators", default = GetConVarNumber("proximity_hear_spectators")})
@@ -631,10 +631,10 @@ local function loadSettings()
 	settings.RegisterSetting("interface", {type = "toggle", label = "#fazhunt.min_viewmodels", convar = "cl_use_min_viewmodels", default = GetConVarNumber("cl_use_min_viewmodels")})
 	settings.RegisterSetting("interface", {type = "toggle", label = "#fazhunt.dark_blindness", convar = "fh_dark_blindness", default = GetConVarNumber("fh_dark_blindness")})
 
-	settings.RegisterSetting("performance", {type = "combo", label = "Качество просвета", convar = "fh_highlight_quality", default = GetConVarNumber("fh_highlight_quality"), choices = {
-		{label = "По умолчанию", value = "0"},
-		{label = "Автоматическое", value = "1"},
-		{label = "Низкое", value = "2"}
+	settings.RegisterSetting("performance", {type = "combo", label = "#fazhunt.highlight_quality", convar = "fh_highlight_quality", default = GetConVarNumber("fh_highlight_quality"), choices = {
+		{label = "#fazhunt.settings.default", value = "0"},
+		{label = "#fazhunt.settings.auto", value = "1"},
+		{label = "#fazhunt.settings.lowest", value = "2"}
 	}})
 end
 
