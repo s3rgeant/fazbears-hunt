@@ -14,7 +14,7 @@ function fh.GetVersion()
     return fh_version
 end
 
-DEVELOPER_MODE = true
+DEVELOPER_MODE = false
 
 --DeriveGamemode("sandbox")
 

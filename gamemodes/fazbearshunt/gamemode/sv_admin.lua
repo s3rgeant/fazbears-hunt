@@ -577,22 +577,27 @@ end
 local function deliverMapData(ply)
 	local data = fh.GetAllMapData()
 	
-	net.Start("FH_AdminDeliverData")
-		net.WriteBit(true)
-		net.WriteString("MapData")
-		
-		net.WriteBit(true)
-		net.WriteInt(table.Count(data),8)
-		for map, d in pairs(data) do
+	if not data then return end
+	
+	local count = table.Count(data)
+	if count > 0 then
+		net.Start("FH_AdminDeliverData")
+			net.WriteBit(true)
+			net.WriteString("MapData")
 			
-			net.WriteString(map)
-			net.WriteInt(table.Count(d),8)
-			for v, k in pairs(d) do
-				net.WriteString(tostring(v))
-				net.WriteString(tostring(k))
+			net.WriteBit(true)
+			net.WriteInt(count,8)
+			for map, d in pairs(data) do
+				
+				net.WriteString(map)
+				net.WriteInt(table.Count(d),8)
+				for v, k in pairs(d) do
+					net.WriteString(tostring(v))
+					net.WriteString(tostring(k))
+				end
 			end
-		end
-	net.Send(ply)
+		net.Send(ply)
+	end
 end
 
 local function findAndDeliverMapData()
