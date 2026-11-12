@@ -2,6 +2,16 @@ BSD 3-Clause License WITH additional condition.
 
 Copyright © 2024, sergeant ( https://github.com/s3rgeant, https://steamcommunity.com/id/sergeant_robbery/ )
 
+This license applies exclusively to the original source code distributed as part 
+of this project, including Lua scripts and other original programming code.
+
+All non-code content, including but not limited to models, textures, materials, 
+sounds, images, animations, and other assets, is expressly excluded from this 
+license and remains subject to its respective copyrights and licensing terms.
+
+Third-party code and content are also excluded from this license and remain 
+subject to their respective licenses and copyright terms.
+
 Redistribution and use in source and binary forms, with or without
 modification, are permitted provided that the following conditions are met:
 
