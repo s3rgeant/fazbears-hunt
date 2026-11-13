@@ -27,6 +27,7 @@ local function recursive_include(path)
 	end
 end
 AddCSLuaFile("halo_module.lua")
+AddCSLuaFile("interface/settings/pills_fov_editor.lua")
 
 recursive_include("fazbearshunt/gamemode/utils/")
 recursive_include("fazbearshunt/gamemode/")
@@ -153,6 +154,11 @@ function GetKillerCountByPlayerCount(totalPlayers)
 	return 1
 end
 
+local currentAvailableKillers = {}
+function RememberAssignedKillers(t)
+	currentAvailableKillers = table.Flip(table.Copy(t))
+end
+
 forceAnimSelectTime = forceAnimSelectTime or 0
 function AssignKillers()
     local players = player.GetAll()
@@ -186,6 +192,7 @@ function AssignKillers()
 	
 	forceAnimSelectTime = CurTime() + 60
 	
+	RememberAssignedKillers(availableKillers)
 	for v, _ in pairs(curKillers) do
 		net.Start("fh_let_killers_choose")
 		net.WriteTable(availableKillers)
@@ -283,13 +290,13 @@ local function GiveKillerShared(ply, killer, force, silent)
 	
 	killerData.ogName = killerName
 	
-	return killerData
+	return killerData, ent
 end
 
 function GiveKiller(ply, killer, force, tpSpawn)
 	force = force or false
 	
-	local killerData = GiveKillerShared(ply, killer, force)
+	local killerData, ent = GiveKillerShared(ply, killer, force)
 	
 	if !killerData then return end
 	
@@ -301,8 +308,8 @@ function GiveKiller(ply, killer, force, tpSpawn)
 		if animSpawns then
 			table.Shuffle(animSpawns)
 			
-			for ent, _ in pairs(animSpawns) do
-				curSpawn = ent
+			for spawn, _ in pairs(animSpawns) do
+				curSpawn = spawn
 				break
 			end
 		end
@@ -319,6 +326,8 @@ function GiveKiller(ply, killer, force, tpSpawn)
     net.WriteString(killerData.fullname)
     net.WriteColor(killerData.color)
     net.Broadcast()
+	
+	return ent, killerData
 end
 
 function giveKiller(...)
@@ -329,7 +338,9 @@ end
 function GiveKillerSilent(ply, killer, force)
 	force = force or false
 	
-	GiveKillerShared(ply, killer, force, true)
+	local killerData, ent = GiveKillerShared(ply, killer, force, true)
+	
+	return ent, killerData
 end
 
 function giveKillerSilent(...)
@@ -740,7 +751,7 @@ hook.Add( "PlayerCanPickupWeapon", "no_double_pickup", function( ply, weapon )
 	end
 end)
 
-function ReplaceKiller(ply, ent, pos, angle, health, pillName)
+function ReplaceKiller(ply, ent, pos, angle, health, pillName, leaver)
 	ply:SendLua( "surface.PlaySound( 'killer_replaced.wav' )" )
 			
 	if !ply:Alive() then
@@ -753,14 +764,18 @@ function ReplaceKiller(ply, ent, pos, angle, health, pillName)
 			end
 		end
 	end
+	
+	local nEnt
 	if pillName then
-		GiveKiller(ply, pillName, true)
+		nEnt = GiveKiller(ply, pillName, true)
 	else
-		GiveRandomKiller(ply, true)
+		nEnt = GiveRandomKiller(ply, true)
 	end
 	ply:SetPos(pos)
 	ply:SetEyeAngles(angle)
 	ply:SetHealth(health)
+	
+	nEnt:Func("replaced", ply, nEnt, leaver, ent)
 	
 	timer.Simple(0.5, function()
 		if IsValid(ply) and ply:Alive() and ply:IsStuck() then
@@ -791,7 +806,7 @@ local function tryReplaceKiller(leaver, ent)
 			for _, ply in ipairs( team.GetPlayers( TEAM_PILLS ) ) do
 				if ply == leaver then continue end
 			
-				ReplaceKiller(ply, ent, pos, angle, health, pillName)
+				ReplaceKiller(ply, ent, pos, angle, health, pillName, leaver)
 				replaced = true
 				break
 			end
@@ -803,7 +818,7 @@ local function tryReplaceKiller(leaver, ent)
 
 	if team.NumPlayers( TEAM_SPECTATOR ) > 0 then
 		for _, ply in ipairs( team.GetPlayers( TEAM_SPECTATOR ) ) do
-			ReplaceKiller(ply, ent, pos, angle, health, pillName)
+			ReplaceKiller(ply, ent, pos, angle, health, pillName, leaver)
 			replaced = true
 			break
 		end
@@ -821,7 +836,7 @@ local function tryReplaceKiller(leaver, ent)
 		local ply = killers[1]
 		
 		if ply and IsValid(ply) then
-			ReplaceKiller(ply, ent, pos, angle, health, pillName)
+			ReplaceKiller(ply, ent, pos, angle, health, pillName, leaver)
 		end
 	end
 end
@@ -1259,7 +1274,7 @@ net.Receive("fh_selected_killer", function(len, ply)
 		if animatronics[ply] and not pills.hasMappedEnt(ply) then
 			local killer = net.ReadString()
 			
-			if !usedKillers[killer] then
+			if !usedKillers[killer] and currentAvailableKillers[killer] then
 				GiveKiller(ply, killer, nil, true)
 				
 				for v, _ in pairs(animatronics) do

@@ -182,7 +182,7 @@ net.Receive("fox_request", function(len, ply)
 end)
 
 net.Receive("fox_request_complete", function(len, ply)
-	if not bearRequester == ply then return end
+	if bearRequester ~= ply then return end
 	
 	local foxPly = net.ReadPlayer()
 	

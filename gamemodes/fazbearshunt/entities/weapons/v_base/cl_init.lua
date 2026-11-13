@@ -193,3 +193,31 @@ function SWEP:Change(this, to)
 	if not self[this] then return end
 	self[this] = to
 end
+
+function CreateVBaseFovHandler(swep, cvar, name, defValue)
+	local vfov = CreateClientConVar(cvar, defValue, true, false, 'Fov of ' .. name)
+	swep.ViewModelFOV = vfov:GetFloat() or defValue
+	
+    cvars.AddChangeCallback(cvar, function(name, old_value, new_value)
+		local wep = LocalPlayer():GetActiveWeapon()
+		if IsValid(wep) and wep.ClassName == swep.ClassName then
+			wep.ViewModelFOV = tonumber(new_value) or defValue
+		end
+    end)
+	
+	timer.Simple(0, function()
+		if not swep then return end
+		local className = swep.ClassName
+		
+		local data = settings.pillsFovEditorData
+		data[className] = {}
+		data[className].cvar = cvar
+		data[className].name = name
+		data[className].defValue = defValue
+		data[className].swep = swep
+	end)
+end
+
+function SWEP:SetFOV(new)
+	self.ViewModelFOV = new
+end

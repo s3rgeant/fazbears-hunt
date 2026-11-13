@@ -289,7 +289,7 @@ pills.register("pill_springtrap",{
 		local tName = "fh_SpringtrapRage".. ply:EntIndex()
 		if timer.Exists(tName) then
 			timer.Remove(tName)
-			ent:Func("stopRage")
+			ent:Func("stopRage", ply, ent)
 		end		
 		
 		local tName = "CheckConditions" .. ply:EntIndex()
@@ -440,11 +440,11 @@ pills.register("pill_springtrap",{
 })
 
 function KillPlushtrap(ply, ent, plushtrap)
-	if IsValid(plushtrap) then
-		inventory_backup.SuppressNextSave(plushtrap, true)
-		plushtrap:Kill()
-		plushtrap:SetTeam(TEAM_SPECTATOR)
-		plushtrap:SendLua( "LocalPlayer():ChatPrint( language.GetPhrase('fazhunt.springtrap.plushtime') )" )
+	if IsValid(request_plushtrap) then
+		inventory_backup.SuppressNextSave(request_plushtrap, true)
+		request_plushtrap:Kill()
+		request_plushtrap:SetTeam(TEAM_SPECTATOR)
+		request_plushtrap:SendLua( "LocalPlayer():ChatPrint( language.GetPhrase('fazhunt.springtrap.plushtime') )" )
 		
 		request_plushtrap = nil
 	end
@@ -688,6 +688,12 @@ pills.register("pill_plushtrap",{
 	jump=function(ply,ent)
 		if ent.formTable.jumpPower <= 0 then return end
 		ent:PillSound("jump",false)
+	end,
+	
+	replaced = function(ply, ent, oldply, oldent)
+		if oldply == request_plushtrap then
+			request_plushtrap = ply
+		end
 	end,
 	
 	animEvent=function(ply,ent, name, t, c, type, options)

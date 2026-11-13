@@ -50,11 +50,9 @@ local function SetupCustomHands(ply, ent)
 	handsModel:SetupBones()
 	handsModel:SetRenderBounds(Vector(-65000), Vector(65000))
 
-	-- Кости кистей
 	leftHandBone = handsModel:LookupBone("bip_hand_L") or handsModel:LookupBone("ValveBiped.Bip01_L_Hand")
 	rightHandBone = handsModel:LookupBone("bip_hand_R") or handsModel:LookupBone("ValveBiped.Bip01_R_Hand")
 
-	-- Пальцы (адаптировано под твою модель)
 	fingerboneids = {}
 	for i = 0, handsModel:GetBoneCount() - 1 do
 		local name = handsModel:GetBoneName(i):lower()
@@ -116,7 +114,6 @@ local function SetupCustomHands(ply, ent)
 		end
 			
 
-		-- Пальцы (пока упрощённо)
 		for k, boneid in ipairs(fingerboneids) do
 			if boneinfo[boneid] then
 				local fCount = allHandsData[currentData].fingerJoints or 3
@@ -127,7 +124,6 @@ local function SetupCustomHands(ply, ent)
 				else
 					fingerIdx = math.floor((k - 1) / (fCount + 1)) + 1
 
-					-- пропускаем каждую третью кость
 					if (k - 1) % (fCount + 1) >= fCount then
 						continue
 					end
@@ -138,7 +134,6 @@ local function SetupCustomHands(ply, ent)
 			end
 		end
 
-		-- Расчёт всех костей
 		for i = 0, boneCount - 1 do
 			local info = boneinfo[i]
 			local parentInfo = boneinfo[info.parent] or info
@@ -162,7 +157,6 @@ local function SetupCustomHands(ply, ent)
 			info.ang = wang
 		end
 
-		-- Применяем
 		for i = 0, boneCount - 1 do
 			if handsEnt:GetBoneMatrix(i) then
 				handsEnt:SetBoneMatrix(i, boneinfo[i].targetMatrix)
@@ -171,7 +165,6 @@ local function SetupCustomHands(ply, ent)
 	end)
 end
 
--- ====================== ХУКИ ======================
 hook.Add("PillApply", "vr_fh_hands", function(ply, ent)
 	if ply ~= LocalPlayer() then return end
 	if not vrmod.IsPlayerInVR(ply) then return end

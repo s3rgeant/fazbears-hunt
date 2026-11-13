@@ -3,15 +3,7 @@ SWEP.PrintName = "Bearling SWEP"
 SWEP.Base = "v_base"
 
 if CLIENT then
-	local vfov = CreateClientConVar('cl_fov_bearling', 110, true, false, 'Fov of Bearling5')
-	SWEP.ViewModelFOV = vfov:GetFloat() or 110
-    
-    cvars.AddChangeCallback("cl_fov_bearling", function(name, old_value, new_value)
-		local wep = LocalPlayer():GetActiveWeapon()
-		if IsValid(wep) and string.StartWith(wep:GetClass(), "v_") then
-			wep.ViewModelFOV = tonumber(new_value) or 110
-		end
-    end)
+	CreateVBaseFovHandler(SWEP, "cl_fov_bearling", "Bearling5", 110)
 end
 
 SWEP.ViewModel = "models/fh/animatronics/vm/bear5.mdl"

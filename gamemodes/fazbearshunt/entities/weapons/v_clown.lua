@@ -3,16 +3,7 @@ SWEP.PrintName = "Clown SWEP"
 SWEP.Base = "v_base"
 
 if CLIENT then
-	local vfov = CreateClientConVar('cl_fov_clown', 110, true, false, 'Fov of Clown')
-	SWEP.ViewModelFOV = vfov:GetFloat() or 110
-    
-    cvars.AddChangeCallback("cl_fov_clown", function(name, old_value, new_value)
-		local wep = LocalPlayer():GetActiveWeapon()
-		if IsValid(wep) and string.StartWith(wep:GetClass(), "v_") then
-			wep.ViewModelFOV = tonumber(new_value) or 110
-		end
-    end)
-
+	CreateVBaseFovHandler(SWEP, "cl_fov_clown", "Clown", 110)
 end
 
 SWEP.ViewModel = "models/tetTris/vm/springtrap_clown.mdl"

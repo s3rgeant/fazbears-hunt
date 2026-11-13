@@ -26,16 +26,17 @@ surface.CreateFont("settings.BtnOFF",
 	{font = _font, size = 14, weight = 500, extended = true})
 
 local C = {
-	background = Color(0, 0, 0, 255),
-	panel = Color(5, 7, 7, 245),
-	row = Color(5, 7, 7, 210),
 	border = Color(65, 68, 68, 255),
-	subtleBorder = Color(26, 29, 29, 255),
 	text = Color(235, 235, 235),
-	muted = Color(160, 164, 164),
-	fill = Color(215, 215, 215),
-	off = Color(20, 22, 22),
-	toggleoff = Color(40,46,77),
+}
+
+local panelTypes = {
+	["slider"] = "FHSettingsSlider",
+	["toggle"] = "FHSettingsToggle",
+	["combo"] = "FHSettingsCombo",
+	["button"] = "FHSettingsButton",
+	
+	["divider"] = "FHSettingsDivider",
 }
 
 local color_surv = team.GetColor( TEAM_SURVIVOR )
@@ -76,7 +77,7 @@ end
 function settings.RegisterSetting(categoryID, setting)
 	local category = settings.categories[categoryID]
 	if not category or not istable(setting) or not isstring(setting.label) or not isstring(setting.type) then return false end
-	if setting.type ~= "slider" and setting.type ~= "toggle" and setting.type ~= "combo" and setting.type ~= "divider" then return false end
+	if not panelTypes[setting.type] then return false end
 	if setting.default == nil then
 		if setting.type == "toggle" then setting.default = false
 		elseif setting.type == "slider" then setting.default = 0
@@ -220,7 +221,7 @@ function WINDOW:SetCategory(categoryID)
 	
 	local category = settings.categories[categoryID]
 	for index, setting in ipairs(category.settings) do
-		local panelType = setting.type == "slider" and "FHSettingsSlider" or setting.type == "toggle" and "FHSettingsToggle" or setting.type == "divider" and "FHSettingsDivider" or "FHSettingsCombo"
+		local panelType = panelTypes[setting.type]
 		
 		local otstup = 4
 		
@@ -343,6 +344,9 @@ function TOGGLE:Paint(w, h)
 	
 	local isvalue = self.Value
 	
+	local invert = self.Setting.invert
+	if invert then isvalue = !isvalue end
+	
 	local curMat = isvalue and switch_on or switch_off
 	local l_txtClr = isvalue and color_white or color_gray
 	local r_txtClr = isvalue and color_gray or color_white
@@ -358,6 +362,53 @@ function TOGGLE:Paint(w, h)
 	draw.SimpleText("#fazhunt.off", rFont, x + toggleW * .75, h_h, r_txtClr, TEXT_ALIGN_CENTER, TEXT_ALIGN_CENTER)
 end
 vgui.Register("FHSettingsToggle", TOGGLE, "DButton")
+
+
+	-- КНОПКА КНОПОНЬКА
+local BUTTON = {}
+function BUTTON:Init()
+	self:SetTall(42)
+	self:SetText("")
+	self:SetMouseInputEnabled(true)
+	self.Value = false
+	self.Animation = {}
+end
+
+function BUTTON:SetSetting(setting)
+	self.Setting = setting
+	self.Label = setting.label or ""
+	self.Value = setting.Default
+	self.Func = setting.func
+end
+
+function BUTTON:OnMousePressed(code)
+	if code ~= MOUSE_LEFT then return end
+	if self.Func then self.Func(self, self.Setting) end
+	surface.PlaySound("ui/click.wav")
+end
+
+function BUTTON:Think()
+	SyncPanel(self)
+end
+
+local editor = Material("vgui/base/settings/editor.png", "smooth")
+local editorW, editorH = editor:Width(), editor:Height()
+
+function BUTTON:Paint(w, h)
+	DrawRow(self, self.Label)
+	local x = w * 0.4
+	local y = (h - 30) * 0.5
+	
+	local value = self.Value
+	
+	surface.SetMaterial( editor )
+	surface.SetDrawColor(255, 255, 255, 255)
+	surface.DrawTexturedRect( x, y, editorW, editorH)
+	
+	local h_h = h*.5
+	draw.SimpleText(value, "settings.BtnOFF", x + (editorW * .5), h_h, color_white, TEXT_ALIGN_CENTER, TEXT_ALIGN_CENTER)
+end
+vgui.Register("FHSettingsButton", BUTTON, "DButton")
 
 
 	-- ДЕВАЙДЕР ДЛЯ НАСТРОЕК
@@ -600,6 +651,8 @@ function settings.Close()
 	if IsValid(settings.Frame) then settings.Frame:Remove() end
 end
 
+include("settings/pills_fov_editor.lua")
+
 local function loadSettings()
 	settings.RegisterCategory("gameplay", "#fazhunt.gameplay")
 	settings.RegisterCategory("audio", "#fazhunt.audio")
@@ -609,7 +662,7 @@ local function loadSettings()
 	settings.RegisterSetting("gameplay", {type = "toggle", label = "#fazhunt.thirperson", convar = "fh_thirdperson", default = GetConVarNumber("fh_thirdperson")})
 	settings.RegisterSetting("gameplay", {type = "toggle", label = "#fazhunt.opt_out", convar = "fh_opt_out_anim", default = GetConVarNumber("fh_opt_out_anim")})
 
-	settings.RegisterSetting("audio", {type = "toggle", label = "#fazhunt.mute_spectators", convar = "proximity_hear_spectators", default = GetConVarNumber("proximity_hear_spectators")})
+	settings.RegisterSetting("audio", {type = "toggle", label = "#fazhunt.mute_spectators", convar = "proximity_hear_spectators", default = GetConVarNumber("proximity_hear_spectators"), invert = true})
 	settings.RegisterSetting("audio", {type = "toggle", label = "#fazhunt.fh_voicelines", convar = "fh_voicelines", default = GetConVarNumber("fh_voicelines")})
 	settings.RegisterSetting("audio", {type = "divider", label = "#fazhunt.terror_radius"})
 	settings.RegisterSetting("audio", {type = "toggle", label = "#fazhunt.terror_radius_enable", convar = "fh_terror_enabled", default = GetConVarNumber("fh_terror_enabled")})
@@ -621,6 +674,7 @@ local function loadSettings()
 		format = "percent"})
 	settings.RegisterSetting("audio", {type = "toggle", label = "#fazhunt.terror_radius_spectators", convar = "fh_terror_spectators", default = GetConVarNumber("fh_terror_spectators")})
 
+	settings.RegisterSetting("interface", {type = "divider", label = "#fazhunt.context.animatronics_only"})
 	settings.RegisterSetting("interface", {type = "slider", label = "#fazhunt.ui_scale", convar = "fh_ui_scale", default = GetConVarNumber("fh_ui_scale"), 
 		min = 0.1, 
 		max = 1, 
@@ -628,6 +682,8 @@ local function loadSettings()
 		decimals = 2, 
 		format = "percent"})
 	settings.RegisterSetting("interface", {type = "toggle", label = "#fazhunt.halo_teammates", convar = "fh_halo_teammates", default = GetConVarNumber("fh_halo_teammates")})
+	--settings.RegisterSetting("interface", {type = "button", label = "#fazhunt.anims_vm_fov", default = "#fazhunt.open_editor", func = settings.OpenPillsFovEditor})
+	settings.RegisterSetting("interface", {type = "divider", label = "#other"})
 	settings.RegisterSetting("interface", {type = "toggle", label = "#fazhunt.min_viewmodels", convar = "cl_use_min_viewmodels", default = GetConVarNumber("cl_use_min_viewmodels")})
 	settings.RegisterSetting("interface", {type = "toggle", label = "#fazhunt.dark_blindness", convar = "fh_dark_blindness", default = GetConVarNumber("fh_dark_blindness")})
 
@@ -636,6 +692,9 @@ local function loadSettings()
 		{label = "#fazhunt.settings.auto", value = "1"},
 		{label = "#fazhunt.settings.lowest", value = "2"}
 	}})
+	settings.RegisterSetting("performance", {type = "toggle", label = "#fazhunt.r_WaterDrawReflection", convar = "r_WaterDrawReflection", default = GetConVarNumber("r_WaterDrawReflection")})
+	settings.RegisterSetting("performance", {type = "toggle", label = "#fazhunt.r_WaterDrawRefraction", convar = "r_WaterDrawRefraction", default = GetConVarNumber("r_WaterDrawRefraction")})
+	settings.RegisterSetting("performance", {type = "toggle", label = "#fazhunt.r_3dsky", convar = "r_3dsky", default = GetConVarNumber("r_3dsky")})
 end
 
 hook.Add("PostGamemodeLoaded", "cl_settings", function()

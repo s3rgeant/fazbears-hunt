@@ -4,16 +4,7 @@ SWEP.Base = "v_base"
 
 
 if CLIENT then
-	local vfov = CreateClientConVar('cl_fov_plushtrap', 100, true, false, 'Fov of Plushtrap')
-	SWEP.ViewModelFOV = vfov:GetFloat() or 100
-    
-    cvars.AddChangeCallback("cl_fov_plushtrap", function(name, old_value, new_value)
-		local wep = LocalPlayer():GetActiveWeapon()
-		if IsValid(wep) and string.StartWith(wep:GetClass(), "v_") then
-			wep.ViewModelFOV = tonumber(new_value) or 100
-		end
-    end)
-
+	CreateVBaseFovHandler(SWEP, "cl_fov_plushtrap", "Plushtrap", 100)
 end
 
 SWEP.ViewModel = "models/tetTris/vm/Plushtrap.mdl"

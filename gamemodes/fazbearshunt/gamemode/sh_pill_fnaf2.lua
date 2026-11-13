@@ -202,12 +202,12 @@ function FindNearestPlayer(origin, radius, attacker, fov)
             if distance <= nearestDistance then
                 local trace = util.TraceLine({
                     start = eyePos,
-                    endpos = ply:GetPos() + ply:OBBCenter(),
+                    endpos = pos + ply:OBBCenter(),
                     filter = function(ent) return !ent:IsPlayer() and ent ~= attacker and ent ~= ply end
                 })
                 if not trace.Hit then
 					if hook.Run("FindNearestPlayerFilter", ply, attacker, origin, radius, fov) == false then continue end
-                    nearestDistance = math.sqrt(distance)
+                    nearestDistance = distance
                     nearestPlayer = ply
                 end
             end

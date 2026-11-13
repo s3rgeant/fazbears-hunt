@@ -51,7 +51,7 @@ conVars = {
 	--[[
 		ADMIN PANEL: EXPERIMENTS
 	]]
-	fh_animatronic_immortal = CreateConVar( "fh_animatronic_immortal", 1, { FCVAR_ARCHIVE, FCVAR_REPLICATED}, "Toggle immortality for animatronic team." ),
+	fh_animatronic_immortal = CreateConVar( "fh_animatronic_immortal", 0, { FCVAR_ARCHIVE, FCVAR_REPLICATED}, "Toggle immortality for animatronic team." ),
 	fh_animatronic_ff = CreateConVar( "fh_animatronic_ff", 0, { FCVAR_ARCHIVE, FCVAR_REPLICATED}, "Toggle friendly fire for animatronic team." ),
 	
 	fh_less_steps = CreateConVar( "fh_less_steps", 0, { FCVAR_ARCHIVE, FCVAR_REPLICATED}, "Makes footsteps silent when they're not rendered." ),
@@ -59,7 +59,7 @@ conVars = {
 	
 	fh_max_cupcakes = CreateConVar( "fh_max_cupcakes", 3, { FCVAR_ARCHIVE, FCVAR_REPLICATED}, "Maximum amount of cupcakes Chica can spawn." ),
 	fh_silent_highlight = CreateConVar( "fh_silent_highlight", 0, { FCVAR_ARCHIVE, FCVAR_REPLICATED}, "Makes highlights fully mute, and removes its overlay." ),
-	fh_respawn_dead_animatronics = CreateConVar( "fh_respawn_dead_animatronics", 1, { FCVAR_ARCHIVE, FCVAR_REPLICATED}, "Respawn animatronic if it died?" ),
+	fh_respawn_dead_animatronics = CreateConVar( "fh_respawn_dead_animatronics", 0, { FCVAR_ARCHIVE, FCVAR_REPLICATED}, "Respawn animatronic on death?" ),
 	
 	fh_bear5_killermask_last = CreateConVar( "fh_bear5_killermask_last", 0, {FCVAR_ARCHIVE, FCVAR_REPLICATED}, "Give Killer's Mask to last survivor during Bear5 round?." ),
 	fh_fast_roundrestart = CreateConVar( "fh_fast_roundrestart", "0", { FCVAR_ARCHIVE, FCVAR_REPLICATED }, "Make round restarts be faster?" ),
@@ -561,12 +561,11 @@ function killers.getColor(killer)
 end
 
 function killers.GetColor(killer)
-	local color = Color(255,255,255)
 	local data = killerData[killer]
 	if data and data.color then
 		return data.color
 	end
-	return color
+	return color_white
 end
 
 function formatTime(secs)

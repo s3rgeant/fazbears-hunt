@@ -92,7 +92,7 @@ local voicelines = {
     },
     clown = {
         kill = generateVoicelines("clown_kill", 3),
-        lastkill = generateVoicelines("clown_lastkill", 1),
+        lastkill = generateVoicelines("clown_lastkill", 2),
         chase = generateVoicelines("clown_chase", 2),
         tasered = generateVoicelines("clown_tasered", 4),
     },
